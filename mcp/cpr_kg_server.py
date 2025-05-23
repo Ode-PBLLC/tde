@@ -35,7 +35,39 @@ def KG() -> nx.MultiDiGraph:
     Lazily load the NetworkX MultiDiGraph produced by build_kg.py.
     Cached so every tool call shares the same in-memory object.
     """
-    return nx.read_graphml(GRAPHML_PATH)
+    G = nx.read_graphml(GRAPHML_PATH)
+
+    # --- Add dummy dataset ---
+    dataset_node_id = "DUMMY_DATASET_EXTREME_WEATHER"
+    dataset_label = "Extreme Weather Impact Dataset"
+    
+    # Sample data for the dataset
+    sample_data = [
+        {"event_id": "EW001", "year": 2023, "type": "Hurricane", "location": "Florida", "impact_rating": 5, "description": "Major hurricane causing widespread damage."},
+        {"event_id": "EW002", "year": 2023, "type": "Wildfire", "location": "California", "impact_rating": 4, "description": "Extensive wildfires affecting multiple counties."},
+        {"event_id": "EW003", "year": 2024, "type": "Flood", "location": "Germany", "impact_rating": 5, "description": "Severe flooding after heavy rainfall."},
+        {"event_id": "EW004", "year": 2024, "type": "Drought", "location": "Horn of Africa", "impact_rating": 4, "description": "Prolonged drought leading to food shortages."}
+    ]
+
+    if not G.has_node(dataset_node_id):
+        G.add_node(
+            dataset_node_id,
+            kind="Dataset",
+            label=dataset_label,
+            description="A sample dataset detailing impacts of various extreme weather events.",
+            data_content=sample_data  # Storing data as a node attribute
+        )
+
+    # Link to "extreme weather" concept if it exists
+    extreme_weather_concept_id = _concept_id("extreme weather")
+    if extreme_weather_concept_id and G.has_node(extreme_weather_concept_id):
+        if not G.has_edge(extreme_weather_concept_id, dataset_node_id):
+            G.add_edge(extreme_weather_concept_id, dataset_node_id, type="HAS_DATASET_ABOUT")
+        if not G.has_edge(dataset_node_id, extreme_weather_concept_id): # Optional: reverse link
+            G.add_edge(dataset_node_id, extreme_weather_concept_id, type="DATASET_ON_TOPIC")
+    # --- End of dummy dataset addition ---
+    
+    return G
 
 
 if "vector_embedding" not in concepts.columns or concepts["vector_embedding"].isna().any():
@@ -147,7 +179,13 @@ def GetDescription(concept: str) -> str:
     """
     Get the description of a given concept in the climate policy radar knowledge graph.
     """
-    return concepts[concepts["preferred_label"] == concept]["description"].iloc[0]
+    filtered_concepts = concepts[concepts["preferred_label"] == concept]
+    if not filtered_concepts.empty:
+        description = filtered_concepts["description"].iloc[0]
+        # Ensure description is a string, not NaN or other types
+        if pd.notna(description):
+            return str(description)
+    return "" # Return empty string if concept or description not found
 
 
 ### GRAPH TOOLS
@@ -183,7 +221,7 @@ def GetConceptGraphNeighbors(
     max_results: int = 25,
 ) -> List[dict]:
     """
-    Return neighbor concepts directly connected to *concept* in the graph.
+    Return neighbor nodes (concepts, datasets, etc.) directly connected to *concept* in the graph.
 
     Parameters
     ----------
@@ -192,7 +230,7 @@ def GetConceptGraphNeighbors(
     direction:    "out", "in", or "both"
     max_results:  hard cap on number of neighbors returned
 
-    Each record: {concept_id, label, via_edge}
+    Each record: {node_id, label, kind, via_edge}
     """
     cid = _concept_id(concept)
     if not cid:
@@ -202,15 +240,28 @@ def GetConceptGraphNeighbors(
     records = []
 
     def _collect(edges):
-        for _, v, d in edges:
+        for u, v, d in edges: # u is the source concept, v is the neighbor
             if edge_types and d["type"] not in edge_types:
                 continue
-            if G.nodes[v].get("kind") != "Concept":
-                continue
+            
+            node_data = G.nodes[v]
+            node_kind = node_data.get("kind")
+            node_label = ""
+
+            if node_kind == "Concept":
+                node_label = _concept_label(v)
+            elif node_kind == "Dataset":
+                node_label = node_data.get("label", v) # Use the dataset's own label attribute
+            elif node_kind == "Passage":
+                node_label = node_data.get("text","")[:75] + "..." # Show a snippet for passages
+            else:
+                node_label = v # Fallback to node ID if kind is unknown or no specific label
+
             records.append(
                 {
-                    "concept_id": v,
-                    "label": _concept_label(v),
+                    "node_id": v,
+                    "label": node_label,
+                    "kind": node_kind,
                     "via_edge": d["type"],
                 }
             )
@@ -334,7 +385,7 @@ def FindConceptPathWithEdges(
             edge_path = []
             for u, v in zip(node_path, node_path[1:]):
                 data = _first_edge_attrs(G, u, v)
-                if not data:                                  # shouldn’t happen but be safe
+                if not data:                                  # shouldn't happen but be safe
                     continue
                 edge_path.append(
                     {
@@ -357,7 +408,7 @@ def ExplainConceptRelationship(
 ) -> str:
     """
     Produce a short narrative of how *source_concept* links to *target_concept*,
-    using the first shortest path with edge labels plus each concept’s description.
+    using the first shortest path with edge labels plus each concept's description.
     """
     paths = FindConceptPathWithEdges(source_concept, target_concept, max_len)
     if not paths:
@@ -376,6 +427,24 @@ def ExplainConceptRelationship(
             f"{hop['target']} ({tgt_desc})"
         )
     return " → ".join(segs)
+
+@mcp.tool()
+def GetDatasetContent(dataset_id: str) -> List[dict] | str:
+    """
+    Retrieves the data content of a dataset node identified by its unique ID.
+    Returns a list of records if found, or an error message string.
+    Parameters
+    ----------
+    dataset_id: The unique ID of the dataset node (e.g., 'DUMMY_DATASET_EXTREME_WEATHER').
+    """
+    G = KG()
+    if G.has_node(dataset_id):
+        node_data = G.nodes[dataset_id]
+        if node_data.get("kind") == "Dataset":
+            return node_data.get("data_content", "Data content not found in dataset node.")
+        else:
+            return f"Node '{dataset_id}' is not a Dataset node."
+    return f"Dataset with ID '{dataset_id}' not found."
 
 
 if __name__ == "__main__":

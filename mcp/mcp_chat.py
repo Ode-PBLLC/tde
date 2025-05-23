@@ -10,6 +10,9 @@ import os
 from dotenv import load_dotenv
 import json
 from textwrap import fill
+import streamlit as st
+import pandas as pd
+import plotly.express as px
 
 load_dotenv()
 
@@ -103,9 +106,22 @@ class CPR_Client:
 
         
     async def process_query(self, query: str):
+        # --- Temporary hardcoding for chart visualization --- 
+        DUMMY_DATASET_ID = "DUMMY_DATASET_EXTREME_WEATHER"
+        if query.lower() == "show dummy chart":
+            print(f"Hardcoded trigger: Querying for dataset ID: {DUMMY_DATASET_ID}")
+            # Fall through to the main logic, but ensure the AI targets this ID if it uses GetDatasetContent
+            # This specific hardcoding will now rely on the general GetDatasetContent parsing below.
+            # For true hardcoding, we'd simulate the AI making the *correct* call.
+            # To ensure it uses the GetDatasetContent, we can subtly change the query for the AI if needed,
+            # or rely on the fact that the user *wants* this specific dataset for this query.
+            # For now, we assume if query is "show dummy chart", the AI will be guided/already knows.
+            # The main purpose of this block is now just for a print statement.
+            pass # Let the normal flow attempt to get this via AI if possible, or adjust query for AI.
+
         messages = [
             {"role": "user", 
-            "content": query}
+            "content": query} # Original query
         ]
         
         response = await self.session.list_tools()
@@ -117,12 +133,20 @@ class CPR_Client:
         
         system_prompt = """
             You are a climate policy expert.
+            When a user asks for a dataset by a descriptive name, try to find its actual ID using graph navigation tools first (like GetConceptGraphNeighbors).
+            Then use the GetDatasetContent tool with the discovered 'node_id'.
+            If you are asked to "show dummy chart", the ID for GetDatasetContent is DUMMY_DATASET_EXTREME_WEATHER.
             """
+
+        if query.lower() == "show dummy chart": # Override messages for dummy chart query
+             messages = [
+                {"role": "user", "content": "Get the content of dataset DUMMY_DATASET_EXTREME_WEATHER."}
+            ]
 
         response = self.anthropic.messages.create(
             model="claude-3-haiku-20240307",
             max_tokens=1000,
-            system = system_prompt,
+            system=system_prompt,
             messages=messages,
             tools=available_tools
         )
@@ -131,6 +155,7 @@ class CPR_Client:
         sources_used = []
         context_chunks = []   # every tool_result.content goes in here
         passage_sources = []        # each element: {"doc_id": …, "passage_id": …}
+        chart_data = None           # To store data for charting
 
         while True:
             assistant_message_content = []
@@ -148,7 +173,32 @@ class CPR_Client:
                     
                     result = await self.session.call_tool(tool_name, tool_args)
 
-                    final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
+                    # Generalized parsing for GetDatasetContent output
+                    if tool_name == "GetDatasetContent":
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            first_content_block = result.content[0]
+                            if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                                try:
+                                    parsed_content = json.loads(first_content_block.text)
+                                    if isinstance(parsed_content, list):
+                                        # Check if it's a list of dicts (actual data)
+                                        if all(isinstance(item, dict) for item in parsed_content):
+                                            chart_data = parsed_content # Assign to chart_data
+                                            print(f"Successfully parsed chart data from {tool_name}: {len(chart_data)} records")
+                                        else:
+                                            print(f"Content from {tool_name} is a list, but not of dictionaries: {first_content_block.text[:100]}...")
+                                    else:
+                                        # This means the .text was valid JSON, but not a list (e.g. a string like "Dataset not found")
+                                        print(f"Parsed JSON from {tool_name} is not a list: {first_content_block.text[:100]}...")
+                                except json.JSONDecodeError:
+                                    # This means .text was not valid JSON (e.g. plain string "Dataset not found")
+                                    print(f"Content from {tool_name} is not valid JSON: {first_content_block.text[:100]}...")
+                            else:
+                                print(f"Content block from {tool_name} is not TextContent or lacks .text attribute.")
+                        else:
+                            print(f"{tool_name} did not return expected content structure: {result.content}")
+                    
+                    # final_text.append(f"[Calling tool {tool_name} with args {tool_args}]") # Removed for cleaner UI
                     try:
                         context_chunks.append(json.dumps(result.content, ensure_ascii=False))
                     except Exception:
@@ -215,7 +265,8 @@ class CPR_Client:
 
         return {
             "response": "\n".join(final_text),
-            "sources": sources_used or ["No source captured"]
+            "sources": sources_used or ["No source captured"],
+            "chart_data": chart_data  # Add chart_data to the return dict
         }
         
 async def run_query(q: str):
@@ -235,12 +286,83 @@ def pretty_print(result: dict):
     print(_fmt_sources(result["sources"]))
     print(separator)
 
-async def main():
-    result = await run_query(
-        "How does `extreme weather` relate to `people with limited assets`? Are there passages where both are mentioned?"
-    )
-    pretty_print(result)
+async def main_streamlit():
+    st.title("Climate Policy Radar Chat")
+
+    query = st.text_input("Enter your query:")
+
+    if st.button("Run Query"):
+        if query:
+            with st.spinner("Processing your query..."):
+                result = await run_query(query)
+            
+            st.markdown("## Response")
+            st.markdown(result["response"], unsafe_allow_html=True)
+            
+            # Display chart if data is available
+            chart_data_from_result = result.get("chart_data")
+            
+            # --- Debug prints for chart_data ---
+            print("--- Debug main_streamlit ---")
+            print(f"chart_data_from_result: {chart_data_from_result}")
+            print(f"type(chart_data_from_result): {type(chart_data_from_result)}")
+            if isinstance(chart_data_from_result, list) and chart_data_from_result:
+                print(f"type(chart_data_from_result[0]): {type(chart_data_from_result[0])}")
+            print("---------------------------")
+            # --- End Debug prints ---
+            
+            # Be more specific: check if it's a list and not empty, and ideally a list of dicts
+            if isinstance(chart_data_from_result, list) and chart_data_from_result and isinstance(chart_data_from_result[0], dict):
+                st.markdown("## Interactive Chart")
+                try:
+                    df = pd.DataFrame(result["chart_data"])
+                    if not df.empty and 'impact_rating' in df.columns and 'type' in df.columns:
+                        # Example: Bar chart of average impact rating by event type
+                        # You can customize this based on the actual data structure
+                        if 'event_id' not in df.columns:
+                             df['event_id'] = df.index # or some other unique identifier
+
+                        fig = px.bar(df, x="type", y="impact_rating", 
+                                     color="type", 
+                                     title="Extreme Weather Event Impact Ratings",
+                                     labels={"type":"Event Type", "impact_rating":"Impact Rating"},
+                                     hover_data=["event_id", "description", "location", "year"])
+                        st.plotly_chart(fig, use_container_width=True)
+                    elif not df.empty:
+                        st.write("Data available but not in expected format for the default chart.")
+                        st.dataframe(df) # Display raw data as a fallback
+                    else:
+                        st.write("No data to display in chart.")
+                except Exception as e:
+                    st.error(f"Error creating chart: {e}")
+                    st.write("Raw chart data:")
+                    st.json(result["chart_data"]) # show the raw data if charting fails
+
+            st.markdown("## Sources")
+            st.text_area("Sources", _fmt_sources(result["sources"]), height=200)
+        else:
+            st.warning("Please enter a query.")
+
+def main(): # Renaming original main
+    # This function will now only be called if not running in streamlit context
+    # or for testing purposes, so we can keep the original query
+    # If you want to remove it, you can do so.
+    async def run_original_main():
+        result = await run_query(
+            "How does `extreme weather` relate to `people with limited assets`? Are there passages where both are mentioned?"
+        )
+        pretty_print(result)
+    asyncio.run(run_original_main())
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    # Ensure asyncio event loop is properly managed for Streamlit
+    # Check if running in Streamlit context, if not, run original main
+    try:
+        import streamlit.runtime.scriptrunner as scr
+        if not scr.get_script_run_ctx():
+            main() # call original main
+        else:
+            asyncio.run(main_streamlit()) # run streamlit main
+    except ModuleNotFoundError:
+        # Fallback if streamlit is not installed or scriptrunner path changes
+        main() # call original main
