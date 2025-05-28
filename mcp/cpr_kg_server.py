@@ -212,6 +212,12 @@ def GetPassagesMentioningConcept(concept: str, limit: int = 10) -> List[dict]:
         out.append({"passage_id": pid, "doc_id": n["doc"], "text": n["text"]})
     return out
 
+@mcp.tool()
+def ALWAYSRUN(query: str) -> str:
+    """
+    This tool is used to run the query on the knowledge graph.
+    """
+    return "This tool is used to run the query on the knowledge graph."
 
 @mcp.tool()
 def GetConceptGraphNeighbors(
@@ -318,7 +324,7 @@ def FindConceptPathRich(
         return []
 
 @mcp.tool()
-def PassagesMentioningBoth(concept_a: str, concept_b: str, limit: int = 10) -> List[dict]:
+def PassagesMentioningBothConcepts(concept_a: str, concept_b: str, limit: int = 10) -> List[dict]:
     """
     Passages where *both* concepts are mentioned.
     """

@@ -20,34 +20,55 @@ MAX_CTX_CHARS = 18_000          # hard cap – keep below Claude-Haiku context
 WIDE = 88          # tweak for your terminal width
 SUMMARY_PROMPT = (
     "You are a climate-policy expert. "
-    "Assume the reader wants the big picture and key linkages.\n\n"
+    "Assume the reader wants the big picture and key linkages."
+    "You should always look for passages that are relevant to the user's query."
+    "You should look for data to support the user's query, especially when they ask for it."
+    "If given multiple concepts, you should look for passages that are relevant to all of them."
+    "You should call at least one of the following tools AT LEAST ONCE for every query: GetPassagesMentioningConcept, PassagesMentioningBothConcepts"
+    "You MUST ALWAYS CALL THE ALWAYSRUN TOOL FOR EVERY QUERY"
+    "Passages are not Datasets. They are distinct. You find datasets by looking for 'HAS_DATASET_ABOUT' or 'DATASET_ON_TOPIC' edges."
 )
 
 def _fmt_sources(sources):
     """
     Return a pretty string for `sources` which may be a mix of:
       • plain strings (legacy metadata)
-      • dicts like {"doc_id": "D123", "passage_id": "P456"}
+      • dicts like {"doc_id": "D123", "passage_id": "P456", "text": "..."}
     """
     if not sources:
         return "— no sources captured —"
 
     rows = []
+    has_structured_source = False
     for src in sources:
-        if isinstance(src, dict):
-            rows.append(f"{src.get('doc_id','?'):>8}  {src.get('passage_id','?'):>10}")
-        else:                                # plain str or other
+        if isinstance(src, dict) and ("passage_id" in src or "doc_id" in src):
+            has_structured_source = True
+            doc_id = src.get('doc_id', '?')
+            passage_id = src.get('passage_id', 'N/A') # N/A if it's a doc-level source without specific passage
+            text_snippet = src.get('text', 'No text snippet available')
+            if text_snippet and len(text_snippet) > 150: # Truncate long snippets
+                text_snippet = text_snippet[:147] + "..."
+            rows.append(f"DOC ID: {doc_id:<10} PASSAGE ID: {passage_id:<10}\nTEXT: {text_snippet}")
+            rows.append("-"*WIDE) # Add a separator line
+        else:                                # plain str or other legacy format
             rows.append(str(src))
-    # header for ID pairs
-    if any(isinstance(s, dict) for s in sources):
-        rows.insert(0, f"{'DOC ID':>8}  {'PASSAGE':>10}")
-        rows.insert(1, "-"*20)
+            rows.append("-"*WIDE)
+    
+    if has_structured_source:
+        # Header already included in each entry for clarity, or we can add a general one.
+        # For now, the per-entry labels DOC ID/PASSAGE ID/TEXT should be clear.
+        pass # No additional header needed if using per-entry labels
+    
+    # Remove the last separator if it exists
+    if rows and rows[-1] == "-"*WIDE:
+        rows.pop()
+        
     return "\n".join(rows)
 
 def harvest_sources(payload):
     """
     Accepts result.content (could be list/dict/str) and
-    returns a list of {doc_id, passage_id} records.
+    returns a list of {doc_id, passage_id, text} records.
     """
     out = []
     if isinstance(payload, list):
@@ -56,6 +77,7 @@ def harvest_sources(payload):
                 out.append({
                     "doc_id":     item.get("doc_id") or item.get("document_id"),
                     "passage_id": item["passage_id"],
+                    "text":       item.get("text", "")  # Capture text
                 })
             # PathContext hop → hop["passages"] list[str] (no IDs) → skip
     elif isinstance(payload, dict):
@@ -63,6 +85,7 @@ def harvest_sources(payload):
             out.append({
                 "doc_id":     payload.get("doc_id") or payload.get("document_id"),
                 "passage_id": payload["passage_id"],
+                "text":       payload.get("text", "")  # Capture text
             })
     return out
 
@@ -132,10 +155,28 @@ class CPR_Client:
         } for tool in response.tools]
         
         system_prompt = """
-            You are a climate policy expert.
-            When a user asks for a dataset by a descriptive name, try to find its actual ID using graph navigation tools first (like GetConceptGraphNeighbors).
-            Then use the GetDatasetContent tool with the discovered 'node_id'.
-            If you are asked to "show dummy chart", the ID for GetDatasetContent is DUMMY_DATASET_EXTREME_WEATHER.
+            You are a climate policy expert. Assume the reader wants the big picture and key linkages.
+
+            Core Task:
+            1. Understand the user's query.
+            2. Use available tools to gather information from the knowledge graph.
+            3. Synthesize the information to answer the user's query.
+
+            Tool Usage Guidelines:
+            - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. You should call AT LEAST ONE of these tools for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`.
+            - Datasets: Look for data to support the user's query, especially when asked. Passages are distinct from Datasets. To find datasets:
+                1. Use `GetConceptGraphNeighbors` for relevant concepts.
+                2. Look for neighbors with `kind: "Dataset"` and connected by edges like `HAS_DATASET_ABOUT` or `DATASET_ON_TOPIC`.
+                3. If a relevant dataset is found, use its `node_id` with the `GetDatasetContent` tool to fetch its data.
+            - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
+            - Special Case "show dummy chart": If the user query is "show dummy chart", the ID for `GetDatasetContent` is `DUMMY_DATASET_EXTREME_WEATHER`. You should prioritize using `GetDatasetContent` with this ID.
+
+            Output Format:
+            - After completing all necessary tool calls, synthesize the gathered information into a single, comprehensive response to the user. 
+            - Do NOT narrate your tool calling process (e.g., avoid phrases like "First, I will call...", "Next, I found..."). 
+            - Present the final answer as if you are directly answering the user's query based on the knowledge you have acquired.
+
+            Respond to the user based on the information gathered from the tools.
             """
 
         if query.lower() == "show dummy chart": # Override messages for dummy chart query
@@ -144,7 +185,7 @@ class CPR_Client:
             ]
 
         response = self.anthropic.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-sonnet-4-20250514",
             max_tokens=1000,
             system=system_prompt,
             messages=messages,
@@ -156,13 +197,19 @@ class CPR_Client:
         context_chunks = []   # every tool_result.content goes in here
         passage_sources = []        # each element: {"doc_id": …, "passage_id": …}
         chart_data = None           # To store data for charting
+        all_tool_outputs_for_debug = [] # For Feature 2
+        
+        intermediate_ai_text_parts = [] # Collect all AI text parts during the process
+        last_assistant_text = "" # Store the last piece of text from the assistant
 
         while True:
             assistant_message_content = []
+            current_turn_text_parts = [] # Collect text from the current turn
 
             for content in response.content:
                 if content.type == "text":
-                    final_text.append(content.text)
+                    current_turn_text_parts.append(content.text)
+                    intermediate_ai_text_parts.append(content.text) # Also add to the comprehensive list
                     assistant_message_content.append(content)
                 elif content.type == "tool_use":
                     tool_name = content.name
@@ -172,6 +219,13 @@ class CPR_Client:
                     print(f"Calling tool {tool_name} with args {tool_args}")
                     
                     result = await self.session.call_tool(tool_name, tool_args)
+
+                    # For Feature 2: Collect all tool outputs for debugging
+                    all_tool_outputs_for_debug.append({
+                        "tool_name": tool_name,
+                        "tool_args": tool_args,
+                        "tool_result_content": result.content 
+                    })
 
                     # Generalized parsing for GetDatasetContent output
                     if tool_name == "GetDatasetContent":
@@ -239,23 +293,38 @@ class CPR_Client:
                 tools=available_tools,
             )
 
-        # --- final synthesis -------------------------------------------------
+        # After the loop, process the final response
+        if current_turn_text_parts: # This will be the text from the AI's last turn
+            last_assistant_text = "\n".join(current_turn_text_parts)
+
+        # --- final synthesis / response construction ---------------------------------
+        final_response_text = ""
         if context_chunks:
             # Trim if context explodes
             joined_ctx = "\n\n".join(context_chunks)
             if len(joined_ctx) > MAX_CTX_CHARS:
                 joined_ctx = joined_ctx[:MAX_CTX_CHARS] + "\n\n[truncated]"
             
+            # System prompt for final answer synthesis using context
+            synthesis_system_prompt = (SUMMARY_PROMPT + # Use the original SUMMARY_PROMPT here
+                "Based on the following context from various tools, synthesize a comprehensive answer to the user's original query. "
+                "Present it as a direct answer, not a summary of the context itself. Avoid narrating the tool process.")
+
+            synthesis_messages = [
+                {"role": "user", "content": f"User's original query: {query}\n\nTool-derived Context:\n{joined_ctx}"}
+            ]
+            
             summary_resp = self.anthropic.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=400,
-                system="You are an expert climate-policy summariser.",
-                messages=[
-                    {"role": "user", "content": SUMMARY_PROMPT + joined_ctx}
-                ],
+                model="claude-3-haiku-20240307", # Or a more powerful model for synthesis
+                max_tokens=1000, # Allow more tokens for a full answer, not just a summary
+                system=synthesis_system_prompt,
+                messages=synthesis_messages,
             )
-            summary_text = summary_resp.content[0].text.strip()
-            final_text.append("\n\n## Summary\n" + summary_text)
+            final_response_text = summary_resp.content[0].text.strip()
+        elif last_assistant_text: # No context chunks, but AI provided a final text response
+            final_response_text = last_assistant_text
+        else: # Should not happen if AI always responds with text eventually
+            final_response_text = "I was unable to produce a response."
 
         # de-dupe sources
         uniq_passages = {(p["doc_id"], p["passage_id"]): p for p in passage_sources}
@@ -264,9 +333,11 @@ class CPR_Client:
 
 
         return {
-            "response": "\n".join(final_text),
+            "response": final_response_text,
             "sources": sources_used or ["No source captured"],
-            "chart_data": chart_data  # Add chart_data to the return dict
+            "chart_data": chart_data,  # Add chart_data to the return dict
+            "all_tool_outputs_for_debug": all_tool_outputs_for_debug, # For Feature 2
+            "ai_thought_process": "\n".join(intermediate_ai_text_parts) # Add the collected thoughts
         }
         
 async def run_query(q: str):
@@ -298,6 +369,11 @@ async def main_streamlit():
             
             st.markdown("## Response")
             st.markdown(result["response"], unsafe_allow_html=True)
+            
+            # Optional Expander for AI's Thought Process
+            if result.get("ai_thought_process"):
+                with st.expander("Show AI's Step-by-Step Thinking"):
+                    st.markdown(result["ai_thought_process"], unsafe_allow_html=True)
             
             # Display chart if data is available
             chart_data_from_result = result.get("chart_data")
@@ -340,6 +416,30 @@ async def main_streamlit():
 
             st.markdown("## Sources")
             st.text_area("Sources", _fmt_sources(result["sources"]), height=200)
+
+            # Feature 2: Debug Expander for All Tool Outputs
+            if "all_tool_outputs_for_debug" in result and result["all_tool_outputs_for_debug"]:
+                with st.expander("Developer Debug: Show All Tool Outputs"):
+                    for i, tool_call_info in enumerate(result["all_tool_outputs_for_debug"]):
+                        st.markdown(f"**Tool Call {i+1}: {tool_call_info['tool_name']}**")
+                        st.json({"arguments": tool_call_info['tool_args']})
+                        st.markdown("Result Content:")
+                        # result.content is often a list of ContentBlock objects (e.g. TextContent)
+                        # We need to handle this to display nicely, e.g. by converting to plain dicts/text
+                        if isinstance(tool_call_info['tool_result_content'], list):
+                            for block_idx, block in enumerate(tool_call_info['tool_result_content']):
+                                if hasattr(block, 'type') and block.type == 'text' and hasattr(block, 'text'):
+                                    st.text_area(f"Block {block_idx+1} (TextContent)", block.text, height=100, key=f"debug_tool_{i}_block_{block_idx}")
+                                elif isinstance(block, dict): # If it's already a dict (e.g. from older tools)
+                                     st.json(block, expanded=False)
+                                else: # Fallback for other types
+                                    st.write(block)
+                        elif isinstance(tool_call_info['tool_result_content'], dict):
+                            st.json(tool_call_info['tool_result_content'], expanded=False)
+                        else:
+                            st.write(tool_call_info['tool_result_content'])
+                        st.divider()
+
         else:
             st.warning("Please enter a query.")
 
