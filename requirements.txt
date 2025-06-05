@@ -1,0 +1,13 @@
+streamlit
+anthropic
+fastmcp
+python-dotenv
+pandas
+numpy
+scikit-learn
+openai
+networkx
+plotly
+folium
+streamlit-folium
+geopandas 

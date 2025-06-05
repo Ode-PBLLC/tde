@@ -4,7 +4,7 @@ from fastmcp import Client
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from contextlib import AsyncExitStack
-from typing import Optional
+from typing import Optional, Dict, List, Any
 import time
 import os
 from dotenv import load_dotenv
@@ -13,6 +13,7 @@ from textwrap import fill
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import streamlit.components.v1 as components
 
 load_dotenv()
 
@@ -65,6 +66,136 @@ def _fmt_sources(sources):
         
     return "\n".join(rows)
 
+def _render_formatted_modules(formatted_response: Dict[str, Any]):
+    """Render the structured modules in Streamlit."""
+    modules = formatted_response.get("modules", [])
+    
+    for module in modules:
+        module_type = module.get("type", "")
+        
+        if module_type == "text":
+            heading = module.get("heading", "")
+            texts = module.get("texts", [])
+            
+            if heading:
+                st.markdown(f"### {heading}")
+            
+            for text in texts:
+                st.markdown(text)
+        
+        elif module_type == "chart":
+            chart_type = module.get("chartType", "bar")
+            chart_data = module.get("data", {})
+            
+            if chart_data:
+                # Convert Chart.js format to Plotly
+                labels = chart_data.get("labels", [])
+                datasets = chart_data.get("datasets", [])
+                
+                if datasets and labels:
+                    import plotly.graph_objects as go
+                    fig = go.Figure()
+                    
+                    for dataset in datasets:
+                        dataset_label = dataset.get("label", "Data")
+                        dataset_data = dataset.get("data", [])
+                        
+                        if chart_type == "line":
+                            fig.add_trace(go.Scatter(
+                                x=labels, 
+                                y=dataset_data,
+                                mode='lines+markers',
+                                name=dataset_label
+                            ))
+                        else:  # bar chart default
+                            fig.add_trace(go.Bar(
+                                x=labels,
+                                y=dataset_data, 
+                                name=dataset_label
+                            ))
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+        
+        elif module_type == "table":
+            heading = module.get("heading", "")
+            columns = module.get("columns", [])
+            rows = module.get("rows", [])
+            
+            if heading:
+                st.markdown(f"### {heading}")
+            
+            if columns and rows:
+                df = pd.DataFrame(rows, columns=columns)
+                st.dataframe(df, use_container_width=True)
+        
+        elif module_type == "map":
+            # Render interactive map using GeoJSON data
+            map_type = module.get("mapType", "geojson")
+            geojson_data = module.get("geojson", {})
+            view_state = module.get("viewState", {})
+            legend = module.get("legend", {})
+            map_metadata = module.get("metadata", {})
+            
+            st.markdown("### Interactive Map")
+            
+            # Display map metadata
+            if map_metadata:
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Facilities", map_metadata.get("total_facilities", "N/A"))
+                with col2:
+                    st.metric("Total Capacity", f"{map_metadata.get('total_capacity_mw', 0):.0f} MW")
+                with col3:
+                    st.metric("Countries", len(map_metadata.get("countries", [])))
+            
+            # Create Folium map from GeoJSON data
+            if geojson_data and view_state:
+                import folium
+                
+                center = view_state.get("center", [0, 0])
+                m = folium.Map(
+                    location=[center[1], center[0]],  # Folium uses [lat, lng]
+                    zoom_start=view_state.get("zoom", 6)
+                )
+                
+                # Add GeoJSON data to map
+                for feature in geojson_data.get("features", []):
+                    coords = feature["geometry"]["coordinates"]
+                    props = feature["properties"]
+                    
+                    folium.CircleMarker(
+                        location=[coords[1], coords[0]],  # Folium uses [lat, lng]
+                        radius=props.get("marker_size", 8),
+                        popup=f"<b>{props.get('popup_title', 'Facility')}</b><br>{props.get('popup_content', '')}",
+                        color=props.get("marker_color", "#blue"),
+                        fill=True,
+                        fillOpacity=props.get("marker_opacity", 0.8),
+                        weight=2
+                    ).add_to(m)
+                
+                # Add legend if available
+                if legend and legend.get("items"):
+                    legend_html = f'''
+                    <div style="position: fixed; 
+                                bottom: 50px; left: 50px; width: 200px; background-color: white; 
+                                border:2px solid grey; z-index:9999; font-size:14px; padding: 10px">
+                    <p><b>{legend.get("title", "Legend")}</b></p>
+                    '''
+                    for item in legend["items"]:
+                        legend_html += f'<p><i class="fa fa-circle" style="color:{item["color"]}"></i> {item["label"]}</p>'
+                    legend_html += '</div>'
+                    m.get_root().html.add_child(folium.Element(legend_html))
+                
+                # Display the map
+                components.html(m._repr_html_(), height=500)
+        
+        elif module_type == "image":
+            src = module.get("src", "")
+            alt = module.get("alt", "Image")
+            
+            if src:
+                st.image(src, caption=alt)
+
 def harvest_sources(payload):
     """
     Accepts result.content (could be list/dict/str) and
@@ -90,9 +221,96 @@ def harvest_sources(payload):
     return out
 
 
-class CPR_Client:
+async def get_solar_data_direct(client, data_type: str, **kwargs):
+    """
+    Directly fetch solar data for visualization without going through Claude.
+    This bypasses the LLM context to avoid token limits.
+    """
+    import pandas as pd  # Move import to top to fix the error
+    import os
+    
+    # Get project root path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    
+    try:
+        if data_type == "country_comparison":
+            # Get country comparison data
+            result = await client.call_tool("GetSolarCapacityByCountry", {}, "solar")
+            # Parse the result and return structured data
+            
+            # Load the CSV directly for visualization
+            csv_path = os.path.join(project_root, "mcp", "solar_facilities_demo.csv")
+            df = pd.read_csv(csv_path) 
+            stats = df.groupby('country').agg({
+                'capacity_mw': ['sum', 'mean', 'count', 'min', 'max']
+            }).round(2)
+            
+            stats.columns = ['total_capacity_mw', 'avg_capacity_mw', 'facility_count', 'min_capacity_mw', 'max_capacity_mw']
+            stats = stats.reset_index()
+            
+            return {
+                "type": "country_comparison",
+                "data": stats.to_dict('records'),
+                "chart_config": {
+                    "x": "country",
+                    "y": "total_capacity_mw", 
+                    "title": "Solar Capacity by Country",
+                    "chart_type": "bar"
+                }
+            }
+            
+        elif data_type == "facilities_map":
+            # Create map data
+            df = pd.read_csv(os.path.join(project_root, "mcp", "solar_facilities_demo.csv"))
+            country_filter = kwargs.get('country')
+            if country_filter:
+                df = df[df['country'].str.lower() == country_filter.lower()]
+            
+            # Limit to 500 facilities for performance
+            if len(df) > 500:
+                df = df.nlargest(500, 'capacity_mw')
+                
+            return {
+                "type": "map",
+                "data": df.to_dict('records'),
+                "metadata": {
+                    "total_facilities": len(df),
+                    "total_capacity": df['capacity_mw'].sum(),
+                    "countries": df['country'].unique().tolist()
+                }
+            }
+            
+        elif data_type == "capacity_distribution":
+            df = pd.read_csv(os.path.join(project_root, "mcp", "solar_facilities_demo.csv"))
+            
+            # Create capacity bins
+            bins = [0, 1, 5, 10, 25, 50, 100, 500, 3000]
+            bin_labels = ['<1MW', '1-5MW', '5-10MW', '10-25MW', '25-50MW', '50-100MW', '100-500MW', '>500MW']
+            
+            df['capacity_bin'] = pd.cut(df['capacity_mw'], bins=bins, labels=bin_labels, include_lowest=True)
+            dist_data = df['capacity_bin'].value_counts().sort_index()
+            
+            chart_data = [{"capacity_range": str(k), "facility_count": v} for k, v in dist_data.items()]
+            
+            return {
+                "type": "capacity_distribution",
+                "data": chart_data,
+                "chart_config": {
+                    "x": "capacity_range",
+                    "y": "facility_count",
+                    "title": "Solar Facilities by Capacity Range",
+                    "chart_type": "bar"
+                }
+            }
+            
+    except Exception as e:
+        print(f"Error in direct data access: {e}")
+        return None
+
+class MultiServerClient:
     def __init__(self):
-        self.session: Optional[ClientSession] = None
+        self.sessions: Dict[str, ClientSession] = {}
         self.exit_stack = AsyncExitStack()
         self.anthropic = anthropic.Anthropic()
         
@@ -100,13 +318,14 @@ class CPR_Client:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        # shuts down stdio_client, ClientSession, etc. in the *same* task
+        # shuts down all stdio_clients, ClientSessions, etc. in the *same* task
         await self.exit_stack.aclose()
 
-    async def connect_to_server(self, server_script_path: str):
+    async def connect_to_server(self, server_name: str, server_script_path: str):
         is_python = server_script_path.endswith('.py')
         is_js = server_script_path.endswith('.js')
-        print("connected to server")
+        print(f"Connecting to {server_name} server at {server_script_path}")
+        
         if not (is_python or is_js):
             raise ValueError("Server script must be a .py or .js file")
 
@@ -118,14 +337,42 @@ class CPR_Client:
         )
 
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
-        self.stdio, self.write = stdio_transport
-        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
-        await self.session.initialize()
-        print("Initialized session")
+        stdio, write = stdio_transport
+        session = await self.exit_stack.enter_async_context(ClientSession(stdio, write))
+        await session.initialize()
+        
+        self.sessions[server_name] = session
+        print(f"Initialized {server_name} session")
 
-    async def call_tool(self, tool_name: str, tool_args: dict):
-        async with self.session:                         # was self.client
-            return await self.session.call_tool(tool_name, tool_args)
+    async def call_tool(self, tool_name: str, tool_args: dict, server_name: str = "kg"):
+        """Call a tool on a specific server. Defaults to KG server for backward compatibility."""
+        if server_name not in self.sessions:
+            raise ValueError(f"Server '{server_name}' not connected. Available servers: {list(self.sessions.keys())}")
+        
+        session = self.sessions[server_name]
+        return await session.call_tool(tool_name, tool_args)
+
+    async def get_all_available_tools(self) -> Dict[str, List[dict]]:
+        """Get all tools from all connected servers."""
+        all_tools = {}
+        for server_name, session in self.sessions.items():
+            response = await session.list_tools()
+            tools = [{
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": tool.inputSchema,
+                "server": server_name
+            } for tool in response.tools]
+            all_tools[server_name] = tools
+        return all_tools
+
+    def _determine_server_for_tool(self, tool_name: str, all_tools: Dict[str, List[dict]]) -> str:
+        """Determine which server hosts a specific tool."""
+        for server_name, tools in all_tools.items():
+            for tool in tools:
+                if tool["name"] == tool_name:
+                    return server_name
+        return "kg"  # Default to KG server for backward compatibility
 
         
     async def process_query(self, query: str):
@@ -147,34 +394,75 @@ class CPR_Client:
             "content": query} # Original query
         ]
         
-        response = await self.session.list_tools()
-        available_tools = [{
-            "name": tool.name,
-            "description": tool.description,
-            "input_schema": tool.inputSchema
-        } for tool in response.tools]
+        # Get tools from all connected servers
+        all_tools = await self.get_all_available_tools()
+        available_tools = []
+        for server_name, tools in all_tools.items():
+            # Remove server field before sending to Claude API
+            clean_tools = []
+            for tool in tools:
+                clean_tool = {
+                    "name": tool["name"],
+                    "description": tool["description"], 
+                    "input_schema": tool["input_schema"]
+                }
+                clean_tools.append(clean_tool)
+            available_tools.extend(clean_tools)
         
         system_prompt = """
             You are a climate policy expert. Assume the reader wants the big picture and key linkages.
 
             Core Task:
             1. Understand the user's query.
-            2. Use available tools to gather information from the knowledge graph.
+            2. Use available tools to gather information from multiple data sources.
             3. Synthesize the information to answer the user's query.
+
+            Available Data Sources:
+            - Knowledge Graph: Climate policy concepts, relationships, and passages
+            - Solar Facilities Dataset: Real-world solar installation data (Brazil, India, South Africa, Vietnam)
 
             Tool Usage Guidelines:
             - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. You should call AT LEAST ONE of these tools for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`.
-            - Datasets: Look for data to support the user's query, especially when asked. Passages are distinct from Datasets. To find datasets:
-                1. Use `GetConceptGraphNeighbors` for relevant concepts.
+            
+            - Datasets Discovery: Use `GetAvailableDatasets` to discover what datasets are available and their characteristics.
+            
+            - Knowledge Graph Datasets: For datasets in the KG, use:
+                1. `GetConceptGraphNeighbors` for relevant concepts.
                 2. Look for neighbors with `kind: "Dataset"` and connected by edges like `HAS_DATASET_ABOUT` or `DATASET_ON_TOPIC`.
                 3. If a relevant dataset is found, use its `node_id` with the `GetDatasetContent` tool to fetch its data.
+            
+            - Solar Facilities Data: For solar energy queries, use these specialized tools:
+                - `GetSolarFacilitiesByCountry`: Get facilities summary for specific countries
+                - `GetSolarCapacityByCountry`: Get capacity statistics by country
+                - `GetSolarFacilitiesMapData`: Get facility coordinates for interactive maps (use for map requests)
+                - `GetSolarFacilitiesInRadius`: Find facilities near coordinates
+                - `GetSolarConstructionTimeline`: Analyze construction trends over time
+                - `GetLargestSolarFacilities`: Find biggest installations
+                - `SearchSolarFacilitiesByCapacity`: Filter by capacity range
+                - `GetSolarCapacityVisualizationData`: Get structured data for charts and graphs
+                
+                Note: For map requests, always use `GetSolarFacilitiesMapData` as it provides the detailed coordinate data needed for map generation.
+            
             - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
-            - Special Case "show dummy chart": If the user query is "show dummy chart", the ID for `GetDatasetContent` is `DUMMY_DATASET_EXTREME_WEATHER`. You should prioritize using `GetDatasetContent` with this ID.
+
+            Cross-Reference Strategy:
+            When users ask about solar energy, renewable energy, or specific countries (Brazil, India, South Africa, Vietnam):
+            1. First check the knowledge graph for relevant concepts and passages
+            2. Then use solar facilities tools to get real-world data
+            3. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call `GetSolarFacilitiesMapData` to get coordinate data for map generation**
+            4. Combine insights from both sources for comprehensive answers
+
+            Visualization Capabilities:
+            - Interactive maps and charts may be automatically generated for certain datasets
+            - If visualizations are available for the current query, this will be indicated in the context
+            - Only reference visualizations if explicitly mentioned in the tool results or context
 
             Output Format:
             - After completing all necessary tool calls, synthesize the gathered information into a single, comprehensive response to the user. 
             - Do NOT narrate your tool calling process (e.g., avoid phrases like "First, I will call...", "Next, I found..."). 
             - Present the final answer as if you are directly answering the user's query based on the knowledge you have acquired.
+            - When presenting solar facility data, include specific numbers and context.
+            - Only mention maps or visualizations if they are explicitly confirmed as available in the context.
 
             Respond to the user based on the information gathered from the tools.
             """
@@ -197,6 +485,8 @@ class CPR_Client:
         context_chunks = []   # every tool_result.content goes in here
         passage_sources = []        # each element: {"doc_id": …, "passage_id": …}
         chart_data = None           # To store data for charting
+        map_data = None             # To store map HTML and metadata
+        visualization_data = None   # To store structured visualization data
         all_tool_outputs_for_debug = [] # For Feature 2
         
         intermediate_ai_text_parts = [] # Collect all AI text parts during the process
@@ -215,10 +505,13 @@ class CPR_Client:
                     tool_name = content.name
                     tool_args = content.input
                     
-                    # Pretty print of the tool and its arguments
-                    print(f"Calling tool {tool_name} with args {tool_args}")
+                    # Determine which server to route this tool call to
+                    server_name = self._determine_server_for_tool(tool_name, all_tools)
                     
-                    result = await self.session.call_tool(tool_name, tool_args)
+                    # Pretty print of the tool and its arguments
+                    print(f"Calling tool {tool_name} on {server_name} server with args {tool_args}")
+                    
+                    result = await self.call_tool(tool_name, tool_args, server_name)
 
                     # For Feature 2: Collect all tool outputs for debugging
                     all_tool_outputs_for_debug.append({
@@ -227,8 +520,23 @@ class CPR_Client:
                         "tool_result_content": result.content 
                     })
 
-                    # Generalized parsing for GetDatasetContent output
-                    if tool_name == "GetDatasetContent":
+                    # Parse map data from GetSolarFacilitiesMapData
+                    if tool_name == "GetSolarFacilitiesMapData":
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            first_content_block = result.content[0]
+                            if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                                try:
+                                    parsed_content = json.loads(first_content_block.text)
+                                    if isinstance(parsed_content, dict) and parsed_content.get("type") == "map":
+                                        map_data = parsed_content
+                                        print(f"Successfully parsed map data from {tool_name}: {len(parsed_content.get('data', []))} facilities")
+                                    else:
+                                        print(f"Map data from {tool_name} is not in expected format: {first_content_block.text[:100]}...")
+                                except json.JSONDecodeError:
+                                    print(f"Map content from {tool_name} is not valid JSON: {first_content_block.text[:100]}...")
+                    
+                    # Parse visualization data from different tools
+                    elif tool_name in ["GetDatasetContent", "GetSolarFacilitiesByCountry", "GetSolarCapacityByCountry"]:
                         if result.content and isinstance(result.content, list) and len(result.content) > 0:
                             first_content_block = result.content[0]
                             if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
@@ -252,9 +560,30 @@ class CPR_Client:
                         else:
                             print(f"{tool_name} did not return expected content structure: {result.content}")
                     
-                    # final_text.append(f"[Calling tool {tool_name} with args {tool_args}]") # Removed for cleaner UI
+                    # Map generation removed - now done purely client-side
+                    
+                    # Parse structured visualization data
+                    elif tool_name == "GetSolarCapacityVisualizationData":
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            first_content_block = result.content[0]
+                            if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                                try:
+                                    parsed_content = json.loads(first_content_block.text)
+                                    if isinstance(parsed_content, dict) and "data" in parsed_content:
+                                        visualization_data = parsed_content
+                                        print(f"Successfully parsed visualization data from {tool_name}: {parsed_content.get('visualization_type', 'unknown')}")
+                                    else:
+                                        print(f"Visualization data from {tool_name} missing data field: {str(parsed_content)[:100]}...")
+                                except json.JSONDecodeError:
+                                    print(f"Visualization content from {tool_name} is not valid JSON: {first_content_block.text[:100]}...")
+                    
+                    # Add to context but aggressively limit size to prevent token explosion
                     try:
-                        context_chunks.append(json.dumps(result.content, ensure_ascii=False))
+                        content_str = json.dumps(result.content, ensure_ascii=False)
+                        # VERY aggressive truncation - max 1000 characters per chunk
+                        if len(content_str) > 1000:
+                            content_str = content_str[:1000] + "... [truncated]"
+                        context_chunks.append(content_str)
                     except Exception:
                         pass
 
@@ -300,15 +629,18 @@ class CPR_Client:
         # --- final synthesis / response construction ---------------------------------
         final_response_text = ""
         if context_chunks:
-            # Trim if context explodes
+            # AGGRESSIVE context trimming to prevent token explosion
             joined_ctx = "\n\n".join(context_chunks)
-            if len(joined_ctx) > MAX_CTX_CHARS:
-                joined_ctx = joined_ctx[:MAX_CTX_CHARS] + "\n\n[truncated]"
+            # Much smaller limit to stay well under token limits
+            SAFE_CTX_LIMIT = 8000  # Very conservative limit
+            if len(joined_ctx) > SAFE_CTX_LIMIT:
+                joined_ctx = joined_ctx[:SAFE_CTX_LIMIT] + "\n\n[truncated for safety]"
             
             # System prompt for final answer synthesis using context
             synthesis_system_prompt = (SUMMARY_PROMPT + # Use the original SUMMARY_PROMPT here
                 "Based on the following context from various tools, synthesize a comprehensive answer to the user's original query. "
-                "Present it as a direct answer, not a summary of the context itself. Avoid narrating the tool process.")
+                "Present it as a direct answer, not a summary of the context itself. Avoid narrating the tool process. "
+                "If the context mentions that visualizations are available, you may reference them appropriately.")
 
             synthesis_messages = [
                 {"role": "user", "content": f"User's original query: {query}\n\nTool-derived Context:\n{joined_ctx}"}
@@ -335,15 +667,112 @@ class CPR_Client:
         return {
             "response": final_response_text,
             "sources": sources_used or ["No source captured"],
-            "chart_data": chart_data,  # Add chart_data to the return dict
+            "chart_data": chart_data,  # Legacy chart data for backward compatibility
+            "map_data": map_data,  # Map HTML and metadata
+            "visualization_data": visualization_data,  # Structured chart data
             "all_tool_outputs_for_debug": all_tool_outputs_for_debug, # For Feature 2
             "ai_thought_process": "\n".join(intermediate_ai_text_parts) # Add the collected thoughts
         }
         
+async def run_query_structured(q: str) -> Dict[str, Any]:
+    """
+    Run a query and return only the structured JSON response for front-end consumption.
+    """
+    result = await run_query(q)
+    return result.get("formatted_response", {"modules": []})
+
 async def run_query(q: str):
-    async with CPR_Client() as client:          # ← guarantees cleanup
-        await client.connect_to_server("cpr_kg_server.py")
-        return await client.process_query(q)
+    # Ensure we're in the correct working directory
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)  # Go up one level from mcp/ to project root
+    os.chdir(project_root)
+    
+    async with MultiServerClient() as client:          # ← guarantees cleanup
+        # Connect to all available servers (using absolute paths)
+        mcp_dir = os.path.join(project_root, "mcp")
+        await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
+        await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
+        await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
+        
+        # Process the main query
+        result = await client.process_query(q)
+        
+        # For solar queries, rely on the normal MCP flow and formatter to create proper GeoJSON maps
+        # The direct visualization bypass was causing issues
+        
+        # Format the response using the formatter MCP
+        # Debug output (with fallback for undefined variables)
+        try:
+            print(f"DEBUG: map_data = {map_data}")
+        except NameError:
+            map_data = None
+            print(f"DEBUG: map_data was undefined, set to None")
+        
+        try:
+            print(f"DEBUG: chart_data = {chart_data}")
+        except NameError:
+            chart_data = None
+            print(f"DEBUG: chart_data was undefined, set to None")
+            
+        try:
+            print(f"DEBUG: visualization_data = {visualization_data}")
+        except NameError:
+            visualization_data = None
+            print(f"DEBUG: visualization_data was undefined, set to None")
+            
+        print(f"DEBUG: result keys = {list(result.keys())}")
+        print(f"DEBUG: result response = {result.get('response', 'NO RESPONSE')[:200]}...")
+        
+        # Check if map_data exists and what it contains
+        map_data_from_result = result.get("map_data")
+        print(f"DEBUG: map_data_from_result type = {type(map_data_from_result)}")
+        if map_data_from_result:
+            print(f"DEBUG: map_data keys = {list(map_data_from_result.keys()) if isinstance(map_data_from_result, dict) else 'not a dict'}")
+            if isinstance(map_data_from_result, dict) and 'data' in map_data_from_result:
+                print(f"DEBUG: map_data has {len(map_data_from_result['data'])} facilities")
+        
+        formatter_args = {
+            "response_text": result.get("response", ""),
+            "chart_data": result.get("chart_data"),
+            "visualization_data": result.get("visualization_data"), 
+            "map_data": map_data_from_result,  # Use map_data from result dict
+            "sources": result.get("sources"),
+            "title": "Climate Policy Analysis"
+        }
+        
+        print(f"DEBUG: formatter_args map_data type = {type(formatter_args['map_data'])}")
+        
+        # Remove None values to avoid issues
+        formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
+        
+        print(f"DEBUG: formatter_args after filtering = {list(formatter_args.keys())}")
+        if 'map_data' in formatter_args:
+            print(f"DEBUG: map_data will be sent to formatter")
+        
+        try:
+            formatted_result = await client.call_tool("FormatResponseAsModules", formatter_args, "formatter")
+            print(f"DEBUG: formatted_result = {formatted_result}")
+        except Exception as e:
+            print(f"ERROR calling formatter: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
+        
+        # Parse the formatted response
+        if formatted_result.content and isinstance(formatted_result.content, list):
+            first_content = formatted_result.content[0]
+            if hasattr(first_content, 'text'):
+                import json
+                formatted_data = json.loads(first_content.text)
+                result["formatted_response"] = formatted_data
+                print(f"DEBUG: Successfully set formatted_response with {len(formatted_data.get('modules', []))} modules")
+            else:
+                print(f"DEBUG: formatted_result first_content has no text attribute")
+        else:
+            print(f"DEBUG: formatted_result.content is not a list or is empty")
+        
+        return result
 
 def pretty_print(result: dict):
     """
@@ -367,52 +796,165 @@ async def main_streamlit():
             with st.spinner("Processing your query..."):
                 result = await run_query(query)
             
-            st.markdown("## Response")
-            st.markdown(result["response"], unsafe_allow_html=True)
+            # Display formatted response if available, otherwise fallback to regular response
+            if "formatted_response" in result:
+                st.markdown("## Structured Response")
+                _render_formatted_modules(result["formatted_response"])
+                
+                # Also show the raw JSON for developers
+                with st.expander("View Formatted JSON (for developers)"):
+                    st.json(result["formatted_response"])
+            else:
+                st.markdown("## Response") 
+                st.markdown(result["response"], unsafe_allow_html=True)
             
             # Optional Expander for AI's Thought Process
             if result.get("ai_thought_process"):
                 with st.expander("Show AI's Step-by-Step Thinking"):
                     st.markdown(result["ai_thought_process"], unsafe_allow_html=True)
             
-            # Display chart if data is available
-            chart_data_from_result = result.get("chart_data")
-            
-            # --- Debug prints for chart_data ---
-            print("--- Debug main_streamlit ---")
-            print(f"chart_data_from_result: {chart_data_from_result}")
-            print(f"type(chart_data_from_result): {type(chart_data_from_result)}")
-            if isinstance(chart_data_from_result, list) and chart_data_from_result:
-                print(f"type(chart_data_from_result[0]): {type(chart_data_from_result[0])}")
-            print("---------------------------")
-            # --- End Debug prints ---
-            
-            # Be more specific: check if it's a list and not empty, and ideally a list of dicts
-            if isinstance(chart_data_from_result, list) and chart_data_from_result and isinstance(chart_data_from_result[0], dict):
-                st.markdown("## Interactive Chart")
+            # Display direct map data (bypasses Claude processing)
+            direct_map_data = result.get("direct_map_data")
+            if direct_map_data and isinstance(direct_map_data, dict):
+                st.markdown("## Solar Facilities Map")
                 try:
-                    df = pd.DataFrame(result["chart_data"])
-                    if not df.empty and 'impact_rating' in df.columns and 'type' in df.columns:
-                        # Example: Bar chart of average impact rating by event type
-                        # You can customize this based on the actual data structure
-                        if 'event_id' not in df.columns:
-                             df['event_id'] = df.index # or some other unique identifier
-
-                        fig = px.bar(df, x="type", y="impact_rating", 
-                                     color="type", 
-                                     title="Extreme Weather Event Impact Ratings",
-                                     labels={"type":"Event Type", "impact_rating":"Impact Rating"},
-                                     hover_data=["event_id", "description", "location", "year"])
-                        st.plotly_chart(fig, use_container_width=True)
-                    elif not df.empty:
-                        st.write("Data available but not in expected format for the default chart.")
-                        st.dataframe(df) # Display raw data as a fallback
-                    else:
-                        st.write("No data to display in chart.")
+                    import folium
+                    
+                    # Get data and metadata
+                    facilities = direct_map_data["data"]
+                    metadata = direct_map_data["metadata"]
+                    
+                    # Display metrics
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total Facilities", metadata["total_facilities"])
+                    with col2:
+                        st.metric("Total Capacity", f"{metadata['total_capacity']:.0f} MW")
+                    with col3:
+                        st.metric("Countries", len(metadata["countries"]))
+                    
+                    # Create map
+                    if facilities:
+                        # Calculate center
+                        lats = [f['latitude'] for f in facilities]
+                        lons = [f['longitude'] for f in facilities]
+                        center_lat, center_lon = sum(lats)/len(lats), sum(lons)/len(lons)
+                        
+                        m = folium.Map(location=[center_lat, center_lon], zoom_start=6)
+                        
+                        # Color mapping
+                        colors = {'brazil': 'green', 'india': 'orange', 'south africa': 'red', 'vietnam': 'blue'}
+                        
+                        for facility in facilities[:500]:  # Limit for performance
+                            color = colors.get(facility['country'].lower(), 'gray')
+                            capacity = facility['capacity_mw']
+                            size = 5 + min(capacity / 100, 20)  # Scale marker size
+                            
+                            folium.CircleMarker(
+                                location=[facility['latitude'], facility['longitude']],
+                                radius=size,
+                                popup=f"{facility['country']}<br>{capacity:.1f} MW",
+                                color=color,
+                                fill=True,
+                                fillOpacity=0.7
+                            ).add_to(m)
+                        
+                        # Display map
+                        map_html = m._repr_html_()
+                        components.html(map_html, height=500)
+                        
                 except Exception as e:
-                    st.error(f"Error creating chart: {e}")
-                    st.write("Raw chart data:")
-                    st.json(result["chart_data"]) # show the raw data if charting fails
+                    st.error(f"Error creating map: {e}")
+
+            # Display map if available (legacy)
+            map_data_from_result = result.get("map_data")
+            if map_data_from_result and isinstance(map_data_from_result, dict) and not direct_map_data:
+                st.markdown("## Solar Facilities Map")
+                try:
+                    # Display map metadata
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total Facilities", map_data_from_result.get("total_facilities", "N/A"))
+                    with col2:
+                        st.metric("Total Capacity", f"{map_data_from_result.get('total_capacity_mw', 0):.0f} MW")
+                    with col3:
+                        capacity_range = map_data_from_result.get("capacity_range", [0, 0])
+                        st.metric("Capacity Range", f"{capacity_range[0]:.1f} - {capacity_range[1]:.1f} MW")
+                    
+                    # Display the interactive map
+                    map_html = map_data_from_result.get("map_html", "")
+                    if map_html:
+                        components.html(map_html, height=500, scrolling=False)
+                    else:
+                        st.error("Map HTML not found in map data")
+                except Exception as e:
+                    st.error(f"Error displaying map: {e}")
+                    st.json(map_data_from_result)
+
+            # Display structured visualizations
+            viz_data_from_result = result.get("visualization_data")
+            if viz_data_from_result and isinstance(viz_data_from_result, dict):
+                st.markdown("## Data Visualization")
+                try:
+                    viz_type = viz_data_from_result.get("visualization_type", "unknown")
+                    chart_config = viz_data_from_result.get("chart_config", {})
+                    data = viz_data_from_result.get("data", [])
+                    
+                    if data:
+                        df = pd.DataFrame(data)
+                        title = chart_config.get("title", f"{viz_type.title()} Visualization")
+                        
+                        if viz_type == "by_country":
+                            fig = px.bar(df, x="country", y="total_capacity_mw", 
+                                       title=title,
+                                       labels={"country": "Country", "total_capacity_mw": "Total Capacity (MW)"},
+                                       hover_data=["facility_count", "avg_capacity_mw"])
+                                       
+                        elif viz_type == "capacity_distribution":
+                            fig = px.bar(df, x="capacity_range", y="facility_count",
+                                       title=title,
+                                       labels={"capacity_range": "Capacity Range", "facility_count": "Number of Facilities"})
+                                       
+                        elif viz_type == "timeline":
+                            fig = px.line(df, x="completion_year", y="capacity_mw", color="country",
+                                        title=title,
+                                        labels={"completion_year": "Year", "capacity_mw": "Capacity (MW)"})
+                        else:
+                            # Generic bar chart fallback
+                            x_col = chart_config.get("x_axis", df.columns[0])
+                            y_col = chart_config.get("y_axis", df.columns[1])
+                            fig = px.bar(df, x=x_col, y=y_col, title=title)
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.write("No visualization data available")
+                        
+                except Exception as e:
+                    st.error(f"Error creating visualization: {e}")
+                    st.json(viz_data_from_result)
+
+            # Legacy chart display (keep for backward compatibility)
+            chart_data_from_result = result.get("chart_data")
+            if isinstance(chart_data_from_result, list) and chart_data_from_result and isinstance(chart_data_from_result[0], dict):
+                # Only show if we haven't already shown structured visualizations
+                if not viz_data_from_result:
+                    st.markdown("## Data Table")
+                    try:
+                        df = pd.DataFrame(result["chart_data"])
+                        if not df.empty:
+                            st.dataframe(df, use_container_width=True)
+                            
+                            # Try to create a simple chart based on data structure
+                            if 'impact_rating' in df.columns and 'type' in df.columns:
+                                fig = px.bar(df, x="type", y="impact_rating", 
+                                           title="Extreme Weather Event Impact Ratings",
+                                           labels={"type":"Event Type", "impact_rating":"Impact Rating"})
+                                st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.write("No data to display.")
+                    except Exception as e:
+                        st.error(f"Error displaying data: {e}")
+                        st.json(result["chart_data"])
 
             st.markdown("## Sources")
             st.text_area("Sources", _fmt_sources(result["sources"]), height=200)

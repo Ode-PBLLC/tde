@@ -10,11 +10,16 @@ from functools import lru_cache
 import json
 from typing import List, Optional
 import networkx as nx
+import os
 
 load_dotenv()
 
+# Get absolute paths
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+
 mcp = FastMCP("climate-policy-radar-kg-server")
-concepts = pd.read_csv("../extras/concepts.csv")  # TODO: Turn the Embeddings into a list here instead of in the tool call
+concepts = pd.read_csv(os.path.join(project_root, "extras", "concepts.csv"))  # TODO: Turn the Embeddings into a list here instead of in the tool call
 
 # maps built from the concepts dataframe you already have in RAM
 LABEL_TO_ID = concepts.set_index("preferred_label")["wikibase_id"].to_dict()
@@ -27,7 +32,7 @@ def _concept_label(cid: str) -> str:
     return ID_TO_LABEL.get(cid, cid)        # fall back to the ID if label unknown
 
 
-GRAPHML_PATH = "../extras/knowledge_graph.graphml"   # output of build_kg.py
+GRAPHML_PATH = os.path.join(project_root, "extras", "knowledge_graph.graphml")   # output of build_kg.py
 
 @lru_cache(maxsize=1)
 def KG() -> nx.MultiDiGraph:
@@ -65,7 +70,35 @@ def KG() -> nx.MultiDiGraph:
             G.add_edge(extreme_weather_concept_id, dataset_node_id, type="HAS_DATASET_ABOUT")
         if not G.has_edge(dataset_node_id, extreme_weather_concept_id): # Optional: reverse link
             G.add_edge(dataset_node_id, extreme_weather_concept_id, type="DATASET_ON_TOPIC")
-    # --- End of dummy dataset addition ---
+
+    # --- Add solar facilities dataset reference ---
+    solar_dataset_node_id = "SOLAR_FACILITIES_DATASET_TZ_SAM_Q1_2025"
+    solar_dataset_label = "Solar Facilities Dataset (TZ-SAM Q1 2025)"
+    
+    if not G.has_node(solar_dataset_node_id):
+        G.add_node(
+            solar_dataset_node_id,
+            kind="Dataset",
+            label=solar_dataset_label,
+            description="Global solar facility inventory from TransitionZero Solar Asset Mapper Q1 2025. Demo subset includes Brazil, India, South Africa, and Vietnam with 8,319 facilities totaling 124.9 GW capacity.",
+            server_name="solar-facilities-server",
+            total_facilities=8319,
+            countries=["Brazil", "India", "South Africa", "Vietnam"],
+            total_capacity_gw=124.9
+        )
+
+    # Link to renewable energy concepts
+    renewable_energy_concept_id = _concept_id("renewable energy")
+    solar_energy_concept_id = _concept_id("solar energy")
+    
+    for concept_id in [renewable_energy_concept_id, solar_energy_concept_id]:
+        if concept_id and G.has_node(concept_id):
+            if not G.has_edge(concept_id, solar_dataset_node_id):
+                G.add_edge(concept_id, solar_dataset_node_id, type="HAS_DATASET_ABOUT")
+            if not G.has_edge(solar_dataset_node_id, concept_id):
+                G.add_edge(solar_dataset_node_id, concept_id, type="DATASET_ON_TOPIC")
+    
+    # --- End of dataset additions ---
     
     return G
 
@@ -79,12 +112,12 @@ if "vector_embedding" not in concepts.columns or concepts["vector_embedding"].is
     )
     # pull the vectors out of the response
     concepts["vector_embedding"] = [row.embedding for row in resp.data]
-    concepts.to_csv("../extras/concepts.csv", index=False)
+    concepts.to_csv(os.path.join(project_root, "extras", "concepts.csv"), index=False)
     print("Vector embeddings generated and saved to concepts.csv")
 
 
 # Read passages from jsonl file
-with open("../extras/labelled_passages.jsonl", "r") as f:
+with open(os.path.join(project_root, "extras", "labelled_passages.jsonl"), "r") as f:
     passages = [json.loads(line) for line in f]
 
 
@@ -433,6 +466,30 @@ def ExplainConceptRelationship(
             f"{hop['target']} ({tgt_desc})"
         )
     return " → ".join(segs)
+
+@mcp.tool()
+def GetAvailableDatasets() -> List[dict]:
+    """
+    Get all available datasets in the knowledge graph, including external server references.
+    Returns dataset metadata and connection information.
+    """
+    G = KG()
+    datasets = []
+    
+    for node_id, node_data in G.nodes(data=True):
+        if node_data.get("kind") == "Dataset":
+            dataset_info = {
+                "dataset_id": node_id,
+                "label": node_data.get("label", node_id),
+                "description": node_data.get("description", ""),
+                "server_name": node_data.get("server_name", "current"),
+                "countries": node_data.get("countries", []),
+                "total_facilities": node_data.get("total_facilities"),
+                "total_capacity_gw": node_data.get("total_capacity_gw")
+            }
+            datasets.append(dataset_info)
+    
+    return datasets
 
 @mcp.tool()
 def GetDatasetContent(dataset_id: str) -> List[dict] | str:

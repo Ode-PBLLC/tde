@@ -1,0 +1,30 @@
+[Unit]
+Description=Climate Policy Radar API
+After=network.target
+
+[Service]
+Type=exec
+User=climate-api
+Group=climate-api
+WorkingDirectory=/opt/climate-api/app
+Environment=PATH=/opt/climate-api/venv/bin
+ExecStart=/opt/climate-api/venv/bin/uvicorn api_server:app --host 127.0.0.1 --port 8099 --workers 2
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=climate-api
+
+# Security settings
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/climate-api/app/static
+PrivateTmp=yes
+
+# Environment variables
+Environment=ANTHROPIC_API_KEY=your_api_key_here
+
+[Install]
+WantedBy=multi-user.target
