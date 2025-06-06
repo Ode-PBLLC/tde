@@ -4,6 +4,7 @@ Simple API server that returns structured JSON responses with thinking processes
 for front-end consumption.
 """
 import asyncio
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -195,6 +196,40 @@ async def get_example_response():
             "has_tables": False
         }
     }
+
+@app.post("/thorough-response")
+async def thorough_query_response(request: QueryRequest):
+    """
+    Returns the complete raw response from MCP servers including all thinking process,
+    tool calls, intermediate data, and debug information.
+    
+    This endpoint surfaces EVERYTHING that the MCP servers return without filtering
+    or formatting - useful for debugging and development.
+    """
+    try:
+        # Set working directory for MCP servers - use current script location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(script_dir)
+        
+        # Get the complete raw response from MCP
+        full_result = await run_query(request.query)
+        
+        # Return everything - no filtering or formatting
+        return {
+            "query": request.query,
+            "raw_mcp_response": full_result,
+            "metadata": {
+                "endpoint": "thorough-response",
+                "timestamp": datetime.now().isoformat(),
+                "note": "This contains all raw MCP data including debug info and thinking process"
+            }
+        }
+        
+    except Exception as e:
+        import traceback
+        error_detail = f"Thorough query processing failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"THOROUGH API ERROR: {error_detail}")
+        raise HTTPException(status_code=500, detail=error_detail)
 
 if __name__ == "__main__":
     import uvicorn
