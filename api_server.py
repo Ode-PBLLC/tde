@@ -51,8 +51,9 @@ async def process_query(request: QueryRequest):
     - metadata: Query metadata and performance info
     """
     try:
-        # Set working directory for MCP servers
-        os.chdir("/mnt/o/Ode/Github/tde")
+        # Set working directory for MCP servers - use current script location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(script_dir)
         
         if request.include_thinking:
             # Get full response with thinking process
