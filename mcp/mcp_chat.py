@@ -446,11 +446,20 @@ class MultiServerClient:
             - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
 
             Cross-Reference Strategy:
-            When users ask about solar energy, renewable energy, or specific countries (Brazil, India, South Africa, Vietnam):
-            1. First check the knowledge graph for relevant concepts and passages
-            2. Then use solar facilities tools to get real-world data
-            3. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call `GetSolarFacilitiesMapData` to get coordinate data for map generation**
-            4. Combine insights from both sources for comprehensive answers
+            When users ask about ANY topic or concept:
+            1. **ALWAYS** check the knowledge graph for relevant concepts and passages
+            2. **AUTOMATICALLY** call `GetAvailableDatasets()` to discover connected datasets
+            3. **IF datasets exist for the concept**, call `GetDatasetContent()` to retrieve structured data
+            4. For solar energy, renewable energy, or specific countries (Brazil, India, South Africa, Vietnam), also use solar facilities tools
+            5. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call `GetSolarFacilitiesMapData` to get coordinate data for map generation**
+            6. **Combine** policy text + structured data + geographic data in comprehensive answers
+
+            Enhanced Data Discovery:
+            - After getting concept passages, ALWAYS check for connected datasets using `GetAvailableDatasets()`
+            - Look for concepts with "HAS_DATASET_ABOUT" relationships in the knowledge graph
+            - Proactively surface both textual insights AND structured data when available
+            - Include data tables and visualizations when datasets are connected to the queried concept
+            - This ensures users get complete information: policy context + real data + geographic context
 
             Visualization Capabilities:
             - Interactive maps and charts may be automatically generated for certain datasets
