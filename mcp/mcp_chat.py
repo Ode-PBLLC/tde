@@ -14,6 +14,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import streamlit.components.v1 as components
+import re
+
 
 load_dotenv()
 
@@ -201,16 +203,30 @@ def harvest_sources(payload):
     Accepts result.content (could be list/dict/str) and
     returns a list of {doc_id, passage_id, text} records.
     """
-    out = []
+    out = []        
     if isinstance(payload, list):
-        for item in payload:
-            if isinstance(item, dict) and "passage_id" in item:
-                out.append({
-                    "doc_id":     item.get("doc_id") or item.get("document_id"),
-                    "passage_id": item["passage_id"],
-                    "text":       item.get("text", "")  # Capture text
-                })
-            # PathContext hop → hop["passages"] list[str] (no IDs) → skip
+        for item in payload: 
+            try: 
+                data = json.loads(item.text)
+                if isinstance(data, list) and data:
+                    parsed_data = data[0]
+                    if isinstance(parsed_data, dict) and "passage_id" in parsed_data:
+                        out.append({
+                                "doc_id":     parsed_data.get("doc_id") or parsed_data.get("document_id"),
+                                "passage_id": parsed_data["passage_id"],
+                                "text":       parsed_data.get("text", "")  # Capture text
+                                })
+                else:
+                    print(f"Skipped item: not a list or empty → {item.text}")
+            except json.JSONDecodeError as e:
+                    print("Failed to parse JSON:", e)            
+            # if isinstance(item, dict) and "passage_id" in item:
+            #     out.append({
+            #         "doc_id":     item.get("doc_id") or item.get("document_id"),
+            #         "passage_id": item["passage_id"],
+            #         "text":       item.get("text", "")  # Capture text
+            #     })
+            # # PathContext hop → hop["passages"] list[str] (no IDs) → skip
     elif isinstance(payload, dict):
         if "passage_id" in payload:
             out.append({
@@ -422,8 +438,9 @@ class MultiServerClient:
             - Solar Facilities Dataset: Real-world solar installation data (Brazil, India, South Africa, Vietnam)
 
             Tool Usage Guidelines:
-            - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. You should call AT LEAST ONE of these tools for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`.
-            
+            - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. FIRST, you MUST ALWAYS call this tool: 'CheckConceptExists'. If it does not exist, use 'GetSemanticallySimilarConcepts' to return CORRECTLY NAMED CONCEPTS to input to other tools. Then, you should call AT LEAST ONE of these tools, using a correctly named concept, for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`. 
+                Only use tools related to getting passages ONCE.
+               
             - Datasets Discovery: Use `GetAvailableDatasets` to discover what datasets are available and their characteristics.
             
             - Knowledge Graph Datasets: For datasets in the KG, use:
@@ -486,7 +503,7 @@ class MultiServerClient:
             max_tokens=1000,
             system=system_prompt,
             messages=messages,
-            tools=available_tools
+            tools=available_tools # TODO Add lower temperature for tool calling LLMs
         )
 
         final_text = []
@@ -588,7 +605,10 @@ class MultiServerClient:
                     
                     # Add to context but aggressively limit size to prevent token explosion
                     try:
-                        content_str = json.dumps(result.content, ensure_ascii=False)
+                        #content_str = json.dumps(result.content, ensure_ascii=False)
+                        # Just pass text string for now
+                        content_str = result.content[0].text
+                        print(content_str)
                         # VERY aggressive truncation - max 1000 characters per chunk
                         if len(content_str) > 1000:
                             content_str = content_str[:1000] + "... [truncated]"
@@ -601,7 +621,9 @@ class MultiServerClient:
                         sources_used.append(result.content)
 
                     # 2) NEW: collect passage/document IDs anywhere they appear
+                    print(f"DEBUG: passage_sources add on: {harvest_sources(result.content)}")
                     passage_sources.extend(harvest_sources(result.content))
+                    print(f"DEBUG: passage_sources: {passage_sources}")
 
                     # Attach tool_use to assistant message
                     assistant_message_content.append(content)
@@ -624,7 +646,7 @@ class MultiServerClient:
 
             # Ask Claude for the next step
             response = self.anthropic.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-sonnet-4-20250514",
                 max_tokens=1000,
                 system=system_prompt,
                 messages=messages,
@@ -637,7 +659,7 @@ class MultiServerClient:
 
         # --- final synthesis / response construction ---------------------------------
         final_response_text = ""
-        if context_chunks:
+        if len(context_chunks) > 0:
             # AGGRESSIVE context trimming to prevent token explosion
             joined_ctx = "\n\n".join(context_chunks)
             # Much smaller limit to stay well under token limits
@@ -656,7 +678,7 @@ class MultiServerClient:
             ]
             
             summary_resp = self.anthropic.messages.create(
-                model="claude-3-haiku-20240307", # Or a more powerful model for synthesis
+                model="claude-3-5-haiku-20241022", # Or a more powerful model for synthesis
                 max_tokens=1000, # Allow more tokens for a full answer, not just a summary
                 system=synthesis_system_prompt,
                 messages=synthesis_messages,
@@ -669,8 +691,10 @@ class MultiServerClient:
 
         # de-dupe sources
         uniq_passages = {(p["doc_id"], p["passage_id"]): p for p in passage_sources}
+        print(f"DEBUG: Found these unique passages: {uniq_passages}")
         if uniq_passages:
             sources_used.extend(uniq_passages.values())
+            print(f"DEBUG: sources used: {sources_used}")
 
 
         return {

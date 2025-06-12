@@ -138,14 +138,14 @@ class DatasetMetadata(BaseModel):
 @mcp.tool()
 def GetConcepts() -> List[str]:
     """
-    Get all concepts in the climate policy radar knowledge graph. This takes no arguments.
+    Get all concepts in the climate policy radar knowledge graph. This takes no arguments. 
     """
     return concepts["preferred_label"].tolist()
 
 @mcp.tool()
 def CheckConceptExists(concept: str) -> bool:
     """
-    Check if a given concept exists in the climate policy radar knowledge graph.
+    Check if a given concept exists in the climate policy radar knowledge graph. You should always call this to see what preferred label of 'concept' to use in other tools.
     """
     return concept in concepts["preferred_label"].tolist()
 
@@ -153,7 +153,7 @@ def CheckConceptExists(concept: str) -> bool:
 def GetSemanticallySimilarConcepts(concept: str) -> List[str]:
     """
     Return up to five concepts whose pretrained-embedding cosine similarity
-    to *concept* is highest.
+    to *concept* is highest. 
     """
     client = OpenAI()
     concept_emb = client.embeddings.create(
@@ -224,10 +224,11 @@ def GetDescription(concept: str) -> str:
 ### GRAPH TOOLS
 
 @mcp.tool()
-def GetPassagesMentioningConcept(concept: str, limit: int = 10) -> List[dict]:
+def GetPassagesMentioningConcept(concept: str, limit: int = 2) -> List[dict]:
     """
     Return up to *limit* passages that MENTION the given concept.
     Each record: {passage_id, doc_id, text}.
+    Only use terms listed by tools that return concepts (ex. GetConcepts) as the 'concept' argument to this tool.
     """
     cid = _concept_id(concept)
     if not cid:
@@ -357,7 +358,7 @@ def FindConceptPathRich(
         return []
 
 @mcp.tool()
-def PassagesMentioningBothConcepts(concept_a: str, concept_b: str, limit: int = 10) -> List[dict]:
+def PassagesMentioningBothConcepts(concept_a: str, concept_b: str, limit: int = 2) -> List[dict]:
     """
     Passages where *both* concepts are mentioned.
     """

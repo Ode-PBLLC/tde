@@ -233,4 +233,4 @@ async def thorough_query_response(request: QueryRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8099)
+    uvicorn.run("api_server:app", host="0.0.0.0", port=8099, reload=True) # TODO change back to reload = False and app as first input

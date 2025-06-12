@@ -75,6 +75,7 @@ def FormatResponseAsModules(
     
     # 5. Add sources as table
     if sources and sources != ["No source captured"]:
+        print("DEBUG: Source module running")
         sources_module = _create_sources_table(sources)
         if sources_module:
             modules.append(sources_module)
@@ -323,7 +324,9 @@ def _create_sources_table(sources: List) -> Optional[Dict]:
         return None
     
     rows = []
+    print(f"DEBUG: formatting: {sources}")
     for i, source in enumerate(sources[:10], 1):  # Limit to 10 sources
+        print(f"DEBUG: formatting: {source}")
         if isinstance(source, dict):
             doc_id = source.get("doc_id", "N/A")
             passage_id = source.get("passage_id", "N/A") 
