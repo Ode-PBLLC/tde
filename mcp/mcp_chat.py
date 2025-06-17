@@ -703,6 +703,546 @@ class MultiServerClient:
             "all_tool_outputs_for_debug": all_tool_outputs_for_debug, # For Feature 2
             "ai_thought_process": "\n".join(intermediate_ai_text_parts) # Add the collected thoughts
         }
+    
+    async def process_query_streaming(self, query: str):
+        """
+        Process a query with streaming capability - yields events as they happen.
+        """
+        import json
+        
+        def translate_tool_to_action(tool_name: str, tool_args: dict) -> dict:
+            """Convert technical tool calls to user-friendly action messages."""
+            
+            # Extract common arguments
+            concept = tool_args.get('concept', '')
+            country = tool_args.get('country', '')
+            query_arg = tool_args.get('query', '')
+            
+            # Knowledge Graph Tools
+            if tool_name == "ALWAYSRUN":
+                return {
+                    "message": "🚀 Initializing search across all databases...",
+                    "category": "initialization"
+                }
+            elif tool_name == "CheckConceptExists":
+                return {
+                    "message": f"🔍 Checking our knowledge base for information about {concept}...",
+                    "category": "search"
+                }
+            elif tool_name == "GetSemanticallySimilarConcepts":
+                return {
+                    "message": f"🔗 Finding concepts related to {concept}...",
+                    "category": "search"
+                }
+            elif tool_name == "GetPassagesMentioningConcept":
+                return {
+                    "message": f"📚 Searching policy documents that mention {concept}...",
+                    "category": "document_search"
+                }
+            elif tool_name == "GetDescription":
+                return {
+                    "message": f"📖 Getting detailed definition of {concept}...",
+                    "category": "information"
+                }
+            elif tool_name == "GetRelatedConcepts":
+                return {
+                    "message": f"🌐 Exploring connections to {concept}...",
+                    "category": "exploration"
+                }
+            elif tool_name == "GetAvailableDatasets":
+                return {
+                    "message": "📊 Discovering available datasets...",
+                    "category": "data_discovery"
+                }
+            elif tool_name == "GetDatasetContent":
+                dataset_id = tool_args.get('dataset_id', 'dataset')
+                return {
+                    "message": f"📈 Loading data from {dataset_id}...",
+                    "category": "data_loading"
+                }
+            
+            # Solar Facilities Tools
+            elif tool_name == "GetSolarFacilitiesByCountry":
+                if country:
+                    return {
+                        "message": f"🏭 Looking up solar facilities in {country}...",
+                        "category": "solar_data"
+                    }
+                else:
+                    return {
+                        "message": "🏭 Gathering solar facility information...",
+                        "category": "solar_data"
+                    }
+            elif tool_name == "GetSolarCapacityByCountry":
+                return {
+                    "message": "⚡ Analyzing global solar energy capacity by country...",
+                    "category": "solar_analysis"
+                }
+            elif tool_name == "GetSolarFacilitiesMapData":
+                if country:
+                    return {
+                        "message": f"🗺️ Mapping solar facilities in {country}...",
+                        "category": "mapping"
+                    }
+                else:
+                    return {
+                        "message": "🗺️ Generating solar facility map data...",
+                        "category": "mapping"
+                    }
+            elif tool_name == "GetLargestSolarFacilities":
+                return {
+                    "message": "🏗️ Finding the largest solar installations...",
+                    "category": "solar_analysis"
+                }
+            elif tool_name == "GetSolarConstructionTimeline":
+                return {
+                    "message": "📅 Analyzing solar construction trends over time...",
+                    "category": "temporal_analysis"
+                }
+            elif tool_name == "GetSolarCapacityVisualizationData":
+                return {
+                    "message": "📊 Preparing solar capacity visualization data...",
+                    "category": "visualization"
+                }
+            elif tool_name == "SearchSolarFacilitiesByCapacity":
+                min_cap = tool_args.get('min_capacity_mw', '')
+                max_cap = tool_args.get('max_capacity_mw', '')
+                if min_cap and max_cap:
+                    return {
+                        "message": f"🔍 Searching for solar facilities between {min_cap}-{max_cap} MW...",
+                        "category": "filtered_search"
+                    }
+                else:
+                    return {
+                        "message": "🔍 Filtering solar facilities by capacity...",
+                        "category": "filtered_search"
+                    }
+            
+            # Response Formatting Tools
+            elif tool_name == "FormatResponseAsModules":
+                return {
+                    "message": "✨ Formatting response for optimal presentation...",
+                    "category": "formatting"
+                }
+            
+            # Default fallback
+            else:
+                # Convert camelCase to human readable
+                readable_name = tool_name.replace('Get', '').replace('Search', 'Searching ')
+                return {
+                    "message": f"⚙️ Running {readable_name}...",
+                    "category": "processing"
+                }
+        
+        def _get_completion_message(tool_name: str, tool_args: dict, result) -> str:
+            """Generate user-friendly completion messages based on tool results."""
+            concept = tool_args.get('concept', '')
+            country = tool_args.get('country', '')
+            
+            try:
+                # Try to get meaningful info from result
+                result_text = result.content[0].text if result.content and hasattr(result.content[0], 'text') else str(result.content)
+                
+                if tool_name == "CheckConceptExists":
+                    if "true" in result_text.lower():
+                        return f"✅ Found detailed information about {concept}"
+                    else:
+                        return f"💡 Exploring alternative approaches for {concept}"
+                        
+                elif tool_name == "GetSemanticallySimilarConcepts":
+                    try:
+                        concepts = json.loads(result_text)
+                        if isinstance(concepts, list) and len(concepts) > 1:
+                            return f"🔗 Found {len(concepts)} related concepts to explore"
+                        else:
+                            return f"🔗 Identified related concepts for {concept}"
+                    except:
+                        return f"🔗 Found related concepts for {concept}"
+                        
+                elif tool_name == "GetSolarCapacityByCountry":
+                    try:
+                        data = json.loads(result_text)
+                        if isinstance(data, dict) and "total_global_capacity_mw" in data:
+                            capacity = data["total_global_capacity_mw"]
+                            facilities = data.get("total_global_facilities", 0)
+                            return f"⚡ Found {facilities:,} solar facilities with {capacity:,.0f} MW total capacity"
+                        else:
+                            return "⚡ Retrieved global solar capacity data"
+                    except:
+                        return "⚡ Retrieved solar capacity information"
+                        
+                elif tool_name == "GetSolarFacilitiesByCountry":
+                    if country:
+                        return f"🏭 Retrieved solar facility data for {country}"
+                    else:
+                        return "🏭 Retrieved solar facility information"
+                        
+                elif tool_name == "GetPassagesMentioningConcept":
+                    try:
+                        passages = json.loads(result_text)
+                        if isinstance(passages, list):
+                            count = len(passages)
+                            if count > 0:
+                                return f"📚 Found {count} relevant policy document{'s' if count != 1 else ''}"
+                            else:
+                                return f"📚 Searched policy documents (exploring alternative sources)"
+                        else:
+                            return f"📚 Searched policy documents about {concept}"
+                    except:
+                        return f"📚 Completed document search for {concept}"
+                        
+                elif tool_name == "FormatResponseAsModules":
+                    return "✨ Response ready for presentation"
+                    
+                else:
+                    # Generic completion message
+                    return f"✅ Completed {tool_name.replace('Get', '').replace('Search', 'search for ')}"
+                    
+            except Exception:
+                # Fallback for any errors
+                return f"✅ Completed {tool_name}"
+        
+        # --- Temporary hardcoding for chart visualization --- 
+        DUMMY_DATASET_ID = "DUMMY_DATASET_EXTREME_WEATHER"
+        if query.lower() == "show dummy chart":
+            print(f"Hardcoded trigger: Querying for dataset ID: {DUMMY_DATASET_ID}")
+
+        messages = [
+            {"role": "user", 
+            "content": query}
+        ]
+        
+        # Get tools from all connected servers
+        all_tools = await self.get_all_available_tools()
+        available_tools = []
+        for server_name, tools in all_tools.items():
+            clean_tools = []
+            for tool in tools:
+                clean_tool = {
+                    "name": tool["name"],
+                    "description": tool["description"], 
+                    "input_schema": tool["input_schema"]
+                }
+                clean_tools.append(clean_tool)
+            available_tools.extend(clean_tools)
+        
+        system_prompt = """
+            You are a climate policy expert. Assume the reader wants the big picture and key linkages.
+
+            Core Task:
+            1. Understand the user's query.
+            2. Use available tools to gather information from multiple data sources.
+            3. Synthesize the information to answer the user's query.
+
+            Available Data Sources:
+            - Knowledge Graph: Climate policy concepts, relationships, and passages
+            - Solar Facilities Dataset: Real-world solar installation data (Brazil, India, South Africa, Vietnam)
+
+            Tool Usage Guidelines:
+            - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. FIRST, you MUST ALWAYS call this tool: 'CheckConceptExists'. If it does not exist, use 'GetSemanticallySimilarConcepts' to return CORRECTLY NAMED CONCEPTS to input to other tools. Then, you should call AT LEAST ONE of these tools, using a correctly named concept, for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`. 
+                Only use tools related to getting passages ONCE.
+               
+            - Datasets Discovery: Use `GetAvailableDatasets` to discover what datasets are available and their characteristics.
+            
+            - Knowledge Graph Datasets: For datasets in the KG, use:
+                1. `GetConceptGraphNeighbors` for relevant concepts.
+                2. Look for neighbors with `kind: "Dataset"` and connected by edges like `HAS_DATASET_ABOUT` or `DATASET_ON_TOPIC`.
+                3. If a relevant dataset is found, use its `node_id` with the `GetDatasetContent` tool to fetch its data.
+            
+            - Solar Facilities Data: For solar energy queries, use these specialized tools:
+                - `GetSolarFacilitiesByCountry`: Get facilities summary for specific countries
+                - `GetSolarCapacityByCountry`: Get capacity statistics by country
+                - `GetSolarFacilitiesMapData`: Get facility coordinates for interactive maps (use for map requests)
+                - `GetSolarFacilitiesInRadius`: Find facilities near coordinates
+                - `GetSolarConstructionTimeline`: Analyze construction trends over time
+                - `GetLargestSolarFacilities`: Find biggest installations
+                - `SearchSolarFacilitiesByCapacity`: Filter by capacity range
+                - `GetSolarCapacityVisualizationData`: Get structured data for charts and graphs
+                
+                Note: For map requests, always use `GetSolarFacilitiesMapData` as it provides the detailed coordinate data needed for map generation.
+            
+            - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
+
+            Cross-Reference Strategy:
+            When users ask about ANY topic or concept:
+            1. **ALWAYS** check the knowledge graph for relevant concepts and passages
+            2. **AUTOMATICALLY** call `GetAvailableDatasets()` to discover connected datasets
+            3. **IF datasets exist for the concept**, call `GetDatasetContent()` to retrieve structured data
+            4. For solar energy, renewable energy, or specific countries (Brazil, India, South Africa, Vietnam), also use solar facilities tools
+            5. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call `GetSolarFacilitiesMapData` to get coordinate data for map generation**
+            6. **Combine** policy text + structured data + geographic data in comprehensive answers
+
+            Enhanced Data Discovery:
+            - After getting concept passages, ALWAYS check for connected datasets using `GetAvailableDatasets()`
+            - Look for concepts with "HAS_DATASET_ABOUT" relationships in the knowledge graph
+            - Proactively surface both textual insights AND structured data when available
+            - Include data tables and visualizations when datasets are connected to the queried concept
+            - This ensures users get complete information: policy context + real data + geographic context
+
+            Visualization Capabilities:
+            - Interactive maps and charts may be automatically generated for certain datasets
+            - If visualizations are available for the current query, this will be indicated in the context
+            - Only reference visualizations if explicitly mentioned in the tool results or context
+
+            Output Format:
+            - After completing all necessary tool calls, synthesize the gathered information into a single, comprehensive response to the user. 
+            - Do NOT narrate your tool calling process (e.g., avoid phrases like "First, I will call...", "Next, I found..."). 
+            - Present the final answer as if you are directly answering the user's query based on the knowledge you have acquired.
+            - When presenting solar facility data, include specific numbers and context.
+            - Only mention maps or visualizations if they are explicitly confirmed as available in the context.
+
+            Respond to the user based on the information gathered from the tools.
+            """
+
+        if query.lower() == "show dummy chart":
+             messages = [
+                {"role": "user", "content": "Get the content of dataset DUMMY_DATASET_EXTREME_WEATHER."}
+            ]
+
+        response = self.anthropic.messages.create(
+            model="claude-3-5-haiku-latest",
+            max_tokens=1000,
+            system=system_prompt,
+            messages=messages,
+            tools=available_tools
+        )
+
+        sources_used = []
+        context_chunks = []
+        passage_sources = []
+        chart_data = None
+        map_data = None
+        visualization_data = None
+        all_tool_outputs_for_debug = []
+        
+        while True:
+            assistant_message_content = []
+
+            for content in response.content:
+                if content.type == "text":
+                    # Skip streaming raw thinking traces - we have user-friendly action breadcrumbs instead
+                    assistant_message_content.append(content)
+                elif content.type == "tool_use":
+                    tool_name = content.name
+                    tool_args = content.input
+                    
+                    # Stream user-friendly action message
+                    action_info = translate_tool_to_action(tool_name, tool_args)
+                    yield {
+                        "type": "action",
+                        "data": {
+                            "message": action_info["message"],
+                            "category": action_info["category"]
+                        }
+                    }
+                    
+                    # Also stream technical tool call for debugging (can be filtered out in production UI)
+                    yield {
+                        "type": "tool_call",
+                        "data": {
+                            "tool": tool_name,
+                            "args": tool_args
+                        }
+                    }
+                    
+                    # Determine server and execute tool
+                    server_name = self._determine_server_for_tool(tool_name, all_tools)
+                    
+                    try:
+                        result = await self.call_tool(tool_name, tool_args, server_name)
+
+                        # Stream user-friendly completion message
+                        completion_message = _get_completion_message(tool_name, tool_args, result)
+                        yield {
+                            "type": "action_complete",
+                            "data": {
+                                "message": completion_message,
+                                "category": action_info["category"]
+                            }
+                        }
+                        
+                        # Stream technical tool result for debugging
+                        yield {
+                            "type": "tool_result",
+                            "data": {
+                                "tool": tool_name,
+                                "result": result.content[0].text if result.content and hasattr(result.content[0], 'text') else str(result.content)
+                            }
+                        }
+                    except Exception as tool_error:
+                        # Stream tool error
+                        yield {
+                            "type": "tool_error",
+                            "data": {
+                                "tool": tool_name,
+                                "error": str(tool_error)
+                            }
+                        }
+                        # Skip further processing for this tool but continue with message flow
+                        assistant_message_content.append(content)
+                        messages.append({"role": "assistant", "content": assistant_message_content})
+                        break
+
+                    # Process results (same as original process_query)
+                    all_tool_outputs_for_debug.append({
+                        "tool_name": tool_name,
+                        "tool_args": tool_args,
+                        "tool_result_content": result.content 
+                    })
+
+                    # Parse map data from GetSolarFacilitiesMapData
+                    if tool_name == "GetSolarFacilitiesMapData":
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            first_content_block = result.content[0]
+                            if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                                try:
+                                    parsed_content = json.loads(first_content_block.text)
+                                    if isinstance(parsed_content, dict) and parsed_content.get("type") == "map":
+                                        map_data = parsed_content
+                                except json.JSONDecodeError:
+                                    pass
+                    
+                    # Parse visualization data from different tools
+                    elif tool_name in ["GetDatasetContent", "GetSolarFacilitiesByCountry", "GetSolarCapacityByCountry"]:
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            first_content_block = result.content[0]
+                            if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                                try:
+                                    parsed_content = json.loads(first_content_block.text)
+                                    if isinstance(parsed_content, list):
+                                        if all(isinstance(item, dict) for item in parsed_content):
+                                            chart_data = parsed_content
+                                except json.JSONDecodeError:
+                                    pass
+                    
+                    # Parse structured visualization data
+                    elif tool_name == "GetSolarCapacityVisualizationData":
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            first_content_block = result.content[0]
+                            if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                                try:
+                                    parsed_content = json.loads(first_content_block.text)
+                                    if isinstance(parsed_content, dict) and "data" in parsed_content:
+                                        visualization_data = parsed_content
+                                except json.JSONDecodeError:
+                                    pass
+                    
+                    # Add to context with size limits
+                    try:
+                        content_str = result.content[0].text
+                        if len(content_str) > 1000:
+                            content_str = content_str[:1000] + "... [truncated]"
+                        context_chunks.append(content_str)
+                    except Exception:
+                        pass
+
+                    # Collect passage sources
+                    if tool_name.lower() == "getmetadata":
+                        sources_used.append(result.content)
+                    passage_sources.extend(harvest_sources(result.content))
+
+                    # Attach tool_use to assistant message
+                    assistant_message_content.append(content)
+                    messages.append({"role": "assistant", "content": assistant_message_content})
+                    messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": content.id,
+                            "content": result.content
+                        }]
+                    })
+
+                    # Break early and send updated messages to Claude
+                    break
+            else:
+                # No tool_use found → conversation complete
+                messages.append({"role": "assistant", "content": assistant_message_content})
+                break
+
+            # Ask Claude for the next step
+            response = self.anthropic.messages.create(
+                model="claude-3-5-haiku-latest",
+                max_tokens=1000,
+                system=system_prompt,
+                messages=messages,
+                tools=available_tools,
+            )
+
+        # Final synthesis
+        final_response_text = ""
+        if len(context_chunks) > 0:
+            joined_ctx = "\n\n".join(context_chunks)
+            SAFE_CTX_LIMIT = 8000
+            if len(joined_ctx) > SAFE_CTX_LIMIT:
+                joined_ctx = joined_ctx[:SAFE_CTX_LIMIT] + "\n\n[truncated for safety]"
+            
+            synthesis_system_prompt = (SUMMARY_PROMPT +
+                "Based on the following context from various tools, synthesize a comprehensive answer to the user's original query. "
+                "Present it as a direct answer, not a summary of the context itself. Avoid narrating the tool process. "
+                "If the context mentions that visualizations are available, you may reference them appropriately.")
+
+            synthesis_messages = [
+                {"role": "user", "content": f"User's original query: {query}\n\nTool-derived Context:\n{joined_ctx}"}
+            ]
+            
+            summary_resp = self.anthropic.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1000,
+                system=synthesis_system_prompt,
+                messages=synthesis_messages,
+            )
+            final_response_text = summary_resp.content[0].text.strip()
+
+        # De-dupe sources
+        uniq_passages = {(p["doc_id"], p["passage_id"]): p for p in passage_sources}
+        if uniq_passages:
+            sources_used.extend(uniq_passages.values())
+
+        # Format the final response
+        formatter_args = {
+            "response_text": final_response_text,
+            "chart_data": chart_data,
+            "visualization_data": visualization_data,
+            "map_data": map_data,
+            "sources": sources_used or ["No source captured"],
+            "title": "Climate Policy Analysis"
+        }
+        
+        # Remove None values
+        formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
+        
+        try:
+            formatted_result = await self.call_tool("FormatResponseAsModules", formatter_args, "formatter")
+            
+            # Parse the formatted response
+            if formatted_result.content and isinstance(formatted_result.content, list):
+                first_content = formatted_result.content[0]
+                if hasattr(first_content, 'text'):
+                    import json
+                    formatted_data = json.loads(first_content.text)
+                    
+                    # Stream the complete response
+                    yield {
+                        "type": "complete",
+                        "data": {
+                            "query": query,
+                            "modules": formatted_data.get("modules", []),
+                            "metadata": {
+                                "modules_count": len(formatted_data.get("modules", [])),
+                                "has_maps": any(m.get("type") == "map" for m in formatted_data.get("modules", [])),
+                                "has_charts": any(m.get("type") == "chart" for m in formatted_data.get("modules", [])),
+                                "has_tables": any(m.get("type") == "table" for m in formatted_data.get("modules", []))
+                            }
+                        }
+                    }
+        except Exception as e:
+            yield {
+                "type": "error",
+                "data": {
+                    "message": f"Error formatting response: {str(e)}"
+                }
+            }
         
 async def run_query_structured(q: str) -> Dict[str, Any]:
     """
@@ -710,6 +1250,44 @@ async def run_query_structured(q: str) -> Dict[str, Any]:
     """
     result = await run_query(q)
     return result.get("formatted_response", {"modules": []})
+
+async def run_query_streaming(q: str):
+    """
+    Run a query with streaming capability - yields events as they happen.
+    
+    Yields events in the format:
+    {
+        "type": "thinking|tool_call|tool_result|complete|error",
+        "data": {...}
+    }
+    """
+    # Ensure we're in the correct working directory
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    os.chdir(project_root)
+    
+    try:
+        async with MultiServerClient() as client:
+            # Connect to all available servers
+            mcp_dir = os.path.join(project_root, "mcp")
+            await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
+            await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
+            await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
+            
+            # Stream the query processing
+            async for event in client.process_query_streaming(q):
+                yield event
+                
+    except Exception as e:
+        import traceback
+        yield {
+            "type": "error",
+            "data": {
+                "message": f"Streaming query failed: {str(e)}",
+                "traceback": traceback.format_exc()
+            }
+        }
 
 async def run_query(q: str):
     # Ensure we're in the correct working directory
@@ -803,7 +1381,6 @@ async def run_query(q: str):
             print(f"DEBUG: formatted_result.content is not a list or is empty")
         
         return result
-
 def pretty_print(result: dict):
     """
     Nicely prints the 'response' markdown plus a Sources block.
