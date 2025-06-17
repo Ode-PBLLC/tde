@@ -877,6 +877,20 @@ class MultiServerClient:
                     else:
                         return "🏭 Retrieved solar facility information"
                         
+                elif tool_name == "GetSolarFacilitiesMapData":
+                    try:
+                        data = json.loads(result_text)
+                        if isinstance(data, dict) and data.get("type") == "map" and "data" in data:
+                            facility_count = len(data["data"])
+                            if country:
+                                return f"🗺️ Generated map data for {facility_count:,} solar facilities in {country}"
+                            else:
+                                return f"🗺️ Generated map data for {facility_count:,} solar facilities"
+                        else:
+                            return f"🗺️ Generated solar facility map data"
+                    except:
+                        return f"🗺️ Generated solar facility map data"
+                        
                 elif tool_name == "GetPassagesMentioningConcept":
                     try:
                         passages = json.loads(result_text)
@@ -1061,12 +1075,28 @@ class MultiServerClient:
                             }
                         }
                         
-                        # Stream technical tool result for debugging
+                        # Stream technical tool result for debugging (truncate large responses)
+                        result_text = result.content[0].text if result.content and hasattr(result.content[0], 'text') else str(result.content)
+                        
+                        # Truncate massive GeoJSON responses for map data
+                        if tool_name == "GetSolarFacilitiesMapData" and len(result_text) > 2000:
+                            try:
+                                data = json.loads(result_text)
+                                if isinstance(data, dict) and data.get("type") == "map" and "data" in data:
+                                    facility_count = len(data["data"])
+                                    result_text = f'{{"type": "map", "data": "[{facility_count} facilities - truncated for streaming]", "metadata": "Full GeoJSON available in final response"}}'
+                                else:
+                                    result_text = result_text[:2000] + "... [truncated for streaming]"
+                            except:
+                                result_text = result_text[:2000] + "... [truncated for streaming]"
+                        elif len(result_text) > 2000:
+                            result_text = result_text[:2000] + "... [truncated for streaming]"
+                        
                         yield {
                             "type": "tool_result",
                             "data": {
                                 "tool": tool_name,
-                                "result": result.content[0].text if result.content and hasattr(result.content[0], 'text') else str(result.content)
+                                "result": result_text
                             }
                         }
                     except Exception as tool_error:
