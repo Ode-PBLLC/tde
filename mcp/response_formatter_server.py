@@ -324,7 +324,6 @@ def _create_sources_table(sources: List) -> Optional[Dict]:
         return None
     
     rows = []
-    print(f"DEBUG: formatting: {sources}")
     for i, source in enumerate(sources[:10], 1):  # Limit to 10 sources
         print(f"DEBUG: formatting: {source}")
         if isinstance(source, dict):

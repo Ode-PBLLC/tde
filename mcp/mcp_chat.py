@@ -499,7 +499,7 @@ class MultiServerClient:
             ]
 
         response = self.anthropic.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-3-5-haiku-latest",
             max_tokens=1000,
             system=system_prompt,
             messages=messages,
@@ -621,7 +621,6 @@ class MultiServerClient:
                         sources_used.append(result.content)
 
                     # 2) NEW: collect passage/document IDs anywhere they appear
-                    print(f"DEBUG: passage_sources add on: {harvest_sources(result.content)}")
                     passage_sources.extend(harvest_sources(result.content))
                     print(f"DEBUG: passage_sources: {passage_sources}")
 
@@ -646,7 +645,7 @@ class MultiServerClient:
 
             # Ask Claude for the next step
             response = self.anthropic.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-3-5-haiku-latest",
                 max_tokens=1000,
                 system=system_prompt,
                 messages=messages,
@@ -694,8 +693,6 @@ class MultiServerClient:
         print(f"DEBUG: Found these unique passages: {uniq_passages}")
         if uniq_passages:
             sources_used.extend(uniq_passages.values())
-            print(f"DEBUG: sources used: {sources_used}")
-
 
         return {
             "response": final_response_text,
