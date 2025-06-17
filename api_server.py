@@ -8,14 +8,16 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, AsyncGenerator
+import json
 import sys
 import os
 
 # Add the mcp directory to the path
 sys.path.append('mcp')
-from mcp_chat import run_query_structured, run_query
+from mcp_chat import run_query_structured, run_query, run_query_streaming
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
@@ -34,6 +36,9 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     query: str
     include_thinking: bool = False
+
+class StreamQueryRequest(BaseModel):
+    query: str
 
 class QueryResponse(BaseModel):
     query: str
@@ -230,6 +235,55 @@ async def thorough_query_response(request: QueryRequest):
         error_detail = f"Thorough query processing failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
         print(f"THOROUGH API ERROR: {error_detail}")
         raise HTTPException(status_code=500, detail=error_detail)
+
+@app.post("/query/stream")
+async def stream_query(request: StreamQueryRequest):
+    """
+    Stream query processing with real-time thinking traces.
+    
+    Returns Server-Sent Events (SSE) stream with:
+    - thinking: AI reasoning steps as they happen
+    - tool_call: Tool execution notifications
+    - tool_result: Tool execution results
+    - complete: Final structured response
+    - error: Any errors that occur
+    """
+    
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
+            # Set working directory for MCP servers
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            os.chdir(script_dir)
+            
+            # Process query with streaming callback
+            async for event in run_query_streaming(request.query):
+                # Format as Server-Sent Events
+                event_data = json.dumps(event, ensure_ascii=False)
+                yield f"data: {event_data}\n\n"
+                
+        except Exception as e:
+            import traceback
+            error_detail = f"Streaming query failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            print(f"STREAM API ERROR: {error_detail}")
+            
+            error_event = {
+                "type": "error",
+                "data": {
+                    "message": str(e),
+                    "traceback": traceback.format_exc()
+                }
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn
