@@ -1199,6 +1199,15 @@ class MultiServerClient:
                 tools=available_tools,
             )
 
+        # Stream synthesis notification
+        yield {
+            "type": "action",
+            "data": {
+                "message": "🧠 Analyzing and summarizing all gathered information...",
+                "category": "synthesis"
+            }
+        }
+        
         # Final synthesis
         final_response_text = ""
         if len(context_chunks) > 0:
@@ -1223,6 +1232,15 @@ class MultiServerClient:
                 messages=synthesis_messages,
             )
             final_response_text = summary_resp.content[0].text.strip()
+
+        # Stream synthesis completion
+        yield {
+            "type": "action_complete",
+            "data": {
+                "message": "✅ Analysis complete - preparing final response",
+                "category": "synthesis"
+            }
+        }
 
         # De-dupe sources
         uniq_passages = {(p["doc_id"], p["passage_id"]): p for p in passage_sources}
