@@ -384,7 +384,7 @@ def _create_sources_table(sources: List) -> Optional[Dict]:
                 rows.append([str(i), "General Reference", "N/A", "General", "Legacy", str(source)[:150]])
     
     return {
-        "type": "table",
+        "type": "source_table",
         "heading": "Sources and References",
         "columns": ["#", "Source", "ID/Tool", "Type", "Method", "Description"],
         "rows": rows

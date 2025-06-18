@@ -244,6 +244,27 @@ def create_dataset_citation(tool_name: str, tool_args: dict, result_content: lis
             "provider": "GIST Environmental Research",
             "coverage": "100+ companies, 5 sectors"
         },
+        "GetGistCompanies": {
+            "source_type": "Database",
+            "source_name": "GIST Corporate Directory",
+            "description": "Directory of companies with sustainability and environmental data",
+            "provider": "GIST Environmental Research",
+            "coverage": "100+ companies across 5 sectors"
+        },
+        "GetGistCompanyProfile": {
+            "source_type": "Database",
+            "source_name": "GIST Company Profiles Database",
+            "description": "Complete sustainability profiles and environmental metrics for companies",
+            "provider": "GIST Environmental Research",
+            "coverage": "100+ companies"
+        },
+        "GetGistCompanyRisks": {
+            "source_type": "Database",
+            "source_name": "GIST Environmental Risk Database",
+            "description": "Environmental risk assessments across 13 risk categories",
+            "provider": "GIST Environmental Research",
+            "coverage": "Corporate assets and facilities"
+        },
         "GetGistEmissionsTrends": {
             "source_type": "Database", 
             "source_name": "GIST Scope 3 Emissions Database",
@@ -251,12 +272,26 @@ def create_dataset_citation(tool_name: str, tool_args: dict, result_content: lis
             "provider": "GIST Environmental Research",
             "coverage": "100+ companies"
         },
+        "GetGistScope3Emissions": {
+            "source_type": "Database",
+            "source_name": "GIST Scope 3 Emissions Database",
+            "description": "Detailed Scope 3 emissions data with breakdown by category",
+            "provider": "GIST Environmental Research",
+            "coverage": "Corporate emissions data"
+        },
         "GetGistBiodiversityImpacts": {
             "source_type": "Database",
             "source_name": "GIST Biodiversity Impact Database", 
             "description": "Corporate biodiversity footprint data (PDF, CO2E, LCE metrics)",
             "provider": "GIST Environmental Research",
             "coverage": "Multiple companies"
+        },
+        "GetGistDeforestationRisks": {
+            "source_type": "Database",
+            "source_name": "GIST Deforestation Risk Database",
+            "description": "Deforestation proximity indicators and forest change analysis",
+            "provider": "GIST Environmental Research",
+            "coverage": "Asset-level deforestation risk data"
         },
         "GetGistVisualizationData": {
             "source_type": "Database",
@@ -267,6 +302,20 @@ def create_dataset_citation(tool_name: str, tool_args: dict, result_content: lis
         },
         
         # LSE Climate Policy Tools
+        "GetLSEDatasetOverview": {
+            "source_type": "Database",
+            "source_name": "LSE Climate Policy Analysis Database",
+            "description": "Overview of all available LSE policy modules and datasets",
+            "provider": "London School of Economics",
+            "coverage": "Global climate governance data"
+        },
+        "GetBrazilianStatesOverview": {
+            "source_type": "Database",
+            "source_name": "LSE Brazilian State Governance Database",
+            "description": "Overview of Brazilian state climate governance and policy frameworks",
+            "provider": "London School of Economics",
+            "coverage": "All 27 Brazilian states"
+        },
         "GetStateClimatePolicy": {
             "source_type": "Database",
             "source_name": "LSE Climate Governance Database",
@@ -274,19 +323,19 @@ def create_dataset_citation(tool_name: str, tool_args: dict, result_content: lis
             "provider": "London School of Economics",
             "coverage": "Brazilian states (27 states)"
         },
-        "GetNDCOverviewData": {
-            "source_type": "Database", 
-            "source_name": "LSE NDC Analysis Framework",
-            "description": "Nationally Determined Contributions analysis and policy comparisons",
-            "provider": "London School of Economics",
-            "coverage": "Multiple countries"
-        },
         "CompareBrazilianStates": {
             "source_type": "Database",
             "source_name": "LSE Brazilian State Policy Database",
             "description": "Comparative analysis of climate policies across Brazilian states",
             "provider": "London School of Economics", 
             "coverage": "All 27 Brazilian states"
+        },
+        "GetNDCOverviewData": {
+            "source_type": "Database", 
+            "source_name": "LSE NDC Analysis Framework",
+            "description": "Nationally Determined Contributions analysis and policy comparisons",
+            "provider": "London School of Economics",
+            "coverage": "Multiple countries"
         },
         
         # Knowledge Graph Tools  
@@ -296,6 +345,20 @@ def create_dataset_citation(tool_name: str, tool_args: dict, result_content: lis
             "description": "Structured datasets from climate policy knowledge graph",
             "provider": "Climate Policy Radar",
             "coverage": "Various climate policy datasets"
+        },
+        "GetPassagesMentioningConcept": {
+            "source_type": "Document",
+            "source_name": "Climate Policy Knowledge Graph - Documents",
+            "description": "Policy documents and text passages mentioning specific concepts",
+            "provider": "Climate Policy Radar",
+            "coverage": "Global climate policy documents"
+        },
+        "CheckConceptExists": {
+            "source_type": "Knowledge Base",
+            "source_name": "Climate Policy Knowledge Graph - Concepts",
+            "description": "Concept verification in climate policy knowledge graph",
+            "provider": "Climate Policy Radar",
+            "coverage": "Climate policy concepts and relationships"
         }
     }
     
@@ -938,6 +1001,8 @@ class MultiServerClient:
                         }
                         passage_sources.append(dataset_source)
                         print(f"DEBUG: Added dataset citation for {tool_name}: {dataset_citation['source_name']}")
+                    else:
+                        print(f"DEBUG: No dataset citation created for {tool_name}")
                     
                     print(f"DEBUG: Total sources now: {len(passage_sources)} (passages + datasets)")
 
