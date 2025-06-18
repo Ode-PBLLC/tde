@@ -191,14 +191,25 @@ async def get_example_response():
                         "backgroundColor": ["#4CAF50", "#FF9800", "#F44336", "#2196F3"]
                     }]
                 }
+            },
+            {
+                "type": "table",
+                "heading": "Sources and References", 
+                "columns": ["#", "Source", "ID/Tool", "Type", "Method", "Description"],
+                "rows": [
+                    ["1", "TZ-SAM Q1 2025 Solar Facilities Database | TransitionZero | Brazil, India, South Africa, Vietnam", "GetSolarFacilitiesMapData", "Dataset", "Tool/API", "TransitionZero Solar Asset Mapper - Global solar facility locations and capacity data (2273 facilities)"],
+                    ["2", "Brazilian Climate Policy Framework (CCLW.executive.4934.1571)", "passage_12345", "Policy", "Knowledge Graph", "Brazil has implemented various renewable energy policies to promote solar power development across..."],
+                    ["3", "UNFCCC National Communication (UNFCCC.party.492.0)", "passage_24680", "Document", "Knowledge Graph", "Solar capacity in Brazil is expected to reach 30 GW by 2030 according to government projections..."],
+                    ["4", "TZ-SAM Solar Capacity Database | TransitionZero | Global", "GetSolarCapacityByCountry", "Dataset", "Tool/API", "Solar capacity statistics and aggregations for Brazil (26,022 MW total capacity)"]
+                ]
             }
         ],
         "thinking_process": "First, I called GetSolarFacilitiesByCountry for Brazil...",
         "metadata": {
-            "modules_count": 3,
+            "modules_count": 4,
             "has_maps": True,
             "has_charts": True,
-            "has_tables": False
+            "has_tables": True
         }
     }
 

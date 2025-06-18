@@ -198,42 +198,285 @@ def _render_formatted_modules(formatted_response: Dict[str, Any]):
             if src:
                 st.image(src, caption=alt)
 
+def create_dataset_citation(tool_name: str, tool_args: dict, result_content: list) -> dict:
+    """
+    Create dataset citations for data tools (maps, charts, tables).
+    Returns a standardized citation record for non-passage data sources.
+    """
+    
+    # Define data source mappings for each tool
+    tool_sources = {
+        # Solar Facilities Tools
+        "GetSolarFacilitiesMapData": {
+            "source_type": "Dataset",
+            "source_name": "TZ-SAM Q1 2025 Solar Facilities Database", 
+            "description": "TransitionZero Solar Asset Mapper - Global solar facility locations and capacity data",
+            "provider": "TransitionZero",
+            "coverage": "Brazil, India, South Africa, Vietnam"
+        },
+        "GetSolarFacilitiesByCountry": {
+            "source_type": "Dataset",
+            "source_name": "TZ-SAM Q1 2025 Solar Database",
+            "description": "Solar facility summary statistics by country",
+            "provider": "TransitionZero", 
+            "coverage": "Global"
+        },
+        "GetSolarCapacityByCountry": {
+            "source_type": "Dataset", 
+            "source_name": "TZ-SAM Solar Capacity Database",
+            "description": "Solar capacity statistics and aggregations",
+            "provider": "TransitionZero",
+            "coverage": "Global"
+        },
+        "GetSolarCapacityVisualizationData": {
+            "source_type": "Dataset",
+            "source_name": "TZ-SAM Visualization Dataset", 
+            "description": "Structured solar data for charts and visualizations",
+            "provider": "TransitionZero",
+            "coverage": "Multiple countries"
+        },
+        
+        # GIST Environmental Tools
+        "GetGistAssetsMapData": {
+            "source_type": "Database",
+            "source_name": "GIST Environmental Database - Assets",
+            "description": "Corporate asset locations and environmental risk data (40K+ assets)",
+            "provider": "GIST Environmental Research",
+            "coverage": "100+ companies, 5 sectors"
+        },
+        "GetGistEmissionsTrends": {
+            "source_type": "Database", 
+            "source_name": "GIST Scope 3 Emissions Database",
+            "description": "Corporate Scope 3 emissions data with multi-year trends (2016-2024)",
+            "provider": "GIST Environmental Research",
+            "coverage": "100+ companies"
+        },
+        "GetGistBiodiversityImpacts": {
+            "source_type": "Database",
+            "source_name": "GIST Biodiversity Impact Database", 
+            "description": "Corporate biodiversity footprint data (PDF, CO2E, LCE metrics)",
+            "provider": "GIST Environmental Research",
+            "coverage": "Multiple companies"
+        },
+        "GetGistVisualizationData": {
+            "source_type": "Database",
+            "source_name": "GIST Sustainability Dashboard Data",
+            "description": "Structured corporate sustainability data for visualizations",
+            "provider": "GIST Environmental Research", 
+            "coverage": "100+ companies"
+        },
+        
+        # LSE Climate Policy Tools
+        "GetStateClimatePolicy": {
+            "source_type": "Database",
+            "source_name": "LSE Climate Governance Database",
+            "description": "State-level climate policy analysis and governance frameworks",
+            "provider": "London School of Economics",
+            "coverage": "Brazilian states (27 states)"
+        },
+        "GetNDCOverviewData": {
+            "source_type": "Database", 
+            "source_name": "LSE NDC Analysis Framework",
+            "description": "Nationally Determined Contributions analysis and policy comparisons",
+            "provider": "London School of Economics",
+            "coverage": "Multiple countries"
+        },
+        "CompareBrazilianStates": {
+            "source_type": "Database",
+            "source_name": "LSE Brazilian State Policy Database",
+            "description": "Comparative analysis of climate policies across Brazilian states",
+            "provider": "London School of Economics", 
+            "coverage": "All 27 Brazilian states"
+        },
+        
+        # Knowledge Graph Tools  
+        "GetDatasetContent": {
+            "source_type": "Dataset",
+            "source_name": "Climate Policy Knowledge Graph - Datasets",
+            "description": "Structured datasets from climate policy knowledge graph",
+            "provider": "Climate Policy Radar",
+            "coverage": "Various climate policy datasets"
+        }
+    }
+    
+    if tool_name not in tool_sources:
+        return None
+        
+    source_info = tool_sources[tool_name]
+    
+    # Try to extract additional details from the result
+    data_description = source_info["description"]
+    if result_content and isinstance(result_content, list) and len(result_content) > 0:
+        first_content = result_content[0]
+        if hasattr(first_content, 'text'):
+            try:
+                data = json.loads(first_content.text)
+                
+                # Extract specific details for different tool types
+                if isinstance(data, list) and len(data) > 0:
+                    data_description += f" ({len(data)} records retrieved)"
+                elif isinstance(data, dict):
+                    if 'data' in data and isinstance(data['data'], list):
+                        data_description += f" ({len(data['data'])} facilities)"
+                    if 'metadata' in data:
+                        metadata = data['metadata']
+                        if 'total_facilities' in metadata:
+                            data_description += f" (Total: {metadata['total_facilities']} facilities)"
+                        if 'data_source' in metadata:
+                            data_description += f" - {metadata['data_source']}"
+                            
+            except (json.JSONDecodeError, AttributeError):
+                pass
+    
+    # Add tool arguments context
+    args_context = ""
+    if tool_args:
+        if 'country' in tool_args:
+            args_context += f" for {tool_args['country']}"
+        if 'concept' in tool_args:
+            args_context += f" related to '{tool_args['concept']}'"
+        if 'company_code' in tool_args:
+            args_context += f" for company {tool_args['company_code']}"
+            
+    data_description += args_context
+    
+    return {
+        "source_type": source_info["source_type"],
+        "source_name": source_info["source_name"],
+        "provider": source_info["provider"],
+        "description": data_description,
+        "tool_used": tool_name,
+        "coverage": source_info["coverage"],
+        "citation_id": f"{tool_name}_{hash(str(tool_args)) % 10000}"
+    }
+
 def harvest_sources(payload):
     """
+    Enhanced function to extract sources from tool results.
     Accepts result.content (could be list/dict/str) and
-    returns a list of {doc_id, passage_id, text} records.
+    returns a list of {doc_id, passage_id, text, title, date} records.
     """
-    out = []        
+    out = []
+    print(f"HARVEST_SOURCES DEBUG: Processing payload type: {type(payload)}")
+    
     if isinstance(payload, list):
-        for item in payload: 
+        for i, item in enumerate(payload):
+            print(f"HARVEST_SOURCES DEBUG: Processing item {i}, type: {type(item)}")
             try: 
-                data = json.loads(item.text)
-                if isinstance(data, list) and data:
-                    parsed_data = data[0]
-                    if isinstance(parsed_data, dict) and "passage_id" in parsed_data:
-                        out.append({
-                                "doc_id":     parsed_data.get("doc_id") or parsed_data.get("document_id"),
-                                "passage_id": parsed_data["passage_id"],
-                                "text":       parsed_data.get("text", "")  # Capture text
-                                })
-                else:
-                    print(f"Skipped item: not a list or empty → {item.text}")
-            except json.JSONDecodeError as e:
-                    print("Failed to parse JSON:", e)            
-            # if isinstance(item, dict) and "passage_id" in item:
-            #     out.append({
-            #         "doc_id":     item.get("doc_id") or item.get("document_id"),
-            #         "passage_id": item["passage_id"],
-            #         "text":       item.get("text", "")  # Capture text
-            #     })
-            # # PathContext hop → hop["passages"] list[str] (no IDs) → skip
+                # Handle TextContent objects with .text attribute
+                if hasattr(item, 'text'):
+                    print(f"HARVEST_SOURCES DEBUG: Item has .text attribute, parsing JSON...")
+                    try:
+                        data = json.loads(item.text)
+                        print(f"HARVEST_SOURCES DEBUG: Parsed JSON, type: {type(data)}")
+                        
+                        # Handle list of passages (e.g., from GetPassagesMentioningConcept)
+                        if isinstance(data, list):
+                            print(f"HARVEST_SOURCES DEBUG: Found list with {len(data)} items")
+                            for j, passage in enumerate(data):
+                                if isinstance(passage, dict) and "passage_id" in passage:
+                                    source_record = {
+                                        "doc_id": passage.get("doc_id") or passage.get("document_id"),
+                                        "passage_id": passage["passage_id"],
+                                        "text": passage.get("text", ""),
+                                        "title": passage.get("title", ""),
+                                        "date": passage.get("date", ""),
+                                        "type": passage.get("type", "document")
+                                    }
+                                    out.append(source_record)
+                                    print(f"HARVEST_SOURCES DEBUG: Added source {j+1}: {source_record['doc_id']}")
+                        
+                        # Handle single passage dict
+                        elif isinstance(data, dict) and "passage_id" in data:
+                            source_record = {
+                                "doc_id": data.get("doc_id") or data.get("document_id"),
+                                "passage_id": data["passage_id"],
+                                "text": data.get("text", ""),
+                                "title": data.get("title", ""),
+                                "date": data.get("date", ""),
+                                "type": data.get("type", "document")
+                            }
+                            out.append(source_record)
+                            print(f"HARVEST_SOURCES DEBUG: Added single source: {source_record['doc_id']}")
+                        
+                        else:
+                            print(f"HARVEST_SOURCES DEBUG: Data format not recognized, keys: {list(data.keys()) if isinstance(data, dict) else 'not dict'}")
+                            
+                            # Handle responses that might contain passage data in different formats
+                            if isinstance(data, dict):
+                                # Check if this is a metadata response that we should ignore
+                                if 'available_files' in data or 'content_summary' in data:
+                                    print(f"HARVEST_SOURCES DEBUG: Skipping metadata response")
+                                # Check for passages in nested structures
+                                elif 'passages' in data:
+                                    passages = data['passages']
+                                    if isinstance(passages, list):
+                                        print(f"HARVEST_SOURCES DEBUG: Found nested passages: {len(passages)}")
+                                        for passage in passages:
+                                            if isinstance(passage, dict) and "passage_id" in passage:
+                                                source_record = {
+                                                    "doc_id": passage.get("doc_id") or passage.get("document_id"),
+                                                    "passage_id": passage["passage_id"],
+                                                    "text": passage.get("text", ""),
+                                                    "title": passage.get("title", ""),
+                                                    "date": passage.get("date", ""),
+                                                    "type": passage.get("type", "document")
+                                                }
+                                                out.append(source_record)
+                                                print(f"HARVEST_SOURCES DEBUG: Added nested source: {source_record['doc_id']}")
+                                # Check for any field that might contain passage-like data
+                                else:
+                                    for key, value in data.items():
+                                        if isinstance(value, list):
+                                            for item in value:
+                                                if isinstance(item, dict) and "passage_id" in item:
+                                                    source_record = {
+                                                        "doc_id": item.get("doc_id") or item.get("document_id"),
+                                                        "passage_id": item["passage_id"],
+                                                        "text": item.get("text", ""),
+                                                        "title": item.get("title", ""),
+                                                        "date": item.get("date", ""),
+                                                        "type": item.get("type", "document")
+                                                    }
+                                                    out.append(source_record)
+                                                    print(f"HARVEST_SOURCES DEBUG: Added source from {key}: {source_record['doc_id']}")
+                    
+                    except json.JSONDecodeError as e:
+                        print(f"HARVEST_SOURCES DEBUG: JSON decode failed: {e}")
+                        print(f"HARVEST_SOURCES DEBUG: Raw text: {item.text[:200]}...")
+                
+                # Handle direct dict items
+                elif isinstance(item, dict) and "passage_id" in item:
+                    source_record = {
+                        "doc_id": item.get("doc_id") or item.get("document_id"),
+                        "passage_id": item["passage_id"],
+                        "text": item.get("text", ""),
+                        "title": item.get("title", ""),
+                        "date": item.get("date", ""),
+                        "type": item.get("type", "document")
+                    }
+                    out.append(source_record)
+                    print(f"HARVEST_SOURCES DEBUG: Added direct dict source: {source_record['doc_id']}")
+                    
+            except Exception as e:
+                print(f"HARVEST_SOURCES ERROR: {e}")
+                import traceback
+                traceback.print_exc()
+                
     elif isinstance(payload, dict):
         if "passage_id" in payload:
-            out.append({
-                "doc_id":     payload.get("doc_id") or payload.get("document_id"),
+            source_record = {
+                "doc_id": payload.get("doc_id") or payload.get("document_id"),
                 "passage_id": payload["passage_id"],
-                "text":       payload.get("text", "")  # Capture text
-            })
+                "text": payload.get("text", ""),
+                "title": payload.get("title", ""),
+                "date": payload.get("date", ""),
+                "type": payload.get("type", "document")
+            }
+            out.append(source_record)
+            print(f"HARVEST_SOURCES DEBUG: Added single dict source: {source_record['doc_id']}")
+    
+    print(f"HARVEST_SOURCES DEBUG: Returning {len(out)} sources")
     return out
 
 
@@ -450,8 +693,12 @@ class MultiServerClient:
               * TPI graphical data
 
             Tool Usage Guidelines:
-            - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. FIRST, you MUST ALWAYS call this tool: 'CheckConceptExists'. If it does not exist, use 'GetSemanticallySimilarConcepts' to return CORRECTLY NAMED CONCEPTS to input to other tools. Then, you should call AT LEAST ONE of these tools, using a correctly named concept, for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`. 
-                Only use tools related to getting passages ONCE.
+            - CRITICAL: Every response MUST include source citations from the knowledge graph. Follow this exact sequence:
+              1. FIRST, call 'CheckConceptExists' for the main concept in the user's query
+              2. If concept exists, IMMEDIATELY call 'GetPassagesMentioningConcept' with that exact concept name
+              3. If concept doesn't exist, call 'GetSemanticallySimilarConcepts' and then call 'GetPassagesMentioningConcept' with a similar concept
+              4. NEVER respond without calling at least one passage retrieval tool that returns actual document passages
+              5. If GetPassagesMentioningConcept returns empty, try related concepts or use 'PassagesMentioningBoth' with related terms
                
             - Datasets Discovery: Use `GetAvailableDatasets` to discover what datasets are available and their characteristics.
             
@@ -662,9 +909,37 @@ class MultiServerClient:
                     if tool_name.lower() == "getmetadata":
                         sources_used.append(result.content)
 
-                    # 2) NEW: collect passage/document IDs anywhere they appear
-                    passage_sources.extend(harvest_sources(result.content))
-                    print(f"DEBUG: passage_sources: {passage_sources}")
+                    # 2) NEW: collect passage/document IDs anywhere they appear  
+                    print(f"DEBUG: About to call harvest_sources for tool: {tool_name}")
+                    print(f"DEBUG: result.content type: {type(result.content)}")
+                    if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                        print(f"DEBUG: First content item type: {type(result.content[0])}")
+                        if hasattr(result.content[0], 'text'):
+                            print(f"DEBUG: First 200 chars: {result.content[0].text[:200]}...")
+                    
+                    # Extract passage sources (traditional approach)
+                    new_passage_sources = harvest_sources(result.content)
+                    passage_sources.extend(new_passage_sources)
+                    print(f"DEBUG: harvest_sources returned {len(new_passage_sources)} passage sources for tool {tool_name}")
+                    
+                    # 3) NEW: Extract dataset citations for data tools
+                    dataset_citation = create_dataset_citation(tool_name, tool_args, result.content)
+                    if dataset_citation:
+                        # Convert dataset citation to source format for backward compatibility
+                        dataset_source = {
+                            "doc_id": dataset_citation["citation_id"],
+                            "passage_id": dataset_citation["tool_used"], 
+                            "text": dataset_citation["description"],
+                            "title": dataset_citation["source_name"],
+                            "date": "",
+                            "type": dataset_citation["source_type"],
+                            "provider": dataset_citation["provider"],
+                            "coverage": dataset_citation["coverage"]
+                        }
+                        passage_sources.append(dataset_source)
+                        print(f"DEBUG: Added dataset citation for {tool_name}: {dataset_citation['source_name']}")
+                    
+                    print(f"DEBUG: Total sources now: {len(passage_sources)} (passages + datasets)")
 
                     # Attach tool_use to assistant message
                     assistant_message_content.append(content)
@@ -1001,8 +1276,12 @@ class MultiServerClient:
               * Multi-year trends and sector comparisons
 
             Tool Usage Guidelines:
-            - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. FIRST, you MUST ALWAYS call this tool: 'CheckConceptExists'. If it does not exist, use 'GetSemanticallySimilarConcepts' to return CORRECTLY NAMED CONCEPTS to input to other tools. Then, you should call AT LEAST ONE of these tools, using a correctly named concept, for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`. 
-                Only use tools related to getting passages ONCE.
+            - CRITICAL: Every response MUST include source citations from the knowledge graph. Follow this exact sequence:
+              1. FIRST, call 'CheckConceptExists' for the main concept in the user's query
+              2. If concept exists, IMMEDIATELY call 'GetPassagesMentioningConcept' with that exact concept name
+              3. If concept doesn't exist, call 'GetSemanticallySimilarConcepts' and then call 'GetPassagesMentioningConcept' with a similar concept
+              4. NEVER respond without calling at least one passage retrieval tool that returns actual document passages
+              5. If GetPassagesMentioningConcept returns empty, try related concepts or use 'PassagesMentioningBoth' with related terms
                
             - Datasets Discovery: Use `GetAvailableDatasets` to discover what datasets are available and their characteristics.
             
@@ -1232,7 +1511,26 @@ class MultiServerClient:
                     # Collect passage sources
                     if tool_name.lower() == "getmetadata":
                         sources_used.append(result.content)
-                    passage_sources.extend(harvest_sources(result.content))
+                    
+                    # Extract passage sources (traditional)
+                    new_passage_sources = harvest_sources(result.content)
+                    passage_sources.extend(new_passage_sources)
+                    
+                    # Extract dataset citations for data tools
+                    dataset_citation = create_dataset_citation(tool_name, tool_args, result.content)
+                    if dataset_citation:
+                        dataset_source = {
+                            "doc_id": dataset_citation["citation_id"],
+                            "passage_id": dataset_citation["tool_used"], 
+                            "text": dataset_citation["description"],
+                            "title": dataset_citation["source_name"],
+                            "date": "",
+                            "type": dataset_citation["source_type"],
+                            "provider": dataset_citation["provider"],
+                            "coverage": dataset_citation["coverage"]
+                        }
+                        passage_sources.append(dataset_source)
+                        print(f"STREAMING DEBUG: Added dataset citation: {dataset_citation['source_name']}")
 
                     # Attach tool_use to assistant message
                     assistant_message_content.append(content)
@@ -1307,8 +1605,10 @@ class MultiServerClient:
 
         # De-dupe sources
         uniq_passages = {(p["doc_id"], p["passage_id"]): p for p in passage_sources}
+        print(f"DEBUG STREAMING: Found {len(passage_sources)} total passages, {len(uniq_passages)} unique")
         if uniq_passages:
             sources_used.extend(uniq_passages.values())
+            print(f"DEBUG STREAMING: Sources used now contains {len(sources_used)} items")
 
         # Format the final response
         formatter_args = {

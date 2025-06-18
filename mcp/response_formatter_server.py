@@ -73,12 +73,10 @@ def FormatResponseAsModules(
         if map_summary:
             modules.append(map_summary)
     
-    # 5. Add sources as table
-    if sources and sources != ["No source captured"]:
-        print("DEBUG: Source module running")
-        sources_module = _create_sources_table(sources)
-        if sources_module:
-            modules.append(sources_module)
+    # 5. Add sources as table (always include)
+    sources_module = _create_sources_table(sources)
+    if sources_module:
+        modules.append(sources_module)
     
     return {"modules": modules}
 
@@ -319,25 +317,76 @@ def _create_map_summary_table(map_data: Dict) -> Optional[Dict]:
     }
 
 def _create_sources_table(sources: List) -> Optional[Dict]:
-    """Create a sources table from source information."""
-    if not sources:
-        return None
-    
+    """Create a comprehensive sources table for all data types (passages, datasets, databases)."""
     rows = []
-    for i, source in enumerate(sources[:10], 1):  # Limit to 10 sources
-        print(f"DEBUG: formatting: {source}")
-        if isinstance(source, dict):
-            doc_id = source.get("doc_id", "N/A")
-            passage_id = source.get("passage_id", "N/A") 
-            text_snippet = source.get("text", "")[:100] + "..." if source.get("text") else "N/A"
-            rows.append([str(i), doc_id, passage_id, text_snippet])
-        else:
-            rows.append([str(i), "General", "N/A", str(source)[:100]])
+    
+    print(f"FORMATTER DEBUG: Creating comprehensive sources table with {len(sources) if sources else 0} sources")
+    
+    # Handle empty sources or "No source captured"
+    if not sources or sources == ["No source captured"]:
+        rows.append(["1", "N/A", "N/A", "N/A", "N/A", "No sources available for this response"])
+    else:
+        for i, source in enumerate(sources[:20], 1):  # Increased to 20 sources for comprehensive display
+            print(f"FORMATTER DEBUG: Processing source {i}: {source}")
+            if isinstance(source, dict):
+                source_type = source.get("type", "Document")
+                
+                # Handle different source types differently
+                if source_type.lower() in ["dataset", "database"]:
+                    # Dataset/Database citation format
+                    source_name = source.get("title", source.get("source_name", "Unknown Source"))
+                    provider = source.get("provider", "Unknown Provider")
+                    coverage = source.get("coverage", "")
+                    tool_used = source.get("passage_id", source.get("tool_used", "N/A"))  # passage_id stores tool name for datasets
+                    description = source.get("text", "")[:150] + "..." if source.get("text") else "N/A"
+                    
+                    # Create comprehensive source reference for datasets
+                    source_ref = f"{source_name}"
+                    if provider and provider != "Unknown Provider":
+                        source_ref += f" | {provider}"
+                    if coverage:
+                        source_ref += f" | {coverage}"
+                    
+                    rows.append([
+                        str(i),
+                        source_ref,
+                        tool_used,
+                        source_type.title(),
+                        "Tool/API",
+                        description
+                    ])
+                    
+                else:
+                    # Traditional document/passage citation format
+                    doc_id = source.get("doc_id", "N/A")
+                    passage_id = source.get("passage_id", "N/A")
+                    title = source.get("title", "")
+                    
+                    # Create document reference
+                    doc_ref = doc_id
+                    if title:
+                        doc_ref = f"{title} ({doc_id})"
+                    elif source_type:
+                        doc_ref = f"{source_type.title()}: {doc_id}"
+                    
+                    text_snippet = source.get("text", "")[:150] + "..." if source.get("text") else "N/A"
+                    
+                    rows.append([
+                        str(i),
+                        doc_ref,
+                        passage_id,
+                        source_type.title() if source_type else "Document", 
+                        "Knowledge Graph",
+                        text_snippet
+                    ])
+            else:
+                # Handle legacy string sources
+                rows.append([str(i), "General Reference", "N/A", "General", "Legacy", str(source)[:150]])
     
     return {
         "type": "table",
-        "heading": "Sources",
-        "columns": ["#", "Document ID", "Passage ID", "Text Snippet"],
+        "heading": "Sources and References",
+        "columns": ["#", "Source", "ID/Tool", "Type", "Method", "Description"],
         "rows": rows
     }
 
