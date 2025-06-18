@@ -1085,7 +1085,7 @@ class MultiServerClient:
                     # Stream user-friendly action message
                     action_info = translate_tool_to_action(tool_name, tool_args)
                     yield {
-                        "type": "action",
+                        "type": "thinking",
                         "data": {
                             "message": action_info["message"],
                             "category": action_info["category"]
@@ -1110,7 +1110,7 @@ class MultiServerClient:
                         # Stream user-friendly completion message
                         completion_message = _get_completion_message(tool_name, tool_args, result)
                         yield {
-                            "type": "action_complete",
+                            "type": "thinking_complete",
                             "data": {
                                 "message": completion_message,
                                 "category": action_info["category"]
@@ -1243,7 +1243,7 @@ class MultiServerClient:
 
         # Stream synthesis notification
         yield {
-            "type": "action",
+            "type": "thinking",
             "data": {
                 "message": "🧠 Analyzing and summarizing all gathered information...",
                 "category": "synthesis"
@@ -1277,7 +1277,7 @@ class MultiServerClient:
 
         # Stream synthesis completion
         yield {
-            "type": "action_complete",
+            "type": "thinking_complete",
             "data": {
                 "message": "✅ Analysis complete - preparing final response",
                 "category": "synthesis"
