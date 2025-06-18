@@ -442,6 +442,12 @@ class MultiServerClient:
               * Biodiversity impact measurements (PDF, CO2E, LCE metrics)
               * Deforestation proximity indicators
               * Multi-year trends and sector comparisons
+            - LSE Climate Policy Dataset: London School of Economics climate governance analysis including:
+              * NDC overview and domestic policy comparisons
+              * Institutions and processes analysis
+              * Plans and policies assessment
+              * Brazilian state-level climate governance (all 27 states)
+              * TPI graphical data
 
             Tool Usage Guidelines:
             - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. FIRST, you MUST ALWAYS call this tool: 'CheckConceptExists'. If it does not exist, use 'GetSemanticallySimilarConcepts' to return CORRECTLY NAMED CONCEPTS to input to other tools. Then, you should call AT LEAST ONE of these tools, using a correctly named concept, for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`. 
@@ -479,6 +485,19 @@ class MultiServerClient:
                 
                 Note: GIST covers 100 companies across 5 sectors (OGES, FINS, WHRE, MOMI, REEN) with 9 years of time series data.
             
+            - LSE Climate Policy Analysis: For climate governance, policy analysis, NDC, or Brazilian state policy queries:
+                - `GetLSEDatasetOverview`: Get overview of all available LSE policy modules
+                - `GetBrazilianStatesOverview`: Get overview of Brazilian state climate governance
+                - `GetStateClimatePolicy`: Get detailed climate policy info for specific Brazilian states
+                - `CompareBrazilianStates`: Compare climate policies across multiple states
+                - `GetNDCOverviewData`: Get NDC (Nationally Determined Contributions) analysis
+                - `GetInstitutionsProcessesData`: Get climate governance institutions analysis
+                - `GetPlansAndPoliciesData`: Get climate plans and policies assessment
+                - `SearchLSEContent`: Search across all LSE content for specific terms
+                - `GetLSEVisualizationData`: Get structured data for policy analysis charts
+                
+                Note: LSE covers NDC analysis, institutional frameworks, and comprehensive Brazilian state-level governance (all 27 states).
+            
             - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
 
             Cross-Reference Strategy:
@@ -488,8 +507,9 @@ class MultiServerClient:
             3. **IF datasets exist for the concept**, call `GetDatasetContent()` to retrieve structured data
             4. For solar energy, renewable energy, or specific countries (Brazil, India, South Africa, Vietnam), also use solar facilities tools
             5. For corporate sustainability, ESG, emissions, environmental risk, or biodiversity queries, use GIST tools to access company-level data
-            6. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call appropriate map data tools (`GetSolarFacilitiesMapData` for solar, `GetGistAssetsMapData` for corporate assets)**
-            7. **Combine** policy text + structured data + geographic data + sustainability metrics in comprehensive answers
+            6. For climate governance, policy analysis, NDC, or Brazilian state-level queries, use LSE tools to access governance frameworks and policy assessments
+            7. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call appropriate map data tools (`GetSolarFacilitiesMapData` for solar, `GetGistAssetsMapData` for corporate assets)**
+            8. **Combine** policy text + structured data + geographic data + sustainability metrics + governance analysis in comprehensive answers
 
             Enhanced Data Discovery:
             - After getting concept passages, ALWAYS check for connected datasets using `GetAvailableDatasets()`
@@ -497,7 +517,8 @@ class MultiServerClient:
             - Proactively surface both textual insights AND structured data when available
             - Include data tables and visualizations when datasets are connected to the queried concept
             - For corporate/company queries, automatically check GIST data for sustainability metrics and environmental risk assessments
-            - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data
+            - For governance/policy/Brazilian state queries, automatically check LSE data for institutional frameworks and policy implementation status
+            - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data + governance frameworks
 
             Visualization Capabilities:
             - Interactive maps and charts may be automatically generated for certain datasets
@@ -1364,6 +1385,7 @@ async def run_query_streaming(q: str):
             await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
             await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
             await client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
+            await client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
             await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
             
             # Stream the query processing
@@ -1393,6 +1415,7 @@ async def run_query(q: str):
         await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
         await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
         await client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
+        await client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
         await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
         
         # Process the main query
