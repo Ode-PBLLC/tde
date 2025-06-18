@@ -436,6 +436,12 @@ class MultiServerClient:
             Available Data Sources:
             - Knowledge Graph: Climate policy concepts, relationships, and passages
             - Solar Facilities Dataset: Real-world solar installation data (Brazil, India, South Africa, Vietnam)
+            - GIST Dataset: Comprehensive environmental sustainability data for 100 companies including:
+              * Environmental risk assessments (40K+ assets with coordinates)
+              * Scope 3 emissions data (2016-2024)
+              * Biodiversity impact measurements (PDF, CO2E, LCE metrics)
+              * Deforestation proximity indicators
+              * Multi-year trends and sector comparisons
 
             Tool Usage Guidelines:
             - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. FIRST, you MUST ALWAYS call this tool: 'CheckConceptExists'. If it does not exist, use 'GetSemanticallySimilarConcepts' to return CORRECTLY NAMED CONCEPTS to input to other tools. Then, you should call AT LEAST ONE of these tools, using a correctly named concept, for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`. 
@@ -460,6 +466,19 @@ class MultiServerClient:
                 
                 Note: For map requests, always use `GetSolarFacilitiesMapData` as it provides the detailed coordinate data needed for map generation.
             
+            - GIST Environmental & Sustainability Data: For corporate sustainability, environmental risk, emissions, or ESG queries:
+                - `GetGistCompanies`: Discover companies with optional sector/country filtering
+                - `GetGistCompanyProfile`: Complete sustainability profile for a specific company
+                - `GetGistCompanyRisks`: Environmental risk assessment across 13 risk categories
+                - `GetGistScope3Emissions`: Detailed Scope 3 emissions data with breakdown by category
+                - `GetGistBiodiversityImpacts`: Biodiversity footprint data (PDF, CO2E, LCE metrics)
+                - `GetGistDeforestationRisks`: Deforestation proximity indicators and forest change analysis
+                - `GetGistAssetsMapData`: Asset-level geographic data for mapping (use for ESG asset mapping)
+                - `GetGistEmissionsTrends`: Multi-year emissions trends and intensity analysis
+                - `GetGistVisualizationData`: Structured data for sustainability dashboards and charts
+                
+                Note: GIST covers 100 companies across 5 sectors (OGES, FINS, WHRE, MOMI, REEN) with 9 years of time series data.
+            
             - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
 
             Cross-Reference Strategy:
@@ -468,15 +487,17 @@ class MultiServerClient:
             2. **AUTOMATICALLY** call `GetAvailableDatasets()` to discover connected datasets
             3. **IF datasets exist for the concept**, call `GetDatasetContent()` to retrieve structured data
             4. For solar energy, renewable energy, or specific countries (Brazil, India, South Africa, Vietnam), also use solar facilities tools
-            5. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call `GetSolarFacilitiesMapData` to get coordinate data for map generation**
-            6. **Combine** policy text + structured data + geographic data in comprehensive answers
+            5. For corporate sustainability, ESG, emissions, environmental risk, or biodiversity queries, use GIST tools to access company-level data
+            6. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call appropriate map data tools (`GetSolarFacilitiesMapData` for solar, `GetGistAssetsMapData` for corporate assets)**
+            7. **Combine** policy text + structured data + geographic data + sustainability metrics in comprehensive answers
 
             Enhanced Data Discovery:
             - After getting concept passages, ALWAYS check for connected datasets using `GetAvailableDatasets()`
             - Look for concepts with "HAS_DATASET_ABOUT" relationships in the knowledge graph
             - Proactively surface both textual insights AND structured data when available
             - Include data tables and visualizations when datasets are connected to the queried concept
-            - This ensures users get complete information: policy context + real data + geographic context
+            - For corporate/company queries, automatically check GIST data for sustainability metrics and environmental risk assessments
+            - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data
 
             Visualization Capabilities:
             - Interactive maps and charts may be automatically generated for certain datasets
@@ -951,6 +972,12 @@ class MultiServerClient:
             Available Data Sources:
             - Knowledge Graph: Climate policy concepts, relationships, and passages
             - Solar Facilities Dataset: Real-world solar installation data (Brazil, India, South Africa, Vietnam)
+            - GIST Dataset: Comprehensive environmental sustainability data for 100 companies including:
+              * Environmental risk assessments (40K+ assets with coordinates)
+              * Scope 3 emissions data (2016-2024)
+              * Biodiversity impact measurements (PDF, CO2E, LCE metrics)
+              * Deforestation proximity indicators
+              * Multi-year trends and sector comparisons
 
             Tool Usage Guidelines:
             - Passages: Always look for passages relevant to the user's query. If multiple concepts are mentioned, look for passages relevant to all of them. FIRST, you MUST ALWAYS call this tool: 'CheckConceptExists'. If it does not exist, use 'GetSemanticallySimilarConcepts' to return CORRECTLY NAMED CONCEPTS to input to other tools. Then, you should call AT LEAST ONE of these tools, using a correctly named concept, for every query: `GetPassagesMentioningConcept` or `PassagesMentioningBoth`. 
@@ -975,6 +1002,19 @@ class MultiServerClient:
                 
                 Note: For map requests, always use `GetSolarFacilitiesMapData` as it provides the detailed coordinate data needed for map generation.
             
+            - GIST Environmental & Sustainability Data: For corporate sustainability, environmental risk, emissions, or ESG queries:
+                - `GetGistCompanies`: Discover companies with optional sector/country filtering
+                - `GetGistCompanyProfile`: Complete sustainability profile for a specific company
+                - `GetGistCompanyRisks`: Environmental risk assessment across 13 risk categories
+                - `GetGistScope3Emissions`: Detailed Scope 3 emissions data with breakdown by category
+                - `GetGistBiodiversityImpacts`: Biodiversity footprint data (PDF, CO2E, LCE metrics)
+                - `GetGistDeforestationRisks`: Deforestation proximity indicators and forest change analysis
+                - `GetGistAssetsMapData`: Asset-level geographic data for mapping (use for ESG asset mapping)
+                - `GetGistEmissionsTrends`: Multi-year emissions trends and intensity analysis
+                - `GetGistVisualizationData`: Structured data for sustainability dashboards and charts
+                
+                Note: GIST covers 100 companies across 5 sectors (OGES, FINS, WHRE, MOMI, REEN) with 9 years of time series data.
+            
             - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
 
             Cross-Reference Strategy:
@@ -983,15 +1023,17 @@ class MultiServerClient:
             2. **AUTOMATICALLY** call `GetAvailableDatasets()` to discover connected datasets
             3. **IF datasets exist for the concept**, call `GetDatasetContent()` to retrieve structured data
             4. For solar energy, renewable energy, or specific countries (Brazil, India, South Africa, Vietnam), also use solar facilities tools
-            5. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call `GetSolarFacilitiesMapData` to get coordinate data for map generation**
-            6. **Combine** policy text + structured data + geographic data in comprehensive answers
+            5. For corporate sustainability, ESG, emissions, environmental risk, or biodiversity queries, use GIST tools to access company-level data
+            6. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call appropriate map data tools (`GetSolarFacilitiesMapData` for solar, `GetGistAssetsMapData` for corporate assets)**
+            7. **Combine** policy text + structured data + geographic data + sustainability metrics in comprehensive answers
 
             Enhanced Data Discovery:
             - After getting concept passages, ALWAYS check for connected datasets using `GetAvailableDatasets()`
             - Look for concepts with "HAS_DATASET_ABOUT" relationships in the knowledge graph
             - Proactively surface both textual insights AND structured data when available
             - Include data tables and visualizations when datasets are connected to the queried concept
-            - This ensures users get complete information: policy context + real data + geographic context
+            - For corporate/company queries, automatically check GIST data for sustainability metrics and environmental risk assessments
+            - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data
 
             Visualization Capabilities:
             - Interactive maps and charts may be automatically generated for certain datasets
@@ -1321,6 +1363,7 @@ async def run_query_streaming(q: str):
             mcp_dir = os.path.join(project_root, "mcp")
             await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
             await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
+            await client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
             await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
             
             # Stream the query processing
@@ -1349,6 +1392,7 @@ async def run_query(q: str):
         mcp_dir = os.path.join(project_root, "mcp")
         await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
         await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
+        await client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
         await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
         
         # Process the main query

@@ -387,7 +387,8 @@ Serves generated GeoJSON files for map visualization.
 **MCP Server Connection Issues**:
 ```json
 {
-  "detail": "Query processing failed: Connection closed\n\nTraceback: ..."
+  "detail": "Query processing failed: Connection closed\n
+\nTraceback: ..."
 }
 ```
 
