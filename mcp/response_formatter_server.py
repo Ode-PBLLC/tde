@@ -47,21 +47,21 @@ def _insert_inline_citations(text: str, module_id: str, citation_registry: Optio
     if not relevant_citations:
         return text
     
-    # Simple citation insertion at sentence ends
+    # Simple citation insertion after the text that references them
     sentences = text.split('. ')
     if len(sentences) > 1:
-        # Add citations to the first few sentences
+        # Add citations after the first few sentences
         for i in range(min(2, len(sentences))):
             if sentences[i] and not sentences[i].endswith('^'):
                 citation_nums = relevant_citations[:min(3, len(relevant_citations))]
-                superscript = f"^{','.join(map(str, citation_nums))}^"
+                superscript = f" ^{','.join(map(str, citation_nums))}^"
                 sentences[i] = sentences[i] + superscript
         
         return '. '.join(sentences)
     else:
-        # Single sentence - add citation at end
+        # Single sentence - add citation after the text
         citation_nums = relevant_citations[:3]
-        superscript = f"^{','.join(map(str, citation_nums))}^"
+        superscript = f" ^{','.join(map(str, citation_nums))}^"
         return text + superscript
     
 def _create_numbered_citation_table(citation_registry: Optional[Dict] = None) -> Optional[Dict]:
@@ -140,8 +140,8 @@ def _add_citations_to_table_heading(heading: str, tool_name: str, citation_regis
     
     if relevant_citations:
         citation_nums = relevant_citations[:3]  # Limit to first 3 citations
-        superscript = f"^{','.join(map(str, citation_nums))}^"
-        return f"{heading} {superscript}"
+        superscript = f" ^{','.join(map(str, citation_nums))}^"
+        return f"{heading}{superscript}"
     
     return heading
 
@@ -194,8 +194,14 @@ def FormatResponseAsModules(
         if chart_module:
             modules.append(chart_module)
     
-    # 3. Add legacy chart data as enhanced table
+    # 3. Add legacy chart data as enhanced table OR auto-generate chart
     if chart_data and isinstance(chart_data, list) and chart_data:
+        # Try to auto-generate a chart first
+        auto_chart = _auto_generate_chart_from_data(chart_data, "Data Visualization")
+        if auto_chart:
+            modules.append(auto_chart)
+        
+        # Always add table as well for data reference
         table_module = _create_enhanced_table_from_data(chart_data, "Data Summary", "", citation_registry)
         if table_module:
             modules.append(table_module)
@@ -323,6 +329,643 @@ def _create_chart_module(viz_data: Dict) -> Optional[Dict]:
         return None
     
     return None
+
+def _auto_generate_chart_from_data(data: List[Dict], heading: str) -> Optional[Dict]:
+    """
+    Automatically generate chart modules from data by detecting patterns.
+    Analyzes the data structure and creates appropriate chart types.
+    """
+    if not data or not isinstance(data, list) or len(data) < 2:
+        return None
+    
+    try:
+        df = pd.DataFrame(data)
+        
+        # Skip if too few rows or columns
+        if len(df) < 2 or len(df.columns) < 2:
+            return None
+        
+        # Detect chart-worthy patterns in order of specificity
+        
+        # Pattern 1: Country/Entity + Numeric Value (Bar Chart)
+        if _has_country_numeric_pattern(df):
+            return _create_country_bar_chart(df, heading)
+        
+        # Pattern 2: Sector/Category + Numeric Value (Bar Chart)
+        if _has_sector_numeric_pattern(df):
+            return _create_sector_bar_chart(df, heading)
+        
+        # Pattern 3: Year/Time + Numeric Value (Line Chart)
+        if _has_time_series_pattern(df):
+            return _create_time_series_chart(df, heading)
+        
+        # Pattern 4: Company/Entity + Rating/Score (Bar Chart)
+        if _has_ranking_pattern(df):
+            return _create_ranking_chart(df, heading)
+        
+        # Pattern 5: Emissions breakdown (Pie Chart)
+        if _has_emissions_breakdown_pattern(df):
+            return _create_emissions_pie_chart(df, heading)
+        
+        # Pattern 6: Risk level distribution (Pie Chart) - Check before generic risk pattern
+        if _has_risk_level_distribution_pattern(df):
+            return _create_risk_level_pie_chart(df, heading)
+        
+        # Pattern 7: Risk distribution (Bar Chart)
+        if _has_risk_pattern(df):
+            return _create_risk_bar_chart(df, heading)
+        
+        # Pattern 8: Asset distribution (Bar Chart)
+        if _has_asset_distribution_pattern(df):
+            return _create_asset_distribution_chart(df, heading)
+        
+        # Pattern 9: Biodiversity/Environmental metrics (Bar Chart)
+        if _has_biodiversity_pattern(df):
+            return _create_biodiversity_chart(df, heading)
+        
+        # Pattern 10: Revenue vs Emissions scatter potential (Bar Chart for now)
+        if _has_revenue_emissions_pattern(df):
+            return _create_revenue_emissions_chart(df, heading)
+        
+        # Pattern 11: GIST company patterns (Bar Chart)
+        if _has_gist_company_pattern(df):
+            return _create_gist_company_chart(df, heading)
+        
+        # Fallback: Generic bar chart if we have label + numeric columns
+        if _has_generic_chart_pattern(df):
+            return _create_generic_bar_chart(df, heading)
+        
+    except Exception as e:
+        print(f"Error in auto-chart generation: {e}")
+        return None
+    
+    return None
+
+def _has_country_numeric_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has country + numeric value pattern."""
+    columns = [col.lower() for col in df.columns]
+    has_country = any("country" in col for col in columns)
+    # Expanded to catch more GIST numeric patterns
+    has_numeric = any("capacity" in col or "emission" in col or "total" in col or "mw" in col or 
+                     "assets" in col or "companies" in col or "count" in col or "revenue" in col or
+                     "risk" in col or "value" in col or "impact" in col for col in columns)
+    return has_country and has_numeric and len(df) >= 2
+
+def _has_sector_numeric_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has sector + numeric value pattern."""
+    columns = [col.lower() for col in df.columns]
+    has_sector = any("sector" in col for col in columns)
+    # Expanded to catch more GIST sector patterns
+    has_numeric = any("emission" in col or "total" in col or "value" in col or "count" in col or
+                     "companies" in col or "assets" in col or "revenue" in col or "capacity" in col or
+                     "risk" in col or "impact" in col for col in columns)
+    return has_sector and has_numeric and len(df) >= 2
+
+def _has_time_series_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has time series pattern."""
+    columns = [col.lower() for col in df.columns]
+    has_time = any("year" in col or "date" in col or "time" in col for col in columns)
+    has_numeric = len([col for col in df.columns if df[col].dtype in ['int64', 'float64']]) >= 1
+    return has_time and has_numeric and len(df) >= 2  # Reduced from 3 to 2
+
+def _has_ranking_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has ranking pattern."""
+    columns = [col.lower() for col in df.columns]
+    # More specific entity detection - avoid matching risk_level
+    has_entity = any("company" in col or "name" in col or ("code" in col and "company" in col) for col in columns)
+    # Expanded ranking/scoring metrics for GIST data, but exclude simple count when combined with risk
+    has_rank_or_score = any("rank" in col or "score" in col or "rating" in col or "emission" in col or
+                           "total" in col or "capacity" in col or "revenue" in col or "assets" in col or
+                           "impact" in col for col in columns)
+    
+    # Exclude if this looks like a risk level distribution
+    has_risk_level = any("risk" in col and "level" in col for col in columns)
+    if has_risk_level:
+        return False
+    
+    return has_entity and has_rank_or_score and len(df) >= 2  # Reduced from 3 to 2
+
+def _has_emissions_breakdown_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has emissions breakdown pattern."""
+    columns = [col.lower() for col in df.columns]
+    has_category = any("category" in col or "scope" in col or "type" in col for col in columns)
+    has_emissions = any("emission" in col or "co2" in col or "carbon" in col for col in columns)
+    return has_category and has_emissions and len(df) >= 2  # Reduced from 3 to 2
+
+def _has_risk_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has risk distribution pattern."""
+    columns = [col.lower() for col in df.columns]
+    has_risk = any("risk" in col for col in columns)
+    has_count = any("count" in col or "companies" in col or "assets" in col for col in columns)
+    return has_risk and has_count and len(df) >= 2
+
+def _has_asset_distribution_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has asset distribution pattern."""
+    columns = [col.lower() for col in df.columns]
+    has_asset_type = any("asset" in col or "facility" in col or "infrastructure" in col for col in columns)
+    has_count_or_metric = any("count" in col or "total" in col or "number" in col or "capacity" in col for col in columns)
+    return has_asset_type and has_count_or_metric and len(df) >= 2
+
+def _has_biodiversity_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has biodiversity/environmental impact pattern."""
+    columns = [col.lower() for col in df.columns]
+    has_bio_metric = any("biodiversity" in col or "msa" in col or "pdf" in col or "impact" in col or 
+                        "ecosystem" in col or "habitat" in col for col in columns)
+    has_numeric = len([col for col in df.columns if df[col].dtype in ['int64', 'float64']]) >= 1
+    return has_bio_metric and has_numeric and len(df) >= 2
+
+def _has_revenue_emissions_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has revenue and emissions for comparison."""
+    columns = [col.lower() for col in df.columns]
+    has_revenue = any("revenue" in col for col in columns)
+    has_emissions = any("emission" in col or "co2" in col or "carbon" in col for col in columns)
+    return has_revenue and has_emissions and len(df) >= 2
+
+def _has_risk_level_distribution_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has risk level distribution (HIGH/MEDIUM/LOW)."""
+    columns = [col.lower() for col in df.columns]
+    has_risk_level = any("risk" in col and ("level" in col or "category" in col) for col in columns)
+    
+    # Also check if we have text data that might contain risk levels
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            unique_values = [str(v).upper() for v in df[col].unique()]
+            if any(risk in unique_values for risk in ['HIGH', 'MEDIUM', 'LOW', 'VERY HIGH', 'VERY LOW']):
+                has_risk_level = True
+                break
+    
+    has_count = any("count" in col or "companies" in col or "assets" in col or "total" in col for col in columns)
+    return has_risk_level and has_count and len(df) >= 2
+
+def _has_gist_company_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has GIST company-specific patterns."""
+    columns = [col.lower() for col in df.columns]
+    # GIST-specific column patterns
+    has_gist_entity = any("company_code" in col or "company_name" in col or "sector_code" in col for col in columns)
+    has_gist_metric = any("scope" in col or "reporting_year" in col or "upstream" in col or "downstream" in col for col in columns)
+    has_any_numeric = len([col for col in df.columns if df[col].dtype in ['int64', 'float64']]) >= 1
+    
+    return has_gist_entity and (has_gist_metric or has_any_numeric) and len(df) >= 2
+
+def _has_generic_chart_pattern(df: pd.DataFrame) -> bool:
+    """Check if data has generic label + numeric pattern suitable for charts."""
+    if len(df.columns) < 2:
+        return False
+    
+    # Check if we have at least one text/categorical column and one numeric column
+    text_cols = [col for col in df.columns if df[col].dtype == 'object' or df[col].dtype.name == 'category']
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    # More flexible: just need at least one text column and one numeric column
+    has_text_col = len(text_cols) >= 1
+    has_numeric_col = len(numeric_cols) >= 1
+    has_enough_rows = len(df) >= 2
+    
+    return has_text_col and has_numeric_col and has_enough_rows
+
+def _create_country_bar_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create bar chart for country data."""
+    # Find country and numeric columns
+    country_col = next((col for col in df.columns if "country" in col.lower()), df.columns[0])
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not numeric_cols:
+        return None
+        
+    main_numeric = numeric_cols[0]
+    
+    # Clean and prepare data
+    chart_df = df[[country_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(10)  # Limit to top 10 for readability
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[country_col].tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].tolist(),
+                "backgroundColor": ["#4CAF50", "#FF9800", "#F44336", "#2196F3", "#9C27B0", "#607D8B", "#795548", "#FF5722", "#3F51B5", "#00BCD4"][:len(chart_df)]
+            }]
+        }
+    }
+
+def _create_sector_bar_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create bar chart for sector data."""
+    sector_col = next((col for col in df.columns if "sector" in col.lower()), df.columns[0])
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not numeric_cols:
+        return None
+        
+    main_numeric = numeric_cols[0]
+    
+    chart_df = df[[sector_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(8)
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[sector_col].tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].tolist(),
+                "backgroundColor": "#36A2EB"
+            }]
+        }
+    }
+
+def _create_time_series_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create line chart for time series data."""
+    time_col = next((col for col in df.columns if any(word in col.lower() for word in ["year", "date", "time"])), df.columns[0])
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not numeric_cols:
+        return None
+        
+    # Don't use the same column for both time and numeric data
+    available_numeric = [col for col in numeric_cols if col != time_col]
+    if not available_numeric:
+        return None
+        
+    main_numeric = available_numeric[0]
+    
+    try:
+        chart_df = df[[time_col, main_numeric]].copy()
+        chart_df = chart_df.dropna()
+        
+        # Handle duplicates by aggregating values for the same time period
+        if chart_df[time_col].duplicated().any():
+            chart_df = chart_df.groupby(time_col).agg({main_numeric: 'mean'}).reset_index()
+        
+        chart_df = chart_df.sort_values(time_col)
+        
+        if len(chart_df) == 0:
+            return None
+        
+        return {
+            "type": "chart",
+            "chartType": "line",
+            "heading": heading,
+            "data": {
+                "labels": chart_df[time_col].tolist(),
+                "datasets": [{
+                    "label": main_numeric.replace('_', ' ').title(),
+                    "data": chart_df[main_numeric].tolist(),
+                    "borderColor": "#FF6384",
+                    "fill": False
+                }]
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error creating time series chart: {e}")
+        return None
+
+def _create_ranking_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create bar chart for ranking data."""
+    entity_col = next((col for col in df.columns if any(word in col.lower() for word in ["company", "name", "entity"])), df.columns[0])
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not numeric_cols:
+        return None
+        
+    main_numeric = numeric_cols[0]
+    
+    chart_df = df[[entity_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(10)
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[entity_col].astype(str).tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].astype(float).tolist(),
+                "backgroundColor": "#FFCE56"
+            }]
+        }
+    }
+
+def _create_emissions_pie_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create pie chart for emissions breakdown."""
+    category_col = next((col for col in df.columns if any(word in col.lower() for word in ["category", "scope", "type"])), df.columns[0])
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not numeric_cols:
+        return None
+        
+    main_numeric = numeric_cols[0]
+    
+    chart_df = df[[category_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df[chart_df[main_numeric] > 0]  # Remove zero values for pie chart
+    
+    if len(chart_df) == 0:
+        return None
+    
+    return {
+        "type": "chart",
+        "chartType": "pie",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[category_col].tolist(),
+            "datasets": [{
+                "data": chart_df[main_numeric].tolist(),
+                "backgroundColor": ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF"][:len(chart_df)]
+            }]
+        }
+    }
+
+def _create_risk_bar_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create bar chart for risk data."""
+    risk_col = next((col for col in df.columns if "risk" in col.lower()), df.columns[0])
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not numeric_cols:
+        return None
+        
+    main_numeric = numeric_cols[0]
+    
+    chart_df = df[[risk_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[risk_col].astype(str).tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].astype(float).tolist(),
+                "backgroundColor": "#F44336"
+            }]
+        }
+    }
+
+def _create_asset_distribution_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create bar chart for asset distribution data."""
+    asset_col = next((col for col in df.columns if any(word in col.lower() for word in ["asset", "facility", "infrastructure"])), df.columns[0])
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not numeric_cols:
+        return None
+        
+    main_numeric = numeric_cols[0]
+    
+    chart_df = df[[asset_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(8)
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[asset_col].tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].tolist(),
+                "backgroundColor": "#FF5722"
+            }]
+        }
+    }
+
+def _create_biodiversity_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create bar chart for biodiversity/environmental impact data."""
+    # Find biodiversity column
+    bio_col = None
+    for col in df.columns:
+        col_lower = col.lower()
+        if any(word in col_lower for word in ["biodiversity", "msa", "pdf", "impact", "ecosystem", "habitat"]):
+            bio_col = col
+            break
+    
+    if not bio_col:
+        bio_col = df.columns[0]
+    
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    if not numeric_cols:
+        return None
+        
+    main_numeric = numeric_cols[0]
+    
+    chart_df = df[[bio_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(10)
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[bio_col].tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].tolist(),
+                "backgroundColor": "#4CAF50"
+            }]
+        }
+    }
+
+def _create_revenue_emissions_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create chart showing revenue vs emissions comparison."""
+    # Find entity column
+    entity_col = next((col for col in df.columns if any(word in col.lower() for word in ["company", "name", "entity"])), df.columns[0])
+    
+    # Find revenue and emissions columns
+    revenue_col = next((col for col in df.columns if "revenue" in col.lower()), None)
+    emissions_col = next((col for col in df.columns if any(word in col.lower() for word in ["emission", "co2", "carbon"])), None)
+    
+    if not revenue_col or not emissions_col:
+        return None
+    
+    chart_df = df[[entity_col, revenue_col, emissions_col]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(8)
+    
+    if len(chart_df) == 0:
+        return None
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[entity_col].tolist(),
+            "datasets": [{
+                "label": emissions_col.replace('_', ' ').title(),
+                "data": chart_df[emissions_col].tolist(),
+                "backgroundColor": "#FF9800",
+                "yAxisID": "y"
+            }]
+        },
+        "options": {
+            "scales": {
+                "y": {
+                    "type": "linear",
+                    "display": True,
+                    "position": "left",
+                    "title": {"display": True, "text": emissions_col.replace('_', ' ').title()}
+                }
+            }
+        }
+    }
+
+def _create_risk_level_pie_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create pie chart for risk level distribution."""
+    # Find risk level column
+    risk_col = None
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            unique_values = [str(v).upper() for v in df[col].unique()]
+            if any(risk in unique_values for risk in ['HIGH', 'MEDIUM', 'LOW', 'VERY HIGH', 'VERY LOW']):
+                risk_col = col
+                break
+    
+    if not risk_col:
+        risk_col = next((col for col in df.columns if "risk" in col.lower()), df.columns[0])
+    
+    # Find count column
+    count_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    if not count_cols:
+        return None
+        
+    count_col = count_cols[0]
+    
+    chart_df = df[[risk_col, count_col]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df[chart_df[count_col] > 0]  # Remove zero values for pie chart
+    
+    if len(chart_df) == 0:
+        return None
+    
+    return {
+        "type": "chart",
+        "chartType": "pie",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[risk_col].astype(str).tolist(),
+            "datasets": [{
+                "data": chart_df[count_col].astype(float).tolist(),
+                "backgroundColor": ["#F44336", "#FF9800", "#4CAF50", "#2196F3", "#9C27B0"][:len(chart_df)]
+            }]
+        }
+    }
+
+def _create_gist_company_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create chart for GIST company data patterns."""
+    # Find company identifier column
+    company_col = None
+    for col in df.columns:
+        col_lower = col.lower()
+        if "company_name" in col_lower:
+            company_col = col
+            break
+        elif "company_code" in col_lower:
+            company_col = col
+            break
+        elif "company" in col_lower:
+            company_col = col
+            break
+    
+    if not company_col:
+        company_col = df.columns[0]
+    
+    # Find the most relevant numeric column
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    if not numeric_cols:
+        return None
+    
+    # Prioritize GIST-specific metrics
+    main_numeric = None
+    priority_metrics = ['emission', 'scope', 'revenue', 'total', 'capacity', 'assets', 'risk']
+    for metric in priority_metrics:
+        for col in numeric_cols:
+            if metric in col.lower():
+                main_numeric = col
+                break
+        if main_numeric:
+            break
+    
+    if not main_numeric:
+        main_numeric = numeric_cols[0]
+    
+    chart_df = df[[company_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(10)
+    
+    if len(chart_df) == 0:
+        return None
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[company_col].tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].tolist(),
+                "backgroundColor": "#673AB7"
+            }]
+        }
+    }
+
+def _create_generic_bar_chart(df: pd.DataFrame, heading: str) -> Dict:
+    """Create generic bar chart from label + numeric data."""
+    # Find the best text and numeric columns
+    text_cols = [col for col in df.columns if df[col].dtype == 'object' or df[col].dtype.name == 'category']
+    numeric_cols = [col for col in df.columns if df[col].dtype in ['int64', 'float64']]
+    
+    if not text_cols or not numeric_cols:
+        return None
+    
+    # Choose the best columns - prefer first text col and a meaningful numeric col
+    label_col = text_cols[0]
+    
+    # Try to find a meaningful numeric column (prefer rating, score, capacity, etc.)
+    main_numeric = None
+    for col in numeric_cols:
+        col_lower = col.lower()
+        if any(word in col_lower for word in ['rating', 'score', 'capacity', 'emission', 'total', 'count', 'value']):
+            main_numeric = col
+            break
+    
+    # If no meaningful column found, use the first numeric column
+    if not main_numeric:
+        main_numeric = numeric_cols[0]
+    
+    chart_df = df[[label_col, main_numeric]].copy()
+    chart_df = chart_df.dropna()
+    chart_df = chart_df.head(10)
+    
+    if len(chart_df) == 0:
+        return None
+    
+    return {
+        "type": "chart",
+        "chartType": "bar",
+        "heading": heading,
+        "data": {
+            "labels": chart_df[label_col].tolist(),
+            "datasets": [{
+                "label": main_numeric.replace('_', ' ').title(),
+                "data": chart_df[main_numeric].tolist(),
+                "backgroundColor": "#2196F3"
+            }]
+        }
+    }
 
 def _create_table_from_data(data: List[Dict], heading: str) -> Optional[Dict]:
     """Create a table module from list of dictionaries."""
@@ -833,6 +1476,11 @@ def CreateMultipleTablesFromToolResults(
         # Generate appropriate heading based on tool name
         heading = _generate_table_heading(tool_name, tool_data)
         print(f"🔧 FORMATTER DEBUG: Generated heading for {tool_name}: '{heading}'")
+        
+        # Try to create chart first if data is chart-worthy
+        chart_module = _auto_generate_chart_from_data(tool_data, f"{heading} - Chart")
+        if chart_module:
+            modules.append(chart_module)
         
         # Create enhanced table with appropriate type and citations
         table_module = _create_enhanced_table_from_data(tool_data, heading, tool_name, citation_registry)
