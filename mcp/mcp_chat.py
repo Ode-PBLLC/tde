@@ -19,6 +19,89 @@ import re
 
 load_dotenv()
 
+class CitationRegistry:
+    """
+    Manages citation numbering and tracking for inline citations.
+    
+    Assigns unique citation numbers to sources and tracks which modules use which citations.
+    """
+    
+    def __init__(self):
+        self.citations = {}  # source_key -> citation_number
+        self.citation_counter = 1
+        self.module_citations = {}  # module_id -> list of citation numbers
+        self.citation_details = {}  # citation_number -> full source dict
+        
+    def add_source(self, source: Dict[str, Any], module_id: str = None) -> int:
+        """
+        Add a source and return its citation number.
+        
+        Args:
+            source: Source dictionary (passage or dataset)
+            module_id: Optional module identifier for tracking
+            
+        Returns:
+            Citation number for this source
+        """
+        # Create unique key for this source
+        source_key = self._generate_source_key(source)
+        
+        # Check if we already have this source
+        if source_key in self.citations:
+            citation_num = self.citations[source_key]
+        else:
+            # Assign new citation number
+            citation_num = self.citation_counter
+            self.citations[source_key] = citation_num
+            self.citation_details[citation_num] = source
+            self.citation_counter += 1
+        
+        # Track module association
+        if module_id:
+            if module_id not in self.module_citations:
+                self.module_citations[module_id] = []
+            if citation_num not in self.module_citations[module_id]:
+                self.module_citations[module_id].append(citation_num)
+        
+        return citation_num
+    
+    def _generate_source_key(self, source: Dict[str, Any]) -> str:
+        """Generate unique key for source deduplication."""
+        if isinstance(source, dict):
+            # For passage sources
+            if "doc_id" in source and "passage_id" in source:
+                return f"passage_{source['doc_id']}_{source['passage_id']}"
+            # For dataset sources
+            elif "citation_id" in source:
+                return f"dataset_{source['citation_id']}"
+            # For tool-based sources
+            elif "tool_used" in source and "source_name" in source:
+                return f"tool_{source['tool_used']}_{source['source_name']}"
+        
+        # Fallback for other source types
+        return f"generic_{hash(str(source))}"
+    
+    def get_module_citations(self, module_id: str) -> List[int]:
+        """Get all citation numbers used by a specific module."""
+        return self.module_citations.get(module_id, [])
+    
+    def get_citation_details(self, citation_num: int) -> Dict[str, Any]:
+        """Get full source details for a citation number."""
+        return self.citation_details.get(citation_num, {})
+    
+    def get_all_citations(self) -> Dict[int, Dict[str, Any]]:
+        """Get all citations ordered by number."""
+        return {num: self.citation_details[num] for num in sorted(self.citation_details.keys())}
+    
+    def format_citation_superscript(self, citation_nums: List[int]) -> str:
+        """Format citation numbers as superscript text."""
+        if not citation_nums:
+            return ""
+        if len(citation_nums) == 1:
+            return f"^{citation_nums[0]}^"
+        else:
+            return f"^{','.join(map(str, sorted(citation_nums)))}^"
+
 MAX_CTX_CHARS = 18_000          # hard cap – keep below Claude-Haiku context
 WIDE = 88          # tweak for your terminal width
 SUMMARY_PROMPT = (
@@ -790,6 +873,7 @@ class MultiServerClient:
         self.sessions: Dict[str, ClientSession] = {}
         self.exit_stack = AsyncExitStack()
         self.anthropic = anthropic.Anthropic()
+        self.citation_registry = CitationRegistry()
         
     async def __aenter__(self):
         return self
@@ -1171,6 +1255,11 @@ class MultiServerClient:
                     passage_sources.extend(new_passage_sources)
                     print(f"DEBUG: harvest_sources returned {len(new_passage_sources)} passage sources for tool {tool_name}")
                     
+                    # CITATION REGISTRY: Add passage sources to citation registry
+                    for passage_source in new_passage_sources:
+                        citation_num = self.citation_registry.add_source(passage_source, module_id=f"tool_{tool_name}")
+                        print(f"CITATION DEBUG: Added passage source to registry as citation #{citation_num}")
+                    
                     # 3) NEW: Extract dataset citations for data tools
                     dataset_citation = create_dataset_citation(tool_name, tool_args, result.content)
                     if dataset_citation:
@@ -1186,11 +1275,15 @@ class MultiServerClient:
                             "coverage": dataset_citation["coverage"]
                         }
                         passage_sources.append(dataset_source)
-                        print(f"DEBUG: Added dataset citation for {tool_name}: {dataset_citation['source_name']}")
+                        
+                        # CITATION REGISTRY: Add dataset source to citation registry
+                        citation_num = self.citation_registry.add_source(dataset_source, module_id=f"tool_{tool_name}")
+                        print(f"CITATION DEBUG: Added dataset citation #{citation_num} for {tool_name}: {dataset_citation['source_name']}")
                     else:
                         print(f"DEBUG: No dataset citation created for {tool_name}")
                     
                     print(f"DEBUG: Total sources now: {len(passage_sources)} (passages + datasets)")
+                    print(f"CITATION DEBUG: Citation registry now has {len(self.citation_registry.get_all_citations())} total citations")
 
                     # NEW: Collect data for multi-table generation
                     if result.content and isinstance(result.content, list) and len(result.content) > 0:
@@ -1293,7 +1386,14 @@ class MultiServerClient:
             try:
                 multi_table_result = await self.call_tool(
                     "CreateMultipleTablesFromToolResults", 
-                    {"tool_results": tool_results_for_tables, "query_context": query}, 
+                    {
+                        "tool_results": tool_results_for_tables, 
+                        "query_context": query,
+                        "citation_registry": {
+                            "citations": self.citation_registry.get_all_citations(),
+                            "module_citations": self.citation_registry.module_citations
+                        }
+                    }, 
                     "formatter"
                 )
                 
@@ -1820,6 +1920,11 @@ class MultiServerClient:
                     new_passage_sources = harvest_sources(result.content)
                     passage_sources.extend(new_passage_sources)
                     
+                    # CITATION REGISTRY: Add passage sources to citation registry (streaming)
+                    for passage_source in new_passage_sources:
+                        citation_num = self.citation_registry.add_source(passage_source, module_id=f"stream_tool_{tool_name}")
+                        print(f"STREAMING CITATION DEBUG: Added passage source to registry as citation #{citation_num}")
+                    
                     # Extract dataset citations for data tools
                     dataset_citation = create_dataset_citation(tool_name, tool_args, result.content)
                     if dataset_citation:
@@ -1834,7 +1939,10 @@ class MultiServerClient:
                             "coverage": dataset_citation["coverage"]
                         }
                         passage_sources.append(dataset_source)
-                        print(f"STREAMING DEBUG: Added dataset citation: {dataset_citation['source_name']}")
+                        
+                        # CITATION REGISTRY: Add dataset source to citation registry (streaming)
+                        citation_num = self.citation_registry.add_source(dataset_source, module_id=f"stream_tool_{tool_name}")
+                        print(f"STREAMING CITATION DEBUG: Added dataset citation #{citation_num}: {dataset_citation['source_name']}")
 
                     # NEW: Collect data for multi-table generation in streaming
                     if result.content and isinstance(result.content, list) and len(result.content) > 0:
@@ -1965,7 +2073,14 @@ class MultiServerClient:
             try:
                 multi_table_result = await self.call_tool(
                     "CreateMultipleTablesFromToolResults", 
-                    {"tool_results": tool_results_for_tables, "query_context": query}, 
+                    {
+                        "tool_results": tool_results_for_tables, 
+                        "query_context": query,
+                        "citation_registry": {
+                            "citations": self.citation_registry.get_all_citations(),
+                            "module_citations": self.citation_registry.module_citations
+                        }
+                    }, 
                     "formatter"
                 )
                 
@@ -2014,7 +2129,11 @@ class MultiServerClient:
             "visualization_data": visualization_data,
             "map_data": map_data,
             "sources": sources_used or ["No source captured"],
-            "title": "Climate Policy Analysis"
+            "title": "Climate Policy Analysis",
+            "citation_registry": {
+                "citations": self.citation_registry.get_all_citations(),
+                "module_citations": self.citation_registry.module_citations
+            }
         }
         
         # Remove None values
@@ -2177,7 +2296,11 @@ async def run_query(q: str):
             "visualization_data": result.get("visualization_data"), 
             "map_data": map_data_from_result,  # Use map_data from result dict
             "sources": result.get("sources"),
-            "title": "Climate Policy Analysis"
+            "title": "Climate Policy Analysis",
+            "citation_registry": {
+                "citations": client.citation_registry.get_all_citations(),
+                "module_citations": client.citation_registry.module_citations
+            }
         }
         
         print(f"DEBUG: formatter_args map_data type = {type(formatter_args['map_data'])}")

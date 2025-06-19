@@ -17,6 +17,134 @@ metadata = {
     "Author": "Climate Policy Radar Team"
 }
 
+def _insert_inline_citations(text: str, module_id: str, citation_registry: Optional[Dict] = None) -> str:
+    """
+    Insert inline citation superscripts into text based on content analysis.
+    
+    Args:
+        text: Text content to add citations to
+        module_id: Module identifier to look up relevant citations
+        citation_registry: Registry containing citation information
+        
+    Returns:
+        Text with inline citation superscripts added
+    """
+    if not citation_registry or not citation_registry.get("module_citations"):
+        return text
+    
+    # Get citations for this module
+    module_citations = citation_registry.get("module_citations", {})
+    relevant_citations = []
+    
+    # Look for citations from tools that contributed to this module
+    for mod_id, citations in module_citations.items():
+        if module_id in mod_id or any(keyword in text.lower() for keyword in ["solar", "gist", "climate", "emission"]):
+            relevant_citations.extend(citations)
+    
+    # Remove duplicates and sort
+    relevant_citations = sorted(list(set(relevant_citations)))
+    
+    if not relevant_citations:
+        return text
+    
+    # Simple citation insertion at sentence ends
+    sentences = text.split('. ')
+    if len(sentences) > 1:
+        # Add citations to the first few sentences
+        for i in range(min(2, len(sentences))):
+            if sentences[i] and not sentences[i].endswith('^'):
+                citation_nums = relevant_citations[:min(3, len(relevant_citations))]
+                superscript = f"^{','.join(map(str, citation_nums))}^"
+                sentences[i] = sentences[i] + superscript
+        
+        return '. '.join(sentences)
+    else:
+        # Single sentence - add citation at end
+        citation_nums = relevant_citations[:3]
+        superscript = f"^{','.join(map(str, citation_nums))}^"
+        return text + superscript
+    
+def _create_numbered_citation_table(citation_registry: Optional[Dict] = None) -> Optional[Dict]:
+    """Create a numbered citation table from the citation registry."""
+    if not citation_registry or not citation_registry.get("citations"):
+        return None
+    
+    citations = citation_registry.get("citations", {})
+    rows = []
+    
+    for citation_num in sorted(citations.keys()):
+        source = citations[citation_num]
+        
+        if isinstance(source, dict):
+            source_type = source.get("type", "Document")
+            
+            if source_type.lower() in ["dataset", "database"]:
+                # Dataset citation format
+                source_name = source.get("title", "Unknown Source")
+                provider = source.get("provider", "Unknown Provider")
+                tool_used = source.get("passage_id", "N/A")
+                description = source.get("text", "")[:100] + "..." if source.get("text") else "N/A"
+                
+                source_ref = f"{source_name}"
+                if provider and provider != "Unknown Provider":
+                    source_ref += f" | {provider}"
+                
+                rows.append([
+                    str(citation_num),
+                    source_ref,
+                    tool_used,
+                    source_type.title(),
+                    description
+                ])
+            else:
+                # Document citation format
+                title = source.get("title", "")
+                doc_id = source.get("doc_id", "N/A")
+                doc_ref = f"{title} ({doc_id})" if title else doc_id
+                passage_id = source.get("passage_id", "N/A")
+                text_snippet = source.get("text", "")[:100] + "..." if source.get("text") else "N/A"
+                
+                rows.append([
+                    str(citation_num),
+                    doc_ref,
+                    passage_id,
+                    "Document",
+                    text_snippet
+                ])
+        else:
+            # Legacy string source
+            rows.append([str(citation_num), str(source)[:100], "N/A", "General", ""])
+    
+    return {
+        "type": "numbered_citation_table",
+        "heading": "References",
+        "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
+        "rows": rows
+    } if rows else None
+
+def _add_citations_to_table_heading(heading: str, tool_name: str, citation_registry: Optional[Dict] = None) -> str:
+    """Add citation superscripts to table headings based on the tool that generated the data."""
+    if not citation_registry or not citation_registry.get("module_citations"):
+        return heading
+    
+    # Find citations associated with this tool
+    module_citations = citation_registry.get("module_citations", {})
+    relevant_citations = []
+    
+    for module_id, citations in module_citations.items():
+        if tool_name in module_id:
+            relevant_citations.extend(citations)
+    
+    # Remove duplicates and sort
+    relevant_citations = sorted(list(set(relevant_citations)))
+    
+    if relevant_citations:
+        citation_nums = relevant_citations[:3]  # Limit to first 3 citations
+        superscript = f"^{','.join(map(str, citation_nums))}^"
+        return f"{heading} {superscript}"
+    
+    return heading
+
 @mcp.tool()
 def FormatResponseAsModules(
     response_text: str,
@@ -24,10 +152,11 @@ def FormatResponseAsModules(
     visualization_data: Optional[Dict] = None,
     map_data: Optional[Dict] = None,
     sources: Optional[List] = None,
-    title: str = "Climate Policy Analysis"
+    title: str = "Climate Policy Analysis",
+    citation_registry: Optional[Dict] = None
 ) -> Dict[str, Any]:
     """
-    Convert a raw response into structured modules format for front-end.
+    Convert a raw response into structured modules format for front-end with inline citations.
     
     Parameters:
     - response_text: Main text response from Claude
@@ -36,13 +165,22 @@ def FormatResponseAsModules(
     - map_data: Map data for display
     - sources: Source information
     - title: Main heading for the response
+    - citation_registry: Citation registry with numbered sources and module mappings
     """
     modules = []
     
-    # 1. Add main text response as text module
+    # 1. Add main text response as text module with inline citations
     if response_text and response_text.strip():
         # Split into paragraphs for better formatting
         paragraphs = [p.strip() for p in response_text.split('\n\n') if p.strip()]
+        
+        # Add inline citations to paragraphs
+        if citation_registry:
+            paragraphs_with_citations = []
+            for i, paragraph in enumerate(paragraphs):
+                cited_paragraph = _insert_inline_citations(paragraph, f"text_module_{i}", citation_registry)
+                paragraphs_with_citations.append(cited_paragraph)
+            paragraphs = paragraphs_with_citations
         
         modules.append({
             "type": "text", 
@@ -58,7 +196,7 @@ def FormatResponseAsModules(
     
     # 3. Add legacy chart data as enhanced table
     if chart_data and isinstance(chart_data, list) and chart_data:
-        table_module = _create_enhanced_table_from_data(chart_data, "Data Summary", "")
+        table_module = _create_enhanced_table_from_data(chart_data, "Data Summary", "", citation_registry)
         if table_module:
             modules.append(table_module)
     
@@ -73,10 +211,44 @@ def FormatResponseAsModules(
         if map_summary:
             modules.append(map_summary)
     
-    # 5. Add sources as table (always include)
-    sources_module = _create_sources_table(sources)
-    if sources_module:
-        modules.append(sources_module)
+    # 5. Add sources as numbered citation table or legacy sources table
+    if citation_registry:
+        # Use new numbered citation table
+        citation_table = _create_numbered_citation_table(citation_registry)
+        if citation_table:
+            modules.append(citation_table)
+    else:
+        # Fallback to legacy sources table
+        sources_module = _create_sources_table(sources)
+        if sources_module:
+            modules.append(sources_module)
+    
+    # 6. OPTIONAL: Organize modules into narrative flow if we have enough content
+    if len(modules) > 2 and citation_registry:
+        try:
+            # Extract query from title or use default
+            query_context = title if title != "Climate Policy Analysis" else "Analyze climate policy data"
+            
+            print(f"🎯 FORMATTER DEBUG: Attempting narrative organization for {len(modules)} modules")
+            
+            # Call the narrative organizer
+            organized_result = OrganizeModulesIntoNarrative(modules, query_context, citation_registry)
+            
+            if organized_result and "modules" in organized_result:
+                organized_modules = organized_result["modules"]
+                print(f"🎯 FORMATTER DEBUG: Narrative organization successful: {len(modules)} -> {len(organized_modules)} modules")
+                
+                # Use organized modules instead of original
+                modules = organized_modules
+            else:
+                print(f"🎯 FORMATTER DEBUG: Narrative organization returned no modules, using original")
+                
+        except Exception as e:
+            print(f"🎯 FORMATTER DEBUG: Error in narrative organization: {e}")
+            # Fall back to original modules on any error
+            pass
+    else:
+        print(f"🎯 FORMATTER DEBUG: Skipping narrative organization (modules: {len(modules)}, has_citations: {bool(citation_registry)})")
     
     return {"modules": modules}
 
@@ -420,7 +592,7 @@ def detect_table_type(tool_name: str, data: List[Dict]) -> str:
     # Default fallback
     return "table"
 
-def _create_comparison_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+def _create_comparison_table(data: List[Dict], heading: str, tool_name: str = "", citation_registry: Optional[Dict] = None) -> Optional[Dict]:
     """Create side-by-side comparison table for entities like countries, sectors, states."""
     if not data or not isinstance(data, list):
         return None
@@ -431,9 +603,12 @@ def _create_comparison_table(data: List[Dict], heading: str, tool_name: str = ""
         # Limit rows for readability
         display_df = df.head(15)
         
+        # Add citations to heading if available
+        cited_heading = _add_citations_to_table_heading(heading, tool_name, citation_registry)
+        
         return {
             "type": "comparison_table",
-            "heading": heading,
+            "heading": cited_heading,
             "columns": display_df.columns.tolist(),
             "rows": display_df.values.tolist(),
             "metadata": {
@@ -447,7 +622,7 @@ def _create_comparison_table(data: List[Dict], heading: str, tool_name: str = ""
         print(f"Error creating comparison table: {e}")
         return None
 
-def _create_ranking_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+def _create_ranking_table(data: List[Dict], heading: str, tool_name: str = "", citation_registry: Optional[Dict] = None) -> Optional[Dict]:
     """Create ordered ranking/leaderboard table."""
     if not data or not isinstance(data, list):
         return None
@@ -462,9 +637,12 @@ def _create_ranking_table(data: List[Dict], heading: str, tool_name: str = "") -
         # Limit to top 20 for rankings
         display_df = df.head(20)
         
+        # Add citations to heading if available
+        cited_heading = _add_citations_to_table_heading(heading, tool_name, citation_registry)
+        
         return {
             "type": "ranking_table", 
-            "heading": heading,
+            "heading": cited_heading,
             "columns": display_df.columns.tolist(),
             "rows": display_df.values.tolist(),
             "metadata": {
@@ -478,7 +656,7 @@ def _create_ranking_table(data: List[Dict], heading: str, tool_name: str = "") -
         print(f"Error creating ranking table: {e}")
         return None
 
-def _create_trend_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+def _create_trend_table(data: List[Dict], heading: str, tool_name: str = "", citation_registry: Optional[Dict] = None) -> Optional[Dict]:
     """Create time series analysis table."""
     if not data or not isinstance(data, list):
         return None
@@ -512,7 +690,7 @@ def _create_trend_table(data: List[Dict], heading: str, tool_name: str = "") -> 
         print(f"Error creating trend table: {e}")
         return None
 
-def _create_summary_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+def _create_summary_table(data: List[Dict], heading: str, tool_name: str = "", citation_registry: Optional[Dict] = None) -> Optional[Dict]:
     """Create aggregated overview table."""
     if not data or not isinstance(data, list):
         return None
@@ -539,7 +717,7 @@ def _create_summary_table(data: List[Dict], heading: str, tool_name: str = "") -
         print(f"Error creating summary table: {e}")
         return None
 
-def _create_detail_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+def _create_detail_table(data: List[Dict], heading: str, tool_name: str = "", citation_registry: Optional[Dict] = None) -> Optional[Dict]:
     """Create detailed breakdown table for specific entity."""
     if not data or not isinstance(data, list):
         return None
@@ -566,7 +744,7 @@ def _create_detail_table(data: List[Dict], heading: str, tool_name: str = "") ->
         print(f"Error creating detail table: {e}")
         return None
 
-def _create_geographic_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+def _create_geographic_table(data: List[Dict], heading: str, tool_name: str = "", citation_registry: Optional[Dict] = None) -> Optional[Dict]:
     """Create location-based analysis table."""
     if not data or not isinstance(data, list):
         return None
@@ -593,8 +771,8 @@ def _create_geographic_table(data: List[Dict], heading: str, tool_name: str = ""
         print(f"Error creating geographic table: {e}")
         return None
 
-def _create_enhanced_table_from_data(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
-    """Create appropriately typed table based on tool and data structure."""
+def _create_enhanced_table_from_data(data: List[Dict], heading: str, tool_name: str = "", citation_registry: Optional[Dict] = None) -> Optional[Dict]:
+    """Create appropriately typed table based on tool and data structure with citation support."""
     if not data or not isinstance(data, list):
         return None
     
@@ -603,17 +781,17 @@ def _create_enhanced_table_from_data(data: List[Dict], heading: str, tool_name: 
     
     # Create table using appropriate specialized function
     if table_type == "comparison_table":
-        return _create_comparison_table(data, heading, tool_name)
+        return _create_comparison_table(data, heading, tool_name, citation_registry)
     elif table_type == "ranking_table":
-        return _create_ranking_table(data, heading, tool_name)
+        return _create_ranking_table(data, heading, tool_name, citation_registry)
     elif table_type == "trend_table":
-        return _create_trend_table(data, heading, tool_name)
+        return _create_trend_table(data, heading, tool_name, citation_registry)
     elif table_type == "summary_table":
-        return _create_summary_table(data, heading, tool_name)
+        return _create_summary_table(data, heading, tool_name, citation_registry)
     elif table_type == "detail_table":
-        return _create_detail_table(data, heading, tool_name)
+        return _create_detail_table(data, heading, tool_name, citation_registry)
     elif table_type == "geographic_table":
-        return _create_geographic_table(data, heading, tool_name)
+        return _create_geographic_table(data, heading, tool_name, citation_registry)
     else:
         # Fallback to original function
         return _create_table_from_data(data, heading)
@@ -621,7 +799,8 @@ def _create_enhanced_table_from_data(data: List[Dict], heading: str, tool_name: 
 @mcp.tool()
 def CreateMultipleTablesFromToolResults(
     tool_results: List[Dict],
-    query_context: Optional[str] = None
+    query_context: Optional[str] = None,
+    citation_registry: Optional[Dict] = None
 ) -> Dict[str, Any]:
     """
     Create multiple enhanced tables from tool results with intelligent table typing.
@@ -655,8 +834,8 @@ def CreateMultipleTablesFromToolResults(
         heading = _generate_table_heading(tool_name, tool_data)
         print(f"🔧 FORMATTER DEBUG: Generated heading for {tool_name}: '{heading}'")
         
-        # Create enhanced table with appropriate type
-        table_module = _create_enhanced_table_from_data(tool_data, heading, tool_name)
+        # Create enhanced table with appropriate type and citations
+        table_module = _create_enhanced_table_from_data(tool_data, heading, tool_name, citation_registry)
         
         if table_module:
             table_type = table_module.get("type", "unknown")
@@ -668,6 +847,158 @@ def CreateMultipleTablesFromToolResults(
     
     print(f"🔧 FORMATTER DEBUG: Returning {len(modules)} table modules")
     return {"modules": modules}
+
+@mcp.tool()
+def OrganizeModulesIntoNarrative(
+    modules: List[Dict],
+    query: str,
+    citation_registry: Optional[Dict] = None
+) -> Dict[str, Any]:
+    """
+    Intelligently organize and interweave modules into a cohesive narrative using Sonnet model.
+    
+    Parameters:
+    - modules: List of module dictionaries (text, tables, charts, maps)
+    - query: Original user query for context
+    - citation_registry: Citation registry for maintaining citation continuity
+    
+    Returns:
+    - Dictionary with reorganized modules and transition text
+    """
+    print(f"🎯 NARRATIVE DEBUG: Organizing {len(modules)} modules into narrative")
+    
+    if not modules:
+        return {"modules": []}
+    
+    # Create module summary for the narrative organizer
+    module_summary = []
+    for i, module in enumerate(modules):
+        module_type = module.get("type", "unknown")
+        heading = module.get("heading", f"Module {i+1}")
+        
+        summary = {
+            "index": i,
+            "type": module_type,
+            "heading": heading,
+            "preview": _get_module_preview(module)
+        }
+        module_summary.append(summary)
+    
+    # Use Claude Sonnet to organize the narrative
+    try:
+        import anthropic
+        client = anthropic.Anthropic()
+        
+        system_prompt = """You are an expert at organizing information into compelling narratives. Given a user query and a list of data modules, organize them into the most logical and engaging flow.
+
+Your task:
+1. Determine the optimal order for presenting the modules
+2. Identify where transition text would help connect modules
+3. Suggest where modules could be grouped or sections created
+4. Maintain citation integrity - don't break citation numbering
+
+Return a JSON object with:
+{
+    "narrative_plan": "Brief description of your organization strategy",
+    "sections": [
+        {
+            "title": "Section title",
+            "modules": [0, 1, 2], // Module indices in this section
+            "transition_text": "Optional text to introduce this section"
+        }
+    ],
+    "final_order": [0, 3, 1, 2, 4], // Final module order
+    "reasoning": "Explanation of your choices"
+}
+
+Focus on creating a logical flow that answers the user's question comprehensively."""
+
+        user_prompt = f"""Original query: {query}
+
+Available modules:
+{json.dumps(module_summary, indent=2)}
+
+Organize these modules into the most effective narrative structure."""
+
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1500,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+        
+        narrative_plan = json.loads(response.content[0].text)
+        print(f"🎯 NARRATIVE DEBUG: Received narrative plan: {narrative_plan.get('narrative_plan', 'No plan')}")
+        
+        # Reorganize modules according to the narrative plan
+        reorganized_modules = []
+        final_order = narrative_plan.get("final_order", list(range(len(modules))))
+        
+        # Add sections with transition text
+        sections = narrative_plan.get("sections", [])
+        current_section_idx = 0
+        
+        for module_idx in final_order:
+            if module_idx < len(modules):
+                # Check if we're starting a new section
+                if current_section_idx < len(sections):
+                    section = sections[current_section_idx]
+                    if module_idx == section.get("modules", [None])[0]:  # First module in section
+                        # Add section transition if provided
+                        if section.get("transition_text"):
+                            transition_module = {
+                                "type": "narrative_transition",
+                                "heading": section.get("title", ""),
+                                "text": section.get("transition_text", "")
+                            }
+                            reorganized_modules.append(transition_module)
+                        current_section_idx += 1
+                
+                reorganized_modules.append(modules[module_idx])
+        
+        return {
+            "modules": reorganized_modules,
+            "narrative_plan": narrative_plan,
+            "original_count": len(modules),
+            "organized_count": len(reorganized_modules)
+        }
+        
+    except Exception as e:
+        print(f"🎯 NARRATIVE DEBUG: Error organizing narrative: {e}")
+        # Fallback to original order
+        return {"modules": modules}
+
+def _get_module_preview(module: Dict) -> str:
+    """Generate a preview description of a module for narrative planning."""
+    module_type = module.get("type", "unknown")
+    
+    if module_type == "text":
+        texts = module.get("texts", [])
+        preview = texts[0][:100] + "..." if texts else "Text content"
+        return f"Text: {preview}"
+    
+    elif module_type.endswith("_table"):
+        rows = module.get("rows", [])
+        columns = module.get("columns", [])
+        preview = f"Table with {len(rows)} rows, {len(columns)} columns"
+        if columns:
+            preview += f" (columns: {', '.join(columns[:3])}...)"
+        return preview
+    
+    elif module_type == "chart":
+        chart_type = module.get("chartType", "unknown")
+        return f"Chart: {chart_type} visualization"
+    
+    elif module_type == "map":
+        data = module.get("data", [])
+        return f"Map with {len(data)} data points"
+    
+    elif module_type == "numbered_citation_table":
+        rows = module.get("rows", [])
+        return f"References table with {len(rows)} citations"
+    
+    else:
+        return f"{module_type.replace('_', ' ').title()} module"
 
 def _generate_table_heading(tool_name: str, data: List[Dict]) -> str:
     """Generate appropriate table heading based on tool name and data."""
