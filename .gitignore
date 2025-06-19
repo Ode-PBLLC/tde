@@ -5,19 +5,6 @@ extras/
 __pycache__/
 *.pyc
 mcp/__pycache__/
-static/
-aggregated/
-aggregated.tar.gz
-.claude/
-EOF < /dev/null
-.env
-.env.*
-data/
-extras/
-__pycache__/
-*.pyc
-mcp/__pycache__/
-static/
 aggregated/
 aggregated.tar.gz
 .claude/

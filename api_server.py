@@ -40,6 +40,83 @@ class QueryRequest(BaseModel):
 class StreamQueryRequest(BaseModel):
     query: str
 
+def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Generate enhanced metadata that better detects charts and visualization potential.
+    """
+    modules = structured_response.get("modules", [])
+    
+    # Standard module type detection
+    has_maps = any(m.get("type") == "map" for m in modules)
+    has_charts = any(m.get("type") == "chart" for m in modules)
+    has_tables = any(m.get("type") in ["table", "numbered_citation_table"] for m in modules)
+    
+    # Enhanced chart potential detection
+    chart_potential = False
+    visualization_data_available = False
+    
+    # Check for chart data in full result if available
+    if full_result:
+        # Check legacy chart_data
+        chart_data = full_result.get("chart_data")
+        if chart_data and isinstance(chart_data, list) and len(chart_data) > 0:
+            chart_potential = True
+            
+        # Check structured visualization_data
+        viz_data = full_result.get("visualization_data")
+        if viz_data and isinstance(viz_data, dict) and "data" in viz_data:
+            visualization_data_available = True
+            chart_potential = True
+            
+        # Check map_data for potential charts
+        map_data = full_result.get("map_data")
+        if map_data and isinstance(map_data, dict) and "data" in map_data:
+            chart_potential = True
+    
+    # Analyze table data for chart potential
+    chart_worthy_tables = 0
+    for module in modules:
+        if module.get("type") == "table":
+            rows = module.get("rows", [])
+            columns = module.get("columns", [])
+            
+            # Check if table has numerical data suitable for charts
+            if len(rows) > 1 and len(columns) >= 2:
+                # Look for numerical data patterns
+                has_numeric_data = False
+                if rows:
+                    try:
+                        # Check second column for numeric values (first is often labels)
+                        for row in rows[:3]:  # Check first few rows
+                            if len(row) > 1:
+                                val = str(row[1]).replace(',', '').replace('%', '')
+                                try:
+                                    float(val)
+                                    has_numeric_data = True
+                                    break
+                                except (ValueError, TypeError):
+                                    continue
+                    except (IndexError, TypeError):
+                        pass
+                
+                if has_numeric_data:
+                    chart_worthy_tables += 1
+                    chart_potential = True
+    
+    # If we have charts OR chart potential, mark has_charts as true
+    effective_has_charts = has_charts or chart_potential
+    
+    return {
+        "modules_count": len(modules),
+        "has_maps": has_maps,
+        "has_charts": effective_has_charts,
+        "has_tables": has_tables,
+        "chart_potential": chart_potential,
+        "chart_worthy_tables": chart_worthy_tables,
+        "visualization_data_available": visualization_data_available,
+        "module_types": list(set(m.get("type", "unknown") for m in modules))
+    }
+
 class QueryResponse(BaseModel):
     query: str
     modules: list
@@ -75,12 +152,7 @@ async def process_query(request: QueryRequest):
             query=request.query,
             modules=structured_response.get("modules", []),
             thinking_process=thinking_process,
-            metadata={
-                "modules_count": len(structured_response.get("modules", [])),
-                "has_maps": any(m.get("type") == "map" for m in structured_response.get("modules", [])),
-                "has_charts": any(m.get("type") == "chart" for m in structured_response.get("modules", [])),
-                "has_tables": any(m.get("type") == "table" for m in structured_response.get("modules", []))
-            }
+            metadata=_generate_enhanced_metadata(structured_response, full_result if request.include_thinking else None)
         )
         
     except Exception as e:
@@ -93,6 +165,49 @@ async def process_query(request: QueryRequest):
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "message": "Climate Policy Radar API is running"}
+
+@app.get("/featured-queries")
+async def get_featured_queries():
+    """
+    Returns curated list of featured queries with images for frontend gallery.
+    
+    This endpoint serves as a pseudo-CMS for maintaining featured content
+    without requiring database changes. Update static/featured_queries.json
+    to modify the content.
+    """
+    try:
+        # Read the featured queries JSON file
+        featured_queries_path = os.path.join(os.path.dirname(__file__), "static", "featured_queries.json")
+        
+        if not os.path.exists(featured_queries_path):
+            # Return empty response if file doesn't exist
+            return {
+                "featured_queries": [],
+                "metadata": {
+                    "total_queries": 0,
+                    "categories": [],
+                    "error": "Featured queries file not found"
+                }
+            }
+        
+        with open(featured_queries_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Validate basic structure
+        if "featured_queries" not in data:
+            raise ValueError("Invalid featured queries file structure")
+        
+        # Add timestamp for caching
+        if "metadata" not in data:
+            data["metadata"] = {}
+        data["metadata"]["served_at"] = datetime.now().isoformat()
+        
+        return data
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid JSON in featured queries file: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load featured queries: {str(e)}")
 
 @app.get("/example-response")
 async def get_example_response():

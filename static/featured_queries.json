@@ -1,0 +1,57 @@
+{
+  "featured_queries": [
+    {
+      "id": "brazil-oil-environmental-risks",
+      "title": "Brazilian Oil Companies Environmental Risk Analysis",
+      "query": "Analyze the environmental risk exposure of oil and gas companies in Brazil. Show me companies with assets facing high flood and water stress risks, their Scope 3 emissions trends since 2020, and how this relates to Brazil's climate adaptation and emissions reduction policies.",
+      "image": "/static/images/brazil-oil-risks.jpg",
+      "category": "Environmental Risk",
+      "description": "Comprehensive analysis of water stress, flood risks, and emissions trends for Brazilian oil & gas companies"
+    },
+    {
+      "id": "global-solar-capacity",
+      "title": "Global Solar Capacity Analysis",
+      "query": "Show me solar facilities and capacity data across Brazil, India, South Africa, and Vietnam. Include maps of major installations, capacity comparisons by country, and policy frameworks supporting solar development.",
+      "image": "/static/images/global-solar-capacity.jpg",
+      "category": "Renewable Energy",
+      "description": "Interactive maps and charts showing global solar infrastructure and capacity trends"
+    },
+    {
+      "id": "climate-policy-effectiveness",
+      "title": "Climate Policy Effectiveness by Country",
+      "query": "Compare climate policy effectiveness across major economies. Show NDC commitments, domestic policy alignment, and implementation progress for countries like Brazil, India, and South Africa.",
+      "image": "/static/images/climate-policy-effectiveness.jpg",
+      "category": "Policy Analysis",
+      "description": "Cross-country comparison of climate policy frameworks and implementation progress"
+    },
+    {
+      "id": "financial-sector-water-stress",
+      "title": "Water Stress Impacts on Financial Sector",
+      "query": "Analyze water stress exposure for major Brazilian banks and financial institutions. Show asset-level risk data, percentage of assets at risk, and how water stress correlates with financial performance.",
+      "image": "/static/images/financial-water-stress.jpg",
+      "category": "Financial Risk",
+      "description": "Water stress risk assessment for banking and financial services sector"
+    },
+    {
+      "id": "scope3-emissions-trends",
+      "title": "Scope 3 Emissions Trends Analysis",
+      "query": "Show Scope 3 emissions trends for major oil and gas companies from 2020-2023. Include breakdown by upstream vs downstream emissions, emissions intensity metrics, and comparison with industry benchmarks.",
+      "image": "/static/images/scope3-emissions-trends.jpg",
+      "category": "Emissions Analysis",
+      "description": "Time series analysis of corporate Scope 3 emissions with detailed breakdowns"
+    },
+    {
+      "id": "renewable-energy-policy-brazil",
+      "title": "Brazil's Renewable Energy Policy Framework",
+      "query": "Analyze Brazil's renewable energy policies including feed-in tariffs, auction mechanisms, and regulatory frameworks. Show how these policies have driven solar and wind capacity growth.",
+      "image": "/static/images/brazil-renewable-policy.jpg",
+      "category": "Policy Analysis",
+      "description": "Deep dive into Brazil's renewable energy policy instruments and their effectiveness"
+    }
+  ],
+  "metadata": {
+    "last_updated": "2024-01-15T10:00:00Z",
+    "total_queries": 6,
+    "categories": ["Environmental Risk", "Renewable Energy", "Policy Analysis", "Financial Risk", "Emissions Analysis"]
+  }
+}
