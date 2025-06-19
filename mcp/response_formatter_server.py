@@ -632,25 +632,41 @@ def CreateMultipleTablesFromToolResults(
     
     Returns modules with multiple appropriately typed tables.
     """
+    print(f"🔧 FORMATTER DEBUG: CreateMultipleTablesFromToolResults called")
+    print(f"  - Received {len(tool_results)} tool results")
+    print(f"  - Query context: '{query_context[:50] if query_context else 'None'}...'")
+    
     modules = []
     
     # Process each tool result into appropriate table type
-    for result in tool_results:
+    for i, result in enumerate(tool_results):
         tool_name = result.get("tool_name", "")
         tool_data = result.get("data", [])
         
+        print(f"🔧 FORMATTER DEBUG: Processing tool result [{i+1}]: {tool_name}")
+        print(f"  - Data type: {type(tool_data)}")
+        print(f"  - Data length: {len(tool_data) if isinstance(tool_data, list) else 'not a list'}")
+        
         if not tool_data or not isinstance(tool_data, list):
+            print(f"🔧 FORMATTER DEBUG: ❌ Skipping {tool_name} - no data or not a list")
             continue
             
         # Generate appropriate heading based on tool name
         heading = _generate_table_heading(tool_name, tool_data)
+        print(f"🔧 FORMATTER DEBUG: Generated heading for {tool_name}: '{heading}'")
         
         # Create enhanced table with appropriate type
         table_module = _create_enhanced_table_from_data(tool_data, heading, tool_name)
         
         if table_module:
+            table_type = table_module.get("type", "unknown")
+            row_count = len(table_module.get("rows", [])) if "rows" in table_module else "no rows"
+            print(f"🔧 FORMATTER DEBUG: ✅ Created {table_type} table for {tool_name} ({row_count} rows)")
             modules.append(table_module)
+        else:
+            print(f"🔧 FORMATTER DEBUG: ❌ Failed to create table for {tool_name}")
     
+    print(f"🔧 FORMATTER DEBUG: Returning {len(modules)} table modules")
     return {"modules": modules}
 
 def _generate_table_heading(tool_name: str, data: List[Dict]) -> str:

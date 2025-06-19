@@ -595,7 +595,7 @@ def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH") -> Dict[str,
     return result
 
 @mcp.tool()
-def GetGistHighRiskCompanies(risk_threshold: float = 50.0, limit: int = 20) -> Dict[str, Any]:
+def GetGistHighRiskCompanies(risk_threshold: float = 14.67, limit: int = 20) -> Dict[str, Any]:
     """
     Get companies with highest overall environmental risk exposure.
     
@@ -1549,7 +1549,10 @@ def GetGistVisualizationData(viz_type: str, filters: Optional[Dict] = None) -> D
     
     Parameters:
     - viz_type: Type of visualization ('emissions_by_sector', 'risk_distribution', 'asset_map', 'biodiversity_trends', 'scope3_breakdown')
-    - filters: Optional filters like {'year': 2024, 'sector': 'OGES'}
+    - filters: Optional filters like {'year': 2024, 'sector': 'OGES', 'company_code': 'COMPANY123'}
+    
+    Note: 'biodiversity_trends' and 'scope3_breakdown' require a 'company_code' in filters.
+    If not provided, the function will return available companies to choose from.
     """
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
@@ -1684,11 +1687,32 @@ def _get_biodiversity_trends_viz(filters: Dict) -> Dict[str, Any]:
     
     company_code = filters.get('company_code')
     if not company_code:
-        return {"error": "company_code required for biodiversity trends"}
+        # Provide helpful error with available companies
+        available_companies = bio_df.groupby('COMPANY_CODE').agg({
+            'COMPANY_NAME': 'first',
+            'REPORTING_YEAR': ['min', 'max', 'count']
+        }).reset_index()
+        available_companies.columns = ['COMPANY_CODE', 'COMPANY_NAME', 'MIN_YEAR', 'MAX_YEAR', 'YEARS_COUNT']
+        
+        # Sort by number of years (most complete data first)
+        available_companies = available_companies.sort_values('YEARS_COUNT', ascending=False)
+        
+        return {
+            "error": "company_code required for biodiversity trends",
+            "help": "Please specify a company_code filter to view biodiversity trends for a specific company",
+            "available_companies": available_companies.head(20).to_dict('records'),
+            "total_companies_with_data": len(available_companies),
+            "suggested_company": available_companies.iloc[0]['COMPANY_CODE'] if len(available_companies) > 0 else None
+        }
     
     company_data = bio_df[bio_df['COMPANY_CODE'] == company_code].sort_values('REPORTING_YEAR')
     if company_data.empty:
-        return {"error": f"No biodiversity data for company {company_code}"}
+        # Provide suggestions for similar company codes if exact match not found
+        similar_companies = bio_df[bio_df['COMPANY_CODE'].str.contains(company_code, case=False, na=False)]['COMPANY_CODE'].unique()
+        error_msg = f"No biodiversity data for company {company_code}"
+        if len(similar_companies) > 0:
+            error_msg += f". Did you mean one of: {list(similar_companies)[:5]}"
+        return {"error": error_msg}
     
     trend_data = []
     for _, row in company_data.iterrows():
@@ -1722,19 +1746,44 @@ def _get_scope3_breakdown_viz(filters: Dict) -> Dict[str, Any]:
     year = filters.get('year')
     
     if not company_code:
-        return {"error": "company_code required for scope3 breakdown"}
+        # Provide helpful error with available companies
+        available_companies = scope3_df.groupby('COMPANY_CODE').agg({
+            'COMPANY_NAME': 'first',
+            'REPORTING_YEAR': ['min', 'max', 'count'],
+            'SCOPE_3_EMISSIONS_TOTAL': 'sum'
+        }).reset_index()
+        available_companies.columns = ['COMPANY_CODE', 'COMPANY_NAME', 'MIN_YEAR', 'MAX_YEAR', 'YEARS_COUNT', 'TOTAL_EMISSIONS']
+        
+        # Sort by total emissions (highest emitters first, as they're likely most relevant)
+        available_companies = available_companies.sort_values('TOTAL_EMISSIONS', ascending=False)
+        
+        return {
+            "error": "company_code required for scope3 breakdown",
+            "help": "Please specify a company_code filter to view Scope 3 emissions breakdown for a specific company",
+            "available_companies": available_companies.head(20).to_dict('records'),
+            "total_companies_with_data": len(available_companies),
+            "suggested_company": available_companies.iloc[0]['COMPANY_CODE'] if len(available_companies) > 0 else None
+        }
     
     company_data = scope3_df[scope3_df['COMPANY_CODE'] == company_code]
+    if company_data.empty:
+        # Provide suggestions for similar company codes if exact match not found
+        similar_companies = scope3_df[scope3_df['COMPANY_CODE'].str.contains(company_code, case=False, na=False)]['COMPANY_CODE'].unique()
+        error_msg = f"No Scope 3 data for company {company_code}"
+        if len(similar_companies) > 0:
+            error_msg += f". Did you mean one of: {list(similar_companies)[:5]}"
+        return {"error": error_msg}
+    
     if year:
         company_data = company_data[company_data['REPORTING_YEAR'] == year]
+        if company_data.empty:
+            available_years = scope3_df[scope3_df['COMPANY_CODE'] == company_code]['REPORTING_YEAR'].unique()
+            return {"error": f"No Scope 3 data for company {company_code} in year {year}. Available years: {sorted(available_years)}"}
     else:
         # Use latest year
         latest_year = company_data['REPORTING_YEAR'].max()
         company_data = company_data[company_data['REPORTING_YEAR'] == latest_year]
         year = latest_year
-    
-    if company_data.empty:
-        return {"error": f"No Scope 3 data for company {company_code} in year {year}"}
     
     row = company_data.iloc[0]
     

@@ -641,7 +641,8 @@ def _tool_produces_table_data(tool_name: str, parsed_data: any) -> bool:
         "GetGistRiskByCategory", "GetGistEmissionsTrends", "GetGistAssetsByCountry",
         "GetGistScope3Emissions", "GetGistCompanyProfile", "GetAvailableDatasets",
         "GetInstitutionsProcessesData", "GetPlansAndPoliciesData", "GetGistCompanies",
-        "GetSolarFacilitiesByCountry", "GetGistBiodiversityTrends"
+        "GetSolarFacilitiesByCountry", "GetGistBiodiversityTrends", "GetGistBiodiversityWorstPerformers",
+        "GetGistVisualizationData", "GetStateClimatePolicy", "GetGistCompanyRisks"
     ]
     
     if tool_name not in table_tools:
@@ -649,17 +650,24 @@ def _tool_produces_table_data(tool_name: str, parsed_data: any) -> bool:
     
     # Check if data structure is suitable for tables
     if isinstance(parsed_data, dict):
-        # Look for common data patterns
+        # Look for common data patterns in dict structures
         if "companies" in parsed_data and isinstance(parsed_data["companies"], list):
             return True
         if "sectors" in parsed_data and isinstance(parsed_data["sectors"], dict):
             return True
         if "emissions_by_year" in parsed_data and isinstance(parsed_data["emissions_by_year"], list):
             return True
-        if isinstance(parsed_data, list) and len(parsed_data) > 0:
+        if "top_emitters" in parsed_data and isinstance(parsed_data["top_emitters"], list):
+            return True
+        if "states" in parsed_data and isinstance(parsed_data["states"], dict):
+            return True
+        if "sector_emissions" in parsed_data and isinstance(parsed_data["sector_emissions"], list):
+            return True
+        # Check for other common patterns that indicate tabular data
+        if any(key in parsed_data for key in ["data", "facilities", "countries_analyzed", "worst_performers"]):
             return True
     elif isinstance(parsed_data, list) and len(parsed_data) > 0:
-        # List of records
+        # Direct list of records
         return True
     
     return False
@@ -685,8 +693,14 @@ def _extract_table_data(tool_name: str, parsed_data: any) -> List[Dict]:
         
         elif tool_name in ["GetGistTopEmitters", "GetGistHighRiskCompanies", "GetLargestSolarFacilities"]:
             # Direct list of ranked items
-            if isinstance(parsed_data, dict) and "companies" in parsed_data:
-                return parsed_data["companies"][:20]
+            if isinstance(parsed_data, dict):
+                # Check multiple possible list fields
+                for key in ["top_emitters", "companies", "worst_performers", "top_3_facilities", "facilities_found"]:
+                    if key in parsed_data and isinstance(parsed_data[key], list):
+                        return parsed_data[key][:20]
+                # Also check for the data itself if it's a list
+                if "data" in parsed_data and isinstance(parsed_data["data"], list):
+                    return parsed_data["data"][:20]
             elif isinstance(parsed_data, list):
                 return parsed_data[:20]
         
@@ -699,10 +713,13 @@ def _extract_table_data(tool_name: str, parsed_data: any) -> List[Dict]:
         
         elif tool_name == "GetGistEmissionsBySector":
             # Sector emissions data
-            if isinstance(parsed_data, dict) and "sector_analysis" in parsed_data:
-                return parsed_data["sector_analysis"]
+            if isinstance(parsed_data, dict):
+                # Check for sector emissions in various formats
+                for key in ["sector_emissions", "sector_analysis", "sectors", "data"]:
+                    if key in parsed_data and isinstance(parsed_data[key], list):
+                        return parsed_data[key][:20]
             elif isinstance(parsed_data, list):
-                return parsed_data
+                return parsed_data[:20]
         
         elif tool_name in ["GetSolarConstructionTimeline", "GetGistEmissionsTrends"]:
             # Time series data
@@ -729,6 +746,28 @@ def _extract_table_data(tool_name: str, parsed_data: any) -> List[Dict]:
                 return parsed_data["companies"][:25]
             elif isinstance(parsed_data, list):
                 return parsed_data[:25]
+        
+        elif tool_name in ["GetGistBiodiversityWorstPerformers", "GetGistVisualizationData"]:
+            # Biodiversity and visualization data
+            if isinstance(parsed_data, dict):
+                for key in ["worst_performers", "data", "companies_analyzed"]:
+                    if key in parsed_data and isinstance(parsed_data[key], list):
+                        return parsed_data[key][:20]
+            elif isinstance(parsed_data, list):
+                return parsed_data[:20]
+        
+        elif tool_name in ["CompareBrazilianStates", "GetStateClimatePolicy"]:
+            # Policy comparison data
+            if isinstance(parsed_data, dict):
+                for key in ["comparison_matrix", "policy_areas", "states_compared", "data"]:
+                    if key in parsed_data:
+                        if isinstance(parsed_data[key], list):
+                            return parsed_data[key][:20]
+                        elif isinstance(parsed_data[key], dict):
+                            # Convert dict to list of records
+                            return [{"state": k, **v} for k, v in parsed_data[key].items()][:20]
+            elif isinstance(parsed_data, list):
+                return parsed_data[:20]
         
         else:
             # Generic extraction for other tools
@@ -1245,6 +1284,33 @@ class MultiServerClient:
         if uniq_passages:
             sources_used.extend(uniq_passages.values())
 
+        # NEW: Generate multiple tables from collected tool results (MISSING IN REGULAR FUNCTION!)
+        additional_table_data = []
+        print(f"🔍 REGULAR QUERY DEBUG: tool_results_for_tables contains {len(tool_results_for_tables)} items")
+        
+        if tool_results_for_tables:
+            print(f"🔍 REGULAR QUERY DEBUG: Calling CreateMultipleTablesFromToolResults for regular query")
+            try:
+                multi_table_result = await self.call_tool(
+                    "CreateMultipleTablesFromToolResults", 
+                    {"tool_results": tool_results_for_tables, "query_context": query}, 
+                    "formatter"
+                )
+                
+                if multi_table_result.content and isinstance(multi_table_result.content, list):
+                    first_content = multi_table_result.content[0]
+                    if hasattr(first_content, 'text'):
+                        multi_table_data = json.loads(first_content.text)
+                        additional_table_data = multi_table_data.get("modules", [])
+                        print(f"🔍 REGULAR QUERY DEBUG: Generated {len(additional_table_data)} additional table modules")
+                        
+            except Exception as e:
+                print(f"🔍 REGULAR QUERY DEBUG: Error generating multiple tables: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"🔍 REGULAR QUERY DEBUG: No tool_results_for_tables - skipping multi-table generation")
+
         return {
             "response": final_response_text,
             "sources": sources_used or ["No source captured"],
@@ -1252,7 +1318,8 @@ class MultiServerClient:
             "map_data": map_data,  # Map HTML and metadata
             "visualization_data": visualization_data,  # Structured chart data
             "all_tool_outputs_for_debug": all_tool_outputs_for_debug, # For Feature 2
-            "ai_thought_process": "\n".join(intermediate_ai_text_parts) # Add the collected thoughts
+            "ai_thought_process": "\n".join(intermediate_ai_text_parts), # Add the collected thoughts
+            "additional_table_data": additional_table_data  # NEW: Multi-table data for formatter integration
         }
     
     async def process_query_streaming(self, query: str):
@@ -1605,6 +1672,9 @@ class MultiServerClient:
         visualization_data = None
         all_tool_outputs_for_debug = []
         
+        # NEW: Multi-table data collection for streaming
+        tool_results_for_tables = []
+        
         while True:
             assistant_message_content = []
 
@@ -1766,6 +1836,40 @@ class MultiServerClient:
                         passage_sources.append(dataset_source)
                         print(f"STREAMING DEBUG: Added dataset citation: {dataset_citation['source_name']}")
 
+                    # NEW: Collect data for multi-table generation in streaming
+                    if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                        first_content_block = result.content[0]
+                        if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                            try:
+                                parsed_data = json.loads(first_content_block.text)
+                                
+                                # Check if this tool produces table-ready data
+                                print(f"🔍 DATA COLLECTION DEBUG: Checking {tool_name} for table data...")
+                                
+                                if _tool_produces_table_data(tool_name, parsed_data):
+                                    print(f"🔍 DATA COLLECTION DEBUG: {tool_name} produces table data, extracting...")
+                                    table_data = _extract_table_data(tool_name, parsed_data)
+                                    
+                                    if table_data:
+                                        tool_results_for_tables.append({
+                                            "tool_name": tool_name,
+                                            "data": table_data,
+                                            "args": tool_args
+                                        })
+                                        print(f"🔍 DATA COLLECTION DEBUG: ✅ Collected {len(table_data)} records from {tool_name}")
+                                        print(f"  - Sample record keys: {list(table_data[0].keys()) if table_data else 'none'}")
+                                    else:
+                                        print(f"🔍 DATA COLLECTION DEBUG: ❌ {tool_name} extraction returned empty data")
+                                else:
+                                    print(f"🔍 DATA COLLECTION DEBUG: ❌ {tool_name} does not produce table data")
+                                    print(f"  - Data type: {type(parsed_data)}")
+                                    if isinstance(parsed_data, dict):
+                                        print(f"  - Dict keys: {list(parsed_data.keys())[:5]}...")
+                                        
+                            except json.JSONDecodeError as jde:
+                                print(f"🔍 DATA COLLECTION DEBUG: ❌ {tool_name} - JSON decode error: {jde}")
+                                print(f"  - Raw text (first 100 chars): {first_content_block.text[:100]}...")
+
                     # Attach tool_use to assistant message
                     assistant_message_content.append(content)
                     messages.append({"role": "assistant", "content": assistant_message_content})
@@ -1846,8 +1950,18 @@ class MultiServerClient:
 
         # NEW: Generate multiple tables from collected tool results
         additional_modules = []
+        print(f"🔍 MULTI-TABLE DEBUG: tool_results_for_tables contains {len(tool_results_for_tables)} items")
+        
         if tool_results_for_tables:
-            print(f"DEBUG: Creating {len(tool_results_for_tables)} additional tables from tool results")
+            # Enhanced debug logging for multi-table generation
+            print(f"🔍 MULTI-TABLE DEBUG: Tool results collected:")
+            for i, result in enumerate(tool_results_for_tables):
+                tool_name = result.get("tool_name", "unknown")
+                data_len = len(result.get("data", [])) if isinstance(result.get("data"), list) else "not a list"
+                print(f"  [{i+1}] {tool_name}: {data_len} records")
+            
+            print(f"🔍 MULTI-TABLE DEBUG: Calling CreateMultipleTablesFromToolResults with query context: '{query[:50]}...'")
+            
             try:
                 multi_table_result = await self.call_tool(
                     "CreateMultipleTablesFromToolResults", 
@@ -1855,15 +1969,43 @@ class MultiServerClient:
                     "formatter"
                 )
                 
+                print(f"🔍 MULTI-TABLE DEBUG: CreateMultipleTablesFromToolResults returned:")
+                print(f"  - Result type: {type(multi_table_result)}")
+                print(f"  - Has content: {bool(multi_table_result.content)}")
+                
                 if multi_table_result.content and isinstance(multi_table_result.content, list):
                     first_content = multi_table_result.content[0]
+                    print(f"  - First content type: {type(first_content)}")
+                    print(f"  - Has text attr: {hasattr(first_content, 'text')}")
+                    
                     if hasattr(first_content, 'text'):
-                        multi_table_data = json.loads(first_content.text)
-                        additional_modules = multi_table_data.get("modules", [])
-                        print(f"DEBUG: Generated {len(additional_modules)} additional table modules")
+                        try:
+                            multi_table_data = json.loads(first_content.text)
+                            additional_modules = multi_table_data.get("modules", [])
+                            print(f"🔍 MULTI-TABLE DEBUG: Successfully parsed {len(additional_modules)} additional table modules")
+                            
+                            # Log details of each generated table
+                            for i, module in enumerate(additional_modules):
+                                table_type = module.get("type", "unknown")
+                                heading = module.get("heading", "no heading")
+                                row_count = len(module.get("rows", [])) if "rows" in module else "no rows"
+                                print(f"  [{i+1}] {table_type}: '{heading}' ({row_count} rows)")
+                                
+                        except json.JSONDecodeError as je:
+                            print(f"🔍 MULTI-TABLE DEBUG: JSON decode error: {je}")
+                            print(f"  - Raw text (first 200 chars): {first_content.text[:200]}")
+                    else:
+                        print(f"🔍 MULTI-TABLE DEBUG: First content has no text attribute")
+                else:
+                    print(f"🔍 MULTI-TABLE DEBUG: multi_table_result.content is not a list or is empty")
                         
             except Exception as e:
-                print(f"DEBUG: Error generating multiple tables: {e}")
+                print(f"🔍 MULTI-TABLE DEBUG: Error generating multiple tables: {e}")
+                import traceback
+                print(f"🔍 MULTI-TABLE DEBUG: Full traceback:")
+                traceback.print_exc()
+        else:
+            print(f"🔍 MULTI-TABLE DEBUG: No tool_results_for_tables - skipping multi-table generation")
 
         # Format the final response
         formatter_args = {
@@ -2056,12 +2198,39 @@ async def run_query(q: str):
             traceback.print_exc()
             raise
         
-        # Parse the formatted response
+        # Parse the formatted response and integrate additional tables
         if formatted_result.content and isinstance(formatted_result.content, list):
             first_content = formatted_result.content[0]
             if hasattr(first_content, 'text'):
                 import json
                 formatted_data = json.loads(first_content.text)
+                
+                # NEW: Integrate additional table data from multi-table generation
+                additional_table_data = result.get("additional_table_data", [])
+                if additional_table_data:
+                    print(f"🔍 INTEGRATION DEBUG: Integrating {len(additional_table_data)} additional tables")
+                    
+                    all_modules = formatted_data.get("modules", [])
+                    
+                    # Insert additional tables before the source table
+                    source_table_index = None
+                    for i, module in enumerate(all_modules):
+                        if module.get("type") == "source_table":
+                            source_table_index = i
+                            break
+                    
+                    if source_table_index is not None:
+                        # Insert before source table
+                        all_modules = all_modules[:source_table_index] + additional_table_data + all_modules[source_table_index:]
+                        print(f"🔍 INTEGRATION DEBUG: Inserted tables before source table at index {source_table_index}")
+                    else:
+                        # Append at end
+                        all_modules.extend(additional_table_data)
+                        print(f"🔍 INTEGRATION DEBUG: Appended tables at end (no source table found)")
+                    
+                    formatted_data["modules"] = all_modules
+                    print(f"🔍 INTEGRATION DEBUG: Final module count: {len(all_modules)}")
+                
                 result["formatted_response"] = formatted_data
                 print(f"DEBUG: Successfully set formatted_response with {len(formatted_data.get('modules', []))} modules")
             else:

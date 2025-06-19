@@ -244,9 +244,9 @@ def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, c
     if df_copy.empty:
         return {"error": "No timeline data available for the specified criteria"}
     
-    # Extract years from timestamps
-    df_copy['completion_year'] = pd.to_datetime(df_copy['constructed_before'], unit='s').dt.year
-    df_copy['start_year'] = pd.to_datetime(df_copy['constructed_after'], unit='s').dt.year
+    # Extract years from timestamps (fixed: remove unit='s' for ISO 8601 strings)
+    df_copy['completion_year'] = pd.to_datetime(df_copy['constructed_before'], errors='coerce').dt.year
+    df_copy['start_year'] = pd.to_datetime(df_copy['constructed_after'], errors='coerce').dt.year
     
     # Filter by year range
     df_copy = df_copy[
@@ -321,13 +321,16 @@ def GetSolarFacilityDetails(cluster_id: str) -> Dict[str, Any]:
     
     facility_dict = facility.iloc[0].to_dict()
     
-    # Add derived information
+    # Add derived information (fixed: parse ISO 8601 strings instead of Unix timestamps)
     if not pd.isna(facility_dict.get('constructed_before')) and not pd.isna(facility_dict.get('constructed_after')):
-        start_date = datetime.fromtimestamp(facility_dict['constructed_after'])
-        end_date = datetime.fromtimestamp(facility_dict['constructed_before'])
-        facility_dict['construction_start'] = start_date.strftime('%Y-%m-%d')
-        facility_dict['construction_end'] = end_date.strftime('%Y-%m-%d')
-        facility_dict['construction_duration_days'] = (end_date - start_date).days
+        try:
+            start_date = pd.to_datetime(facility_dict['constructed_after'])
+            end_date = pd.to_datetime(facility_dict['constructed_before'])
+            facility_dict['construction_start'] = start_date.strftime('%Y-%m-%d')
+            facility_dict['construction_end'] = end_date.strftime('%Y-%m-%d')
+            facility_dict['construction_duration_days'] = (end_date - start_date).days
+        except Exception as e:
+            print(f"Warning: Could not parse construction dates: {e}")
     
     return facility_dict
 
@@ -441,7 +444,7 @@ def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") ->
         if timeline_df.empty:
             return {"error": "No timeline data available"}
         
-        timeline_df['completion_year'] = pd.to_datetime(timeline_df['constructed_before'], unit='s').dt.year
+        timeline_df['completion_year'] = pd.to_datetime(timeline_df['constructed_before'], errors='coerce').dt.year
         timeline_data = timeline_df.groupby(['completion_year', 'country']).agg({
             'capacity_mw': 'sum',
             'cluster_id': 'count'
