@@ -56,9 +56,9 @@ def FormatResponseAsModules(
         if chart_module:
             modules.append(chart_module)
     
-    # 3. Add legacy chart data as table or chart
+    # 3. Add legacy chart data as enhanced table
     if chart_data and isinstance(chart_data, list) and chart_data:
-        table_module = _create_table_from_data(chart_data, "Data Summary")
+        table_module = _create_enhanced_table_from_data(chart_data, "Data Summary", "")
         if table_module:
             modules.append(table_module)
     
@@ -389,6 +389,311 @@ def _create_sources_table(sources: List) -> Optional[Dict]:
         "columns": ["#", "Source", "ID/Tool", "Type", "Method", "Description"],
         "rows": rows
     }
+
+def detect_table_type(tool_name: str, data: List[Dict]) -> str:
+    """Automatically determine appropriate table type based on tool and data structure."""
+    
+    # Ranking tables (ordered by numeric value)
+    if tool_name in ["GetGistTopEmitters", "GetLargestSolarFacilities", "GetGistHighRiskCompanies"]:
+        return "ranking_table"
+    
+    # Comparison tables (multiple entities compared)
+    if tool_name in ["CompareBrazilianStates", "GetSolarCapacityByCountry", "GetGistEmissionsBySector"]:
+        return "comparison_table"
+    
+    # Trend tables (time series data)
+    if tool_name in ["GetSolarConstructionTimeline", "GetGistEmissionsTrends", "GetGistBiodiversityTrends"]:
+        return "trend_table"
+        
+    # Geographic tables (location-based)
+    if tool_name in ["GetGistAssetsByCountry", "GetSolarFacilitiesInRadius", "GetGistAssetsMapData"]:
+        return "geographic_table"
+        
+    # Summary tables (aggregated overviews)
+    if tool_name in ["GetGistCompaniesBySector", "GetBrazilianStatesOverview", "GetAvailableDatasets"]:
+        return "summary_table"
+        
+    # Detail tables (specific breakdowns)
+    if tool_name in ["GetGistScope3Emissions", "GetGistCompanyProfile", "GetSolarFacilitiesByCountry"]:
+        return "detail_table"
+        
+    # Default fallback
+    return "table"
+
+def _create_comparison_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+    """Create side-by-side comparison table for entities like countries, sectors, states."""
+    if not data or not isinstance(data, list):
+        return None
+    
+    try:
+        df = pd.DataFrame(data)
+        
+        # Limit rows for readability
+        display_df = df.head(15)
+        
+        return {
+            "type": "comparison_table",
+            "heading": heading,
+            "columns": display_df.columns.tolist(),
+            "rows": display_df.values.tolist(),
+            "metadata": {
+                "tool_used": tool_name,
+                "total_entities": len(df),
+                "displayed_entities": len(display_df)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error creating comparison table: {e}")
+        return None
+
+def _create_ranking_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+    """Create ordered ranking/leaderboard table."""
+    if not data or not isinstance(data, list):
+        return None
+    
+    try:
+        df = pd.DataFrame(data)
+        
+        # Add rank column if not present
+        if 'rank' not in df.columns and 'Rank' not in df.columns:
+            df.insert(0, 'Rank', range(1, len(df) + 1))
+        
+        # Limit to top 20 for rankings
+        display_df = df.head(20)
+        
+        return {
+            "type": "ranking_table", 
+            "heading": heading,
+            "columns": display_df.columns.tolist(),
+            "rows": display_df.values.tolist(),
+            "metadata": {
+                "tool_used": tool_name,
+                "total_entries": len(df),
+                "displayed_entries": len(display_df)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error creating ranking table: {e}")
+        return None
+
+def _create_trend_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+    """Create time series analysis table."""
+    if not data or not isinstance(data, list):
+        return None
+    
+    try:
+        df = pd.DataFrame(data)
+        
+        # Sort by time column if present
+        time_columns = ['year', 'Year', 'date', 'Date', 'reporting_year', 'Reporting_Year']
+        for col in time_columns:
+            if col in df.columns:
+                df = df.sort_values(col)
+                break
+        
+        # Limit to reasonable time range (last 10 years/periods)
+        display_df = df.tail(10)
+        
+        return {
+            "type": "trend_table",
+            "heading": heading,
+            "columns": display_df.columns.tolist(), 
+            "rows": display_df.values.tolist(),
+            "metadata": {
+                "tool_used": tool_name,
+                "total_periods": len(df),
+                "displayed_periods": len(display_df)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error creating trend table: {e}")
+        return None
+
+def _create_summary_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+    """Create aggregated overview table."""
+    if not data or not isinstance(data, list):
+        return None
+    
+    try:
+        df = pd.DataFrame(data)
+        
+        # For summary tables, show more rows (up to 25)
+        display_df = df.head(25)
+        
+        return {
+            "type": "summary_table",
+            "heading": heading,
+            "columns": display_df.columns.tolist(),
+            "rows": display_df.values.tolist(),
+            "metadata": {
+                "tool_used": tool_name,
+                "total_items": len(df),
+                "displayed_items": len(display_df)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error creating summary table: {e}")
+        return None
+
+def _create_detail_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+    """Create detailed breakdown table for specific entity."""
+    if not data or not isinstance(data, list):
+        return None
+    
+    try:
+        df = pd.DataFrame(data)
+        
+        # Detail tables show fewer rows but more columns
+        display_df = df.head(12)
+        
+        return {
+            "type": "detail_table",
+            "heading": heading,
+            "columns": display_df.columns.tolist(),
+            "rows": display_df.values.tolist(),
+            "metadata": {
+                "tool_used": tool_name,
+                "total_records": len(df),
+                "displayed_records": len(display_df)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error creating detail table: {e}")
+        return None
+
+def _create_geographic_table(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+    """Create location-based analysis table."""
+    if not data or not isinstance(data, list):
+        return None
+    
+    try:
+        df = pd.DataFrame(data)
+        
+        # Limit geographic tables to 15 entries for readability
+        display_df = df.head(15)
+        
+        return {
+            "type": "geographic_table", 
+            "heading": heading,
+            "columns": display_df.columns.tolist(),
+            "rows": display_df.values.tolist(),
+            "metadata": {
+                "tool_used": tool_name,
+                "total_locations": len(df),
+                "displayed_locations": len(display_df)
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error creating geographic table: {e}")
+        return None
+
+def _create_enhanced_table_from_data(data: List[Dict], heading: str, tool_name: str = "") -> Optional[Dict]:
+    """Create appropriately typed table based on tool and data structure."""
+    if not data or not isinstance(data, list):
+        return None
+    
+    # Detect appropriate table type
+    table_type = detect_table_type(tool_name, data)
+    
+    # Create table using appropriate specialized function
+    if table_type == "comparison_table":
+        return _create_comparison_table(data, heading, tool_name)
+    elif table_type == "ranking_table":
+        return _create_ranking_table(data, heading, tool_name)
+    elif table_type == "trend_table":
+        return _create_trend_table(data, heading, tool_name)
+    elif table_type == "summary_table":
+        return _create_summary_table(data, heading, tool_name)
+    elif table_type == "detail_table":
+        return _create_detail_table(data, heading, tool_name)
+    elif table_type == "geographic_table":
+        return _create_geographic_table(data, heading, tool_name)
+    else:
+        # Fallback to original function
+        return _create_table_from_data(data, heading)
+
+@mcp.tool()
+def CreateMultipleTablesFromToolResults(
+    tool_results: List[Dict],
+    query_context: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Create multiple enhanced tables from tool results with intelligent table typing.
+    
+    Parameters:
+    - tool_results: List of tool results with tool names and data
+    - query_context: Optional context about the query for better table generation
+    
+    Returns modules with multiple appropriately typed tables.
+    """
+    modules = []
+    
+    # Process each tool result into appropriate table type
+    for result in tool_results:
+        tool_name = result.get("tool_name", "")
+        tool_data = result.get("data", [])
+        
+        if not tool_data or not isinstance(tool_data, list):
+            continue
+            
+        # Generate appropriate heading based on tool name
+        heading = _generate_table_heading(tool_name, tool_data)
+        
+        # Create enhanced table with appropriate type
+        table_module = _create_enhanced_table_from_data(tool_data, heading, tool_name)
+        
+        if table_module:
+            modules.append(table_module)
+    
+    return {"modules": modules}
+
+def _generate_table_heading(tool_name: str, data: List[Dict]) -> str:
+    """Generate appropriate table heading based on tool name and data."""
+    
+    # Custom headings for specific tools
+    headings_map = {
+        "GetGistCompaniesBySector": "Companies by Sector",
+        "GetGistTopEmitters": "Top Emitting Companies",
+        "GetGistHighRiskCompanies": "Highest Environmental Risk Companies",
+        "GetSolarCapacityByCountry": "Solar Capacity by Country",
+        "GetLargestSolarFacilities": "Largest Solar Facilities",
+        "GetSolarConstructionTimeline": "Solar Construction Timeline",
+        "GetBrazilianStatesOverview": "Brazilian State Climate Policies",
+        "CompareBrazilianStates": "State Policy Comparison",
+        "GetGistEmissionsBySector": "Emissions by Sector",
+        "GetGistRiskByCategory": "Environmental Risk Assessment",
+        "GetGistEmissionsTrends": "Emissions Trends Analysis",
+        "GetGistAssetsByCountry": "Assets by Geographic Location",
+        "GetGistScope3Emissions": "Scope 3 Emissions Breakdown",
+        "GetGistCompanyProfile": "Company Sustainability Profile",
+        "GetAvailableDatasets": "Available Datasets",
+        "GetInstitutionsProcessesData": "Climate Governance Institutions",
+        "GetPlansAndPoliciesData": "Climate Plans and Policies"
+    }
+    
+    if tool_name in headings_map:
+        return headings_map[tool_name]
+    
+    # Generate heading from tool name
+    heading = tool_name.replace("Get", "").replace("Gist", "").replace("Solar", "Solar ")
+    heading = " ".join([word.capitalize() for word in heading.split()])
+    
+    # Add context based on data size
+    if data and len(data) > 0:
+        if len(data) == 1:
+            heading += " Details"
+        elif len(data) < 5:
+            heading += " Summary"
+        else:
+            heading += " Analysis"
+    
+    return heading
 
 @mcp.tool()
 def GetFormatterMetadata() -> Dict[str, Any]:

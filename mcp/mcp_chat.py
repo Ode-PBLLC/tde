@@ -630,6 +630,122 @@ async def get_solar_data_direct(client, data_type: str, **kwargs):
         print(f"Error in direct data access: {e}")
         return None
 
+def _tool_produces_table_data(tool_name: str, parsed_data: any) -> bool:
+    """Check if a tool produces data suitable for table generation."""
+    
+    # List of tools that produce tabular data
+    table_tools = [
+        "GetGistCompaniesBySector", "GetGistTopEmitters", "GetGistHighRiskCompanies",
+        "GetSolarCapacityByCountry", "GetLargestSolarFacilities", "GetSolarConstructionTimeline", 
+        "GetBrazilianStatesOverview", "CompareBrazilianStates", "GetGistEmissionsBySector",
+        "GetGistRiskByCategory", "GetGistEmissionsTrends", "GetGistAssetsByCountry",
+        "GetGistScope3Emissions", "GetGistCompanyProfile", "GetAvailableDatasets",
+        "GetInstitutionsProcessesData", "GetPlansAndPoliciesData", "GetGistCompanies",
+        "GetSolarFacilitiesByCountry", "GetGistBiodiversityTrends"
+    ]
+    
+    if tool_name not in table_tools:
+        return False
+    
+    # Check if data structure is suitable for tables
+    if isinstance(parsed_data, dict):
+        # Look for common data patterns
+        if "companies" in parsed_data and isinstance(parsed_data["companies"], list):
+            return True
+        if "sectors" in parsed_data and isinstance(parsed_data["sectors"], dict):
+            return True
+        if "emissions_by_year" in parsed_data and isinstance(parsed_data["emissions_by_year"], list):
+            return True
+        if isinstance(parsed_data, list) and len(parsed_data) > 0:
+            return True
+    elif isinstance(parsed_data, list) and len(parsed_data) > 0:
+        # List of records
+        return True
+    
+    return False
+
+def _extract_table_data(tool_name: str, parsed_data: any) -> List[Dict]:
+    """Extract table-ready data from tool results."""
+    
+    try:
+        # Handle different data structures based on tool type
+        if tool_name == "GetGistCompaniesBySector":
+            # Extract companies from sector groups
+            table_data = []
+            if "sectors" in parsed_data:
+                for sector_code, sector_info in parsed_data["sectors"].items():
+                    for company in sector_info.get("companies", []):
+                        table_data.append({
+                            "sector": sector_code,
+                            "company_code": company.get("company_code", ""),
+                            "company_name": company.get("company_name", ""),
+                            "country": company.get("country", "")
+                        })
+            return table_data[:20]  # Limit for display
+        
+        elif tool_name in ["GetGistTopEmitters", "GetGistHighRiskCompanies", "GetLargestSolarFacilities"]:
+            # Direct list of ranked items
+            if isinstance(parsed_data, dict) and "companies" in parsed_data:
+                return parsed_data["companies"][:20]
+            elif isinstance(parsed_data, list):
+                return parsed_data[:20]
+        
+        elif tool_name == "GetSolarCapacityByCountry":
+            # Solar capacity data by country
+            if isinstance(parsed_data, list):
+                return parsed_data
+            elif isinstance(parsed_data, dict) and "data" in parsed_data:
+                return parsed_data["data"]
+        
+        elif tool_name == "GetGistEmissionsBySector":
+            # Sector emissions data
+            if isinstance(parsed_data, dict) and "sector_analysis" in parsed_data:
+                return parsed_data["sector_analysis"]
+            elif isinstance(parsed_data, list):
+                return parsed_data
+        
+        elif tool_name in ["GetSolarConstructionTimeline", "GetGistEmissionsTrends"]:
+            # Time series data
+            if isinstance(parsed_data, dict):
+                if "timeline_data" in parsed_data:
+                    return parsed_data["timeline_data"]
+                elif "emissions_by_year" in parsed_data:
+                    return parsed_data["emissions_by_year"]
+                elif "data" in parsed_data:
+                    return parsed_data["data"]
+            elif isinstance(parsed_data, list):
+                return parsed_data
+        
+        elif tool_name == "GetBrazilianStatesOverview":
+            # Brazilian states policy data
+            if isinstance(parsed_data, dict) and "states" in parsed_data:
+                return parsed_data["states"]
+            elif isinstance(parsed_data, list):
+                return parsed_data
+        
+        elif tool_name == "GetGistCompanies":
+            # Company directory
+            if isinstance(parsed_data, dict) and "companies" in parsed_data:
+                return parsed_data["companies"][:25]
+            elif isinstance(parsed_data, list):
+                return parsed_data[:25]
+        
+        else:
+            # Generic extraction for other tools
+            if isinstance(parsed_data, list):
+                return parsed_data[:20]
+            elif isinstance(parsed_data, dict):
+                # Look for common list fields
+                for key in ["data", "results", "items", "records", "companies", "facilities"]:
+                    if key in parsed_data and isinstance(parsed_data[key], list):
+                        return parsed_data[key][:20]
+        
+        return []
+        
+    except Exception as e:
+        print(f"Error extracting table data from {tool_name}: {e}")
+        return []
+
 class MultiServerClient:
     def __init__(self):
         self.sessions: Dict[str, ClientSession] = {}
@@ -821,14 +937,41 @@ class MultiServerClient:
             7. **IMPORTANT: If the user asks for maps, locations, or "show me facilities", you MUST call appropriate map data tools (`GetSolarFacilitiesMapData` for solar, `GetGistAssetsMapData` for corporate assets)**
             8. **Combine** policy text + structured data + geographic data + sustainability metrics + governance analysis in comprehensive answers
 
-            Enhanced Data Discovery:
+            Enhanced Data Discovery & Multi-Table Strategy:
             - After getting concept passages, ALWAYS check for connected datasets using `GetAvailableDatasets()`
             - Look for concepts with "HAS_DATASET_ABOUT" relationships in the knowledge graph
             - Proactively surface both textual insights AND structured data when available
-            - Include data tables and visualizations when datasets are connected to the queried concept
-            - For corporate/company queries, automatically check GIST data for sustainability metrics and environmental risk assessments
-            - For governance/policy/Brazilian state queries, automatically check LSE data for institutional frameworks and policy implementation status
-            - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data + governance frameworks
+            - **CRITICAL: Generate multiple data tables for comprehensive analysis. When users ask broad questions, call multiple related tools to create a rich data dashboard.**
+            
+            Multi-Table Response Patterns (Use these to enhance your responses):
+            
+            **Corporate Environmental Analysis Queries** (keywords: companies, environmental, risks, emissions, sustainability):
+            → Call: GetGistCompanies + GetGistCompanyRisks + GetGistTopEmitters + GetGistEmissionsBySector + GetPassagesMentioningConcept
+            → Result: 4-5 tables showing company directory, risk assessment, emissions rankings, sector analysis, plus policy context
+            
+            **Geographic Analysis Queries** (keywords: country, countries, region, location, Brazil, India):
+            → Call: GetSolarCapacityByCountry + GetGistAssetsByCountry + GetBrazilianStatesOverview + GetSolarConstructionTimeline + GetSolarFacilitiesMapData
+            → Result: 4-5 tables showing capacity rankings, asset distribution, policy context, development trends, plus interactive map
+            
+            **Sector Analysis Queries** (keywords: sector, industry, oil, gas, renewable, solar):
+            → Call: GetGistCompaniesBySector + GetGistEmissionsBySector + GetSolarCapacityByCountry + GetGistTopEmitters + related passages
+            → Result: 4-5 tables showing sector overview, emissions comparison, capacity data, company rankings, plus policy context
+            
+            **Policy Analysis Queries** (keywords: policy, governance, regulation, NDC, states):
+            → Call: GetBrazilianStatesOverview + CompareBrazilianStates + GetInstitutionsProcessesData + GetPlansAndPoliciesData + GetPassagesMentioningConcept
+            → Result: 4-5 tables showing state overview, policy comparisons, institutions, plans, plus supporting documents
+            
+            **Trend Analysis Queries** (keywords: trends, over time, since, growth, timeline):
+            → Call: GetSolarConstructionTimeline + GetGistEmissionsTrends + GetSolarCapacityByCountry + GetGistBiodiversityTrends + related data
+            → Result: 4-5 tables showing construction trends, emissions evolution, current capacity, biodiversity trends, plus context
+            
+            **Implementation Guidelines:**
+            - For ANY substantive query, aim to call 4-6 data tools to create multiple complementary tables
+            - Always include both quantitative data tools AND knowledge graph passages for complete analysis
+            - When calling GIST tools, also call LSE tools for policy context when relevant
+            - When calling Solar tools, also call GIST tools if companies/environmental aspects are relevant
+            - Combine different table types: rankings + comparisons + trends + summaries for comprehensive insights
+            - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data + governance frameworks + trend analysis
 
             Visualization Capabilities:
             - Interactive maps and charts may be automatically generated for certain datasets
@@ -866,6 +1009,10 @@ class MultiServerClient:
         map_data = None             # To store map HTML and metadata
         visualization_data = None   # To store structured visualization data
         all_tool_outputs_for_debug = [] # For Feature 2
+        
+        # NEW: Multi-table data collection
+        table_ready_data = []       # List of {tool_name, data} for table generation
+        tool_results_for_tables = [] # Structured tool results for enhanced table creation
         
         intermediate_ai_text_parts = [] # Collect all AI text parts during the process
         last_assistant_text = "" # Store the last piece of text from the assistant
@@ -1005,6 +1152,28 @@ class MultiServerClient:
                         print(f"DEBUG: No dataset citation created for {tool_name}")
                     
                     print(f"DEBUG: Total sources now: {len(passage_sources)} (passages + datasets)")
+
+                    # NEW: Collect data for multi-table generation
+                    if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                        first_content_block = result.content[0]
+                        if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                            try:
+                                parsed_data = json.loads(first_content_block.text)
+                                
+                                # Check if this tool produces table-ready data
+                                if _tool_produces_table_data(tool_name, parsed_data):
+                                    table_data = _extract_table_data(tool_name, parsed_data)
+                                    if table_data:
+                                        tool_results_for_tables.append({
+                                            "tool_name": tool_name,
+                                            "data": table_data,
+                                            "args": tool_args
+                                        })
+                                        print(f"DEBUG: Collected table data from {tool_name}: {len(table_data)} records")
+                                        
+                            except json.JSONDecodeError:
+                                # Not JSON data, skip table collection
+                                pass
 
                     # Attach tool_use to assistant message
                     assistant_message_content.append(content)
@@ -1675,6 +1844,27 @@ class MultiServerClient:
             sources_used.extend(uniq_passages.values())
             print(f"DEBUG STREAMING: Sources used now contains {len(sources_used)} items")
 
+        # NEW: Generate multiple tables from collected tool results
+        additional_modules = []
+        if tool_results_for_tables:
+            print(f"DEBUG: Creating {len(tool_results_for_tables)} additional tables from tool results")
+            try:
+                multi_table_result = await self.call_tool(
+                    "CreateMultipleTablesFromToolResults", 
+                    {"tool_results": tool_results_for_tables, "query_context": query}, 
+                    "formatter"
+                )
+                
+                if multi_table_result.content and isinstance(multi_table_result.content, list):
+                    first_content = multi_table_result.content[0]
+                    if hasattr(first_content, 'text'):
+                        multi_table_data = json.loads(first_content.text)
+                        additional_modules = multi_table_data.get("modules", [])
+                        print(f"DEBUG: Generated {len(additional_modules)} additional table modules")
+                        
+            except Exception as e:
+                print(f"DEBUG: Error generating multiple tables: {e}")
+
         # Format the final response
         formatter_args = {
             "response_text": final_response_text,
@@ -1698,17 +1888,36 @@ class MultiServerClient:
                     import json
                     formatted_data = json.loads(first_content.text)
                     
-                    # Stream the complete response
+                    # Merge additional table modules with main response
+                    all_modules = formatted_data.get("modules", [])
+                    if additional_modules:
+                        # Insert additional tables before the source table
+                        source_table_index = None
+                        for i, module in enumerate(all_modules):
+                            if module.get("type") == "source_table":
+                                source_table_index = i
+                                break
+                        
+                        if source_table_index is not None:
+                            # Insert before source table
+                            all_modules = all_modules[:source_table_index] + additional_modules + all_modules[source_table_index:]
+                        else:
+                            # Append at end
+                            all_modules.extend(additional_modules)
+                    
+                    # Stream the complete response with enhanced tables
                     yield {
                         "type": "complete",
                         "data": {
                             "query": query,
-                            "modules": formatted_data.get("modules", []),
+                            "modules": all_modules,
                             "metadata": {
-                                "modules_count": len(formatted_data.get("modules", [])),
-                                "has_maps": any(m.get("type") == "map" for m in formatted_data.get("modules", [])),
-                                "has_charts": any(m.get("type") == "chart" for m in formatted_data.get("modules", [])),
-                                "has_tables": any(m.get("type") == "table" for m in formatted_data.get("modules", []))
+                                "modules_count": len(all_modules),
+                                "has_maps": any(m.get("type") == "map" for m in all_modules),
+                                "has_charts": any(m.get("type") == "chart" for m in all_modules),
+                                "has_tables": any(m.get("type") in ["table", "source_table", "comparison_table", "ranking_table", "trend_table", "summary_table", "detail_table", "geographic_table"] for m in all_modules),
+                                "table_types": list(set(m.get("type") for m in all_modules if m.get("type", "").endswith("_table"))),
+                                "enhanced_tables_count": len(additional_modules)
                             }
                         }
                     }
