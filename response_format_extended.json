@@ -87,6 +87,16 @@
                 ["BR_FAC_002", "1200.5", "Minas Gerais", "-19.92, -43.94"],
                 ["BR_FAC_003", "890.3", "São Paulo", "-23.55, -46.63"]
             ]
+        },
+        {
+            "type": "table",
+            "heading": "Sources",
+            "columns": ["#", "Document ID", "Passage ID", "Text Snippet"],
+            "rows": [
+                ["1", "CCLW.executive.4934.1571", "text_block_42", "Brazil's National Energy Plan 2030 establishes targets for renewable energy..."],
+                ["2", "UNFCCC.party.492.0", "text_block_156", "The Brazilian government has implemented feed-in tariffs for solar energy..."],
+                ["3", "CPR.document.i00001247.n0000", "text_block_89", "Solar capacity in Brazil increased from 2 GW in 2018 to over 26 GW by 2024..."]
+            ]
         }
     ]
 }

@@ -1,15 +1,15 @@
-# Climate Policy API System
+# Climate Policy Radar API
 
-A comprehensive AI-powered API system that combines knowledge graphs, structured datasets, and intelligent reasoning to provide comprehensive responses about climate policy topics. The system automatically discovers and surfaces relevant data, policy documents, and visualizations based on user queries.
+AI-powered API that provides comprehensive climate policy analysis with real-time data discovery, interactive visualizations, and intelligent reasoning.
 
 ## 🌟 Key Features
 
-- **🤖 Intelligent Query Processing**: Uses Claude Sonnet 4 for sophisticated reasoning and synthesis
-- **📊 Automatic Dataset Discovery**: Proactively finds and surfaces relevant structured data
-- **🗺️ Interactive Visualizations**: Generates maps, charts, and tables dynamically
-- **🔗 Multi-Source Integration**: Combines policy documents, geographic data, and structured datasets
-- **⚡ Real-Time Responses**: Fast API responses with comprehensive analysis
-- **🔍 Debug-Friendly**: Complete transparency into AI reasoning and data processing
+- **🤖 Intelligent Analysis**: Claude Sonnet 4 powered reasoning and synthesis
+- **📊 Automatic Data Discovery**: Finds and surfaces relevant datasets automatically  
+- **🗺️ Interactive Visualizations**: Real-time maps, charts, and tables
+- **⚡ Streaming Responses**: Live progress indicators and results
+- **🔗 Multi-Source Integration**: Policy documents + structured datasets + geographic data
+- **📱 Frontend Ready**: JSON modules optimized for web applications
 
 ## 🚀 Quick Start
 
@@ -50,25 +50,22 @@ The API will be available at `http://localhost:8099`
 # Health check
 curl http://localhost:8099/health
 
-# Query example
-curl -X POST http://localhost:8099/query \
+# Stream a query (recommended)
+curl -X POST http://localhost:8099/query/stream \
   -H "Content-Type: application/json" \
-  -d '{"query": "solar energy in Brazil"}'
+  -d '{"query": "Analyze Brazilian oil companies environmental risks"}'
 
-# Debug example  
-curl -X POST http://localhost:8099/thorough-response \
-  -H "Content-Type: application/json" \
-  -d '{"query": "extreme weather data"}'
+# Get featured queries for frontend gallery
+curl http://localhost:8099/featured-queries
 ```
 
 ## 📚 Documentation
 
 | Document | Description |
 |----------|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and component overview |
-| [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) | Development setup and workflows |
-| [API_REFERENCE.md](API_REFERENCE.md) | Complete API documentation with examples |
-| [EXTENSION_EXAMPLES.md](EXTENSION_EXAMPLES.md) | Practical examples for extending the system |
+| **[API_GUIDE.md](API_GUIDE.md)** | Complete developer guide with examples and integration code |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Local setup, production deployment, and maintenance |
+| `static/README.md` | Content management for featured queries |
 
 ## 🏗️ System Architecture
 
@@ -154,36 +151,22 @@ curl -X POST http://localhost:8099/thorough-response \
 
 ## 🔌 API Endpoints
 
-### Main Endpoints
-
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/query` | POST | Structured responses for frontend |
-| `/thorough-response` | POST | Complete raw MCP data for debugging |
+| `/query/stream` | POST | **Primary endpoint** - Streaming analysis with progress |
+| `/query` | POST | Synchronous analysis (simple integration) |
+| `/featured-queries` | GET | Curated queries for frontend gallery |
 | `/health` | GET | System health check |
-| `/example-response` | GET | Sample response format |
-| `/static/maps/{file}` | GET | Generated GeoJSON map files |
 
-### Response Format
+### Response Modules
 
-```json
-{
-  "query": "user query",
-  "modules": [
-    {
-      "type": "text|map|table|chart",
-      "heading": "Module Title",
-      "data": "Module-specific content"
-    }
-  ],
-  "metadata": {
-    "modules_count": 3,
-    "has_maps": true,
-    "has_charts": false,
-    "has_tables": true
-  }
-}
-```
+The API returns structured **modules** ready for frontend rendering:
+
+- **Text**: Analysis content with inline citations `^1,2^`
+- **Charts**: Chart.js compatible data (bar, line, pie)  
+- **Tables**: Structured data with columns and rows
+- **Maps**: GeoJSON with interactive markers
+- **Citations**: References table (always last)
 
 ## 🌐 Production Deployment
 
@@ -212,76 +195,25 @@ The system is currently deployed at:
 - No user data persistence
 - Input validation and error sanitization
 
-## 🛠️ Extending the System
-
-### Adding New Data Sources
-
-1. **Create MCP Server**: Implement new data access tools
-2. **Link to Knowledge Graph**: Connect datasets to relevant concepts  
-3. **Register in Orchestration**: Add server to query processing
-4. **Update System Prompt**: Include new tools in AI instructions
-
-### Example: Adding Climate Finance Data
-
-```python
-# 1. Create mcp/climate_finance_server.py
-@app.tool()
-def get_climate_finance_projects(country: str) -> list[TextContent]:
-    # Your implementation here
-    pass
-
-# 2. Link in cpr_kg_server.py
-G.add_edge("green finance", "CLIMATE_FINANCE_DATASET", type="HAS_DATASET_ABOUT")
-
-# 3. Register in mcp_chat.py
-await client.connect_to_server("finance", "mcp/climate_finance_server.py")
-```
-
-See [EXTENSION_EXAMPLES.md](EXTENSION_EXAMPLES.md) for detailed implementation examples.
-
 ## 🔍 Key Innovation: Automatic Dataset Discovery
 
-Unlike traditional APIs that require explicit data requests, this system **automatically discovers and surfaces relevant datasets** for any concept:
+Unlike traditional APIs that require explicit data requests, this system **automatically discovers and surfaces relevant datasets**:
 
-**Traditional Approach**:
-```
-Query: "extreme weather" → Only text response
-Query: "extreme weather data" → Text + data
-```
+**Traditional**: `"extreme weather"` → Only text response  
+**Our System**: `"extreme weather"` → Text + data + visualizations automatically
 
-**Our Approach**:
-```
-Query: "extreme weather" → Automatically includes text + data + visualizations
-```
-
-This is achieved through:
-1. Enhanced AI system prompt mandating dataset discovery
-2. Knowledge graph relationships linking concepts to datasets
-3. Automatic tool calling based on available connections
+Achieved through AI reasoning + knowledge graph relationships + automatic tool discovery.
 
 ## 🧪 Development & Testing
 
-### Local Development
 ```bash
 # Run with auto-reload
 uvicorn api_server:app --reload --host 0.0.0.0 --port 8099
 
-# Test endpoints
-python test_integration.py
-
-# Debug MCP servers individually
-python mcp/cpr_kg_server.py
-```
-
-### Adding Tests
-```python
-# tests/test_new_feature.py
-import pytest
-from api_server import app
-
-def test_new_endpoint():
-    # Your test implementation
-    pass
+# Test streaming endpoint
+curl -X POST http://localhost:8099/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query": "test"}'
 ```
 
 ## 📊 Data Sources
@@ -316,10 +248,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For questions, issues, or contributions:
 
-- **Issues**: Create a GitHub issue
-- **Documentation**: Check the `/docs` directory
-- **Development**: See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)
-- **API Reference**: See [API_REFERENCE.md](API_REFERENCE.md)
+- **Issues**: Create a GitHub issue  
+- **API Integration**: See [API_GUIDE.md](API_GUIDE.md)
+- **Deployment**: See [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Content Management**: See `static/README.md`
 
 ## 🎯 Future Roadmap
 

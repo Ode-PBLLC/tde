@@ -1096,10 +1096,34 @@ class MultiServerClient:
             - Combine different table types: rankings + comparisons + trends + summaries for comprehensive insights
             - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data + governance frameworks + trend analysis
 
-            Visualization Capabilities:
-            - Interactive maps and charts may be automatically generated for certain datasets
-            - If visualizations are available for the current query, this will be indicated in the context
-            - Only reference visualizations if explicitly mentioned in the tool results or context
+            Visualization and Chart Generation Guidelines:
+            
+            **CRITICAL FOR CHART GENERATION**: When users ask for comparisons, rankings, trends, or data that could be visualized:
+            1. **ALWAYS prioritize visualization tools** over regular data tools when appropriate:
+               - For solar data: Use `GetSolarCapacityVisualizationData` instead of basic data tools
+               - For GIST data: Use `GetGistVisualizationData` with appropriate viz_type:
+                 * `emissions_by_sector` - for sector emissions comparisons
+                 * `risk_distribution` - for environmental risk analysis  
+                 * `biodiversity_trends` - for company biodiversity impacts over time
+                 * `scope3_breakdown` - for detailed emissions category breakdowns
+               - For LSE data: Use `GetLSEVisualizationData` for policy analysis charts
+            
+            2. **Auto-chart generation**: Even regular data tools can generate charts automatically from:
+               - Country/region comparison data (→ bar charts)
+               - Time series data (→ line charts) 
+               - Sector/category breakdowns (→ bar/pie charts)
+               - Ranking/top performers data (→ bar charts)
+               - Risk distribution data (→ bar charts)
+            
+            3. **Chart query indicators**: Watch for these user requests that should trigger visualization tools:
+               - "compare", "show me", "chart", "graph", "visualize", "plot"
+               - "by country", "by sector", "over time", "trends", "distribution"
+               - "top", "largest", "highest", "ranking", "breakdown"
+               - "emissions by", "capacity by", "risk by"
+            
+            4. **Interactive maps**: Automatically generated for facility/asset location queries
+            
+            The system will now automatically generate charts from most data responses, ensuring users get rich visual content.
 
             Output Format:
             - After completing all necessary tool calls, synthesize the gathered information into a single, comprehensive response to the user. 
@@ -1210,8 +1234,8 @@ class MultiServerClient:
                     
                     # Map generation removed - now done purely client-side
                     
-                    # Parse structured visualization data
-                    elif tool_name == "GetSolarCapacityVisualizationData":
+                    # Parse structured visualization data from multiple tools
+                    elif tool_name in ["GetSolarCapacityVisualizationData", "GetGistVisualizationData", "GetLSEVisualizationData"]:
                         if result.content and isinstance(result.content, list) and len(result.content) > 0:
                             first_content_block = result.content[0]
                             if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):

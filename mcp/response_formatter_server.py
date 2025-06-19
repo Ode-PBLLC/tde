@@ -158,6 +158,13 @@ def FormatResponseAsModules(
     """
     Convert a raw response into structured modules format for front-end with inline citations.
     
+    Generates 5 core module types:
+    - text: Text content with inline citations
+    - chart: Chart.js compatible visualizations (bar, line, pie)
+    - table: Standard data tables
+    - map: GeoJSON maps with interactive markers  
+    - numbered_citation_table: References/sources (always last)
+    
     Parameters:
     - response_text: Main text response from Claude
     - chart_data: Legacy chart data (list of dicts)
