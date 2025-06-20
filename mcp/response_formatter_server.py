@@ -1014,7 +1014,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
     
     try:
         # Convert to DataFrame first
-        df = pd.DataFrame(facilities[:500])  # Limit for performance
+        df = pd.DataFrame(facilities)
         
         # Create GeoPandas DataFrame with Point geometries
         geometry = [Point(row['longitude'], row['latitude']) for _, row in df.iterrows()]

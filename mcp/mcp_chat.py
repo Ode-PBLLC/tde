@@ -672,9 +672,8 @@ async def get_solar_data_direct(client, data_type: str, **kwargs):
             if country_filter:
                 df = df[df['country'].str.lower() == country_filter.lower()]
             
-            # Limit to 500 facilities for performance
-            if len(df) > 500:
-                df = df.nlargest(500, 'capacity_mw')
+            # Sort by capacity (largest first)
+            df = df.sort_values('capacity_mw', ascending=False)
                 
             return {
                 "type": "map",
@@ -2457,7 +2456,7 @@ async def main_streamlit():
                         # Color mapping
                         colors = {'brazil': 'green', 'india': 'orange', 'south africa': 'red', 'vietnam': 'blue'}
                         
-                        for facility in facilities[:500]:  # Limit for performance
+                        for facility in facilities:
                             color = colors.get(facility['country'].lower(), 'gray')
                             capacity = facility['capacity_mw']
                             size = 5 + min(capacity / 100, 20)  # Scale marker size
