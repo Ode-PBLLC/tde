@@ -67,14 +67,14 @@ def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit:
     return summary
 
 @mcp.tool()
-def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = None) -> Dict[str, Any]:
+def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 1000) -> Dict[str, Any]:
     """
     Get solar facilities data specifically for map visualization with GeoJSON format.
-    Returns actual facility records with coordinates for mapping.
+    Returns summary statistics for LLM and generates GeoJSON file for frontend.
     
     Args:
         country: Filter by specific country (optional)
-        limit: Maximum number of facilities to return (optional, no limit by default)
+        limit: Maximum number of facilities to return for map display (default 1000)
     """
     if facilities_df.empty:
         return {"error": "No facilities data available"}
@@ -87,7 +87,60 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = None) 
     else:
         filtered = facilities_df.copy()
     
-    # Sort by capacity (largest first) and limit results if specified
+    # Get summary statistics for all facilities (not limited)
+    total_facilities = len(filtered)
+    total_capacity = filtered['capacity_mw'].sum()
+    countries = list(filtered['country'].unique())
+    
+    # Sort by capacity (largest first) and limit for map display
+    filtered_for_map = filtered.sort_values('capacity_mw', ascending=False)
+    if limit is not None:
+        filtered_for_map = filtered_for_map.head(limit)
+    
+    # Return summary data (lightweight for LLM)
+    return {
+        "type": "map_data_summary",
+        "summary": {
+            "total_facilities": total_facilities,
+            "total_capacity_mw": float(total_capacity),
+            "countries": countries,
+            "facilities_shown_on_map": len(filtered_for_map),
+            "largest_facilities_shown": True if limit else False,
+            "capacity_range": {
+                "min": float(filtered['capacity_mw'].min()),
+                "max": float(filtered['capacity_mw'].max()),
+                "avg": float(filtered['capacity_mw'].mean())
+            }
+        },
+        "metadata": {
+            "data_source": "TZ-SAM Q1 2025",
+            "geojson_available": True,
+            "truncated_for_display": total_facilities > (limit or 0)
+        }
+    }
+
+@mcp.tool()
+def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 1000) -> Dict[str, Any]:
+    """
+    Get solar facilities data for GeoJSON generation (internal use).
+    Returns actual facility records with coordinates for mapping.
+    
+    Args:
+        country: Filter by specific country (optional)
+        limit: Maximum number of facilities to return (default 1000)
+    """
+    if facilities_df.empty:
+        return {"error": "No facilities data available"}
+    
+    # Filter by country if specified
+    if country:
+        filtered = facilities_df[facilities_df['country'].str.lower() == country.lower()]
+        if filtered.empty:
+            return {"error": f"No facilities found for {country}"}
+    else:
+        filtered = facilities_df.copy()
+    
+    # Sort by capacity (largest first) and limit results
     filtered = filtered.sort_values('capacity_mw', ascending=False)
     if limit is not None:
         filtered = filtered.head(limit)
@@ -101,7 +154,8 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = None) 
             "latitude": float(facility['latitude']),
             "longitude": float(facility['longitude']),
             "country": facility['country'],
-            "completion_year": facility.get('completion_year', 'Unknown')
+            "completion_year": facility.get('completion_year', 'Unknown'),
+            "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}")
         })
     
     return {

@@ -1002,8 +1002,18 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
     if map_data:
         print(f"FORMATTER DEBUG: map_data keys = {list(map_data.keys())}")
     
-    facilities = map_data.get("data", [])
-    metadata = map_data.get("metadata", {})
+    # Handle new map data summary format
+    if map_data.get("type") == "map_data_summary":
+        print("FORMATTER DEBUG: Detected map_data_summary, fetching actual facility data")
+        # Fetch actual facility data for GeoJSON generation
+        from mcp.solar_facilities_server import GetSolarFacilitiesForGeoJSON
+        facilities_data = GetSolarFacilitiesForGeoJSON()
+        facilities = facilities_data.get("data", [])
+        metadata = facilities_data.get("metadata", {})
+    else:
+        # Legacy format
+        facilities = map_data.get("data", [])
+        metadata = map_data.get("metadata", {})
     
     print(f"FORMATTER DEBUG: facilities count = {len(facilities)}")
     print(f"FORMATTER DEBUG: metadata = {metadata}")
