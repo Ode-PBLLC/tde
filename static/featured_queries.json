@@ -25,12 +25,12 @@
       "description": "Cross-country comparison of climate policy frameworks and implementation progress"
     },
     {
-      "id": "financial-sector-water-stress",
-      "title": "Water Stress Impacts on Financial Sector",
-      "query": "Analyze water stress exposure for major Brazilian banks and financial institutions. Show asset-level risk data, percentage of assets at risk, and how water stress correlates with financial performance.",
-      "image": "/static/images/financial-water-stress.jpg",
-      "category": "Financial Risk",
-      "description": "Water stress risk assessment for banking and financial services sector"
+      "id": "brazil-renewable-growth",
+      "title": "Brazil's Renewable Energy Growth Trends",
+      "query": "Show renewable energy capacity growth in Brazil from 2020 to present. Include solar and wind installations with charts showing year-over-year growth rates.",
+      "image": "/static/images/brazil-renewable-growth.jpg",
+      "category": "Renewable Energy",
+      "description": "Tracking Brazil's renewable energy expansion with growth metrics"
     },
     {
       "id": "scope3-emissions-trends",
@@ -47,11 +47,51 @@
       "image": "/static/images/brazil-renewable-policy.jpg",
       "category": "Policy Analysis",
       "description": "Deep dive into Brazil's renewable energy policy instruments and their effectiveness"
+    },
+    {
+      "id": "mining-climate-risks-africa",
+      "title": "Mining Sector Climate Risks in Africa",
+      "query": "Analyze climate risks for mining operations across African countries. Show flood risks, water stress impacts on major mining sites, and how climate adaptation policies address extractive industries in South Africa, DRC, and Ghana.",
+      "image": "/static/images/mining-climate-africa.jpg",
+      "category": "Environmental Risk",
+      "description": "Climate vulnerability assessment for African mining operations"
+    },
+    {
+      "id": "deforestation-policy-amazon",
+      "title": "Deforestation Policy Effectiveness in Amazon Countries",
+      "query": "Compare deforestation policies and their effectiveness across Amazon basin countries. Include Brazil's Legal Amazon monitoring, Peru's forest management policies, and Colombia's REDD+ programs. Show policy implementation timelines and forest cover change data.",
+      "image": "/static/images/amazon-deforestation-policy.jpg",
+      "category": "Policy Analysis",
+      "description": "Cross-country analysis of Amazon deforestation prevention policies"
+    },
+    {
+      "id": "carbon-pricing-global",
+      "title": "Global Carbon Pricing Mechanisms Comparison",
+      "query": "Compare carbon pricing mechanisms worldwide including carbon taxes, emissions trading systems, and carbon credits. Focus on price levels, coverage sectors, and revenue usage in EU ETS, China's national ETS, and carbon tax systems in South Africa and Colombia.",
+      "image": "/static/images/carbon-pricing-global.jpg",
+      "category": "Policy Analysis",
+      "description": "Comprehensive overview of carbon pricing instruments globally"
+    },
+    {
+      "id": "ev-policy-emerging-markets",
+      "title": "Electric Vehicle Policy Adoption in Emerging Markets",
+      "query": "Analyze electric vehicle adoption policies in emerging markets. Compare incentive structures, charging infrastructure plans, and manufacturing policies in India, Brazil, South Africa, and Indonesia. Include policy timelines and market penetration data.",
+      "image": "/static/images/ev-policy-emerging.jpg",
+      "category": "Policy Analysis",
+      "description": "EV policy frameworks and adoption strategies in emerging economies"
     }
   ],
   "metadata": {
     "last_updated": "2024-01-15T10:00:00Z",
-    "total_queries": 6,
-    "categories": ["Environmental Risk", "Renewable Energy", "Policy Analysis", "Financial Risk", "Emissions Analysis"]
+    "total_queries": 10,
+    "categories": [
+      "Environmental Risk",
+      "Renewable Energy",
+      "Policy Analysis",
+      "Financial Risk",
+      "Emissions Analysis"
+    ],
+    "cache_generated_at": "2025-06-24T00:34:17.433382",
+    "cached_queries": 10
   }
 }

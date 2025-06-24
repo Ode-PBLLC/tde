@@ -21,8 +21,8 @@ from mcp_chat import run_query_structured, run_query, run_query_streaming
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
-# Mount static files for GeoJSON serving
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files for GeoJSON serving (commented out to use dynamic endpoint)
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Enable CORS for front-end access
 app.add_middleware(
@@ -167,9 +167,12 @@ async def health_check():
     return {"status": "healthy", "message": "Climate Policy Radar API is running"}
 
 @app.get("/featured-queries")
-async def get_featured_queries():
+async def get_featured_queries(include_cached: bool = False):
     """
     Returns curated list of featured queries with images for frontend gallery.
+    
+    Args:
+        include_cached: If True, includes cached API responses for each query
     
     This endpoint serves as a pseudo-CMS for maintaining featured content
     without requiring database changes. Update static/featured_queries.json
@@ -197,6 +200,23 @@ async def get_featured_queries():
         if "featured_queries" not in data:
             raise ValueError("Invalid featured queries file structure")
         
+        # If include_cached is True, load cached responses
+        if include_cached:
+            cache_dir = os.path.join(os.path.dirname(__file__), "static", "cache")
+            for query in data["featured_queries"]:
+                query_id = query.get("id")
+                if query_id:
+                    cache_file = os.path.join(cache_dir, f"{query_id}.json")
+                    if os.path.exists(cache_file):
+                        try:
+                            with open(cache_file, 'r', encoding='utf-8') as cf:
+                                cached_data = json.load(cf)
+                                query["cached_response"] = cached_data.get("response")
+                                query["cached_at"] = cached_data.get("cached_at")
+                        except Exception as e:
+                            # Log error but continue
+                            query["cache_error"] = str(e)
+        
         # Add timestamp for caching
         if "metadata" not in data:
             data["metadata"] = {}
@@ -208,6 +228,35 @@ async def get_featured_queries():
         raise HTTPException(status_code=500, detail=f"Invalid JSON in featured queries file: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load featured queries: {str(e)}")
+
+@app.get("/featured-queries/{query_id}/cached")
+async def get_cached_query(query_id: str):
+    """
+    Get cached response for a specific featured query by ID.
+    
+    Args:
+        query_id: The ID of the featured query
+        
+    Returns:
+        The cached API response if available, or 404 if not found
+    """
+    try:
+        cache_file = os.path.join(os.path.dirname(__file__), "static", "cache", f"{query_id}.json")
+        
+        if not os.path.exists(cache_file):
+            raise HTTPException(status_code=404, detail=f"No cached response found for query ID: {query_id}")
+        
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            cached_data = json.load(f)
+        
+        return cached_data
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid cached data format: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load cached query: {str(e)}")
 
 @app.get("/example-response")
 async def get_example_response():
@@ -410,6 +459,65 @@ async def stream_query(request: StreamQueryRequest):
             "Content-Type": "text/event-stream",
         }
     )
+
+@app.get("/static/maps/{filename}")
+async def get_geojson(filename: str):
+    """
+    Generate GeoJSON data dynamically for solar facilities.
+    """
+    try:
+        # Read the CSV file directly
+        import pandas as pd
+        csv_path = os.path.join(os.path.dirname(__file__), "mcp", "solar_facilities_demo.csv")
+        
+        if not os.path.exists(csv_path):
+            raise HTTPException(status_code=404, detail="Solar facilities data not found")
+        
+        # Read facilities data
+        df = pd.read_csv(csv_path)
+        
+        # Sort by capacity and limit to top 1000
+        df = df.sort_values('capacity_mw', ascending=False).head(1000)
+        
+        # Convert to list of facilities
+        facilities = df.to_dict('records')
+        
+        # Convert to GeoJSON format
+        features = []
+        for facility in facilities:
+            feature = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [facility["longitude"], facility["latitude"]]
+                },
+                "properties": {
+                    "name": facility.get("name", f"Facility {facility.get('cluster_id', '')}"),
+                    "country": facility["country"],
+                    "capacity_mw": facility["capacity_mw"],
+                    "technology": "Solar PV",
+                    "cluster_id": facility.get("cluster_id", ""),
+                    "completion_year": facility.get("completion_year", "Unknown"),
+                    "marker_color": {
+                        'brazil': '#4CAF50',
+                        'india': '#FF9800', 
+                        'south africa': '#F44336',
+                        'vietnam': '#2196F3'
+                    }.get(facility["country"].lower(), '#9E9E9E')
+                }
+            }
+            features.append(feature)
+        
+        geojson = {
+            "type": "FeatureCollection",
+            "features": features
+        }
+        
+        return geojson
+        
+    except Exception as e:
+        print(f"Error generating GeoJSON: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating GeoJSON: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -81,6 +81,44 @@ st.markdown("""
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
+/* Gallery card */
+.gallery-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+}
+
+.gallery-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.gallery-card h4 {
+    color: #1a1a1a;
+    margin-bottom: 10px;
+}
+
+.gallery-card p {
+    color: #4a4a4a;
+    font-size: 0.9em;
+    flex-grow: 1;
+}
+
+.gallery-card .category-badge {
+    background-color: #1f77b4;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    display: inline-block;
+}
+
 /* Status indicators */
 .status-thinking {
     color: #ff6600;
@@ -121,7 +159,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # API Configuration
-API_BASE_URL = "http://54.146.227.119:8099"
+API_BASE_URL = "http://localhost:8099"
 
 def format_text_with_citations(text: str) -> str:
     """Convert citation markers to HTML superscript links."""
@@ -404,17 +442,20 @@ def display_module(module: Dict[str, Any], module_index: int):
         st.info(f"Module type: {module_type}")
         st.json(module)
 
-async def fetch_featured_queries():
+async def fetch_featured_queries(include_cached=True):
     """Fetch featured queries from the API."""
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{API_BASE_URL}/featured-queries") as response:
+            url = f"{API_BASE_URL}/featured-queries"
+            if include_cached:
+                url += "?include_cached=true"
+            async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return data.get("featured_queries", [])
+                    return data
     except Exception as e:
         st.error(f"Error fetching featured queries: {e}")
-    return []
+    return {"featured_queries": [], "metadata": {}}
 
 async def run_query(query: str, include_thinking: bool = False):
     """Run a query against the API."""
@@ -640,42 +681,176 @@ def main():
     
     with tab2:
         st.markdown("### 🌟 Featured Queries")
-        st.markdown("Click on any featured query to run it")
+        st.markdown("Explore our curated collection of example queries showcasing the API's capabilities")
+        
+        # Add cache status indicator and view mode
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col2:
+            view_mode = st.radio("View Mode", ["List", "Gallery"], horizontal=True)
+        with col3:
+            use_cache = st.checkbox("Use Cached Responses", value=True, help="Load pre-computed responses for instant display")
         
         # Fetch and display featured queries
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        featured_queries = loop.run_until_complete(fetch_featured_queries())
+        featured_data = loop.run_until_complete(fetch_featured_queries(include_cached=use_cache))
+        featured_queries = featured_data.get("featured_queries", [])
+        metadata = featured_data.get("metadata", {})
+        
+        # Show cache metadata if available
+        if metadata.get("cache_generated_at"):
+            st.info(f"📅 Cache last updated: {metadata.get('cache_generated_at', 'Unknown')}")
         
         if featured_queries:
-            # Group by category
-            categories = {}
-            for query in featured_queries:
-                category = query.get("category", "Other")
-                if category not in categories:
-                    categories[category] = []
-                categories[category].append(query)
-            
-            # Display by category
-            for category, queries in categories.items():
-                st.markdown(f"#### {category}")
+            if view_mode == "Gallery":
+                # Gallery View
+                st.markdown("#### 🎨 Gallery View")
                 
-                cols = st.columns(2)
-                for i, query in enumerate(queries):
-                    with cols[i % 2]:
-                        with st.container():
-                            st.markdown(f"""
-                            <div class="featured-query-card">
+                # Create a grid layout
+                cols = st.columns(3)
+                for idx, query in enumerate(featured_queries):
+                    with cols[idx % 3]:
+                        st.markdown(f"""
+                        <div class="gallery-card">
+                            <div>
                                 <h4>{query.get('title', 'Untitled')}</h4>
-                                <p>{query.get('description', '')}</p>
-                                <p style="color: #666; font-size: 0.9em;">Category: {query.get('category', 'Other')}</p>
+                                <p>{query.get('description', '')[:100]}...</p>
                             </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if st.button(f"Run Query", key=f"featured_{query.get('id', i)}"):
+                            <div>
+                                <span class="category-badge">{query.get('category', 'Other')}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("🚀 Run", key=f"gallery_run_{query.get('id', '')}"):
                                 st.session_state.query = query.get('query', '')
-                                st.session_state.active_tab = "🔍 Query Interface"
+                                st.session_state.active_tab = 0
                                 st.rerun()
+                        
+                        with col2:
+                            if use_cache and query.get('cached_response'):
+                                if st.button("📋 View", key=f"gallery_view_{query.get('id', '')}"):
+                                    st.session_state.selected_featured_query = query
+                                    st.session_state.show_modal = True
+                
+                # Show modal for cached response
+                if st.session_state.get('show_modal', False) and st.session_state.get('selected_featured_query'):
+                    selected_query = st.session_state.selected_featured_query
+                    st.markdown("---")
+                    st.markdown(f"### 📋 {selected_query.get('title', 'Query Response')}")
+                    
+                    if st.button("❌ Close", key="close_modal"):
+                        st.session_state.show_modal = False
+                        st.session_state.selected_featured_query = None
+                        st.rerun()
+                    
+                    cached_response = selected_query.get('cached_response', {})
+                    modules = cached_response.get('modules', [])
+                    
+                    if modules:
+                        for i, module in enumerate(modules):
+                            with st.container():
+                                display_module(module, i+1)
+                    else:
+                        st.warning("No cached response available")
+                        
+            else:
+                # List View (existing code)
+                # Create tabs for categories
+                all_categories = list(set(q.get("category", "Other") for q in featured_queries))
+                category_tabs = st.tabs(["All"] + all_categories)
+                
+                # All queries tab
+                with category_tabs[0]:
+                    for query in featured_queries:
+                        with st.expander(f"**{query.get('title', 'Untitled')}** - {query.get('category', 'Other')}", expanded=False):
+                            st.markdown(f"**Description:** {query.get('description', '')}")
+                            st.markdown(f"**Query:** `{query.get('query', '')}`")
+                            
+                            col1, col2, col3 = st.columns([2, 2, 1])
+                            
+                            with col1:
+                                if st.button("🚀 Run Live Query", key=f"run_all_{query.get('id', '')}"):
+                                    st.session_state.query = query.get('query', '')
+                                    st.session_state.active_tab = 0  # Switch to Query Interface tab
+                                    st.rerun()
+                            
+                            with col2:
+                                if use_cache and query.get('cached_response'):
+                                    if st.button("📋 View Cached Response", key=f"view_all_{query.get('id', '')}"):
+                                        st.session_state[f"show_cached_{query.get('id')}" ] = True
+                            
+                            with col3:
+                                if query.get('cached_at'):
+                                    st.caption(f"Cached: {query.get('cached_at', '').split('T')[0]}")
+                            
+                            # Show cached response if button clicked
+                            if st.session_state.get(f"show_cached_{query.get('id')}", False):
+                                st.markdown("---")
+                                st.markdown("#### 📋 Cached Response")
+                                
+                                cached_response = query.get('cached_response', {})
+                                modules = cached_response.get('modules', [])
+                                
+                                if modules:
+                                    for i, module in enumerate(modules):
+                                        with st.container():
+                                            display_module(module, i+1)
+                                else:
+                                    st.warning("No cached response available")
+            
+                # Category-specific tabs
+                for idx, category in enumerate(all_categories):
+                    with category_tabs[idx + 1]:
+                        category_queries = [q for q in featured_queries if q.get("category") == category]
+                        
+                        for query in category_queries:
+                            with st.expander(f"**{query.get('title', 'Untitled')}**", expanded=False):
+                                st.markdown(f"**Description:** {query.get('description', '')}")
+                                st.markdown(f"**Query:** `{query.get('query', '')}`")
+                                
+                                col1, col2, col3 = st.columns([2, 2, 1])
+                                
+                                with col1:
+                                    if st.button("🚀 Run Live Query", key=f"run_{category}_{query.get('id', '')}"):
+                                        st.session_state.query = query.get('query', '')
+                                        st.session_state.active_tab = 0  # Switch to Query Interface tab
+                                        st.rerun()
+                                
+                                with col2:
+                                    if use_cache and query.get('cached_response'):
+                                        if st.button("📋 View Cached Response", key=f"view_{category}_{query.get('id', '')}"):
+                                            st.session_state[f"show_cached_{category}_{query.get('id')}" ] = True
+                                
+                                with col3:
+                                    if query.get('cached_at'):
+                                        st.caption(f"Cached: {query.get('cached_at', '').split('T')[0]}")
+                                
+                                # Show cached response if button clicked
+                                if st.session_state.get(f"show_cached_{category}_{query.get('id')}", False):
+                                    st.markdown("---")
+                                    st.markdown("#### 📋 Cached Response")
+                                    
+                                    cached_response = query.get('cached_response', {})
+                                    modules = cached_response.get('modules', [])
+                                    
+                                    if modules:
+                                        for i, module in enumerate(modules):
+                                            with st.container():
+                                                display_module(module, i+1)
+                                    else:
+                                        st.warning("No cached response available for this query")
+            
+                # Add refresh cache instructions
+                with st.expander("ℹ️ How to Update Cache", expanded=False):
+                    st.markdown("""
+                    To update the cached responses:
+                    1. Ensure the API server is running
+                    2. Run: `python scripts/generate_featured_cache.py`
+                    3. Refresh this page to see updated responses
+                    """)
         else:
             st.info("No featured queries available. Make sure the API server is running.")
     
