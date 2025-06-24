@@ -21,8 +21,8 @@ from mcp_chat import run_query_structured, run_query, run_query_streaming
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
-# Mount static files for GeoJSON serving (commented out to use dynamic endpoint)
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files for serving images, GeoJSON, and other static content
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Enable CORS for front-end access
 app.add_middleware(
