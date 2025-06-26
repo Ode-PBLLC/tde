@@ -163,8 +163,8 @@ def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result
         "chart_worthy_tables": chart_worthy_tables,
         "visualization_data_available": visualization_data_available,
         "module_types": list(set(m.get("type", "unknown") for m in modules)),
-        "kg_visualization_url": "http://localhost:8100",
-        "kg_query_url": f"http://localhost:8100?query={query_text.replace(' ', '%20')}" if query_text else "http://localhost:8100"
+        "kg_visualization_url": "http://3.222.23.240:8100",
+        "kg_query_url": f"http://3.222.23.240:8100?query={query_text.replace(' ', '%20')}" if query_text else "http://3.222.23.240:8100"
     }
 
 class QueryResponse(BaseModel):

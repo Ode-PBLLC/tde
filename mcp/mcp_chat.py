@@ -2222,8 +2222,8 @@ class MultiServerClient:
                                 "has_tables": any(m.get("type") in ["table", "source_table", "comparison_table", "ranking_table", "trend_table", "summary_table", "detail_table", "geographic_table"] for m in all_modules),
                                 "table_types": list(set(m.get("type") for m in all_modules if m.get("type", "").endswith("_table"))),
                                 "enhanced_tables_count": len(additional_modules),
-                                "kg_visualization_url": "http://localhost:8100",
-                                "kg_query_url": f"http://localhost:8100?query={query.replace(' ', '%20')}"
+                                "kg_visualization_url": "http://3.222.23.240:8100",
+                                "kg_query_url": f"http://3.222.23.240:8100?query={query.replace(' ', '%20')}"
                             }
                         }
                     }
