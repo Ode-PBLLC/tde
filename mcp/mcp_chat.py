@@ -15,6 +15,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit.components.v1 as components
 import re
+import aiohttp
 
 
 load_dotenv()
@@ -1152,6 +1153,7 @@ class MultiServerClient:
         context_chunks = []   # every tool_result.content goes in here
         passage_sources = []        # each element: {"doc_id": …, "passage_id": …}
         chart_data = None           # To store data for charting
+        chart_data_tool = None      # Track which tool generated chart_data
         map_data = None             # To store map HTML and metadata
         visualization_data = None   # To store structured visualization data
         all_tool_outputs_for_debug = [] # For Feature 2
@@ -1198,9 +1200,12 @@ class MultiServerClient:
                             if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
                                 try:
                                     parsed_content = json.loads(first_content_block.text)
-                                    if isinstance(parsed_content, dict) and parsed_content.get("type") == "map":
+                                    if isinstance(parsed_content, dict) and parsed_content.get("type") in ["map", "map_data_summary"]:
                                         map_data = parsed_content
-                                        print(f"Successfully parsed map data from {tool_name}: {len(parsed_content.get('data', []))} facilities")
+                                        if parsed_content.get("type") == "map_data_summary":
+                                            print(f"Successfully parsed map data summary from {tool_name}: {parsed_content.get('summary', {}).get('total_facilities', 0)} total facilities")
+                                        else:
+                                            print(f"Successfully parsed map data from {tool_name}: {len(parsed_content.get('data', []))} facilities")
                                     else:
                                         print(f"Map data from {tool_name} is not in expected format: {first_content_block.text[:100]}...")
                                 except json.JSONDecodeError:
@@ -1217,6 +1222,7 @@ class MultiServerClient:
                                         # Check if it's a list of dicts (actual data)
                                         if all(isinstance(item, dict) for item in parsed_content):
                                             chart_data = parsed_content # Assign to chart_data
+                                            chart_data_tool = tool_name  # Track which tool generated it
                                             print(f"Successfully parsed chart data from {tool_name}: {len(chart_data)} records")
                                         else:
                                             print(f"Content from {tool_name} is a list, but not of dictionaries: {first_content_block.text[:100]}...")
@@ -1438,6 +1444,7 @@ class MultiServerClient:
             "response": final_response_text,
             "sources": sources_used or ["No source captured"],
             "chart_data": chart_data,  # Legacy chart data for backward compatibility
+            "chart_data_tool": chart_data_tool,  # Track which tool generated chart_data
             "map_data": map_data,  # Map HTML and metadata
             "visualization_data": visualization_data,  # Structured chart data
             "all_tool_outputs_for_debug": all_tool_outputs_for_debug, # For Feature 2
@@ -1791,6 +1798,7 @@ class MultiServerClient:
         context_chunks = []
         passage_sources = []
         chart_data = None
+        chart_data_tool = None      # Track which tool generated chart_data
         map_data = None
         visualization_data = None
         all_tool_outputs_for_debug = []
@@ -1896,7 +1904,7 @@ class MultiServerClient:
                             if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
                                 try:
                                     parsed_content = json.loads(first_content_block.text)
-                                    if isinstance(parsed_content, dict) and parsed_content.get("type") == "map":
+                                    if isinstance(parsed_content, dict) and parsed_content.get("type") in ["map", "map_data_summary"]:
                                         map_data = parsed_content
                                 except json.JSONDecodeError:
                                     pass
@@ -1911,6 +1919,7 @@ class MultiServerClient:
                                     if isinstance(parsed_content, list):
                                         if all(isinstance(item, dict) for item in parsed_content):
                                             chart_data = parsed_content
+                                            chart_data_tool = tool_name  # Track which tool generated it
                                 except json.JSONDecodeError:
                                     pass
                     
@@ -2093,6 +2102,10 @@ class MultiServerClient:
             
             print(f"🔍 MULTI-TABLE DEBUG: Calling CreateMultipleTablesFromToolResults with query context: '{query[:50]}...'")
             
+            # Debug citation registry before passing to formatter
+            all_citations = self.citation_registry.get_all_citations()
+            module_citations = self.citation_registry.module_citations
+            
             try:
                 multi_table_result = await self.call_tool(
                     "CreateMultipleTablesFromToolResults", 
@@ -2100,8 +2113,8 @@ class MultiServerClient:
                         "tool_results": tool_results_for_tables, 
                         "query_context": query,
                         "citation_registry": {
-                            "citations": self.citation_registry.get_all_citations(),
-                            "module_citations": self.citation_registry.module_citations
+                            "citations": all_citations,
+                            "module_citations": module_citations
                         }
                     }, 
                     "formatter"
@@ -2149,6 +2162,7 @@ class MultiServerClient:
         formatter_args = {
             "response_text": final_response_text,
             "chart_data": chart_data,
+            "chart_data_tool": chart_data_tool,  # Pass tool name for chart_data citations
             "visualization_data": visualization_data,
             "map_data": map_data,
             "sources": sources_used or ["No source captured"],
@@ -2161,6 +2175,7 @@ class MultiServerClient:
         
         # Remove None values
         formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
+        
         
         try:
             formatted_result = await self.call_tool("FormatResponseAsModules", formatter_args, "formatter")
@@ -2189,19 +2204,26 @@ class MultiServerClient:
                             # Append at end
                             all_modules.extend(additional_modules)
                     
-                    # Stream the complete response with enhanced tables
+                    # Fetch KG data for streaming response
+                    kg_data = await _fetch_kg_data_for_streaming(query)
+                    
+                    # Stream the complete response with enhanced tables and KG data
                     yield {
                         "type": "complete",
                         "data": {
                             "query": query,
                             "modules": all_modules,
+                            "concepts": kg_data["concepts"],
+                            "relationships": kg_data["relationships"],
                             "metadata": {
                                 "modules_count": len(all_modules),
                                 "has_maps": any(m.get("type") == "map" for m in all_modules),
                                 "has_charts": any(m.get("type") == "chart" for m in all_modules),
                                 "has_tables": any(m.get("type") in ["table", "source_table", "comparison_table", "ranking_table", "trend_table", "summary_table", "detail_table", "geographic_table"] for m in all_modules),
                                 "table_types": list(set(m.get("type") for m in all_modules if m.get("type", "").endswith("_table"))),
-                                "enhanced_tables_count": len(additional_modules)
+                                "enhanced_tables_count": len(additional_modules),
+                                "kg_visualization_url": "http://localhost:8100",
+                                "kg_query_url": f"http://localhost:8100?query={query.replace(' ', '%20')}"
                             }
                         }
                     }
@@ -2212,6 +2234,40 @@ class MultiServerClient:
                     "message": f"Error formatting response: {str(e)}"
                 }
             }
+
+async def _fetch_kg_data_for_streaming(query: str) -> Dict[str, Any]:
+    """
+    Fetch concepts and relationships data from the KG visualization server for streaming.
+    Returns empty data if KG server is unavailable.
+    """
+    kg_server_url = "http://localhost:8100/api/kg/query-subgraph"
+    
+    payload = {
+        "query": query,
+        "depth": 2,
+        "max_nodes": 80,
+        "include_datasets": True,
+        "include_passages": False
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(kg_server_url, json=payload, timeout=aiohttp.ClientTimeout(total=8)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {
+                        "concepts": data.get("concepts", []),
+                        "relationships": data.get("relationships", [])
+                    }
+                else:
+                    print(f"KG server returned status {response.status}")
+                    return {"concepts": [], "relationships": []}
+    except asyncio.TimeoutError:
+        print("KG server timeout - continuing without KG data")
+        return {"concepts": [], "relationships": []}
+    except Exception as e:
+        print(f"Error fetching KG data for streaming: {e}")
+        return {"concepts": [], "relationships": []}
         
 async def run_query_structured(q: str) -> Dict[str, Any]:
     """
@@ -2294,6 +2350,7 @@ async def run_query(q: str):
             print(f"DEBUG: chart_data = {chart_data}")
         except NameError:
             chart_data = None
+            chart_data_tool = None
             print(f"DEBUG: chart_data was undefined, set to None")
             
         try:
@@ -2316,6 +2373,7 @@ async def run_query(q: str):
         formatter_args = {
             "response_text": result.get("response", ""),
             "chart_data": result.get("chart_data"),
+            "chart_data_tool": result.get("chart_data_tool"),  # Pass tool name for chart_data citations
             "visualization_data": result.get("visualization_data"), 
             "map_data": map_data_from_result,  # Use map_data from result dict
             "sources": result.get("sources"),

@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional, AsyncGenerator
 import json
 import sys
 import os
+import aiohttp
 
 # Add the mcp directory to the path
 sys.path.append('mcp')
@@ -40,7 +41,54 @@ class QueryRequest(BaseModel):
 class StreamQueryRequest(BaseModel):
     query: str
 
-def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def _fetch_kg_data(query: str) -> Dict[str, Any]:
+    """
+    Fetch concepts and relationships data from the KG visualization server.
+    Returns empty data if KG server is unavailable.
+    """
+    kg_server_url = "http://localhost:8100/api/kg/query-subgraph"
+    
+    payload = {
+        "query": query,
+        "depth": 2,
+        "max_nodes": 80,
+        "include_datasets": True,
+        "include_passages": False
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(kg_server_url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {
+                        "concepts": data.get("concepts", []),
+                        "relationships": data.get("relationships", []),
+                        "query_concepts": data.get("query_concepts", []),
+                        "query_concept_labels": data.get("query_concept_labels", []),
+                        "kg_extraction_method": data.get("extraction_method", "unknown")
+                    }
+                else:
+                    print(f"KG server returned status {response.status}")
+                    return _empty_kg_data()
+    except asyncio.TimeoutError:
+        print("KG server timeout - continuing without KG data")
+        return _empty_kg_data()
+    except Exception as e:
+        print(f"Error fetching KG data: {e}")
+        return _empty_kg_data()
+
+def _empty_kg_data() -> Dict[str, Any]:
+    """Return empty KG data structure when KG server is unavailable"""
+    return {
+        "concepts": [],
+        "relationships": [],
+        "query_concepts": [],
+        "query_concept_labels": [],
+        "kg_extraction_method": "unavailable"
+    }
+
+def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result: Optional[Dict[str, Any]] = None, query_text: str = "") -> Dict[str, Any]:
     """
     Generate enhanced metadata that better detects charts and visualization potential.
     """
@@ -114,7 +162,9 @@ def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result
         "chart_potential": chart_potential,
         "chart_worthy_tables": chart_worthy_tables,
         "visualization_data_available": visualization_data_available,
-        "module_types": list(set(m.get("type", "unknown") for m in modules))
+        "module_types": list(set(m.get("type", "unknown") for m in modules)),
+        "kg_visualization_url": "http://localhost:8100",
+        "kg_query_url": f"http://localhost:8100?query={query_text.replace(' ', '%20')}" if query_text else "http://localhost:8100"
     }
 
 class QueryResponse(BaseModel):
@@ -122,6 +172,8 @@ class QueryResponse(BaseModel):
     modules: list
     thinking_process: Optional[str] = None
     metadata: Dict[str, Any]
+    concepts: list = []
+    relationships: list = []
 
 @app.post("/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
@@ -148,11 +200,16 @@ async def process_query(request: QueryRequest):
             structured_response = await run_query_structured(request.query)
             thinking_process = None
         
+        # Fetch KG data (concepts and relationships)
+        kg_data = await _fetch_kg_data(request.query)
+        
         return QueryResponse(
             query=request.query,
             modules=structured_response.get("modules", []),
             thinking_process=thinking_process,
-            metadata=_generate_enhanced_metadata(structured_response, full_result if request.include_thinking else None)
+            metadata=_generate_enhanced_metadata(structured_response, full_result if request.include_thinking else None, request.query),
+            concepts=kg_data["concepts"],
+            relationships=kg_data["relationships"]
         )
         
     except Exception as e:
@@ -521,4 +578,4 @@ async def get_geojson(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api_server:app", host="0.0.0.0", port=8099, reload=True) # TODO change back to reload = False and app as first input
+    uvicorn.run("api_server:app", host="0.0.0.0", port=8098, reload=True) # Changed port to 8098 to avoid conflict
