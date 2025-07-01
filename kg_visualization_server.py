@@ -17,6 +17,7 @@ from typing import List, Dict, Optional, Any, Set
 from pydantic import BaseModel
 import pandas as pd
 from functools import lru_cache
+import re
 
 # Add MCP directory to path for concept extraction
 sys.path.append('mcp')
@@ -113,6 +114,15 @@ class QuerySubgraphRequest(BaseModel):
     include_datasets: bool = True
     include_passages: bool = True
 
+class QueryWithMCPRequest(BaseModel):
+    query: str
+    mcp_response: Dict[str, Any]  # The full MCP response
+    citation_registry: Optional[Dict[str, Any]] = None
+    depth: int = 2
+    max_nodes: int = 100
+    include_datasets: bool = True
+    include_passages: bool = True
+
 def extract_concepts_from_query(query: str) -> List[str]:
     """Extract potential concepts from a query string using simple heuristics"""
     # Simple keyword extraction - look for known concepts in query
@@ -127,10 +137,14 @@ def extract_concepts_from_query(query: str) -> List[str]:
     # If no exact matches, use semantic similarity
     if not found_concepts and MCP_AVAILABLE:
         try:
-            # Use MCP semantic similarity
-            similar_concepts = GetSemanticallySimilarConcepts(query, top_k=5)
-            if similar_concepts.get("concepts"):
-                found_concepts = [c["id"] for c in similar_concepts["concepts"][:3]]
+            # Use MCP semantic similarity - CORRECTED
+            similar_concept_labels = GetSemanticallySimilarConcepts(query)
+            # Convert labels to concept IDs
+            for label in similar_concept_labels:
+                if label in LABEL_TO_ID:
+                    found_concepts.append(LABEL_TO_ID[label])
+                    if len(found_concepts) >= 3:  # Limit to 3
+                        break
         except Exception as e:
             print(f"Error in semantic concept extraction: {e}")
     
@@ -147,6 +161,165 @@ def extract_concepts_from_query(query: str) -> List[str]:
                             break
     
     return found_concepts
+
+def extract_concepts_from_mcp_response(mcp_response: Dict[str, Any], citation_registry: Optional[Dict] = None) -> List[str]:
+    """
+    Extract concepts from MCP response content, not just the query.
+    This provides much richer concept identification based on actual retrieved data.
+    """
+    found_concepts = set()
+    
+    # Extract from response modules
+    modules = mcp_response.get("modules", [])
+    for module in modules:
+        module_type = module.get("type", "")
+        
+        # Extract from text content
+        if module_type == "text":
+            text_content = module.get("content", "")
+            concepts_from_text = _extract_concepts_from_text(text_content)
+            found_concepts.update(concepts_from_text)
+        
+        # Extract from table data
+        elif "table" in module_type:
+            table_concepts = _extract_concepts_from_table(module)
+            found_concepts.update(table_concepts)
+        
+        # Extract from chart data
+        elif module_type == "chart":
+            chart_concepts = _extract_concepts_from_chart(module)
+            found_concepts.update(chart_concepts)
+        
+        # Extract from map data
+        elif module_type == "map":
+            map_concepts = _extract_concepts_from_map(module)
+            found_concepts.update(map_concepts)
+    
+    # Extract from citation registry if available
+    if citation_registry:
+        citation_concepts = _extract_concepts_from_citations(citation_registry)
+        found_concepts.update(citation_concepts)
+    
+    # Convert to list and limit
+    return list(found_concepts)[:20]  # Limit to 20 most relevant concepts
+
+def _extract_concepts_from_text(text: str) -> List[str]:
+    """Extract concepts from text content using pattern matching."""
+    concepts = []
+    text_lower = text.lower()
+    
+    # Look for concept labels in the text
+    for label, concept_id in LABEL_TO_ID.items():
+        if label.lower() in text_lower:
+            concepts.append(concept_id)
+    
+    # Extract potential geographic entities (countries, states, cities)
+    geographic_patterns = [
+        r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:country|state|province|region|city)\b',
+        r'\bin\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b',
+        r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+government\b'
+    ]
+    
+    for pattern in geographic_patterns:
+        matches = re.findall(pattern, text)
+        for match in matches:
+            # Check if it's a known concept
+            if match.lower() in [label.lower() for label in LABEL_TO_ID.keys()]:
+                label_match = next((label for label in LABEL_TO_ID.keys() if label.lower() == match.lower()), None)
+                if label_match:
+                    concepts.append(LABEL_TO_ID[label_match])
+    
+    return concepts
+
+def _extract_concepts_from_table(table_module: Dict[str, Any]) -> List[str]:
+    """Extract concepts from table data."""
+    concepts = []
+    
+    # Extract from column headers
+    columns = table_module.get("columns", [])
+    for column in columns:
+        column_lower = column.lower()
+        for label, concept_id in LABEL_TO_ID.items():
+            if label.lower() in column_lower:
+                concepts.append(concept_id)
+    
+    # Extract from row data (first column often contains entities)
+    rows = table_module.get("rows", [])
+    for row in rows[:10]:  # Limit to first 10 rows
+        if row and len(row) > 0:
+            first_cell = str(row[0]).lower()
+            for label, concept_id in LABEL_TO_ID.items():
+                if label.lower() in first_cell:
+                    concepts.append(concept_id)
+    
+    return concepts
+
+def _extract_concepts_from_chart(chart_module: Dict[str, Any]) -> List[str]:
+    """Extract concepts from chart data."""
+    concepts = []
+    
+    # Extract from chart title and labels
+    title = chart_module.get("title", "")
+    x_label = chart_module.get("x_label", "")
+    y_label = chart_module.get("y_label", "")
+    
+    for text in [title, x_label, y_label]:
+        if text:
+            text_lower = text.lower()
+            for label, concept_id in LABEL_TO_ID.items():
+                if label.lower() in text_lower:
+                    concepts.append(concept_id)
+    
+    # Extract from data categories
+    data = chart_module.get("data", [])
+    for item in data[:10]:  # Limit to first 10 items
+        if isinstance(item, dict):
+            for key, value in item.items():
+                if isinstance(value, str):
+                    value_lower = value.lower()
+                    for label, concept_id in LABEL_TO_ID.items():
+                        if label.lower() in value_lower:
+                            concepts.append(concept_id)
+    
+    return concepts
+
+def _extract_concepts_from_map(map_module: Dict[str, Any]) -> List[str]:
+    """Extract concepts from map data."""
+    concepts = []
+    
+    # Extract from GeoJSON features
+    geojson = map_module.get("geojson", {})
+    features = geojson.get("features", [])
+    
+    for feature in features[:20]:  # Limit to first 20 features
+        properties = feature.get("properties", {})
+        for key, value in properties.items():
+            if isinstance(value, str):
+                value_lower = value.lower()
+                for label, concept_id in LABEL_TO_ID.items():
+                    if label.lower() in value_lower:
+                        concepts.append(concept_id)
+    
+    return concepts
+
+def _extract_concepts_from_citations(citation_registry: Dict[str, Any]) -> List[str]:
+    """Extract concepts from citation sources."""
+    concepts = []
+    
+    # Extract from citation titles and descriptions
+    citations = citation_registry.get("citations", {})
+    for citation_id, citation_data in citations.items():
+        title = citation_data.get("title", "")
+        description = citation_data.get("description", "")
+        
+        for text in [title, description]:
+            if text:
+                text_lower = text.lower()
+                for label, concept_id in LABEL_TO_ID.items():
+                    if label.lower() in text_lower:
+                        concepts.append(concept_id)
+    
+    return concepts
 
 def build_query_subgraph(G: nx.MultiDiGraph, query_concepts: List[str], 
                         depth: int = 2, max_nodes: int = 100,
@@ -532,6 +705,56 @@ async def get_query_subgraph(request: QuerySubgraphRequest):
     result["extraction_method"] = "semantic" if MCP_AVAILABLE else "keyword_matching"
     
     return result
+
+@app.post("/api/kg/query-subgraph-with-mcp")
+async def get_query_subgraph_with_mcp(request: QueryWithMCPRequest):
+    """Get a subgraph relevant to a query enhanced with MCP response data"""
+    G = load_graph()
+    
+    # Extract concepts from both query and MCP response
+    query_concepts = extract_concepts_from_query(request.query)
+    mcp_concepts = extract_concepts_from_mcp_response(
+        request.mcp_response, 
+        request.citation_registry
+    )
+    
+    # Combine and deduplicate concepts
+    all_concepts = list(set(query_concepts + mcp_concepts))
+    
+    if not all_concepts:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"No relevant concepts found for query: '{request.query}'"
+        )
+    
+    # Build enhanced subgraph
+    result = build_query_subgraph(
+        G, all_concepts,
+        depth=request.depth,
+        max_nodes=request.max_nodes,
+        include_datasets=request.include_datasets,
+        include_passages=request.include_passages
+    )
+    
+    # Add enhanced metadata
+    result["query"] = request.query
+    result["extraction_method"] = "query_and_mcp_enhanced"
+    result["query_concepts_count"] = len(query_concepts)
+    result["mcp_concepts_count"] = len(mcp_concepts)
+    result["total_concepts_found"] = len(all_concepts)
+    result["query_concepts"] = query_concepts
+    result["mcp_concepts"] = mcp_concepts
+    
+    return result
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    """Serve the main KG visualization page"""
+    try:
+        with open("static/kg_visualization.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>KG Visualization</h1><p>HTML file not found. Please ensure static/kg_visualization.html exists.</p>")
 
 if __name__ == "__main__":
     import uvicorn

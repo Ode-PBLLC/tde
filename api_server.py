@@ -5,22 +5,26 @@ for front-end consumption.
 """
 import asyncio
 from datetime import datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, AsyncGenerator
 import json
 import sys
 import os
 import aiohttp
+from kg_embed_generator import KGEmbedGenerator
 
 # Add the mcp directory to the path
 sys.path.append('mcp')
 from mcp_chat import run_query_structured, run_query, run_query_streaming
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
+
+# Initialize KG embed generator
+kg_generator = KGEmbedGenerator()
 
 # Mount static files for serving images, GeoJSON, and other static content
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -88,7 +92,7 @@ def _empty_kg_data() -> Dict[str, Any]:
         "kg_extraction_method": "unavailable"
     }
 
-def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result: Optional[Dict[str, Any]] = None, query_text: str = "") -> Dict[str, Any]:
+def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result: Optional[Dict[str, Any]] = None, query_text: str = "", kg_embed_info: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """
     Generate enhanced metadata that better detects charts and visualization potential.
     """
@@ -163,8 +167,12 @@ def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result
         "chart_worthy_tables": chart_worthy_tables,
         "visualization_data_available": visualization_data_available,
         "module_types": list(set(m.get("type", "unknown") for m in modules)),
-        "kg_visualization_url": "http://3.222.23.240:8100",
-        "kg_query_url": f"http://3.222.23.240:8100?query={query_text.replace(' ', '%20')}" if query_text else "http://3.222.23.240:8100"
+        "kg_visualization_url": "/kg-viz",
+        "kg_query_url": f"/kg-viz?query={query_text.replace(' ', '%20')}" if query_text else "/kg-viz",
+        "kg_embed_url": kg_embed_info.get("url_path") if kg_embed_info else None,
+        "kg_embed_path": kg_embed_info.get("relative_path") if kg_embed_info else None,
+        "kg_embed_absolute_path": kg_embed_info.get("absolute_path") if kg_embed_info else None,
+        "kg_embed_filename": kg_embed_info.get("filename") if kg_embed_info else None
     }
 
 class QueryResponse(BaseModel):
@@ -190,24 +198,87 @@ async def process_query(request: QueryRequest):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         os.chdir(script_dir)
         
+        # Always get full result for KG generation (needed for citation registry)
+        full_result = await run_query(request.query)
+        structured_response = full_result.get("formatted_response", {"modules": []})
+        
         if request.include_thinking:
-            # Get full response with thinking process
-            full_result = await run_query(request.query)
-            structured_response = full_result.get("formatted_response", {"modules": []})
             thinking_process = full_result.get("ai_thought_process", "")
         else:
-            # Get just structured response
-            structured_response = await run_query_structured(request.query)
             thinking_process = None
         
         # Fetch KG data (concepts and relationships)
         kg_data = await _fetch_kg_data(request.query)
         
+        # Initialize KG variables
+        kg_embed_path = None
+        kg_embed_absolute_path = None
+        kg_embed_url = None
+        
+        # Generate static KG visualization file
+        try:
+            # Extract citation registry from full result
+            citation_registry = None
+            if "citation_registry" in full_result:
+                citation_registry = full_result["citation_registry"]
+                print(f"📋 Citation registry found with {len(citation_registry.get('citations', {}))} citations")
+            else:
+                print(f"⚠️  No citation registry in full_result. Keys: {list(full_result.keys())}")
+            
+            print(f"🔧 Starting KG embed generation for query: {request.query}")
+            
+            # Generate enhanced KG embed with MCP response and citation data
+            kg_embed_result = await kg_generator.generate_embed(
+                request.query, 
+                structured_response,  # Pass the structured response as MCP data
+                citation_registry
+            )
+            
+            # Extract path info from result
+            if kg_embed_result:
+                print(f"✅ KG embed generation successful! Result type: {type(kg_embed_result)}")
+                if isinstance(kg_embed_result, dict):
+                    kg_embed_path = kg_embed_result["relative_path"]
+                    kg_embed_absolute_path = kg_embed_result["absolute_path"] 
+                    kg_embed_url = kg_embed_result["url_path"]
+                    print(f"📁 KG file created: {kg_embed_absolute_path}")
+                else:
+                    # Backward compatibility
+                    kg_embed_path = kg_embed_result
+                    kg_embed_absolute_path = None
+                    kg_embed_url = f"/static/{kg_embed_path}"
+                    print(f"📁 KG file created (legacy format): {kg_embed_path}")
+            else:
+                print(f"❌ KG embed generation returned None")
+                kg_embed_path = None
+                kg_embed_absolute_path = None
+                kg_embed_url = None
+        except Exception as e:
+            print(f"Failed to generate KG embed: {e}")
+            import traceback
+            print(f"KG generation traceback: {traceback.format_exc()}")
+            kg_embed_path = None
+            kg_embed_absolute_path = None
+            kg_embed_url = None
+        
+        # Create kg_embed_info dict for metadata
+        kg_embed_info = None
+        if kg_embed_path:
+            kg_embed_info = {
+                "relative_path": kg_embed_path,
+                "absolute_path": kg_embed_absolute_path,
+                "url_path": kg_embed_url,
+                "filename": kg_embed_url.split('/')[-1] if kg_embed_url else None
+            }
+            print(f"📊 KG embed info created: {kg_embed_info}")
+        else:
+            print(f"⚠️  No KG embed path - KG embed info will be None")
+        
         return QueryResponse(
             query=request.query,
             modules=structured_response.get("modules", []),
             thinking_process=thinking_process,
-            metadata=_generate_enhanced_metadata(structured_response, full_result if request.include_thinking else None, request.query),
+            metadata=_generate_enhanced_metadata(structured_response, full_result if request.include_thinking else None, request.query, kg_embed_info),
             concepts=kg_data["concepts"],
             relationships=kg_data["relationships"]
         )
@@ -575,6 +646,42 @@ async def get_geojson(filename: str):
     except Exception as e:
         print(f"Error generating GeoJSON: {e}")
         raise HTTPException(status_code=500, detail=f"Error generating GeoJSON: {str(e)}")
+
+# Proxy routes for KG visualization
+@app.get("/kg-viz")
+async def proxy_kg_visualization(query: Optional[str] = None):
+    """Proxy to KG visualization server main page."""
+    kg_url = f"http://localhost:8100/"
+    if query:
+        kg_url += f"?query={query}"
+    
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(kg_url) as response:
+                content = await response.text()
+                # Update API endpoints in the HTML to use relative paths
+                content = content.replace('"/api/kg/', '"/api/kg/')
+                content = content.replace("'/api/kg/", "'/api/kg/")
+                return HTMLResponse(content=content, status_code=response.status)
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"KG visualization server unavailable: {str(e)}")
+
+@app.get("/api/kg/{path:path}")
+async def proxy_kg_api(path: str, request: Request):
+    """Proxy API requests to KG visualization server."""
+    kg_url = f"http://localhost:8100/api/kg/{path}"
+    
+    # Forward query parameters
+    if request.query_params:
+        kg_url += f"?{str(request.query_params)}"
+    
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(kg_url) as response:
+                content = await response.json()
+                return JSONResponse(content=content, status_code=response.status)
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"KG server unavailable: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

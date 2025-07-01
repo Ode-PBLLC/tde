@@ -1449,7 +1449,11 @@ class MultiServerClient:
             "visualization_data": visualization_data,  # Structured chart data
             "all_tool_outputs_for_debug": all_tool_outputs_for_debug, # For Feature 2
             "ai_thought_process": "\n".join(intermediate_ai_text_parts), # Add the collected thoughts
-            "additional_table_data": additional_table_data  # NEW: Multi-table data for formatter integration
+            "additional_table_data": additional_table_data,  # NEW: Multi-table data for formatter integration
+            "citation_registry": {  # NEW: Citation registry for KG generation
+                "citations": self.citation_registry.get_all_citations(),
+                "module_citations": self.citation_registry.module_citations
+            }
         }
     
     async def process_query_streaming(self, query: str):
@@ -2207,6 +2211,60 @@ class MultiServerClient:
                     # Fetch KG data for streaming response
                     kg_data = await _fetch_kg_data_for_streaming(query)
                     
+                    # Generate static KG visualization file for streaming response
+                    kg_embed_path = None
+                    try:
+                        # Import here to avoid circular imports
+                        import sys
+                        import os
+                        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                        from kg_embed_generator import KGEmbedGenerator
+                        
+                        # Create structured response for KG generation
+                        structured_response = {"modules": all_modules}
+                        
+                        # Extract citation registry
+                        citation_registry = {
+                            "citations": self.citation_registry.get_all_citations(),
+                            "module_citations": self.citation_registry.module_citations
+                        }
+                        
+                        # Generate enhanced KG embed with MCP response data
+                        kg_generator = KGEmbedGenerator()
+                        kg_embed_result = await kg_generator.generate_embed(
+                            query, 
+                            structured_response,
+                            citation_registry
+                        )
+                        
+                        # Extract path info from result
+                        if kg_embed_result:
+                            if isinstance(kg_embed_result, dict):
+                                kg_embed_path = kg_embed_result["relative_path"]
+                                kg_embed_absolute_path = kg_embed_result["absolute_path"]
+                                kg_embed_url = kg_embed_result["url_path"]
+                                kg_embed_filename = kg_embed_result["filename"]
+                                print(f"📊 Generated KG embed for streaming: {kg_embed_absolute_path}")
+                            else:
+                                # Backward compatibility
+                                kg_embed_path = kg_embed_result
+                                kg_embed_absolute_path = None
+                                kg_embed_url = f"/static/{kg_embed_path}"
+                                kg_embed_filename = None
+                        else:
+                            kg_embed_path = None
+                            kg_embed_absolute_path = None
+                            kg_embed_url = None
+                            kg_embed_filename = None
+                    except Exception as e:
+                        print(f"Failed to generate KG embed for streaming: {e}")
+                        import traceback
+                        print(f"Streaming KG generation traceback: {traceback.format_exc()}")
+                        kg_embed_path = None
+                        kg_embed_absolute_path = None
+                        kg_embed_url = None
+                        kg_embed_filename = None
+                    
                     # Stream the complete response with enhanced tables and KG data
                     yield {
                         "type": "complete",
@@ -2222,8 +2280,12 @@ class MultiServerClient:
                                 "has_tables": any(m.get("type") in ["table", "source_table", "comparison_table", "ranking_table", "trend_table", "summary_table", "detail_table", "geographic_table"] for m in all_modules),
                                 "table_types": list(set(m.get("type") for m in all_modules if m.get("type", "").endswith("_table"))),
                                 "enhanced_tables_count": len(additional_modules),
-                                "kg_visualization_url": "http://3.222.23.240:8100",
-                                "kg_query_url": f"http://3.222.23.240:8100?query={query.replace(' ', '%20')}"
+                                "kg_visualization_url": "/kg-viz",
+                                "kg_query_url": f"/kg-viz?query={query.replace(' ', '%20')}",
+                                "kg_embed_url": kg_embed_url,
+                                "kg_embed_path": kg_embed_path,
+                                "kg_embed_absolute_path": kg_embed_absolute_path,
+                                "kg_embed_filename": kg_embed_filename
                             }
                         }
                     }
