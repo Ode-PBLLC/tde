@@ -272,7 +272,18 @@ def _extract_concepts_from_chart(chart_module: Dict[str, Any]) -> List[str]:
     
     # Extract from data categories
     data = chart_module.get("data", [])
-    for item in data[:10]:  # Limit to first 10 items
+    
+    # Handle both dict and list data structures
+    if isinstance(data, dict):
+        # If data is a dict, process its values
+        data_items = list(data.values())[:10]  # Limit to first 10 items
+    elif isinstance(data, list):
+        # If data is a list, process items directly
+        data_items = data[:10]  # Limit to first 10 items
+    else:
+        data_items = []
+    
+    for item in data_items:
         if isinstance(item, dict):
             for key, value in item.items():
                 if isinstance(value, str):
