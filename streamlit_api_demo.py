@@ -159,7 +159,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # API Configuration
-API_BASE_URL = "http://localhost:8099"
+API_BASE_URL = "http://localhost:8098"
 
 def format_text_with_citations(text: str) -> str:
     """Convert citation markers to HTML superscript links."""

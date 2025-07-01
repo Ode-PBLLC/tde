@@ -36,7 +36,8 @@ Replace this query with a simpler alternative that requests less comprehensive a
 ## Configuration Notes
 
 ### API Ports
-- Default API server port: 8099 (configured in streamlit_api_demo.py)
+- Default API server port: 8098 (configured in api_server.py)
+- KG visualization server port: 8100 (internal service only)
 - Update `API_BASE_URL` in the following files when changing ports:
   - `streamlit_api_demo.py`
   - `scripts/generate_featured_cache.py`

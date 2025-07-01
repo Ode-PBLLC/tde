@@ -578,4 +578,4 @@ async def get_geojson(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api_server:app", host="0.0.0.0", port=8098, reload=True) # Changed port to 8098 to avoid conflict
+    uvicorn.run(app, host="0.0.0.0", port=8098) # Changed port to 8098 to avoid conflict
