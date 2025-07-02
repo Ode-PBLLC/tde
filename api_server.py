@@ -23,7 +23,7 @@ from mcp_chat import run_query_structured, run_query, run_query_streaming
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
-# Initialize KG embed generator
+# Initialize KG embed generator - will use environment variable or default
 kg_generator = KGEmbedGenerator()
 
 # Mount static files for serving images, GeoJSON, and other static content

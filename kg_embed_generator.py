@@ -15,11 +15,12 @@ from pathlib import Path
 class KGEmbedGenerator:
     """Generate static KG visualization files for queries."""
     
-    def __init__(self, kg_server_url: str = "http://localhost:8100", static_dir: str = "static", base_url: str = "https://api.transitiondigital.org"):
-        self.kg_server_url = kg_server_url
+    def __init__(self, kg_server_url: str = None, static_dir: str = "static", base_url: str = None):
+        # Use environment variables with fallbacks
+        self.kg_server_url = kg_server_url or os.getenv('KG_SERVER_URL', 'http://localhost:8100')
         self.static_dir = Path(static_dir)
         self.kg_dir = self.static_dir / "kg"
-        self.base_url = base_url.rstrip('/')  # Remove trailing slash
+        self.base_url = (base_url or os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')).rstrip('/')  # Remove trailing slash
         
         # Ensure kg directory exists
         self.kg_dir.mkdir(exist_ok=True)
