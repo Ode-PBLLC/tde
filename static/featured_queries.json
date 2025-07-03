@@ -19,7 +19,7 @@
     {
       "id": "climate-policy-effectiveness",
       "title": "Climate Policy Effectiveness by Country",
-      "query": "Compare climate policy effectiveness across major economies. Show NDC commitments, domestic policy alignment, and implementation progress for countries like Brazil, India, and South Africa.",
+      "query": "Compare climate policy effectiveness across major economies. Show NDC commitments, domestic policy alignment, and implementation progress for countries like Brazil, India, and South Africa. Include maps of renewable energy facilities to visualize policy implementation across these regions.",
       "image": "/static/images/climate-policy-effectiveness.jpg",
       "category": "Policy Analysis",
       "description": "Cross-country comparison of climate policy frameworks and implementation progress"
@@ -27,7 +27,7 @@
     {
       "id": "brazil-renewable-growth",
       "title": "Brazil's Renewable Energy Growth Trends",
-      "query": "Show renewable energy capacity growth in Brazil from 2020 to present. Include solar and wind installations with charts showing year-over-year growth rates.",
+      "query": "Show renewable energy capacity growth in Brazil from 2020 to present. Include solar and wind installations with charts showing year-over-year growth rates. Map solar facilities across Brazil showing capacity distribution and geographic clusters.",
       "image": "/static/images/brazil-renewable-growth.jpg",
       "category": "Renewable Energy",
       "description": "Tracking Brazil's renewable energy expansion with growth metrics"
@@ -43,7 +43,7 @@
     {
       "id": "renewable-energy-policy-brazil",
       "title": "Brazil's Renewable Energy Policy Framework",
-      "query": "Analyze Brazil's renewable energy policies including feed-in tariffs, auction mechanisms, and regulatory frameworks. Show how these policies have driven solar and wind capacity growth.",
+      "query": "Analyze Brazil's renewable energy policies including feed-in tariffs, auction mechanisms, and regulatory frameworks. Show how these policies have driven solar and wind capacity growth. Include maps of solar installations to visualize policy impact across Brazilian regions.",
       "image": "/static/images/brazil-renewable-policy.jpg",
       "category": "Policy Analysis",
       "description": "Deep dive into Brazil's renewable energy policy instruments and their effectiveness"
@@ -51,7 +51,7 @@
     {
       "id": "mining-climate-risks-africa",
       "title": "Mining Sector Climate Risks in Africa",
-      "query": "Analyze climate risks for mining operations across African countries. Show flood risks, water stress impacts on major mining sites, and how climate adaptation policies address extractive industries in South Africa, DRC, and Ghana.",
+      "query": "Analyze climate risks for mining operations across African countries. Show flood risks, water stress impacts on major mining sites, and how climate adaptation policies address extractive industries in South Africa, DRC, and Ghana. Include maps of renewable energy facilities in South Africa to show clean energy alternatives.",
       "image": "/static/images/mining-climate-africa.jpg",
       "category": "Environmental Risk",
       "description": "Climate vulnerability assessment for African mining operations"
@@ -75,7 +75,7 @@
     {
       "id": "ev-policy-emerging-markets",
       "title": "Electric Vehicle Policy Adoption in Emerging Markets",
-      "query": "Analyze electric vehicle adoption policies in emerging markets. Compare incentive structures, charging infrastructure plans, and manufacturing policies in India, Brazil, South Africa, and Indonesia. Include policy timelines and market penetration data.",
+      "query": "Analyze electric vehicle adoption policies in emerging markets. Compare incentive structures, charging infrastructure plans, and manufacturing policies in India, Brazil, South Africa, and Indonesia. Include policy timelines and market penetration data. Map solar facilities across India, Brazil, and South Africa to show renewable energy infrastructure supporting EV charging.",
       "image": "/static/images/ev-policy-emerging.jpg",
       "category": "Policy Analysis",
       "description": "EV policy frameworks and adoption strategies in emerging economies"
