@@ -97,7 +97,20 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 1000) 
     if limit is not None:
         filtered_for_map = filtered_for_map.head(limit)
     
-    # Return summary data (lightweight for LLM)
+    # Convert filtered_for_map to list of facility records for GeoJSON generation
+    full_data = []
+    for _, facility in filtered_for_map.iterrows():
+        full_data.append({
+            "cluster_id": facility.get('cluster_id', ''),
+            "capacity_mw": float(facility['capacity_mw']),
+            "latitude": float(facility['latitude']),
+            "longitude": float(facility['longitude']),
+            "country": facility['country'],
+            "completion_year": facility.get('completion_year', 'Unknown'),
+            "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}")
+        })
+    
+    # Return summary data (lightweight for LLM) + full data for GeoJSON generation
     return {
         "type": "map_data_summary",
         "summary": {
@@ -112,6 +125,7 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 1000) 
                 "avg": float(filtered['capacity_mw'].mean())
             }
         },
+        "full_data": full_data,  # Same exact facilities used for summary stats
         "metadata": {
             "data_source": "TZ-SAM Q1 2025",
             "geojson_available": True,

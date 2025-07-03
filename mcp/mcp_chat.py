@@ -1901,7 +1901,7 @@ class MultiServerClient:
                         "tool_result_content": result.content 
                     })
 
-                    # Parse map data from GetSolarFacilitiesMapData
+                    # Parse map data from GetSolarFacilitiesMapData and generate GeoJSON file
                     if tool_name == "GetSolarFacilitiesMapData":
                         if result.content and isinstance(result.content, list) and len(result.content) > 0:
                             first_content_block = result.content[0]
@@ -1910,6 +1910,82 @@ class MultiServerClient:
                                     parsed_content = json.loads(first_content_block.text)
                                     if isinstance(parsed_content, dict) and parsed_content.get("type") in ["map", "map_data_summary"]:
                                         map_data = parsed_content
+                                        
+                                        # Generate GeoJSON file from full_data if available
+                                        if "full_data" in parsed_content and parsed_content["full_data"]:
+                                            facilities = parsed_content["full_data"]
+                                            print(f"STREAMING DEBUG: Generating GeoJSON from {len(facilities)} facilities")
+                                            
+                                            # Generate GeoJSON structure
+                                            geojson = {
+                                                "type": "FeatureCollection",
+                                                "features": []
+                                            }
+                                            
+                                            # Color mapping by country
+                                            country_colors = {
+                                                'brazil': '#4CAF50',
+                                                'india': '#FF9800', 
+                                                'south africa': '#F44336',
+                                                'vietnam': '#2196F3'
+                                            }
+                                            
+                                            for facility in facilities:
+                                                feature = {
+                                                    "type": "Feature",
+                                                    "geometry": {
+                                                        "type": "Point",
+                                                        "coordinates": [float(facility["longitude"]), float(facility["latitude"])]
+                                                    },
+                                                    "properties": {
+                                                        "name": facility.get("name", f"Solar Facility {facility.get('cluster_id', '')}"),
+                                                        "capacity_mw": float(facility["capacity_mw"]),
+                                                        "country": facility["country"],
+                                                        "completion_year": facility.get("completion_year", "Unknown"),
+                                                        "cluster_id": facility.get("cluster_id", ""),
+                                                        "technology": "Solar PV",
+                                                        "marker_color": country_colors.get(facility["country"].lower(), "#9E9E9E")
+                                                    }
+                                                }
+                                                geojson["features"].append(feature)
+                                            
+                                            # Save GeoJSON file
+                                            try:
+                                                import os
+                                                import hashlib
+                                                
+                                                script_dir = os.path.dirname(os.path.abspath(__file__))
+                                                project_root = os.path.dirname(script_dir)  # Go up from mcp/ to project root
+                                                static_maps_dir = os.path.join(project_root, "static", "maps")
+                                                
+                                                # Ensure directory exists
+                                                os.makedirs(static_maps_dir, exist_ok=True)
+                                                
+                                                # Create unique filename
+                                                countries = parsed_content.get("summary", {}).get("countries", ["world"])
+                                                countries_str = "_".join([c.lower().replace(" ", "_") for c in countries[:4]])
+                                                data_hash = hashlib.md5(str(len(facilities)).encode()).hexdigest()[:8]
+                                                filename = f"solar_facilities_{countries_str}_{data_hash}.geojson"
+                                                
+                                                # Write GeoJSON file
+                                                geojson_path = os.path.join(static_maps_dir, filename)
+                                                with open(geojson_path, 'w') as f:
+                                                    json.dump(geojson, f, indent=2)
+                                                
+                                                print(f"STREAMING DEBUG: ✅ Generated GeoJSON file: {geojson_path}")
+                                                print(f"STREAMING DEBUG: File contains {len(geojson['features'])} features")
+                                                
+                                                # Add geojson_url to map_data for formatter
+                                                import os
+                                                base_url = os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
+                                                map_data["geojson_url"] = f"{base_url}/static/maps/{filename}"
+                                                map_data["geojson_filename"] = filename
+                                                
+                                            except Exception as e:
+                                                print(f"STREAMING DEBUG: ❌ Error generating GeoJSON file: {e}")
+                                                import traceback
+                                                traceback.print_exc()
+                                                
                                 except json.JSONDecodeError:
                                     pass
                     
