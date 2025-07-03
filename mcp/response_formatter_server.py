@@ -1308,10 +1308,14 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 bounds = {"north": 50, "south": -50, "east": 180, "west": -180}
                 center = [0, 0]
             
+            # Get base URL for absolute URLs (same as KG embed URLs)
+            import os
+            base_url = os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
+            
             return {
                 "type": "map",
                 "mapType": "geojson_url",
-                "geojson_url": f"/static/maps/{filename}",
+                "geojson_url": f"{base_url}/static/maps/{filename}",
                 "filename": filename,
                 "viewState": {
                     "center": center,
@@ -1398,10 +1402,14 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                     "description": "Size represents capacity"
                 })
         
+        # Get base URL for absolute URLs (same as KG embed URLs)
+        import os
+        base_url = os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
+        
         return {
             "type": "map",
             "mapType": "geojson_url",
-            "geojson_url": f"/static/maps/{filename}",  # URL instead of embedded data
+            "geojson_url": f"{base_url}/static/maps/{filename}",  # Absolute URL for cross-origin frontend
             "filename": filename,  # For debugging/caching
             "viewState": {
                 "center": [center_lon, center_lat],
