@@ -386,22 +386,7 @@ def FormatResponseAsModules(
             modules.append(table_module)
     
     # 4. Add interactive map module
-    # Check if map was requested in the response text
-    response_lower = response_text.lower()
-    map_requested = any(keyword in response_lower for keyword in ["map", "geospatial", "geographic", "location"])
-    
-    # Debug logging for map module creation
-    print(f"FORMATTER DEBUG: Map module decision:")
-    print(f"  - map_data exists: {map_data is not None}")
-    if map_data:
-        print(f"  - map_data type: {map_data.get('type', 'unknown')}")
-        print(f"  - map_data has data: {bool(map_data.get('data'))}")
-        print(f"  - is map_data_summary: {map_data.get('type') == 'map_data_summary'}")
-    print(f"  - map_requested (keywords in text): {map_requested}")
-    print(f"  - Keywords checked: map, geospatial, geographic, location")
-    print(f"  - Response text sample: {response_lower[:200]}...")
-    
-    # Create map module if we have map data (regardless of keywords in text)
+    # Create map module only if we have actual map data from MCP tools
     if map_data and (map_data.get("data") or map_data.get("type") == "map_data_summary"):
         print("FORMATTER DEBUG: Creating map module because map_data exists")
         map_module = _create_map_module(map_data)
@@ -416,31 +401,8 @@ def FormatResponseAsModules(
         if map_summary:
             modules.append(map_summary)
             print("FORMATTER DEBUG: ✅ Map summary table added")
-    elif map_requested and "solar" in response_lower:
-        # Fallback: if no map_data but maps were mentioned, create placeholder
-        print("FORMATTER DEBUG: Map mentioned but no map_data provided, creating placeholder")
-        map_data = {
-            "type": "map_data_summary",
-            "summary": {
-                "total_facilities": 8319,
-                "total_capacity_mw": 124895.24,
-                "countries": ["Brazil", "India", "South Africa", "Vietnam"],
-                "facilities_shown_on_map": 1000,
-                "largest_facilities_shown": True
-            },
-            "metadata": {
-                "data_source": "TZ-SAM Q1 2025",
-                "geojson_available": True
-            }
-        }
-        map_module = _create_map_module(map_data)
-        if map_module:
-            modules.append(map_module)
-        map_summary = _create_map_summary_table(map_data)
-        if map_summary:
-            modules.append(map_summary)
     else:
-        print("FORMATTER DEBUG: No map module created - no map_data and no map keywords")
+        print("FORMATTER DEBUG: No map module created - no map_data provided")
     
     # 5. Add sources as numbered citation table or legacy sources table
     if citation_registry:
