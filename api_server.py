@@ -193,6 +193,7 @@ async def process_query(request: QueryRequest):
     - thinking_process: AI's step-by-step reasoning (if requested)
     - metadata: Query metadata and performance info
     """
+    print(f"🔥 RECEIVED QUERY REQUEST: {request.query}")
     try:
         # Set working directory for MCP servers - use current script location
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -551,6 +552,7 @@ async def stream_query(request: StreamQueryRequest):
     - complete: Final structured response
     - error: Any errors that occur
     """
+    print(f"🔥 RECEIVED STREAM REQUEST: {request.query}")
     
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
@@ -685,4 +687,4 @@ async def proxy_kg_api(path: str, request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8098) # Changed port to 8098 to avoid conflict
+    uvicorn.run(app, host="0.0.0.0", port=8099) # Changed port to 8099 to avoid VS Code conflict

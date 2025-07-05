@@ -1,0 +1,2780 @@
+{
+  "cached_at": "2025-07-05T10:49:12.109748",
+  "query_id": "scope3-emissions-trends",
+  "query": "Show Scope 3 emissions trends for major oil and gas companies from 2020-2023. Include breakdown by upstream vs downstream emissions, emissions intensity metrics, and comparison with industry benchmarks.",
+  "response": {
+    "query": "Show Scope 3 emissions trends for major oil and gas companies from 2020-2023. Include breakdown by upstream vs downstream emissions, emissions intensity metrics, and comparison with industry benchmarks.",
+    "modules": [
+      {
+        "type": "text",
+        "heading": "Climate Policy Analysis",
+        "texts": [
+          "Based on the analysis of Scope 3 emissions trends for oil and gas companies from 2020-2023, here's a comprehensive overview:",
+          "Emissions Composition and Trends:\n- Total Scope 3 Emissions Range: 559,914 - 1,837,983 metric tons CO2e\n- Upstream vs. Downstream Breakdown:\n  * Upstream Emissions: 40-85% of total Scope 3 emissions\n  * Downstream Emissions: 15-60% of total emissions",
+          "Emissions Intensity Metrics:\n- Average Emissions Intensity: 197.55 - 905.99 CO2e per million $ revenue\n- Notable Company Examples:\n  * Neoenergia SA: \n    - Reduced emissions intensity by 71.31% (2016-2024)\n    - Total emissions decreased by 38.81%\n    - Upstream emissions dropped by 73.78%\n  * Movida Participações SA:\n    - High emissions intensity of 731.94\n  * Distribuidora Internacional:\n    - Lowest emissions intensity at 76.12",
+          "Key Trends:\n1. Most companies show declining total emissions\n2. Significant variations in emissions intensity across companies\n3. Some companies experiencing substantial reductions in upstream emissions\n4. Downstream emissions showing more variability, with some companies experiencing increases",
+          "Industry Benchmarks:\n- Emissions reduction is becoming a key focus\n- Companies are implementing strategies to lower Scope 3 emissions\n- Wide range of performance exists within the sector",
+          "Limitations: The dataset appears to be limited, primarily focusing on a small number of companies, which may not fully represent the entire oil and gas sector's Scope 3 emissions trends. ^1,2,3^"
+        ]
+      },
+      {
+        "type": "numbered_citation_table",
+        "heading": "References",
+        "columns": [
+          "#",
+          "Source",
+          "ID/Tool",
+          "Type",
+          "Description"
+        ],
+        "rows": [
+          [
+            "1",
+            "GIST Corporate Directory | GIST Environmental Research",
+            "GetGistCompanies",
+            "Database",
+            "Directory of companies with sustainability and environmental data..."
+          ],
+          [
+            "2",
+            "GIST Sustainability Dashboard Data | GIST Environmental Research",
+            "GetGistVisualizationData",
+            "Database",
+            "Structured corporate sustainability data for visualizations (13 facilities)..."
+          ],
+          [
+            "3",
+            "GIST Scope 3 Emissions Database | GIST Environmental Research",
+            "GetGistEmissionsTrends",
+            "Database",
+            "Corporate Scope 3 emissions data with multi-year trends (2016-2024) for company NEOENE00001..."
+          ]
+        ]
+      },
+      {
+        "type": "table",
+        "heading": "Visualizationdata Analysis",
+        "columns": [
+          "SECTOR_CODE",
+          "SCOPE_3_EMISSIONS_TOTAL",
+          "COMPANY_CODE"
+        ],
+        "rows": [
+          [
+            "BLDG",
+            152333.5,
+            2
+          ],
+          [
+            "CLOT",
+            559913.99,
+            1
+          ],
+          [
+            "CONG",
+            0.0,
+            1
+          ],
+          [
+            "DIST",
+            378467.93,
+            1
+          ],
+          [
+            "FINS",
+            44139.49,
+            1
+          ],
+          [
+            "FOMA",
+            1630669.75,
+            1
+          ],
+          [
+            "INDE",
+            160.0,
+            1
+          ],
+          [
+            "ITIS",
+            13399.15,
+            1
+          ],
+          [
+            "OGES",
+            8246.88,
+            2
+          ],
+          [
+            "REEN",
+            1802802.32,
+            1
+          ]
+        ]
+      },
+      {
+        "type": "ranking_table",
+        "heading": "Top Emitting Companies",
+        "columns": [
+          "rank",
+          "company_code",
+          "company_name",
+          "sector_code",
+          "reporting_year",
+          "total_scope3_emissions",
+          "upstream_emissions",
+          "downstream_emissions",
+          "revenue",
+          "emissions_intensity"
+        ],
+        "rows": [
+          [
+            1,
+            "MOVIDA00002",
+            "Movida ParticipaÃ§oes SA",
+            "RENT",
+            2024,
+            1837983.28388822,
+            647150.306866303,
+            1190832.97702192,
+            2511.12334838077,
+            731.9366788865206
+          ],
+          [
+            2,
+            "NEOENE00001",
+            "Neoenergia SA",
+            "REEN",
+            2024,
+            1802802.31783649,
+            772544.844361141,
+            1030257.47347535,
+            9125.806857011179,
+            197.54990940351013
+          ],
+          [
+            3,
+            "MDIASB00001",
+            "M. Dias Branco SA Industria e Comercio de Alimentos",
+            "FOMA",
+            2024,
+            1630669.74891888,
+            1580875.45060758,
+            49794.298311302,
+            1799.87238278027,
+            905.9918717125811
+          ],
+          [
+            4,
+            "ALPARG00001",
+            "Alpargatas SA",
+            "CLOT",
+            2024,
+            559913.99138406,
+            559913.981157537,
+            0.01022652308,
+            765.245090003356,
+            731.6792994798627
+          ],
+          [
+            5,
+            "DISTRI00001",
+            "Distribuidora Internacional De Alimentacion SA",
+            "WHRE",
+            2024,
+            484247.0,
+            364329.838,
+            37162.0,
+            6361.68351297765,
+            76.11931637469078
+          ]
+        ],
+        "metadata": {
+          "tool_used": "GetGistTopEmitters",
+          "module_id": "GetGistTopEmitters_ranking_table_64587f23_1751734152037",
+          "citations": [],
+          "total_entries": 5,
+          "displayed_entries": 5
+        }
+      }
+    ],
+    "thinking_process": null,
+    "metadata": {
+      "modules_count": 4,
+      "has_maps": false,
+      "has_charts": true,
+      "has_tables": true,
+      "chart_potential": true,
+      "chart_worthy_tables": 1,
+      "visualization_data_available": false,
+      "module_types": [
+        "text",
+        "ranking_table",
+        "table",
+        "numbered_citation_table"
+      ],
+      "kg_visualization_url": "/kg-viz",
+      "kg_query_url": "/kg-viz?query=Show%20Scope%203%20emissions%20trends%20for%20major%20oil%20and%20gas%20companies%20from%202020-2023.%20Include%20breakdown%20by%20upstream%20vs%20downstream%20emissions,%20emissions%20intensity%20metrics,%20and%20comparison%20with%20industry%20benchmarks.",
+      "kg_embed_url": "https://api.transitiondigital.org/static/kg/kg_a627209dbbae.html",
+      "kg_embed_path": "kg/kg_a627209dbbae.html",
+      "kg_embed_absolute_path": "/Users/mason/Documents/GitHub/tde/static/kg/kg_a627209dbbae.html",
+      "kg_embed_filename": "kg_a627209dbbae.html"
+    },
+    "concepts": [
+      {
+        "id": "Q1489",
+        "label": "gas oil"
+      },
+      {
+        "id": "Q762",
+        "label": "energy supply sector"
+      },
+      {
+        "id": "Q1317",
+        "label": "syngas"
+      },
+      {
+        "id": "Q1065",
+        "label": "plastic pyrolysis"
+      },
+      {
+        "id": "Q1048",
+        "label": "plastic disposal"
+      },
+      {
+        "id": "Q770",
+        "label": "anthropogenic climate change"
+      },
+      {
+        "id": "Q1652",
+        "label": "emissions reduction target"
+      },
+      {
+        "id": "Q322",
+        "label": "Waste and recycling technologies"
+      },
+      {
+        "id": "Q1481",
+        "label": "vehicular fuels"
+      },
+      {
+        "id": "Q1526",
+        "label": "pipeline transport"
+      },
+      {
+        "id": "Q767",
+        "label": "hospitality sector"
+      },
+      {
+        "id": "Q560",
+        "label": "mitigation"
+      },
+      {
+        "id": "Q1451",
+        "label": "offshore oil extraction"
+      },
+      {
+        "id": "Q1484",
+        "label": "hydrocarbon"
+      },
+      {
+        "id": "Q1315",
+        "label": "gaseous fuel"
+      },
+      {
+        "id": "Q733",
+        "label": "crude oil"
+      },
+      {
+        "id": "Q642",
+        "label": "kerosene"
+      },
+      {
+        "id": "Q1417",
+        "label": "fossil fuel phase-out"
+      },
+      {
+        "id": "Q790",
+        "label": "extraction of coal"
+      },
+      {
+        "id": "Q597",
+        "label": "aviation biofuel"
+      },
+      {
+        "id": "Q1533",
+        "label": "private jet transport"
+      },
+      {
+        "id": "Q1046",
+        "label": "plastic pollution"
+      },
+      {
+        "id": "Q906",
+        "label": "extraction of fossil gas"
+      },
+      {
+        "id": "Q791",
+        "label": "extraction of crude petroleum"
+      },
+      {
+        "id": "Q716",
+        "label": "carbon tax"
+      },
+      {
+        "id": "Q737",
+        "label": "shale gas"
+      },
+      {
+        "id": "Q639",
+        "label": "oil"
+      },
+      {
+        "id": "Q760",
+        "label": "extractive sector"
+      },
+      {
+        "id": "Q221",
+        "label": "greenhouse gas emissions"
+      },
+      {
+        "id": "Q644",
+        "label": "aviation fuel"
+      },
+      {
+        "id": "Q814",
+        "label": "transport equipment manufacturing"
+      },
+      {
+        "id": "Q1471",
+        "label": "extraction of biofuels"
+      },
+      {
+        "id": "Q226",
+        "label": "methane"
+      },
+      {
+        "id": "Q1314",
+        "label": "liquid fuel"
+      },
+      {
+        "id": "Q670",
+        "label": "gas flaring"
+      },
+      {
+        "id": "Q868",
+        "label": "electricity supply sector"
+      },
+      {
+        "id": "Q647",
+        "label": "tar sand"
+      },
+      {
+        "id": "Q645",
+        "label": "fracking"
+      },
+      {
+        "id": "Q738",
+        "label": "shale oil"
+      },
+      {
+        "id": "Q989",
+        "label": "industrial failure"
+      },
+      {
+        "id": "Q955",
+        "label": "chemical impact"
+      },
+      {
+        "id": "Q1253",
+        "label": "brown clouds"
+      },
+      {
+        "id": "Q657",
+        "label": "Marine Gas Oil"
+      },
+      {
+        "id": "Q827",
+        "label": "land transport"
+      },
+      {
+        "id": "Q650",
+        "label": "fossil gas"
+      },
+      {
+        "id": "Q1312",
+        "label": "light fuel oil"
+      },
+      {
+        "id": "Q223",
+        "label": "carbon dioxide"
+      },
+      {
+        "id": "Q829",
+        "label": "air transport"
+      },
+      {
+        "id": "Q575",
+        "label": "biofuel"
+      },
+      {
+        "id": "Q1330",
+        "label": "oil rig"
+      },
+      {
+        "id": "Q909",
+        "label": "plastic production"
+      },
+      {
+        "id": "Q1470",
+        "label": "extraction of fuels"
+      },
+      {
+        "id": "Q1307",
+        "label": "heavy fuel oil"
+      },
+      {
+        "id": "Q1483",
+        "label": "ammonia"
+      },
+      {
+        "id": "Q641",
+        "label": "gasoline"
+      },
+      {
+        "id": "Q661",
+        "label": "coal"
+      },
+      {
+        "id": "Q751",
+        "label": "coal-fired"
+      },
+      {
+        "id": "Q229",
+        "label": "nitrous oxide"
+      },
+      {
+        "id": "Q869",
+        "label": "gas supply"
+      },
+      {
+        "id": "Q754",
+        "label": "enhanced greenhouse effect"
+      },
+      {
+        "id": "Q643",
+        "label": "diesel"
+      },
+      {
+        "id": "Q901",
+        "label": "oil spill"
+      },
+      {
+        "id": "Q638",
+        "label": "fossil fuel"
+      },
+      {
+        "id": "Q1486",
+        "label": "carbon black"
+      },
+      {
+        "id": "Q828",
+        "label": "water transport"
+      },
+      {
+        "id": "Q1450",
+        "label": "onshore oil extraction"
+      },
+      {
+        "id": "Q1531",
+        "label": "private car transportation"
+      },
+      {
+        "id": "Q1311",
+        "label": "distillate fuel"
+      },
+      {
+        "id": "Q658",
+        "label": "Marine Diesel Oil"
+      },
+      {
+        "id": "Q739",
+        "label": "coal bed methane"
+      },
+      {
+        "id": "Q4",
+        "label": "deforestation"
+      },
+      {
+        "id": "Q218",
+        "label": "greenhouse gas"
+      }
+    ],
+    "relationships": [
+      {
+        "source_id": "Q1489",
+        "target_id": "Q1315",
+        "source_label": "gas oil",
+        "target_label": "gaseous fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gas oil -> gaseous fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1489",
+        "target_id": "Q733",
+        "source_label": "gas oil",
+        "target_label": "crude oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gas oil -> crude oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1489",
+        "target_id": "Q639",
+        "source_label": "gas oil",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gas oil -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1489",
+        "target_id": "Q657",
+        "source_label": "gas oil",
+        "target_label": "Marine Gas Oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "gas oil -> Marine Gas Oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q762",
+        "target_id": "Q868",
+        "source_label": "energy supply sector",
+        "target_label": "electricity supply sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "energy supply sector -> electricity supply sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q762",
+        "target_id": "Q868",
+        "source_label": "energy supply sector",
+        "target_label": "electricity supply sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "energy supply sector -> electricity supply sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q762",
+        "target_id": "Q869",
+        "source_label": "energy supply sector",
+        "target_label": "gas supply",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "energy supply sector -> gas supply (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q762",
+        "target_id": "Q638",
+        "source_label": "energy supply sector",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "energy supply sector -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1317",
+        "target_id": "Q1315",
+        "source_label": "syngas",
+        "target_label": "gaseous fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "syngas -> gaseous fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1317",
+        "target_id": "Q869",
+        "source_label": "syngas",
+        "target_label": "gas supply",
+        "relationship_type": "RELATED_TO",
+        "formatted": "syngas -> gas supply (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1317",
+        "target_id": "Q641",
+        "source_label": "syngas",
+        "target_label": "gasoline",
+        "relationship_type": "RELATED_TO",
+        "formatted": "syngas -> gasoline (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1065",
+        "target_id": "Q1048",
+        "source_label": "plastic pyrolysis",
+        "target_label": "plastic disposal",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "plastic pyrolysis -> plastic disposal (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1065",
+        "target_id": "Q639",
+        "source_label": "plastic pyrolysis",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "plastic pyrolysis -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1065",
+        "target_id": "Q322",
+        "source_label": "plastic pyrolysis",
+        "target_label": "Waste and recycling technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "plastic pyrolysis -> Waste and recycling technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1048",
+        "target_id": "Q1046",
+        "source_label": "plastic disposal",
+        "target_label": "plastic pollution",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "plastic disposal -> plastic pollution (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1048",
+        "target_id": "Q1065",
+        "source_label": "plastic disposal",
+        "target_label": "plastic pyrolysis",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "plastic disposal -> plastic pyrolysis (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q770",
+        "target_id": "Q754",
+        "source_label": "anthropogenic climate change",
+        "target_label": "enhanced greenhouse effect",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "anthropogenic climate change -> enhanced greenhouse effect (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q770",
+        "target_id": "Q638",
+        "source_label": "anthropogenic climate change",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "anthropogenic climate change -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q770",
+        "target_id": "Q221",
+        "source_label": "anthropogenic climate change",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "anthropogenic climate change -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1652",
+        "target_id": "Q218",
+        "source_label": "emissions reduction target",
+        "target_label": "greenhouse gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "emissions reduction target -> greenhouse gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1652",
+        "target_id": "Q221",
+        "source_label": "emissions reduction target",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "emissions reduction target -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q322",
+        "target_id": "Q1065",
+        "source_label": "Waste and recycling technologies",
+        "target_label": "plastic pyrolysis",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Waste and recycling technologies -> plastic pyrolysis (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1481",
+        "target_id": "Q643",
+        "source_label": "vehicular fuels",
+        "target_label": "diesel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "vehicular fuels -> diesel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1481",
+        "target_id": "Q641",
+        "source_label": "vehicular fuels",
+        "target_label": "gasoline",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "vehicular fuels -> gasoline (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1526",
+        "target_id": "Q827",
+        "source_label": "pipeline transport",
+        "target_label": "land transport",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "pipeline transport -> land transport (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1526",
+        "target_id": "Q869",
+        "source_label": "pipeline transport",
+        "target_label": "gas supply",
+        "relationship_type": "RELATED_TO",
+        "formatted": "pipeline transport -> gas supply (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1526",
+        "target_id": "Q639",
+        "source_label": "pipeline transport",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "pipeline transport -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q767",
+        "target_id": "Q1307",
+        "source_label": "hospitality sector",
+        "target_label": "heavy fuel oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "hospitality sector -> heavy fuel oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q560",
+        "target_id": "Q638",
+        "source_label": "mitigation",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q560",
+        "target_id": "Q223",
+        "source_label": "mitigation",
+        "target_label": "carbon dioxide",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation -> carbon dioxide (RELATED_TO)"
+      },
+      {
+        "source_id": "Q560",
+        "target_id": "Q218",
+        "source_label": "mitigation",
+        "target_label": "greenhouse gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation -> greenhouse gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q560",
+        "target_id": "Q661",
+        "source_label": "mitigation",
+        "target_label": "coal",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation -> coal (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1451",
+        "target_id": "Q791",
+        "source_label": "offshore oil extraction",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "offshore oil extraction -> extraction of crude petroleum (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1451",
+        "target_id": "Q1450",
+        "source_label": "offshore oil extraction",
+        "target_label": "onshore oil extraction",
+        "relationship_type": "RELATED_TO",
+        "formatted": "offshore oil extraction -> onshore oil extraction (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1451",
+        "target_id": "Q639",
+        "source_label": "offshore oil extraction",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "offshore oil extraction -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1451",
+        "target_id": "Q733",
+        "source_label": "offshore oil extraction",
+        "target_label": "crude oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "offshore oil extraction -> crude oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1484",
+        "target_id": "Q650",
+        "source_label": "hydrocarbon",
+        "target_label": "fossil gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "hydrocarbon -> fossil gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1484",
+        "target_id": "Q639",
+        "source_label": "hydrocarbon",
+        "target_label": "oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "hydrocarbon -> oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1315",
+        "target_id": "Q650",
+        "source_label": "gaseous fuel",
+        "target_label": "fossil gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "gaseous fuel -> fossil gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1315",
+        "target_id": "Q1317",
+        "source_label": "gaseous fuel",
+        "target_label": "syngas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "gaseous fuel -> syngas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1315",
+        "target_id": "Q1489",
+        "source_label": "gaseous fuel",
+        "target_label": "gas oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "gaseous fuel -> gas oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q639",
+        "source_label": "crude oil",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "crude oil -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q1314",
+        "source_label": "crude oil",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "crude oil -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q1489",
+        "source_label": "crude oil",
+        "target_label": "gas oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "crude oil -> gas oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q641",
+        "source_label": "crude oil",
+        "target_label": "gasoline",
+        "relationship_type": "RELATED_TO",
+        "formatted": "crude oil -> gasoline (RELATED_TO)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q791",
+        "source_label": "crude oil",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "RELATED_TO",
+        "formatted": "crude oil -> extraction of crude petroleum (RELATED_TO)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q1451",
+        "source_label": "crude oil",
+        "target_label": "offshore oil extraction",
+        "relationship_type": "RELATED_TO",
+        "formatted": "crude oil -> offshore oil extraction (RELATED_TO)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q1450",
+        "source_label": "crude oil",
+        "target_label": "onshore oil extraction",
+        "relationship_type": "RELATED_TO",
+        "formatted": "crude oil -> onshore oil extraction (RELATED_TO)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q1470",
+        "source_label": "crude oil",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "crude oil -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q733",
+        "target_id": "Q737",
+        "source_label": "crude oil",
+        "target_label": "shale gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "crude oil -> shale gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q642",
+        "target_id": "Q639",
+        "source_label": "kerosene",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "kerosene -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q642",
+        "target_id": "Q644",
+        "source_label": "kerosene",
+        "target_label": "aviation fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "kerosene -> aviation fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q642",
+        "target_id": "Q597",
+        "source_label": "kerosene",
+        "target_label": "aviation biofuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "kerosene -> aviation biofuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1417",
+        "target_id": "Q638",
+        "source_label": "fossil fuel phase-out",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel phase-out -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q790",
+        "target_id": "Q1470",
+        "source_label": "extraction of coal",
+        "target_label": "extraction of fuels",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "extraction of coal -> extraction of fuels (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q790",
+        "target_id": "Q661",
+        "source_label": "extraction of coal",
+        "target_label": "coal",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of coal -> coal (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q597",
+        "target_id": "Q1314",
+        "source_label": "aviation biofuel",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "aviation biofuel -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q597",
+        "target_id": "Q575",
+        "source_label": "aviation biofuel",
+        "target_label": "biofuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation biofuel -> biofuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q597",
+        "target_id": "Q642",
+        "source_label": "aviation biofuel",
+        "target_label": "kerosene",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation biofuel -> kerosene (RELATED_TO)"
+      },
+      {
+        "source_id": "Q597",
+        "target_id": "Q644",
+        "source_label": "aviation biofuel",
+        "target_label": "aviation fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation biofuel -> aviation fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1533",
+        "target_id": "Q829",
+        "source_label": "private jet transport",
+        "target_label": "air transport",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "private jet transport -> air transport (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1533",
+        "target_id": "Q644",
+        "source_label": "private jet transport",
+        "target_label": "aviation fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "private jet transport -> aviation fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1046",
+        "target_id": "Q909",
+        "source_label": "plastic pollution",
+        "target_label": "plastic production",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "plastic pollution -> plastic production (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1046",
+        "target_id": "Q1048",
+        "source_label": "plastic pollution",
+        "target_label": "plastic disposal",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "plastic pollution -> plastic disposal (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1046",
+        "target_id": "Q760",
+        "source_label": "plastic pollution",
+        "target_label": "extractive sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "plastic pollution -> extractive sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1046",
+        "target_id": "Q1470",
+        "source_label": "plastic pollution",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "plastic pollution -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q906",
+        "target_id": "Q1470",
+        "source_label": "extraction of fossil gas",
+        "target_label": "extraction of fuels",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "extraction of fossil gas -> extraction of fuels (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q906",
+        "target_id": "Q645",
+        "source_label": "extraction of fossil gas",
+        "target_label": "fracking",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of fossil gas -> fracking (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q906",
+        "target_id": "Q670",
+        "source_label": "extraction of fossil gas",
+        "target_label": "gas flaring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of fossil gas -> gas flaring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q906",
+        "target_id": "Q869",
+        "source_label": "extraction of fossil gas",
+        "target_label": "gas supply",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fossil gas -> gas supply (RELATED_TO)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q1470",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "extraction of fuels",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "extraction of crude petroleum -> extraction of fuels (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q645",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "fracking",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of crude petroleum -> fracking (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q1450",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "onshore oil extraction",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of crude petroleum -> onshore oil extraction (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q1451",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "offshore oil extraction",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of crude petroleum -> offshore oil extraction (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q670",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "gas flaring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of crude petroleum -> gas flaring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q647",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "tar sand",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of crude petroleum -> tar sand (RELATED_TO)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q639",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of crude petroleum -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q733",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "crude oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of crude petroleum -> crude oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q901",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "oil spill",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of crude petroleum -> oil spill (RELATED_TO)"
+      },
+      {
+        "source_id": "Q791",
+        "target_id": "Q1330",
+        "source_label": "extraction of crude petroleum",
+        "target_label": "oil rig",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of crude petroleum -> oil rig (RELATED_TO)"
+      },
+      {
+        "source_id": "Q716",
+        "target_id": "Q221",
+        "source_label": "carbon tax",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon tax -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q737",
+        "target_id": "Q650",
+        "source_label": "shale gas",
+        "target_label": "fossil gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "shale gas -> fossil gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q737",
+        "target_id": "Q226",
+        "source_label": "shale gas",
+        "target_label": "methane",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "shale gas -> methane (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q737",
+        "target_id": "Q645",
+        "source_label": "shale gas",
+        "target_label": "fracking",
+        "relationship_type": "RELATED_TO",
+        "formatted": "shale gas -> fracking (RELATED_TO)"
+      },
+      {
+        "source_id": "Q737",
+        "target_id": "Q738",
+        "source_label": "shale gas",
+        "target_label": "shale oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "shale gas -> shale oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q638",
+        "source_label": "oil",
+        "target_label": "fossil fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "oil -> fossil fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1314",
+        "source_label": "oil",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "oil -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1484",
+        "source_label": "oil",
+        "target_label": "hydrocarbon",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "oil -> hydrocarbon (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q641",
+        "source_label": "oil",
+        "target_label": "gasoline",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> gasoline (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q642",
+        "source_label": "oil",
+        "target_label": "kerosene",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> kerosene (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q643",
+        "source_label": "oil",
+        "target_label": "diesel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> diesel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q644",
+        "source_label": "oil",
+        "target_label": "aviation fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> aviation fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q733",
+        "source_label": "oil",
+        "target_label": "crude oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> crude oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q647",
+        "source_label": "oil",
+        "target_label": "tar sand",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> tar sand (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q738",
+        "source_label": "oil",
+        "target_label": "shale oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> shale oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1307",
+        "source_label": "oil",
+        "target_label": "heavy fuel oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> heavy fuel oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1311",
+        "source_label": "oil",
+        "target_label": "distillate fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> distillate fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1489",
+        "source_label": "oil",
+        "target_label": "gas oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "oil -> gas oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q221",
+        "source_label": "oil",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q901",
+        "source_label": "oil",
+        "target_label": "oil spill",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> oil spill (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q791",
+        "source_label": "oil",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> extraction of crude petroleum (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1450",
+        "source_label": "oil",
+        "target_label": "onshore oil extraction",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> onshore oil extraction (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1451",
+        "source_label": "oil",
+        "target_label": "offshore oil extraction",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> offshore oil extraction (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1486",
+        "source_label": "oil",
+        "target_label": "carbon black",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> carbon black (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1065",
+        "source_label": "oil",
+        "target_label": "plastic pyrolysis",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> plastic pyrolysis (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1330",
+        "source_label": "oil",
+        "target_label": "oil rig",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> oil rig (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1470",
+        "source_label": "oil",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q639",
+        "target_id": "Q1526",
+        "source_label": "oil",
+        "target_label": "pipeline transport",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil -> pipeline transport (RELATED_TO)"
+      },
+      {
+        "source_id": "Q760",
+        "target_id": "Q1470",
+        "source_label": "extractive sector",
+        "target_label": "extraction of fuels",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extractive sector -> extraction of fuels (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q760",
+        "target_id": "Q1046",
+        "source_label": "extractive sector",
+        "target_label": "plastic pollution",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extractive sector -> plastic pollution (RELATED_TO)"
+      },
+      {
+        "source_id": "Q760",
+        "target_id": "Q661",
+        "source_label": "extractive sector",
+        "target_label": "coal",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extractive sector -> coal (RELATED_TO)"
+      },
+      {
+        "source_id": "Q760",
+        "target_id": "Q955",
+        "source_label": "extractive sector",
+        "target_label": "chemical impact",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extractive sector -> chemical impact (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q218",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "greenhouse gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> greenhouse gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q770",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "anthropogenic climate change",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> anthropogenic climate change (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q754",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "enhanced greenhouse effect",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> enhanced greenhouse effect (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q638",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q4",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "deforestation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> deforestation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q639",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q661",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "coal",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> coal (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q716",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "carbon tax",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> carbon tax (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q1652",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "emissions reduction target",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> emissions reduction target (RELATED_TO)"
+      },
+      {
+        "source_id": "Q221",
+        "target_id": "Q226",
+        "source_label": "greenhouse gas emissions",
+        "target_label": "methane",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas emissions -> methane (RELATED_TO)"
+      },
+      {
+        "source_id": "Q644",
+        "target_id": "Q639",
+        "source_label": "aviation fuel",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "aviation fuel -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q644",
+        "target_id": "Q1314",
+        "source_label": "aviation fuel",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "aviation fuel -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q644",
+        "target_id": "Q597",
+        "source_label": "aviation fuel",
+        "target_label": "aviation biofuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation fuel -> aviation biofuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q644",
+        "target_id": "Q642",
+        "source_label": "aviation fuel",
+        "target_label": "kerosene",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation fuel -> kerosene (RELATED_TO)"
+      },
+      {
+        "source_id": "Q644",
+        "target_id": "Q1533",
+        "source_label": "aviation fuel",
+        "target_label": "private jet transport",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation fuel -> private jet transport (RELATED_TO)"
+      },
+      {
+        "source_id": "Q644",
+        "target_id": "Q829",
+        "source_label": "aviation fuel",
+        "target_label": "air transport",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation fuel -> air transport (RELATED_TO)"
+      },
+      {
+        "source_id": "Q814",
+        "target_id": "Q1486",
+        "source_label": "transport equipment manufacturing",
+        "target_label": "carbon black",
+        "relationship_type": "RELATED_TO",
+        "formatted": "transport equipment manufacturing -> carbon black (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1471",
+        "target_id": "Q1470",
+        "source_label": "extraction of biofuels",
+        "target_label": "extraction of fuels",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "extraction of biofuels -> extraction of fuels (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1471",
+        "target_id": "Q575",
+        "source_label": "extraction of biofuels",
+        "target_label": "biofuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of biofuels -> biofuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q226",
+        "target_id": "Q650",
+        "source_label": "methane",
+        "target_label": "fossil gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "methane -> fossil gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q226",
+        "target_id": "Q737",
+        "source_label": "methane",
+        "target_label": "shale gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "methane -> shale gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q226",
+        "target_id": "Q670",
+        "source_label": "methane",
+        "target_label": "gas flaring",
+        "relationship_type": "RELATED_TO",
+        "formatted": "methane -> gas flaring (RELATED_TO)"
+      },
+      {
+        "source_id": "Q226",
+        "target_id": "Q645",
+        "source_label": "methane",
+        "target_label": "fracking",
+        "relationship_type": "RELATED_TO",
+        "formatted": "methane -> fracking (RELATED_TO)"
+      },
+      {
+        "source_id": "Q226",
+        "target_id": "Q638",
+        "source_label": "methane",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "methane -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q575",
+        "source_label": "liquid fuel",
+        "target_label": "biofuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> biofuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q597",
+        "source_label": "liquid fuel",
+        "target_label": "aviation biofuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> aviation biofuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q644",
+        "source_label": "liquid fuel",
+        "target_label": "aviation fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> aviation fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q643",
+        "source_label": "liquid fuel",
+        "target_label": "diesel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> diesel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q641",
+        "source_label": "liquid fuel",
+        "target_label": "gasoline",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> gasoline (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q733",
+        "source_label": "liquid fuel",
+        "target_label": "crude oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> crude oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q1483",
+        "source_label": "liquid fuel",
+        "target_label": "ammonia",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> ammonia (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1314",
+        "target_id": "Q639",
+        "source_label": "liquid fuel",
+        "target_label": "oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "liquid fuel -> oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q670",
+        "target_id": "Q791",
+        "source_label": "gas flaring",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gas flaring -> extraction of crude petroleum (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q670",
+        "target_id": "Q906",
+        "source_label": "gas flaring",
+        "target_label": "extraction of fossil gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gas flaring -> extraction of fossil gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q670",
+        "target_id": "Q226",
+        "source_label": "gas flaring",
+        "target_label": "methane",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gas flaring -> methane (RELATED_TO)"
+      },
+      {
+        "source_id": "Q670",
+        "target_id": "Q650",
+        "source_label": "gas flaring",
+        "target_label": "fossil gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gas flaring -> fossil gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q670",
+        "target_id": "Q1470",
+        "source_label": "gas flaring",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gas flaring -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q868",
+        "target_id": "Q762",
+        "source_label": "electricity supply sector",
+        "target_label": "energy supply sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "electricity supply sector -> energy supply sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q868",
+        "target_id": "Q762",
+        "source_label": "electricity supply sector",
+        "target_label": "energy supply sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "electricity supply sector -> energy supply sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q868",
+        "target_id": "Q638",
+        "source_label": "electricity supply sector",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "electricity supply sector -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q647",
+        "target_id": "Q639",
+        "source_label": "tar sand",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "tar sand -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q647",
+        "target_id": "Q791",
+        "source_label": "tar sand",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "RELATED_TO",
+        "formatted": "tar sand -> extraction of crude petroleum (RELATED_TO)"
+      },
+      {
+        "source_id": "Q645",
+        "target_id": "Q791",
+        "source_label": "fracking",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "fracking -> extraction of crude petroleum (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q645",
+        "target_id": "Q906",
+        "source_label": "fracking",
+        "target_label": "extraction of fossil gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "fracking -> extraction of fossil gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q645",
+        "target_id": "Q737",
+        "source_label": "fracking",
+        "target_label": "shale gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fracking -> shale gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q645",
+        "target_id": "Q738",
+        "source_label": "fracking",
+        "target_label": "shale oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fracking -> shale oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q645",
+        "target_id": "Q226",
+        "source_label": "fracking",
+        "target_label": "methane",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fracking -> methane (RELATED_TO)"
+      },
+      {
+        "source_id": "Q738",
+        "target_id": "Q639",
+        "source_label": "shale oil",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "shale oil -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q738",
+        "target_id": "Q737",
+        "source_label": "shale oil",
+        "target_label": "shale gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "shale oil -> shale gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q738",
+        "target_id": "Q645",
+        "source_label": "shale oil",
+        "target_label": "fracking",
+        "relationship_type": "RELATED_TO",
+        "formatted": "shale oil -> fracking (RELATED_TO)"
+      },
+      {
+        "source_id": "Q989",
+        "target_id": "Q901",
+        "source_label": "industrial failure",
+        "target_label": "oil spill",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "industrial failure -> oil spill (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q955",
+        "target_id": "Q901",
+        "source_label": "chemical impact",
+        "target_label": "oil spill",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "chemical impact -> oil spill (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q955",
+        "target_id": "Q760",
+        "source_label": "chemical impact",
+        "target_label": "extractive sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "chemical impact -> extractive sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1253",
+        "target_id": "Q1486",
+        "source_label": "brown clouds",
+        "target_label": "carbon black",
+        "relationship_type": "RELATED_TO",
+        "formatted": "brown clouds -> carbon black (RELATED_TO)"
+      },
+      {
+        "source_id": "Q657",
+        "target_id": "Q1489",
+        "source_label": "Marine Gas Oil",
+        "target_label": "gas oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Marine Gas Oil -> gas oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q827",
+        "target_id": "Q1526",
+        "source_label": "land transport",
+        "target_label": "pipeline transport",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "land transport -> pipeline transport (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q638",
+        "source_label": "fossil gas",
+        "target_label": "fossil fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "fossil gas -> fossil fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q1315",
+        "source_label": "fossil gas",
+        "target_label": "gaseous fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "fossil gas -> gaseous fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q1484",
+        "source_label": "fossil gas",
+        "target_label": "hydrocarbon",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "fossil gas -> hydrocarbon (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q226",
+        "source_label": "fossil gas",
+        "target_label": "methane",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "fossil gas -> methane (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q737",
+        "source_label": "fossil gas",
+        "target_label": "shale gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "fossil gas -> shale gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q739",
+        "source_label": "fossil gas",
+        "target_label": "coal bed methane",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "fossil gas -> coal bed methane (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q670",
+        "source_label": "fossil gas",
+        "target_label": "gas flaring",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil gas -> gas flaring (RELATED_TO)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q869",
+        "source_label": "fossil gas",
+        "target_label": "gas supply",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil gas -> gas supply (RELATED_TO)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q223",
+        "source_label": "fossil gas",
+        "target_label": "carbon dioxide",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil gas -> carbon dioxide (RELATED_TO)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q1486",
+        "source_label": "fossil gas",
+        "target_label": "carbon black",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil gas -> carbon black (RELATED_TO)"
+      },
+      {
+        "source_id": "Q650",
+        "target_id": "Q1470",
+        "source_label": "fossil gas",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil gas -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1312",
+        "target_id": "Q1311",
+        "source_label": "light fuel oil",
+        "target_label": "distillate fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "light fuel oil -> distillate fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q223",
+        "target_id": "Q218",
+        "source_label": "carbon dioxide",
+        "target_label": "greenhouse gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "carbon dioxide -> greenhouse gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q223",
+        "target_id": "Q638",
+        "source_label": "carbon dioxide",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon dioxide -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q223",
+        "target_id": "Q560",
+        "source_label": "carbon dioxide",
+        "target_label": "mitigation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon dioxide -> mitigation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q223",
+        "target_id": "Q641",
+        "source_label": "carbon dioxide",
+        "target_label": "gasoline",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon dioxide -> gasoline (RELATED_TO)"
+      },
+      {
+        "source_id": "Q223",
+        "target_id": "Q650",
+        "source_label": "carbon dioxide",
+        "target_label": "fossil gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon dioxide -> fossil gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q223",
+        "target_id": "Q661",
+        "source_label": "carbon dioxide",
+        "target_label": "coal",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon dioxide -> coal (RELATED_TO)"
+      },
+      {
+        "source_id": "Q829",
+        "target_id": "Q1533",
+        "source_label": "air transport",
+        "target_label": "private jet transport",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "air transport -> private jet transport (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q829",
+        "target_id": "Q644",
+        "source_label": "air transport",
+        "target_label": "aviation fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "air transport -> aviation fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q575",
+        "target_id": "Q1314",
+        "source_label": "biofuel",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "biofuel -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q575",
+        "target_id": "Q597",
+        "source_label": "biofuel",
+        "target_label": "aviation biofuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "biofuel -> aviation biofuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q575",
+        "target_id": "Q1471",
+        "source_label": "biofuel",
+        "target_label": "extraction of biofuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "biofuel -> extraction of biofuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1330",
+        "target_id": "Q639",
+        "source_label": "oil rig",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil rig -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1330",
+        "target_id": "Q791",
+        "source_label": "oil rig",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil rig -> extraction of crude petroleum (RELATED_TO)"
+      },
+      {
+        "source_id": "Q909",
+        "target_id": "Q1046",
+        "source_label": "plastic production",
+        "target_label": "plastic pollution",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "plastic production -> plastic pollution (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q909",
+        "target_id": "Q1470",
+        "source_label": "plastic production",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "plastic production -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q760",
+        "source_label": "extraction of fuels",
+        "target_label": "extractive sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "extraction of fuels -> extractive sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q790",
+        "source_label": "extraction of fuels",
+        "target_label": "extraction of coal",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of fuels -> extraction of coal (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q791",
+        "source_label": "extraction of fuels",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of fuels -> extraction of crude petroleum (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q906",
+        "source_label": "extraction of fuels",
+        "target_label": "extraction of fossil gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of fuels -> extraction of fossil gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q1471",
+        "source_label": "extraction of fuels",
+        "target_label": "extraction of biofuels",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "extraction of fuels -> extraction of biofuels (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q661",
+        "source_label": "extraction of fuels",
+        "target_label": "coal",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> coal (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q739",
+        "source_label": "extraction of fuels",
+        "target_label": "coal bed methane",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> coal bed methane (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q751",
+        "source_label": "extraction of fuels",
+        "target_label": "coal-fired",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> coal-fired (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q639",
+        "source_label": "extraction of fuels",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q733",
+        "source_label": "extraction of fuels",
+        "target_label": "crude oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> crude oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q650",
+        "source_label": "extraction of fuels",
+        "target_label": "fossil gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> fossil gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q670",
+        "source_label": "extraction of fuels",
+        "target_label": "gas flaring",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> gas flaring (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q909",
+        "source_label": "extraction of fuels",
+        "target_label": "plastic production",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> plastic production (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1470",
+        "target_id": "Q1046",
+        "source_label": "extraction of fuels",
+        "target_label": "plastic pollution",
+        "relationship_type": "RELATED_TO",
+        "formatted": "extraction of fuels -> plastic pollution (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1307",
+        "target_id": "Q639",
+        "source_label": "heavy fuel oil",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "heavy fuel oil -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1307",
+        "target_id": "Q828",
+        "source_label": "heavy fuel oil",
+        "target_label": "water transport",
+        "relationship_type": "RELATED_TO",
+        "formatted": "heavy fuel oil -> water transport (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1307",
+        "target_id": "Q767",
+        "source_label": "heavy fuel oil",
+        "target_label": "hospitality sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "heavy fuel oil -> hospitality sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1483",
+        "target_id": "Q1314",
+        "source_label": "ammonia",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "ammonia -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q641",
+        "target_id": "Q639",
+        "source_label": "gasoline",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gasoline -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q641",
+        "target_id": "Q1314",
+        "source_label": "gasoline",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gasoline -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q641",
+        "target_id": "Q1481",
+        "source_label": "gasoline",
+        "target_label": "vehicular fuels",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gasoline -> vehicular fuels (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q641",
+        "target_id": "Q223",
+        "source_label": "gasoline",
+        "target_label": "carbon dioxide",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gasoline -> carbon dioxide (RELATED_TO)"
+      },
+      {
+        "source_id": "Q641",
+        "target_id": "Q1317",
+        "source_label": "gasoline",
+        "target_label": "syngas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gasoline -> syngas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q641",
+        "target_id": "Q1531",
+        "source_label": "gasoline",
+        "target_label": "private car transportation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gasoline -> private car transportation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q641",
+        "target_id": "Q733",
+        "source_label": "gasoline",
+        "target_label": "crude oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gasoline -> crude oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q638",
+        "source_label": "coal",
+        "target_label": "fossil fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "coal -> fossil fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q790",
+        "source_label": "coal",
+        "target_label": "extraction of coal",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "coal -> extraction of coal (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q560",
+        "source_label": "coal",
+        "target_label": "mitigation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal -> mitigation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q221",
+        "source_label": "coal",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q223",
+        "source_label": "coal",
+        "target_label": "carbon dioxide",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal -> carbon dioxide (RELATED_TO)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q760",
+        "source_label": "coal",
+        "target_label": "extractive sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal -> extractive sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q1470",
+        "source_label": "coal",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q661",
+        "target_id": "Q751",
+        "source_label": "coal",
+        "target_label": "coal-fired",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal -> coal-fired (RELATED_TO)"
+      },
+      {
+        "source_id": "Q751",
+        "target_id": "Q661",
+        "source_label": "coal-fired",
+        "target_label": "coal",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal-fired -> coal (RELATED_TO)"
+      },
+      {
+        "source_id": "Q751",
+        "target_id": "Q1470",
+        "source_label": "coal-fired",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal-fired -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q229",
+        "target_id": "Q218",
+        "source_label": "nitrous oxide",
+        "target_label": "greenhouse gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "nitrous oxide -> greenhouse gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q229",
+        "target_id": "Q638",
+        "source_label": "nitrous oxide",
+        "target_label": "fossil fuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "nitrous oxide -> fossil fuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q869",
+        "target_id": "Q762",
+        "source_label": "gas supply",
+        "target_label": "energy supply sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "gas supply -> energy supply sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q869",
+        "target_id": "Q650",
+        "source_label": "gas supply",
+        "target_label": "fossil gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gas supply -> fossil gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q869",
+        "target_id": "Q1317",
+        "source_label": "gas supply",
+        "target_label": "syngas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gas supply -> syngas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q869",
+        "target_id": "Q1526",
+        "source_label": "gas supply",
+        "target_label": "pipeline transport",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gas supply -> pipeline transport (RELATED_TO)"
+      },
+      {
+        "source_id": "Q869",
+        "target_id": "Q906",
+        "source_label": "gas supply",
+        "target_label": "extraction of fossil gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gas supply -> extraction of fossil gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q754",
+        "target_id": "Q770",
+        "source_label": "enhanced greenhouse effect",
+        "target_label": "anthropogenic climate change",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "enhanced greenhouse effect -> anthropogenic climate change (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q754",
+        "target_id": "Q221",
+        "source_label": "enhanced greenhouse effect",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "enhanced greenhouse effect -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q643",
+        "target_id": "Q639",
+        "source_label": "diesel",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "diesel -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q643",
+        "target_id": "Q1311",
+        "source_label": "diesel",
+        "target_label": "distillate fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "diesel -> distillate fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q643",
+        "target_id": "Q1314",
+        "source_label": "diesel",
+        "target_label": "liquid fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "diesel -> liquid fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q643",
+        "target_id": "Q1481",
+        "source_label": "diesel",
+        "target_label": "vehicular fuels",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "diesel -> vehicular fuels (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q643",
+        "target_id": "Q658",
+        "source_label": "diesel",
+        "target_label": "Marine Diesel Oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "diesel -> Marine Diesel Oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q901",
+        "target_id": "Q989",
+        "source_label": "oil spill",
+        "target_label": "industrial failure",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "oil spill -> industrial failure (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q901",
+        "target_id": "Q955",
+        "source_label": "oil spill",
+        "target_label": "chemical impact",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "oil spill -> chemical impact (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q901",
+        "target_id": "Q639",
+        "source_label": "oil spill",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil spill -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q901",
+        "target_id": "Q791",
+        "source_label": "oil spill",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "RELATED_TO",
+        "formatted": "oil spill -> extraction of crude petroleum (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q639",
+        "source_label": "fossil fuel",
+        "target_label": "oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "fossil fuel -> oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q650",
+        "source_label": "fossil fuel",
+        "target_label": "fossil gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "fossil fuel -> fossil gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q661",
+        "source_label": "fossil fuel",
+        "target_label": "coal",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "fossil fuel -> coal (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q221",
+        "source_label": "fossil fuel",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q223",
+        "source_label": "fossil fuel",
+        "target_label": "carbon dioxide",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> carbon dioxide (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q229",
+        "source_label": "fossil fuel",
+        "target_label": "nitrous oxide",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> nitrous oxide (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q226",
+        "source_label": "fossil fuel",
+        "target_label": "methane",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> methane (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q1417",
+        "source_label": "fossil fuel",
+        "target_label": "fossil fuel phase-out",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> fossil fuel phase-out (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q770",
+        "source_label": "fossil fuel",
+        "target_label": "anthropogenic climate change",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> anthropogenic climate change (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q560",
+        "source_label": "fossil fuel",
+        "target_label": "mitigation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> mitigation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q762",
+        "source_label": "fossil fuel",
+        "target_label": "energy supply sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> energy supply sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q638",
+        "target_id": "Q868",
+        "source_label": "fossil fuel",
+        "target_label": "electricity supply sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fossil fuel -> electricity supply sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1486",
+        "target_id": "Q1253",
+        "source_label": "carbon black",
+        "target_label": "brown clouds",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon black -> brown clouds (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1486",
+        "target_id": "Q814",
+        "source_label": "carbon black",
+        "target_label": "transport equipment manufacturing",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon black -> transport equipment manufacturing (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1486",
+        "target_id": "Q650",
+        "source_label": "carbon black",
+        "target_label": "fossil gas",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon black -> fossil gas (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1486",
+        "target_id": "Q639",
+        "source_label": "carbon black",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "carbon black -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q828",
+        "target_id": "Q1307",
+        "source_label": "water transport",
+        "target_label": "heavy fuel oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "water transport -> heavy fuel oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1450",
+        "target_id": "Q791",
+        "source_label": "onshore oil extraction",
+        "target_label": "extraction of crude petroleum",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "onshore oil extraction -> extraction of crude petroleum (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1450",
+        "target_id": "Q639",
+        "source_label": "onshore oil extraction",
+        "target_label": "oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "onshore oil extraction -> oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1450",
+        "target_id": "Q733",
+        "source_label": "onshore oil extraction",
+        "target_label": "crude oil",
+        "relationship_type": "RELATED_TO",
+        "formatted": "onshore oil extraction -> crude oil (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1450",
+        "target_id": "Q1451",
+        "source_label": "onshore oil extraction",
+        "target_label": "offshore oil extraction",
+        "relationship_type": "RELATED_TO",
+        "formatted": "onshore oil extraction -> offshore oil extraction (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1531",
+        "target_id": "Q827",
+        "source_label": "private car transportation",
+        "target_label": "land transport",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "private car transportation -> land transport (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1531",
+        "target_id": "Q641",
+        "source_label": "private car transportation",
+        "target_label": "gasoline",
+        "relationship_type": "RELATED_TO",
+        "formatted": "private car transportation -> gasoline (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1311",
+        "target_id": "Q639",
+        "source_label": "distillate fuel",
+        "target_label": "oil",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "distillate fuel -> oil (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1311",
+        "target_id": "Q643",
+        "source_label": "distillate fuel",
+        "target_label": "diesel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "distillate fuel -> diesel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1311",
+        "target_id": "Q1312",
+        "source_label": "distillate fuel",
+        "target_label": "light fuel oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "distillate fuel -> light fuel oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q658",
+        "target_id": "Q643",
+        "source_label": "Marine Diesel Oil",
+        "target_label": "diesel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Marine Diesel Oil -> diesel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q739",
+        "target_id": "Q650",
+        "source_label": "coal bed methane",
+        "target_label": "fossil gas",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "coal bed methane -> fossil gas (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q739",
+        "target_id": "Q1470",
+        "source_label": "coal bed methane",
+        "target_label": "extraction of fuels",
+        "relationship_type": "RELATED_TO",
+        "formatted": "coal bed methane -> extraction of fuels (RELATED_TO)"
+      },
+      {
+        "source_id": "Q4",
+        "target_id": "Q221",
+        "source_label": "deforestation",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "deforestation -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q218",
+        "target_id": "Q223",
+        "source_label": "greenhouse gas",
+        "target_label": "carbon dioxide",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "greenhouse gas -> carbon dioxide (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q218",
+        "target_id": "Q229",
+        "source_label": "greenhouse gas",
+        "target_label": "nitrous oxide",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "greenhouse gas -> nitrous oxide (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q218",
+        "target_id": "Q560",
+        "source_label": "greenhouse gas",
+        "target_label": "mitigation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas -> mitigation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q218",
+        "target_id": "Q221",
+        "source_label": "greenhouse gas",
+        "target_label": "greenhouse gas emissions",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas -> greenhouse gas emissions (RELATED_TO)"
+      },
+      {
+        "source_id": "Q218",
+        "target_id": "Q1652",
+        "source_label": "greenhouse gas",
+        "target_label": "emissions reduction target",
+        "relationship_type": "RELATED_TO",
+        "formatted": "greenhouse gas -> emissions reduction target (RELATED_TO)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,3196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph: Compare carbon pricing mechanisms worldwide including carbon taxes, emissions trading systems, and carbon credits. Focus on price levels, coverage sectors, and revenue usage in EU ETS, China's national ETS, and carbon tax systems in South Africa and Colombia.</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
+        .container { width: 100%; height: 500px; border: 1px solid #ddd; position: relative; }
+        .graph { width: 100%; height: 100%; }
+        .tooltip { 
+            position: absolute; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            pointer-events: none; 
+            opacity: 0;
+        }
+        .query-title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            color: #333;
+        }
+        .node { cursor: pointer; }
+        .link { stroke: #999; stroke-opacity: 0.6; stroke-width: 1.5px; }
+        .node-label { font-size: 10px; fill: #333; text-anchor: middle; }
+    </style>
+</head>
+<body>
+    <div class="query-title">Knowledge Graph: Compare carbon pricing mechanisms worldwide including carbon taxes, emissions trading systems, and carbon credits. Focus on price levels, coverage sectors, and revenue usage in EU ETS, China's national ETS, and carbon tax systems in South Africa and Colombia.</div>
+    <div class="container">
+        <svg class="graph" id="kg-graph"></svg>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <script>
+        // Embedded KG data
+        const kgData = {
+  "nodes": [
+    {
+      "id": "Q1608",
+      "kind": "Concept",
+      "label": "tax exemption",
+      "description": "Being exempt from tax means that no tax is charged on an activity or transaction that is usually subject to taxation. An example is firms in energy efficiency agreements getting tax exemptions for meeting targets or losing them if they fail."
+    },
+    {
+      "id": "Q770",
+      "kind": "Concept",
+      "label": "anthropogenic climate change",
+      "description": "that human activity (e.g. burning fossil fuels such as coal, oil, and natural gas) is the dominant driver of the current changes to the climate and the environment"
+    },
+    {
+      "id": "Q1298",
+      "kind": "Concept",
+      "label": "carbon border adjustment mechanism",
+      "description": "Fee or tariff levied on imported goods based on the greenhouse gases emitted during their production"
+    },
+    {
+      "id": "Q1652",
+      "kind": "Concept",
+      "label": "emissions reduction target",
+      "description": "A target to reduce the prevalence of a greenhouse gas over a specific time frame"
+    },
+    {
+      "id": "Q1276",
+      "kind": "Concept",
+      "label": "direct investment",
+      "description": "Direct investments by the governments using public funds to support climate initiatives or integrate climate into other projects."
+    },
+    {
+      "id": "Q1555",
+      "kind": "Concept",
+      "label": "government revenue collection",
+      "description": "Process by which public authorities gather financial resources, primarily through taxes, fees, tariffs, and other income-generating mechanisms, to fund public services, infrastructure, and government operations."
+    },
+    {
+      "id": "Q1270",
+      "kind": "Concept",
+      "label": "tax rebate",
+      "description": "A tax rebate is a reimbursement made to a taxpayer for an excess amount paid in taxes during the year, which can be used to encourage environmentally conscious behaviour from the private sector."
+    },
+    {
+      "id": "Q723",
+      "kind": "Concept",
+      "label": "Emission Trading System",
+      "description": "A tradable-permit system for greenhouse gas emissions, setting a  limit on the GHG emissions that can be emitted."
+    },
+    {
+      "id": "Q716",
+      "kind": "Concept",
+      "label": "carbon tax",
+      "description": "A carbon tax charges emitters per ton of greenhouse gas emissions, creating an economy-wide price signal that incentivises emission reductions. It offers price certainty but no fixed reduction target."
+    },
+    {
+      "id": "Q1301",
+      "kind": "Concept",
+      "label": "tax credit",
+      "description": "Tax credits refer to an amount of money that taxpayers can subtract directly from the taxes they owe. These are often used to provide stronger incentives for clean energy projects, such as building clean energy manufacturing facilities."
+    },
+    {
+      "id": "Q1272",
+      "kind": "Concept",
+      "label": "grant",
+      "description": "A grant is a policy instrument in which a sum of money is given by a federal, state, or local government authority or private sector, and is effectively a transfer payment."
+    },
+    {
+      "id": "Q639",
+      "kind": "Concept",
+      "label": "oil",
+      "description": "Oil is a liquid fossil fuel made up mostly of hydrocarbons (hydrogen and carbon compounds)."
+    },
+    {
+      "id": "Q1610",
+      "kind": "Concept",
+      "label": "tax deferred",
+      "description": ""
+    },
+    {
+      "id": "Q1271",
+      "kind": "Concept",
+      "label": "tax incentive",
+      "description": "Tax incentives reduce tax liabilities to promote environmentally beneficial investments and behaviours."
+    },
+    {
+      "id": "Q221",
+      "kind": "Concept",
+      "label": "greenhouse gas emissions",
+      "description": "Releases of gases to the atmosphere, such as the release of carbon dioxide during fuel combustion."
+    },
+    {
+      "id": "Q903",
+      "kind": "Concept",
+      "label": "accounting services",
+      "description": ""
+    },
+    {
+      "id": "Q226",
+      "kind": "Concept",
+      "label": "methane",
+      "description": "A flammable gas which is the main constituent of natural gas. An estimated 60% of today\u2019s methane emissions are the result of human activities. Methane traps more heat than CO2, but has a much shorter atmospheric lifespan."
+    },
+    {
+      "id": "Q1299",
+      "kind": "Concept",
+      "label": "CO2 levy",
+      "description": "CO2 levies are a tool to achieve statutory CO2 emission targets, and targets industry that imports fossil fuel."
+    },
+    {
+      "id": "Q1273",
+      "kind": "Concept",
+      "label": "loan",
+      "description": "A loan is a policy instrument where funds are provided to a borrower with the expectation of repaying the principal plus interest."
+    },
+    {
+      "id": "Q721",
+      "kind": "Concept",
+      "label": "environmental taxes",
+      "description": "Environmental taxes are defined as any compulsory, unrequited payment to the government levied on tax bases deemed to be of environmental relevance."
+    },
+    {
+      "id": "Q718",
+      "kind": "Concept",
+      "label": "transport tax",
+      "description": "Includes taxes on transport equipment, motor vehicles and transport services (excluding fuel for transport)"
+    },
+    {
+      "id": "Q725",
+      "kind": "Concept",
+      "label": "carbon pricing instruments",
+      "description": "Carbon pricing places a cost on emissions, incentivizing businesses to innovate and reduce emissions efficiently by making them pay for the societal impacts of their carbon output."
+    },
+    {
+      "id": "Q719",
+      "kind": "Concept",
+      "label": "pollution tax",
+      "description": "Includes taxes on pollution, including measured or estimated emissions to air and water, ozone-depleting substances, certain non-point sources of water pollution, solid waste and noise."
+    },
+    {
+      "id": "Q722",
+      "kind": "Concept",
+      "label": "economic instrument",
+      "description": "Economic instruments, or \"treasury\" in Hood and Margetts' NATO scheme, are instruments that have the power over money, taxation, and spending or influencing markets. Examples are Carbon taxes or cap-and-trade schemes."
+    },
+    {
+      "id": "Q728",
+      "kind": "Concept",
+      "label": "Pigouvian tax",
+      "description": "A tax assessed against businesses and private individuals that engage in activities that create adverse side effects for society (including on the environment)"
+    },
+    {
+      "id": "Q715",
+      "kind": "Concept",
+      "label": "tax",
+      "description": "Any compulsory, unrequited payment to the government levied on corporations or individuals. This can be for environmental reasons, such as introducing a Carbon tax to set a price that emitters must pay for the greenhouse gases they emit."
+    },
+    {
+      "id": "Q1274",
+      "kind": "Concept",
+      "label": "subsidy",
+      "description": "A subsidy is a direct or indirect payment to individuals or businesses, typically provided as a government cash payment or a specific tax reduction."
+    },
+    {
+      "id": "Q720",
+      "kind": "Concept",
+      "label": "resource tax",
+      "description": "Includes taxes on resources, such as management of water, land, soil, forests, biodiversity, wildlife and fish stocks, including mining and quarrying."
+    },
+    {
+      "id": "Q661",
+      "kind": "Concept",
+      "label": "coal",
+      "description": "Coal is a combustible black or brownish-black sedimentary rock with a high amount of carbon and hydrocarbons. It is a non-renewable energy source and fossil fuel, and has four main types."
+    },
+    {
+      "id": "Q1269",
+      "kind": "Concept",
+      "label": "tax advantage",
+      "description": "A tax advantage is an economic benefit applied to certain accounts or investments that are, by law, tax-reduced, tax-deferred, or tax-free. This can apply to investments in areas such as green energy projects or the agricultural sector, where tax advantages can help manage financial risks."
+    },
+    {
+      "id": "Q1279",
+      "kind": "Concept",
+      "label": "feed-in-tariff",
+      "description": "A policy instrument designed to support the development and acceleration of renewable energy sources by providing a guaranteed, above-market price for producers."
+    },
+    {
+      "id": "Q1280",
+      "kind": "Concept",
+      "label": "tradable permits",
+      "description": "Tradable permits are market-based tools that grant permission for specific activities, frequently used to regulate emissions. These permits can be issued within a trading system to manage environmental impacts."
+    },
+    {
+      "id": "Q754",
+      "kind": "Concept",
+      "label": "enhanced greenhouse effect",
+      "description": "Unnatural, human-induced increase of the greenhouse effect, as concentrations of greenhouse gases increase primarily from the burning of fossil fuels (coal, oil, and natural gas)"
+    },
+    {
+      "id": "Q1278",
+      "kind": "Concept",
+      "label": "insurance",
+      "description": "Financial support to help individuals manage the effects of unexpected events, securing their livelihoods and increasing the resilience of people and businesses to the changing climate. It\u2019s especially vital in developing regions where everyday risks, climate-related weather extremes, or crop failures can push people into poverty. Without insurance, people may have to resort to selling assets or cutting consumption to cope with losses."
+    },
+    {
+      "id": "Q1277",
+      "kind": "Concept",
+      "label": "fees and charges",
+      "description": "Compulsory, requited payments to the government that are levied more-or-less in proportion to the services provided. Fees and charges range from entrance fees to national parks, charges on land-based sewage discharge."
+    },
+    {
+      "id": "Q1297",
+      "kind": "Concept",
+      "label": "levy",
+      "description": "Levies are charges that are imposed on imports of particular products and that raise the world market prices of those products to the prices on the domestic market. These can be unrequited payments."
+    },
+    {
+      "id": "Q729",
+      "kind": "Concept",
+      "label": "Polluter Pays Principle",
+      "description": "Commonly accepted practice that those who produce pollution should bear the costs of managing it, to prevent damage to human health or the environment."
+    },
+    {
+      "id": "Q638",
+      "kind": "Concept",
+      "label": "fossil fuel",
+      "description": "Fossil fuel is a generic term for non-renewable energy sources such as coal, fossil gas, crude oil, and petroleum products. Fossil fuels are carbon-based and release carbon into the atmosphere when burned."
+    },
+    {
+      "id": "Q1609",
+      "kind": "Concept",
+      "label": "tax cut",
+      "description": ""
+    },
+    {
+      "id": "Q1556",
+      "kind": "Concept",
+      "label": "tax collection",
+      "description": "Process of gathering financial resources from individuals, businesses, and organisations through mandatory levies such as income tax, corporate tax, sales tax, and property tax to fund public services and government functions"
+    },
+    {
+      "id": "Q717",
+      "kind": "Concept",
+      "label": "energy tax",
+      "description": "Taxes on energy products (including vehicle fuels/fuel for transport)"
+    },
+    {
+      "id": "Q1275",
+      "kind": "Concept",
+      "label": "subsidy removal",
+      "description": "Removing subsidies can help reduce costs, better align economic incentives with environmental goals, and promote equity. This can mitigate environmental harm and discourage harmful behaviour. However, it may also end support for renewable energy development or negatively impact communities, households, and businesses."
+    },
+    {
+      "id": "Q1171",
+      "kind": "Concept",
+      "label": "policy instruments",
+      "description": "Policy instruments are techniques or tools used by governing authorities to promote certain policies in order to achieve predetermined goals. Put simply, instruments are how a government tries to achieve its goals."
+    },
+    {
+      "id": "Q724",
+      "kind": "Concept",
+      "label": "Emission Reduction Funds",
+      "description": "Emission Reduction Funds\u00a0are\u00a0taxpayer funded\u00a0schemes in which\u00a0a government buys credits created by emission reduction projects."
+    },
+    {
+      "id": "Q1418",
+      "kind": "Concept",
+      "label": "environmental liability",
+      "description": "Environmental liability is the responsibility of a person or company for environmental damage caused by their activities."
+    },
+    {
+      "id": "Q4",
+      "kind": "Concept",
+      "label": "deforestation",
+      "description": "Removal of forest and conversion of the land to non-forest use, and is the direct human-induced conversion of forested land to non-forested land"
+    },
+    {
+      "id": "Q218",
+      "kind": "Concept",
+      "label": "greenhouse gas",
+      "description": "Greenhouse gases are molecules in our atmosphere that absorb heat radiating from Earth\u2019s surface, preventing it from being emitted into space."
+    }
+  ],
+  "edges": [
+    {
+      "source": "Q1608",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q754",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1298",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1652",
+      "target": "Q218",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1652",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1276",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1555",
+      "target": "Q1556",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1270",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q725",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q1280",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q724",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q725",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q717",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q728",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q724",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q723",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q729",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q1299",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1301",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1272",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q639",
+      "target": "Q638",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q639",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1610",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1271",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q218",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q754",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q639",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q661",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q1652",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q226",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q903",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q226",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1299",
+      "target": "Q1297",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1299",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1273",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q717",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q719",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q718",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q720",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q728",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q718",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q725",
+      "target": "Q716",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q725",
+      "target": "Q724",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q725",
+      "target": "Q723",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q719",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q719",
+      "target": "Q728",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1171",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q715",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1269",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1272",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1273",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1274",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1275",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1276",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1277",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1278",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1279",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1280",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q716",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q719",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q721",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q721",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1298",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1297",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q728",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1269",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1274",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1274",
+      "target": "Q1275",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q720",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q661",
+      "target": "Q638",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q661",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1270",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1271",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1301",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1608",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1609",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1610",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q715",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1279",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1280",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1280",
+      "target": "Q723",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q754",
+      "target": "Q770",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q754",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1278",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1277",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1297",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1297",
+      "target": "Q1299",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q729",
+      "target": "Q1418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q729",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q639",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q661",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q226",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1609",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q1555",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q903",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q715",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q717",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q717",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q717",
+      "target": "Q716",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q717",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1275",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1275",
+      "target": "Q1274",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1171",
+      "target": "Q722",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q724",
+      "target": "Q725",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q724",
+      "target": "Q723",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q724",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1418",
+      "target": "Q729",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q218",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q218",
+      "target": "Q1652",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ],
+  "query_concepts": [
+    "Q715",
+    "Q716"
+  ],
+  "query_concept_labels": [
+    "tax",
+    "carbon tax"
+  ],
+  "total_found": 47,
+  "concepts": [
+    {
+      "id": "Q1608",
+      "label": "tax exemption"
+    },
+    {
+      "id": "Q770",
+      "label": "anthropogenic climate change"
+    },
+    {
+      "id": "Q1298",
+      "label": "carbon border adjustment mechanism"
+    },
+    {
+      "id": "Q1652",
+      "label": "emissions reduction target"
+    },
+    {
+      "id": "Q1276",
+      "label": "direct investment"
+    },
+    {
+      "id": "Q1555",
+      "label": "government revenue collection"
+    },
+    {
+      "id": "Q1270",
+      "label": "tax rebate"
+    },
+    {
+      "id": "Q723",
+      "label": "Emission Trading System"
+    },
+    {
+      "id": "Q716",
+      "label": "carbon tax"
+    },
+    {
+      "id": "Q1301",
+      "label": "tax credit"
+    },
+    {
+      "id": "Q1272",
+      "label": "grant"
+    },
+    {
+      "id": "Q639",
+      "label": "oil"
+    },
+    {
+      "id": "Q1610",
+      "label": "tax deferred"
+    },
+    {
+      "id": "Q1271",
+      "label": "tax incentive"
+    },
+    {
+      "id": "Q221",
+      "label": "greenhouse gas emissions"
+    },
+    {
+      "id": "Q903",
+      "label": "accounting services"
+    },
+    {
+      "id": "Q226",
+      "label": "methane"
+    },
+    {
+      "id": "Q1299",
+      "label": "CO2 levy"
+    },
+    {
+      "id": "Q1273",
+      "label": "loan"
+    },
+    {
+      "id": "Q721",
+      "label": "environmental taxes"
+    },
+    {
+      "id": "Q718",
+      "label": "transport tax"
+    },
+    {
+      "id": "Q725",
+      "label": "carbon pricing instruments"
+    },
+    {
+      "id": "Q719",
+      "label": "pollution tax"
+    },
+    {
+      "id": "Q722",
+      "label": "economic instrument"
+    },
+    {
+      "id": "Q728",
+      "label": "Pigouvian tax"
+    },
+    {
+      "id": "Q715",
+      "label": "tax"
+    },
+    {
+      "id": "Q1274",
+      "label": "subsidy"
+    },
+    {
+      "id": "Q720",
+      "label": "resource tax"
+    },
+    {
+      "id": "Q661",
+      "label": "coal"
+    },
+    {
+      "id": "Q1269",
+      "label": "tax advantage"
+    },
+    {
+      "id": "Q1279",
+      "label": "feed-in-tariff"
+    },
+    {
+      "id": "Q1280",
+      "label": "tradable permits"
+    },
+    {
+      "id": "Q754",
+      "label": "enhanced greenhouse effect"
+    },
+    {
+      "id": "Q1278",
+      "label": "insurance"
+    },
+    {
+      "id": "Q1277",
+      "label": "fees and charges"
+    },
+    {
+      "id": "Q1297",
+      "label": "levy"
+    },
+    {
+      "id": "Q729",
+      "label": "Polluter Pays Principle"
+    },
+    {
+      "id": "Q638",
+      "label": "fossil fuel"
+    },
+    {
+      "id": "Q1609",
+      "label": "tax cut"
+    },
+    {
+      "id": "Q1556",
+      "label": "tax collection"
+    },
+    {
+      "id": "Q717",
+      "label": "energy tax"
+    },
+    {
+      "id": "Q1275",
+      "label": "subsidy removal"
+    },
+    {
+      "id": "Q1171",
+      "label": "policy instruments"
+    },
+    {
+      "id": "Q724",
+      "label": "Emission Reduction Funds"
+    },
+    {
+      "id": "Q1418",
+      "label": "environmental liability"
+    },
+    {
+      "id": "Q4",
+      "label": "deforestation"
+    },
+    {
+      "id": "Q218",
+      "label": "greenhouse gas"
+    }
+  ],
+  "relationships": [
+    {
+      "source_id": "Q1608",
+      "target_id": "Q1269",
+      "source_label": "tax exemption",
+      "target_label": "tax advantage",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax exemption -> tax advantage (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q770",
+      "target_id": "Q754",
+      "source_label": "anthropogenic climate change",
+      "target_label": "enhanced greenhouse effect",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "anthropogenic climate change -> enhanced greenhouse effect (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q770",
+      "target_id": "Q638",
+      "source_label": "anthropogenic climate change",
+      "target_label": "fossil fuel",
+      "relationship_type": "RELATED_TO",
+      "formatted": "anthropogenic climate change -> fossil fuel (RELATED_TO)"
+    },
+    {
+      "source_id": "Q770",
+      "target_id": "Q221",
+      "source_label": "anthropogenic climate change",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "anthropogenic climate change -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1298",
+      "target_id": "Q715",
+      "source_label": "carbon border adjustment mechanism",
+      "target_label": "tax",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "carbon border adjustment mechanism -> tax (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1652",
+      "target_id": "Q218",
+      "source_label": "emissions reduction target",
+      "target_label": "greenhouse gas",
+      "relationship_type": "RELATED_TO",
+      "formatted": "emissions reduction target -> greenhouse gas (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1652",
+      "target_id": "Q221",
+      "source_label": "emissions reduction target",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "emissions reduction target -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1276",
+      "target_id": "Q722",
+      "source_label": "direct investment",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "direct investment -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1555",
+      "target_id": "Q1556",
+      "source_label": "government revenue collection",
+      "target_label": "tax collection",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "government revenue collection -> tax collection (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1270",
+      "target_id": "Q1269",
+      "source_label": "tax rebate",
+      "target_label": "tax advantage",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax rebate -> tax advantage (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q723",
+      "target_id": "Q725",
+      "source_label": "Emission Trading System",
+      "target_label": "carbon pricing instruments",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Emission Trading System -> carbon pricing instruments (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q723",
+      "target_id": "Q1280",
+      "source_label": "Emission Trading System",
+      "target_label": "tradable permits",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Emission Trading System -> tradable permits (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q723",
+      "target_id": "Q716",
+      "source_label": "Emission Trading System",
+      "target_label": "carbon tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Emission Trading System -> carbon tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q723",
+      "target_id": "Q724",
+      "source_label": "Emission Trading System",
+      "target_label": "Emission Reduction Funds",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Emission Trading System -> Emission Reduction Funds (RELATED_TO)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q725",
+      "source_label": "carbon tax",
+      "target_label": "carbon pricing instruments",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "carbon tax -> carbon pricing instruments (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q717",
+      "source_label": "carbon tax",
+      "target_label": "energy tax",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "carbon tax -> energy tax (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q728",
+      "source_label": "carbon tax",
+      "target_label": "Pigouvian tax",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "carbon tax -> Pigouvian tax (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q724",
+      "source_label": "carbon tax",
+      "target_label": "Emission Reduction Funds",
+      "relationship_type": "RELATED_TO",
+      "formatted": "carbon tax -> Emission Reduction Funds (RELATED_TO)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q723",
+      "source_label": "carbon tax",
+      "target_label": "Emission Trading System",
+      "relationship_type": "RELATED_TO",
+      "formatted": "carbon tax -> Emission Trading System (RELATED_TO)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q221",
+      "source_label": "carbon tax",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "carbon tax -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q729",
+      "source_label": "carbon tax",
+      "target_label": "Polluter Pays Principle",
+      "relationship_type": "RELATED_TO",
+      "formatted": "carbon tax -> Polluter Pays Principle (RELATED_TO)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q1299",
+      "source_label": "carbon tax",
+      "target_label": "CO2 levy",
+      "relationship_type": "RELATED_TO",
+      "formatted": "carbon tax -> CO2 levy (RELATED_TO)"
+    },
+    {
+      "source_id": "Q716",
+      "target_id": "Q1556",
+      "source_label": "carbon tax",
+      "target_label": "tax collection",
+      "relationship_type": "RELATED_TO",
+      "formatted": "carbon tax -> tax collection (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1301",
+      "target_id": "Q1269",
+      "source_label": "tax credit",
+      "target_label": "tax advantage",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax credit -> tax advantage (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1272",
+      "target_id": "Q722",
+      "source_label": "grant",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "grant -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q639",
+      "target_id": "Q638",
+      "source_label": "oil",
+      "target_label": "fossil fuel",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "oil -> fossil fuel (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q639",
+      "target_id": "Q221",
+      "source_label": "oil",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "oil -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1610",
+      "target_id": "Q1269",
+      "source_label": "tax deferred",
+      "target_label": "tax advantage",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax deferred -> tax advantage (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1271",
+      "target_id": "Q1269",
+      "source_label": "tax incentive",
+      "target_label": "tax advantage",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax incentive -> tax advantage (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q218",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "greenhouse gas",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> greenhouse gas (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q770",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "anthropogenic climate change",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> anthropogenic climate change (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q754",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "enhanced greenhouse effect",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> enhanced greenhouse effect (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q638",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "fossil fuel",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> fossil fuel (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q4",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q639",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "oil",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> oil (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q661",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "coal",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> coal (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q716",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "carbon tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> carbon tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q1652",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "emissions reduction target",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> emissions reduction target (RELATED_TO)"
+    },
+    {
+      "source_id": "Q221",
+      "target_id": "Q226",
+      "source_label": "greenhouse gas emissions",
+      "target_label": "methane",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas emissions -> methane (RELATED_TO)"
+    },
+    {
+      "source_id": "Q903",
+      "target_id": "Q1556",
+      "source_label": "accounting services",
+      "target_label": "tax collection",
+      "relationship_type": "RELATED_TO",
+      "formatted": "accounting services -> tax collection (RELATED_TO)"
+    },
+    {
+      "source_id": "Q226",
+      "target_id": "Q638",
+      "source_label": "methane",
+      "target_label": "fossil fuel",
+      "relationship_type": "RELATED_TO",
+      "formatted": "methane -> fossil fuel (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1299",
+      "target_id": "Q1297",
+      "source_label": "CO2 levy",
+      "target_label": "levy",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "CO2 levy -> levy (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1299",
+      "target_id": "Q716",
+      "source_label": "CO2 levy",
+      "target_label": "carbon tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "CO2 levy -> carbon tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1273",
+      "target_id": "Q722",
+      "source_label": "loan",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "loan -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q721",
+      "target_id": "Q715",
+      "source_label": "environmental taxes",
+      "target_label": "tax",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "environmental taxes -> tax (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q721",
+      "target_id": "Q717",
+      "source_label": "environmental taxes",
+      "target_label": "energy tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "environmental taxes -> energy tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q721",
+      "target_id": "Q719",
+      "source_label": "environmental taxes",
+      "target_label": "pollution tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "environmental taxes -> pollution tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q721",
+      "target_id": "Q718",
+      "source_label": "environmental taxes",
+      "target_label": "transport tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "environmental taxes -> transport tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q721",
+      "target_id": "Q720",
+      "source_label": "environmental taxes",
+      "target_label": "resource tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "environmental taxes -> resource tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q721",
+      "target_id": "Q728",
+      "source_label": "environmental taxes",
+      "target_label": "Pigouvian tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "environmental taxes -> Pigouvian tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q718",
+      "target_id": "Q721",
+      "source_label": "transport tax",
+      "target_label": "environmental taxes",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "transport tax -> environmental taxes (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q725",
+      "target_id": "Q716",
+      "source_label": "carbon pricing instruments",
+      "target_label": "carbon tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "carbon pricing instruments -> carbon tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q725",
+      "target_id": "Q724",
+      "source_label": "carbon pricing instruments",
+      "target_label": "Emission Reduction Funds",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "carbon pricing instruments -> Emission Reduction Funds (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q725",
+      "target_id": "Q723",
+      "source_label": "carbon pricing instruments",
+      "target_label": "Emission Trading System",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "carbon pricing instruments -> Emission Trading System (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q719",
+      "target_id": "Q721",
+      "source_label": "pollution tax",
+      "target_label": "environmental taxes",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "pollution tax -> environmental taxes (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q719",
+      "target_id": "Q728",
+      "source_label": "pollution tax",
+      "target_label": "Pigouvian tax",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "pollution tax -> Pigouvian tax (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1171",
+      "source_label": "economic instrument",
+      "target_label": "policy instruments",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "economic instrument -> policy instruments (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q715",
+      "source_label": "economic instrument",
+      "target_label": "tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1269",
+      "source_label": "economic instrument",
+      "target_label": "tax advantage",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> tax advantage (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1272",
+      "source_label": "economic instrument",
+      "target_label": "grant",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> grant (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1273",
+      "source_label": "economic instrument",
+      "target_label": "loan",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> loan (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1274",
+      "source_label": "economic instrument",
+      "target_label": "subsidy",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> subsidy (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1275",
+      "source_label": "economic instrument",
+      "target_label": "subsidy removal",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> subsidy removal (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1276",
+      "source_label": "economic instrument",
+      "target_label": "direct investment",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> direct investment (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1277",
+      "source_label": "economic instrument",
+      "target_label": "fees and charges",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> fees and charges (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1278",
+      "source_label": "economic instrument",
+      "target_label": "insurance",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> insurance (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1279",
+      "source_label": "economic instrument",
+      "target_label": "feed-in-tariff",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> feed-in-tariff (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q722",
+      "target_id": "Q1280",
+      "source_label": "economic instrument",
+      "target_label": "tradable permits",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic instrument -> tradable permits (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q728",
+      "target_id": "Q715",
+      "source_label": "Pigouvian tax",
+      "target_label": "tax",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Pigouvian tax -> tax (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q728",
+      "target_id": "Q716",
+      "source_label": "Pigouvian tax",
+      "target_label": "carbon tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Pigouvian tax -> carbon tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q728",
+      "target_id": "Q719",
+      "source_label": "Pigouvian tax",
+      "target_label": "pollution tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Pigouvian tax -> pollution tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q728",
+      "target_id": "Q721",
+      "source_label": "Pigouvian tax",
+      "target_label": "environmental taxes",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Pigouvian tax -> environmental taxes (RELATED_TO)"
+    },
+    {
+      "source_id": "Q715",
+      "target_id": "Q722",
+      "source_label": "tax",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q715",
+      "target_id": "Q721",
+      "source_label": "tax",
+      "target_label": "environmental taxes",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax -> environmental taxes (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q715",
+      "target_id": "Q1298",
+      "source_label": "tax",
+      "target_label": "carbon border adjustment mechanism",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax -> carbon border adjustment mechanism (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q715",
+      "target_id": "Q1297",
+      "source_label": "tax",
+      "target_label": "levy",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax -> levy (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q715",
+      "target_id": "Q728",
+      "source_label": "tax",
+      "target_label": "Pigouvian tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax -> Pigouvian tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q715",
+      "target_id": "Q1269",
+      "source_label": "tax",
+      "target_label": "tax advantage",
+      "relationship_type": "RELATED_TO",
+      "formatted": "tax -> tax advantage (RELATED_TO)"
+    },
+    {
+      "source_id": "Q715",
+      "target_id": "Q1556",
+      "source_label": "tax",
+      "target_label": "tax collection",
+      "relationship_type": "RELATED_TO",
+      "formatted": "tax -> tax collection (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1274",
+      "target_id": "Q722",
+      "source_label": "subsidy",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "subsidy -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1274",
+      "target_id": "Q1275",
+      "source_label": "subsidy",
+      "target_label": "subsidy removal",
+      "relationship_type": "RELATED_TO",
+      "formatted": "subsidy -> subsidy removal (RELATED_TO)"
+    },
+    {
+      "source_id": "Q720",
+      "target_id": "Q721",
+      "source_label": "resource tax",
+      "target_label": "environmental taxes",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "resource tax -> environmental taxes (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q661",
+      "target_id": "Q638",
+      "source_label": "coal",
+      "target_label": "fossil fuel",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "coal -> fossil fuel (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q661",
+      "target_id": "Q221",
+      "source_label": "coal",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "coal -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q722",
+      "source_label": "tax advantage",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax advantage -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q1270",
+      "source_label": "tax advantage",
+      "target_label": "tax rebate",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax advantage -> tax rebate (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q1271",
+      "source_label": "tax advantage",
+      "target_label": "tax incentive",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax advantage -> tax incentive (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q1301",
+      "source_label": "tax advantage",
+      "target_label": "tax credit",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax advantage -> tax credit (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q1608",
+      "source_label": "tax advantage",
+      "target_label": "tax exemption",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax advantage -> tax exemption (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q1609",
+      "source_label": "tax advantage",
+      "target_label": "tax cut",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax advantage -> tax cut (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q1610",
+      "source_label": "tax advantage",
+      "target_label": "tax deferred",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tax advantage -> tax deferred (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1269",
+      "target_id": "Q715",
+      "source_label": "tax advantage",
+      "target_label": "tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "tax advantage -> tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1279",
+      "target_id": "Q722",
+      "source_label": "feed-in-tariff",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "feed-in-tariff -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1280",
+      "target_id": "Q722",
+      "source_label": "tradable permits",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tradable permits -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1280",
+      "target_id": "Q723",
+      "source_label": "tradable permits",
+      "target_label": "Emission Trading System",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "tradable permits -> Emission Trading System (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q754",
+      "target_id": "Q770",
+      "source_label": "enhanced greenhouse effect",
+      "target_label": "anthropogenic climate change",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "enhanced greenhouse effect -> anthropogenic climate change (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q754",
+      "target_id": "Q221",
+      "source_label": "enhanced greenhouse effect",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "enhanced greenhouse effect -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1278",
+      "target_id": "Q722",
+      "source_label": "insurance",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "insurance -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1277",
+      "target_id": "Q722",
+      "source_label": "fees and charges",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "fees and charges -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1297",
+      "target_id": "Q715",
+      "source_label": "levy",
+      "target_label": "tax",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "levy -> tax (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1297",
+      "target_id": "Q1299",
+      "source_label": "levy",
+      "target_label": "CO2 levy",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "levy -> CO2 levy (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q729",
+      "target_id": "Q1418",
+      "source_label": "Polluter Pays Principle",
+      "target_label": "environmental liability",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Polluter Pays Principle -> environmental liability (RELATED_TO)"
+    },
+    {
+      "source_id": "Q729",
+      "target_id": "Q716",
+      "source_label": "Polluter Pays Principle",
+      "target_label": "carbon tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Polluter Pays Principle -> carbon tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q638",
+      "target_id": "Q639",
+      "source_label": "fossil fuel",
+      "target_label": "oil",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "fossil fuel -> oil (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q638",
+      "target_id": "Q661",
+      "source_label": "fossil fuel",
+      "target_label": "coal",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "fossil fuel -> coal (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q638",
+      "target_id": "Q221",
+      "source_label": "fossil fuel",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fossil fuel -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q638",
+      "target_id": "Q226",
+      "source_label": "fossil fuel",
+      "target_label": "methane",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fossil fuel -> methane (RELATED_TO)"
+    },
+    {
+      "source_id": "Q638",
+      "target_id": "Q770",
+      "source_label": "fossil fuel",
+      "target_label": "anthropogenic climate change",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fossil fuel -> anthropogenic climate change (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1609",
+      "target_id": "Q1269",
+      "source_label": "tax cut",
+      "target_label": "tax advantage",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax cut -> tax advantage (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1556",
+      "target_id": "Q1555",
+      "source_label": "tax collection",
+      "target_label": "government revenue collection",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tax collection -> government revenue collection (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1556",
+      "target_id": "Q903",
+      "source_label": "tax collection",
+      "target_label": "accounting services",
+      "relationship_type": "RELATED_TO",
+      "formatted": "tax collection -> accounting services (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1556",
+      "target_id": "Q715",
+      "source_label": "tax collection",
+      "target_label": "tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "tax collection -> tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1556",
+      "target_id": "Q717",
+      "source_label": "tax collection",
+      "target_label": "energy tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "tax collection -> energy tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1556",
+      "target_id": "Q716",
+      "source_label": "tax collection",
+      "target_label": "carbon tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "tax collection -> carbon tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q717",
+      "target_id": "Q721",
+      "source_label": "energy tax",
+      "target_label": "environmental taxes",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy tax -> environmental taxes (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q717",
+      "target_id": "Q716",
+      "source_label": "energy tax",
+      "target_label": "carbon tax",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy tax -> carbon tax (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q717",
+      "target_id": "Q1556",
+      "source_label": "energy tax",
+      "target_label": "tax collection",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy tax -> tax collection (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1275",
+      "target_id": "Q722",
+      "source_label": "subsidy removal",
+      "target_label": "economic instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "subsidy removal -> economic instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1275",
+      "target_id": "Q1274",
+      "source_label": "subsidy removal",
+      "target_label": "subsidy",
+      "relationship_type": "RELATED_TO",
+      "formatted": "subsidy removal -> subsidy (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1171",
+      "target_id": "Q722",
+      "source_label": "policy instruments",
+      "target_label": "economic instrument",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "policy instruments -> economic instrument (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q724",
+      "target_id": "Q725",
+      "source_label": "Emission Reduction Funds",
+      "target_label": "carbon pricing instruments",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Emission Reduction Funds -> carbon pricing instruments (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q724",
+      "target_id": "Q723",
+      "source_label": "Emission Reduction Funds",
+      "target_label": "Emission Trading System",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Emission Reduction Funds -> Emission Trading System (RELATED_TO)"
+    },
+    {
+      "source_id": "Q724",
+      "target_id": "Q716",
+      "source_label": "Emission Reduction Funds",
+      "target_label": "carbon tax",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Emission Reduction Funds -> carbon tax (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1418",
+      "target_id": "Q729",
+      "source_label": "environmental liability",
+      "target_label": "Polluter Pays Principle",
+      "relationship_type": "RELATED_TO",
+      "formatted": "environmental liability -> Polluter Pays Principle (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q221",
+      "source_label": "deforestation",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q218",
+      "target_id": "Q221",
+      "source_label": "greenhouse gas",
+      "target_label": "greenhouse gas emissions",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas -> greenhouse gas emissions (RELATED_TO)"
+    },
+    {
+      "source_id": "Q218",
+      "target_id": "Q1652",
+      "source_label": "greenhouse gas",
+      "target_label": "emissions reduction target",
+      "relationship_type": "RELATED_TO",
+      "formatted": "greenhouse gas -> emissions reduction target (RELATED_TO)"
+    }
+  ],
+  "query": "Compare carbon pricing mechanisms worldwide including carbon taxes, emissions trading systems, and carbon credits. Focus on price levels, coverage sectors, and revenue usage in EU ETS, China's national ETS, and carbon tax systems in South Africa and Colombia.",
+  "extraction_method": "query_and_mcp_enhanced",
+  "query_concepts_count": 2,
+  "mcp_concepts_count": 0,
+  "total_concepts_found": 2,
+  "mcp_concepts": [],
+  "links": [
+    {
+      "source": "Q1608",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q754",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1298",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1652",
+      "target": "Q218",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1652",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1276",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1555",
+      "target": "Q1556",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1270",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q725",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q1280",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q723",
+      "target": "Q724",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q725",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q717",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q728",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q724",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q723",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q729",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q1299",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q716",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1301",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1272",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q639",
+      "target": "Q638",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q639",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1610",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1271",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q218",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q754",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q639",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q661",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q1652",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q221",
+      "target": "Q226",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q903",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q226",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1299",
+      "target": "Q1297",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1299",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1273",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q717",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q719",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q718",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q720",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q721",
+      "target": "Q728",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q718",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q725",
+      "target": "Q716",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q725",
+      "target": "Q724",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q725",
+      "target": "Q723",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q719",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q719",
+      "target": "Q728",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1171",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q715",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1269",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1272",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1273",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1274",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1275",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1276",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1277",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1278",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1279",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q722",
+      "target": "Q1280",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q716",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q719",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q728",
+      "target": "Q721",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q721",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1298",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1297",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q728",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1269",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q715",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1274",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1274",
+      "target": "Q1275",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q720",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q661",
+      "target": "Q638",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q661",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1270",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1271",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1301",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1608",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1609",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q1610",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1269",
+      "target": "Q715",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1279",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1280",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1280",
+      "target": "Q723",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q754",
+      "target": "Q770",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q754",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1278",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1277",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1297",
+      "target": "Q715",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1297",
+      "target": "Q1299",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q729",
+      "target": "Q1418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q729",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q639",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q661",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q226",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1609",
+      "target": "Q1269",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q1555",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q903",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q715",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q717",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1556",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q717",
+      "target": "Q721",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q717",
+      "target": "Q716",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q717",
+      "target": "Q1556",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1275",
+      "target": "Q722",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1275",
+      "target": "Q1274",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1171",
+      "target": "Q722",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q724",
+      "target": "Q725",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q724",
+      "target": "Q723",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q724",
+      "target": "Q716",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1418",
+      "target": "Q729",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q218",
+      "target": "Q221",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q218",
+      "target": "Q1652",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ]
+};
+        
+        // Initialize visualization
+        const width = 800;
+        const height = 500;
+        
+        const svg = d3.select("#kg-graph")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`);
+            
+        const g = svg.append("g");
+        
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+        svg.call(zoom);
+        
+        // Process data
+        const nodes = kgData.nodes || [];
+        const links = kgData.links || [];
+        
+        // Color mapping
+        const nodeColors = {
+            'Concept': '#1f77b4',
+            'Dataset': '#ff7f0e', 
+            'Passage': '#2ca02c',
+            'Document': '#d62728',
+            'Unknown': '#7f7f7f'
+        };
+        
+        // Create simulation
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(60))
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+        
+        // Create links
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link");
+        
+        // Create nodes
+        const node = g.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", d => Math.max(5, Math.min(15, (d.importance || 1) * 8)))
+            .attr("fill", d => nodeColors[d.type] || nodeColors['Unknown'])
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+        
+        // Add labels
+        const label = g.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("class", "node-label")
+            .attr("dy", -18)
+            .text(d => d.label || d.id);
+        
+        // Tooltip
+        const tooltip = d3.select("#tooltip");
+        
+        node.on("mouseover", function(event, d) {
+            tooltip.transition().duration(200).style("opacity", .9);
+            tooltip.html(`<strong>${d.label || d.id}</strong><br/>Type: ${d.type}<br/>Importance: ${d.importance || 'N/A'}`)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function(d) {
+            tooltip.transition().duration(500).style("opacity", 0);
+        });
+        
+        // Update positions on simulation tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+            
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => d.y);
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    </script>
+</body>
+</html>

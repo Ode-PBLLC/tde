@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Configuration
-API_BASE_URL = "http://localhost:8098"  # Update this if your API runs on a different port
+API_BASE_URL = "http://localhost:8099"  # Update this if your API runs on a different port
 FEATURED_QUERIES_PATH = Path("static/featured_queries.json")
 CACHE_DIR = Path("static/cache")
 TIMEOUT = 300  # 5 minutes timeout for each query

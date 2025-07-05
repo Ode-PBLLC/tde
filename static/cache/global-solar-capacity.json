@@ -1,0 +1,3801 @@
+{
+  "cached_at": "2025-07-05T10:43:17.427453",
+  "query_id": "global-solar-capacity",
+  "query": "Show me solar facilities and capacity data across Brazil, India, South Africa, and Vietnam. Include maps of major installations, capacity comparisons by country, and policy frameworks supporting solar development.",
+  "response": {
+    "query": "Show me solar facilities and capacity data across Brazil, India, South Africa, and Vietnam. Include maps of major installations, capacity comparisons by country, and policy frameworks supporting solar development.",
+    "modules": [
+      {
+        "type": "text",
+        "heading": "Climate Policy Analysis",
+        "texts": [
+          "Based on the available data, here's a comprehensive overview of solar facilities and capacity across Brazil, India, South Africa, and Vietnam:",
+          "Solar Capacity Overview:\n- Total Global Solar Capacity: 124,895 MW\n- Total Global Solar Facilities: 8,319",
+          "Country-Specific Highlights:\n1. India\n- Leads in both solar capacity and number of facilities\n- Largest individual solar facility: 2,511 MW\n- Notable large facilities include installations of 1,562 MW and 1,443 MW\n- Demonstrates significant solar infrastructure development",
+          "2. Brazil\n- Paris Agreement is directly applicable in domestic law\n- Supports renewable energy development through international commitments",
+          "3. South Africa and Vietnam\n- Specific detailed capacity data not prominently featured in the current dataset\n- Included in the overall global solar infrastructure mapping",
+          "Facility Mapping Insights:\n- 500 major facilities mapped across these countries\n- Facility capacity ranges from 0.3 MW to 2,511 MW\n- Average facility capacity: 15 MW\n- Geospatial distribution shows concentration of larger facilities in India",
+          "Visualization Notes:\n- A map is available showing the locations of 500 largest solar facilities\n- Geographical clustering of solar installations can be observed",
+          "Recommendation for Further Analysis:\n- Detailed policy frameworks and specific national solar strategies would provide more comprehensive insights into each country's solar development approach.",
+          "The data suggests a dynamic solar energy landscape, with India emerging as a clear leader in solar infrastructure among these four countries. ^1,2,3,4,5,6^"
+        ]
+      },
+      {
+        "type": "map",
+        "mapType": "geojson_url",
+        "geojson_url": "https://api.transitiondigital.org/static/maps/solar_facilities_south_africa_india_brazil_vietnam_64693b9d.geojson",
+        "filename": "solar_facilities_south_africa_india_brazil_vietnam_64693b9d.geojson",
+        "viewState": {
+          "center": [
+            17.739999999999995,
+            0.33500000000000085
+          ],
+          "zoom": 6,
+          "bounds": {
+            "north": 35.5,
+            "south": -34.83,
+            "east": 109.46,
+            "west": -73.98
+          }
+        },
+        "legend": {
+          "title": "Solar Facilities",
+          "items": [
+            {
+              "label": "South Africa",
+              "color": "#F44336",
+              "description": "Size represents capacity"
+            },
+            {
+              "label": "India",
+              "color": "#FF9800",
+              "description": "Size represents capacity"
+            },
+            {
+              "label": "Brazil",
+              "color": "#4CAF50",
+              "description": "Size represents capacity"
+            },
+            {
+              "label": "Vietnam",
+              "color": "#2196F3",
+              "description": "Size represents capacity"
+            }
+          ]
+        },
+        "metadata": {
+          "total_facilities": 8319,
+          "total_capacity_mw": 124895.23803085714,
+          "data_source": "TZ-SAM Q1 2025",
+          "countries": [
+            "South Africa",
+            "India",
+            "Brazil",
+            "Vietnam"
+          ],
+          "feature_count": 8319,
+          "file_size_kb": 229.0
+        }
+      },
+      {
+        "type": "table",
+        "heading": "Solar Facilities Summary",
+        "columns": [
+          "Metric",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Total Facilities",
+            "N/A"
+          ],
+          [
+            "Total Capacity",
+            "0 MW"
+          ],
+          [
+            "Countries",
+            ""
+          ]
+        ]
+      },
+      {
+        "type": "numbered_citation_table",
+        "heading": "References",
+        "columns": [
+          "#",
+          "Source",
+          "ID/Tool",
+          "Type",
+          "Description"
+        ],
+        "rows": [
+          [
+            "1",
+            "TZ-SAM Solar Capacity Database | TransitionZero",
+            "GetSolarCapacityByCountry",
+            "Dataset",
+            "Solar capacity statistics and aggregations..."
+          ],
+          [
+            "2",
+            "TZ-SAM Q1 2025 Solar Facilities Database | TransitionZero",
+            "GetSolarFacilitiesMapData",
+            "Dataset",
+            "TransitionZero Solar Asset Mapper - Global solar facility locations and capacity data - TZ-SAM Q1 20..."
+          ],
+          [
+            "3",
+            "LSE NDC Analysis Framework | London School of Economics",
+            "GetNDCOverviewData",
+            "Database",
+            "Nationally Determined Contributions analysis and policy comparisons for Brazil..."
+          ],
+          [
+            "4",
+            "LSE NDC Analysis Framework | London School of Economics",
+            "GetNDCOverviewData",
+            "Database",
+            "Nationally Determined Contributions analysis and policy comparisons for India..."
+          ],
+          [
+            "5",
+            "LSE NDC Analysis Framework | London School of Economics",
+            "GetNDCOverviewData",
+            "Database",
+            "Nationally Determined Contributions analysis and policy comparisons for South Africa..."
+          ],
+          [
+            "6",
+            "LSE NDC Analysis Framework | London School of Economics",
+            "GetNDCOverviewData",
+            "Database",
+            "Nationally Determined Contributions analysis and policy comparisons for Vietnam..."
+          ]
+        ]
+      }
+    ],
+    "thinking_process": null,
+    "metadata": {
+      "modules_count": 4,
+      "has_maps": true,
+      "has_charts": false,
+      "has_tables": true,
+      "chart_potential": false,
+      "chart_worthy_tables": 0,
+      "visualization_data_available": false,
+      "module_types": [
+        "text",
+        "numbered_citation_table",
+        "table",
+        "map"
+      ],
+      "kg_visualization_url": "/kg-viz",
+      "kg_query_url": "/kg-viz?query=Show%20me%20solar%20facilities%20and%20capacity%20data%20across%20Brazil,%20India,%20South%20Africa,%20and%20Vietnam.%20Include%20maps%20of%20major%20installations,%20capacity%20comparisons%20by%20country,%20and%20policy%20frameworks%20supporting%20solar%20development.",
+      "kg_embed_url": "https://api.transitiondigital.org/static/kg/kg_592adcc885a6.html",
+      "kg_embed_path": "kg/kg_592adcc885a6.html",
+      "kg_embed_absolute_path": "/Users/mason/Documents/GitHub/tde/static/kg/kg_592adcc885a6.html",
+      "kg_embed_filename": "kg_592adcc885a6.html"
+    },
+    "concepts": [
+      {
+        "id": "Q129",
+        "label": "Coastal monitoring"
+      },
+      {
+        "id": "Q144",
+        "label": "Soilless agriculture"
+      },
+      {
+        "id": "Q162",
+        "label": "Multi-purpose dams"
+      },
+      {
+        "id": "Q90",
+        "label": "Drought forecasting systems"
+      },
+      {
+        "id": "Q88",
+        "label": "Forecasting system"
+      },
+      {
+        "id": "Q75",
+        "label": "Cool roofs"
+      },
+      {
+        "id": "Q99",
+        "label": "Disaster risk assessment tools"
+      },
+      {
+        "id": "Q120",
+        "label": "Groynes"
+      },
+      {
+        "id": "Q124",
+        "label": "Beach nourishment"
+      },
+      {
+        "id": "Q83",
+        "label": "Hazard management technologies"
+      },
+      {
+        "id": "Q137",
+        "label": "Prescribed fire"
+      },
+      {
+        "id": "Q87",
+        "label": "Geographic Information Systems"
+      },
+      {
+        "id": "Q618",
+        "label": "solar energy"
+      },
+      {
+        "id": "Q97",
+        "label": "Seasonal to interannual weather forecast"
+      },
+      {
+        "id": "Q167",
+        "label": "Water treatment"
+      },
+      {
+        "id": "Q125",
+        "label": "Constructed wetlands"
+      },
+      {
+        "id": "Q563",
+        "label": "capacity building"
+      },
+      {
+        "id": "Q128",
+        "label": "Artificial reefs"
+      },
+      {
+        "id": "Q159",
+        "label": "Leakage management in piped systems"
+      },
+      {
+        "id": "Q281",
+        "label": "energy and power technologies"
+      },
+      {
+        "id": "Q154",
+        "label": "Drought-resistant crops"
+      },
+      {
+        "id": "Q175",
+        "label": "Solar water distillation"
+      },
+      {
+        "id": "Q111",
+        "label": "Storm drains"
+      },
+      {
+        "id": "Q81",
+        "label": "Floating agricultural systems"
+      },
+      {
+        "id": "Q119",
+        "label": "Sea walls"
+      },
+      {
+        "id": "Q152",
+        "label": "Improved cultivation techniques"
+      },
+      {
+        "id": "Q998",
+        "label": "maladaptation"
+      },
+      {
+        "id": "Q115",
+        "label": "Storm surge barriers and closure dams"
+      },
+      {
+        "id": "Q174",
+        "label": "Interbasin transfers"
+      },
+      {
+        "id": "Q108",
+        "label": "River restoration"
+      },
+      {
+        "id": "Q182",
+        "label": "Resilient transport systems"
+      },
+      {
+        "id": "Q184",
+        "label": "Resilient road systems"
+      },
+      {
+        "id": "Q143",
+        "label": "soil moisture monitoring"
+      },
+      {
+        "id": "Q82",
+        "label": "Flood and cyclone shelters"
+      },
+      {
+        "id": "Q126",
+        "label": "Dune construction and stabilisation"
+      },
+      {
+        "id": "Q91",
+        "label": "Flood forecasting systems"
+      },
+      {
+        "id": "Q142",
+        "label": "Integrated nutrient management"
+      },
+      {
+        "id": "Q133",
+        "label": "climate-resilient forest management"
+      },
+      {
+        "id": "Q140",
+        "label": "Forest fire control"
+      },
+      {
+        "id": "Q150",
+        "label": "crop insurance"
+      },
+      {
+        "id": "Q1025",
+        "label": "sustainable development goal 6"
+      },
+      {
+        "id": "Q1171",
+        "label": "policy instruments"
+      },
+      {
+        "id": "Q98",
+        "label": "Vulnerability assessment tools"
+      },
+      {
+        "id": "Q157",
+        "label": "Water management and conservation technologies"
+      },
+      {
+        "id": "Q156",
+        "label": "Alternative sustainable feeds"
+      },
+      {
+        "id": "Q93",
+        "label": "Climate model projections"
+      },
+      {
+        "id": "Q620",
+        "label": "Solar photovoltaic"
+      },
+      {
+        "id": "Q110",
+        "label": "Flood-proof wells"
+      },
+      {
+        "id": "Q177",
+        "label": "Fog harvesting"
+      },
+      {
+        "id": "Q109",
+        "label": "Artificial lowering of glacial lakes"
+      },
+      {
+        "id": "Q161",
+        "label": "Improved irrigation efficiency"
+      },
+      {
+        "id": "Q172",
+        "label": "Indigenous water storage structures"
+      },
+      {
+        "id": "Q173",
+        "label": "Seawater desalination"
+      },
+      {
+        "id": "Q818",
+        "label": "water management sector"
+      },
+      {
+        "id": "Q79",
+        "label": "Groundwater extraction and monitoring"
+      },
+      {
+        "id": "Q176",
+        "label": "Water recycling and reclamation"
+      },
+      {
+        "id": "Q107",
+        "label": "flow-through dam"
+      },
+      {
+        "id": "Q132",
+        "label": "Reduced impact logging"
+      },
+      {
+        "id": "Q141",
+        "label": "Terracing"
+      },
+      {
+        "id": "Q1585",
+        "label": "climate change adaptation governance"
+      },
+      {
+        "id": "Q117",
+        "label": "Jetties"
+      },
+      {
+        "id": "Q103",
+        "label": "Climate change monitoring"
+      },
+      {
+        "id": "Q135",
+        "label": "Ecological buffer zones"
+      },
+      {
+        "id": "Q180",
+        "label": "Decentralised energy transmission"
+      },
+      {
+        "id": "Q121",
+        "label": "Geosynthetics"
+      },
+      {
+        "id": "Q101",
+        "label": "Flood hazard mapping"
+      },
+      {
+        "id": "Q1130",
+        "label": "Indian Ocean Garbage Patch"
+      },
+      {
+        "id": "Q149",
+        "label": "crop rotation"
+      },
+      {
+        "id": "Q77",
+        "label": "elevated buildings"
+      },
+      {
+        "id": "Q138",
+        "label": "Control of sand encroachment"
+      },
+      {
+        "id": "Q96",
+        "label": "Hazard mapping"
+      },
+      {
+        "id": "Q185",
+        "label": "Resilient port infrastructure"
+      },
+      {
+        "id": "Q1286",
+        "label": "early warning system"
+      },
+      {
+        "id": "Q163",
+        "label": "Wastewater irrigation"
+      },
+      {
+        "id": "Q84",
+        "label": "GPS"
+      },
+      {
+        "id": "Q155",
+        "label": "climate tolerant livestock"
+      },
+      {
+        "id": "Q102",
+        "label": "monitoring systems"
+      },
+      {
+        "id": "Q100",
+        "label": "Drought risk mapping"
+      },
+      {
+        "id": "Q118",
+        "label": "Dikes"
+      },
+      {
+        "id": "Q134",
+        "label": "Forested catchments protection"
+      },
+      {
+        "id": "Q80",
+        "label": "Floating houses"
+      },
+      {
+        "id": "Q1287",
+        "label": "multi-hazard early warning system"
+      },
+      {
+        "id": "Q112",
+        "label": "Runoff control structures"
+      },
+      {
+        "id": "Q1131",
+        "label": "South Atlantic Garbage Patch"
+      },
+      {
+        "id": "Q104",
+        "label": "Light detection and ranging"
+      },
+      {
+        "id": "Q127",
+        "label": "Active motion-damping systems"
+      },
+      {
+        "id": "Q151",
+        "label": "E-agriculture"
+      },
+      {
+        "id": "Q123",
+        "label": "Cliff stabilisation"
+      },
+      {
+        "id": "Q86",
+        "label": "Remote sensing"
+      },
+      {
+        "id": "Q171",
+        "label": "Soil moisture conservation"
+      },
+      {
+        "id": "Q158",
+        "label": "Non-revenue water reduction"
+      },
+      {
+        "id": "Q114",
+        "label": "Bioswales"
+      },
+      {
+        "id": "Q122",
+        "label": "Revetments"
+      },
+      {
+        "id": "Q146",
+        "label": "Fungal symbioses"
+      },
+      {
+        "id": "Q166",
+        "label": "rainwater harvesting"
+      },
+      {
+        "id": "Q89",
+        "label": "Climate scenario development"
+      },
+      {
+        "id": "Q139",
+        "label": "Biodiversity management systems"
+      },
+      {
+        "id": "Q76",
+        "label": "Disaster-resilient buildings"
+      },
+      {
+        "id": "Q165",
+        "label": "Sprinkler irrigation"
+      },
+      {
+        "id": "Q557",
+        "label": "adaptation"
+      },
+      {
+        "id": "Q1018",
+        "label": "sustainable development goals"
+      },
+      {
+        "id": "Q168",
+        "label": "Flood-proof sanitary latrines"
+      },
+      {
+        "id": "Q113",
+        "label": "Permeable parking lots"
+      },
+      {
+        "id": "Q116",
+        "label": "Breakwaters"
+      },
+      {
+        "id": "Q170",
+        "label": "Water reservoirs"
+      },
+      {
+        "id": "Q148",
+        "label": "Soil remediation"
+      },
+      {
+        "id": "Q352",
+        "label": "Windbreaks"
+      },
+      {
+        "id": "Q179",
+        "label": "Grid resilience"
+      },
+      {
+        "id": "Q153",
+        "label": "Soil remediation techniques"
+      },
+      {
+        "id": "Q136",
+        "label": "Bushfire reduction"
+      },
+      {
+        "id": "Q183",
+        "label": "Resilient rail systems"
+      },
+      {
+        "id": "Q105",
+        "label": "ecosystem monitoring"
+      },
+      {
+        "id": "Q106",
+        "label": "Riverine flood protection"
+      },
+      {
+        "id": "Q160",
+        "label": "Water accounting"
+      },
+      {
+        "id": "Q130",
+        "label": "Marine monitoring"
+      },
+      {
+        "id": "Q78",
+        "label": "Hydrological modelling"
+      },
+      {
+        "id": "Q147",
+        "label": "crop diversification and new varieties"
+      },
+      {
+        "id": "Q169",
+        "label": "Water purification systems"
+      },
+      {
+        "id": "Q73",
+        "label": "Adaptation technologies"
+      },
+      {
+        "id": "Q740",
+        "label": "technologies"
+      },
+      {
+        "id": "Q1218",
+        "label": "data breach"
+      },
+      {
+        "id": "Q164",
+        "label": "Drip irrigation"
+      }
+    ],
+    "relationships": [
+      {
+        "source_id": "Q129",
+        "target_id": "Q83",
+        "source_label": "Coastal monitoring",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Coastal monitoring -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q129",
+        "target_id": "Q73",
+        "source_label": "Coastal monitoring",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Coastal monitoring -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q144",
+        "target_id": "Q73",
+        "source_label": "Soilless agriculture",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Soilless agriculture -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q162",
+        "target_id": "Q157",
+        "source_label": "Multi-purpose dams",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Multi-purpose dams -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q162",
+        "target_id": "Q73",
+        "source_label": "Multi-purpose dams",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Multi-purpose dams -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q90",
+        "target_id": "Q83",
+        "source_label": "Drought forecasting systems",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Drought forecasting systems -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q90",
+        "target_id": "Q73",
+        "source_label": "Drought forecasting systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Drought forecasting systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q88",
+        "target_id": "Q83",
+        "source_label": "Forecasting system",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Forecasting system -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q88",
+        "target_id": "Q73",
+        "source_label": "Forecasting system",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Forecasting system -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q75",
+        "target_id": "Q73",
+        "source_label": "Cool roofs",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Cool roofs -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q99",
+        "target_id": "Q83",
+        "source_label": "Disaster risk assessment tools",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Disaster risk assessment tools -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q99",
+        "target_id": "Q73",
+        "source_label": "Disaster risk assessment tools",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Disaster risk assessment tools -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q120",
+        "target_id": "Q83",
+        "source_label": "Groynes",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Groynes -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q120",
+        "target_id": "Q73",
+        "source_label": "Groynes",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Groynes -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q124",
+        "target_id": "Q83",
+        "source_label": "Beach nourishment",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Beach nourishment -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q124",
+        "target_id": "Q73",
+        "source_label": "Beach nourishment",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Beach nourishment -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q740",
+        "source_label": "Hazard management technologies",
+        "target_label": "technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Hazard management technologies -> technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q84",
+        "source_label": "Hazard management technologies",
+        "target_label": "GPS",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> GPS (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q86",
+        "source_label": "Hazard management technologies",
+        "target_label": "Remote sensing",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Remote sensing (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q87",
+        "source_label": "Hazard management technologies",
+        "target_label": "Geographic Information Systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Geographic Information Systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q88",
+        "source_label": "Hazard management technologies",
+        "target_label": "Forecasting system",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Forecasting system (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q89",
+        "source_label": "Hazard management technologies",
+        "target_label": "Climate scenario development",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Climate scenario development (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q90",
+        "source_label": "Hazard management technologies",
+        "target_label": "Drought forecasting systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Drought forecasting systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q91",
+        "source_label": "Hazard management technologies",
+        "target_label": "Flood forecasting systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Flood forecasting systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q93",
+        "source_label": "Hazard management technologies",
+        "target_label": "Climate model projections",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Climate model projections (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q96",
+        "source_label": "Hazard management technologies",
+        "target_label": "Hazard mapping",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Hazard mapping (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q97",
+        "source_label": "Hazard management technologies",
+        "target_label": "Seasonal to interannual weather forecast",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Seasonal to interannual weather forecast (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q98",
+        "source_label": "Hazard management technologies",
+        "target_label": "Vulnerability assessment tools",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Vulnerability assessment tools (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q99",
+        "source_label": "Hazard management technologies",
+        "target_label": "Disaster risk assessment tools",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Disaster risk assessment tools (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q100",
+        "source_label": "Hazard management technologies",
+        "target_label": "Drought risk mapping",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Drought risk mapping (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q101",
+        "source_label": "Hazard management technologies",
+        "target_label": "Flood hazard mapping",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Flood hazard mapping (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q102",
+        "source_label": "Hazard management technologies",
+        "target_label": "monitoring systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> monitoring systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q103",
+        "source_label": "Hazard management technologies",
+        "target_label": "Climate change monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Climate change monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q104",
+        "source_label": "Hazard management technologies",
+        "target_label": "Light detection and ranging",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Light detection and ranging (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q105",
+        "source_label": "Hazard management technologies",
+        "target_label": "ecosystem monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> ecosystem monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q106",
+        "source_label": "Hazard management technologies",
+        "target_label": "Riverine flood protection",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Riverine flood protection (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q107",
+        "source_label": "Hazard management technologies",
+        "target_label": "flow-through dam",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> flow-through dam (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q108",
+        "source_label": "Hazard management technologies",
+        "target_label": "River restoration",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> River restoration (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q109",
+        "source_label": "Hazard management technologies",
+        "target_label": "Artificial lowering of glacial lakes",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Artificial lowering of glacial lakes (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q110",
+        "source_label": "Hazard management technologies",
+        "target_label": "Flood-proof wells",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Flood-proof wells (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q111",
+        "source_label": "Hazard management technologies",
+        "target_label": "Storm drains",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Storm drains (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q112",
+        "source_label": "Hazard management technologies",
+        "target_label": "Runoff control structures",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Runoff control structures (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q113",
+        "source_label": "Hazard management technologies",
+        "target_label": "Permeable parking lots",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Permeable parking lots (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q114",
+        "source_label": "Hazard management technologies",
+        "target_label": "Bioswales",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Bioswales (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q115",
+        "source_label": "Hazard management technologies",
+        "target_label": "Storm surge barriers and closure dams",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Storm surge barriers and closure dams (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q116",
+        "source_label": "Hazard management technologies",
+        "target_label": "Breakwaters",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Breakwaters (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q117",
+        "source_label": "Hazard management technologies",
+        "target_label": "Jetties",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Jetties (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q118",
+        "source_label": "Hazard management technologies",
+        "target_label": "Dikes",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Dikes (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q119",
+        "source_label": "Hazard management technologies",
+        "target_label": "Sea walls",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Sea walls (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q120",
+        "source_label": "Hazard management technologies",
+        "target_label": "Groynes",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Groynes (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q121",
+        "source_label": "Hazard management technologies",
+        "target_label": "Geosynthetics",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Geosynthetics (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q122",
+        "source_label": "Hazard management technologies",
+        "target_label": "Revetments",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Revetments (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q123",
+        "source_label": "Hazard management technologies",
+        "target_label": "Cliff stabilisation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Cliff stabilisation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q124",
+        "source_label": "Hazard management technologies",
+        "target_label": "Beach nourishment",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Beach nourishment (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q125",
+        "source_label": "Hazard management technologies",
+        "target_label": "Constructed wetlands",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Constructed wetlands (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q126",
+        "source_label": "Hazard management technologies",
+        "target_label": "Dune construction and stabilisation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Dune construction and stabilisation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q127",
+        "source_label": "Hazard management technologies",
+        "target_label": "Active motion-damping systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Active motion-damping systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q128",
+        "source_label": "Hazard management technologies",
+        "target_label": "Artificial reefs",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Artificial reefs (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q129",
+        "source_label": "Hazard management technologies",
+        "target_label": "Coastal monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Coastal monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q130",
+        "source_label": "Hazard management technologies",
+        "target_label": "Marine monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Hazard management technologies -> Marine monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q73",
+        "source_label": "Hazard management technologies",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Hazard management technologies -> Adaptation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q1286",
+        "source_label": "Hazard management technologies",
+        "target_label": "early warning system",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Hazard management technologies -> early warning system (RELATED_TO)"
+      },
+      {
+        "source_id": "Q83",
+        "target_id": "Q1287",
+        "source_label": "Hazard management technologies",
+        "target_label": "multi-hazard early warning system",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Hazard management technologies -> multi-hazard early warning system (RELATED_TO)"
+      },
+      {
+        "source_id": "Q137",
+        "target_id": "Q73",
+        "source_label": "Prescribed fire",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Prescribed fire -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q87",
+        "target_id": "Q83",
+        "source_label": "Geographic Information Systems",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Geographic Information Systems -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q87",
+        "target_id": "Q73",
+        "source_label": "Geographic Information Systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Geographic Information Systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q87",
+        "target_id": "Q102",
+        "source_label": "Geographic Information Systems",
+        "target_label": "monitoring systems",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Geographic Information Systems -> monitoring systems (RELATED_TO)"
+      },
+      {
+        "source_id": "Q618",
+        "target_id": "Q620",
+        "source_label": "solar energy",
+        "target_label": "Solar photovoltaic",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "solar energy -> Solar photovoltaic (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q97",
+        "target_id": "Q83",
+        "source_label": "Seasonal to interannual weather forecast",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Seasonal to interannual weather forecast -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q97",
+        "target_id": "Q73",
+        "source_label": "Seasonal to interannual weather forecast",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Seasonal to interannual weather forecast -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q167",
+        "target_id": "Q157",
+        "source_label": "Water treatment",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water treatment -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q167",
+        "target_id": "Q73",
+        "source_label": "Water treatment",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water treatment -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q125",
+        "target_id": "Q83",
+        "source_label": "Constructed wetlands",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Constructed wetlands -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q125",
+        "target_id": "Q73",
+        "source_label": "Constructed wetlands",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Constructed wetlands -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q128",
+        "target_id": "Q83",
+        "source_label": "Artificial reefs",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Artificial reefs -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q128",
+        "target_id": "Q73",
+        "source_label": "Artificial reefs",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Artificial reefs -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q159",
+        "target_id": "Q157",
+        "source_label": "Leakage management in piped systems",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Leakage management in piped systems -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q159",
+        "target_id": "Q73",
+        "source_label": "Leakage management in piped systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Leakage management in piped systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q159",
+        "target_id": "Q158",
+        "source_label": "Leakage management in piped systems",
+        "target_label": "Non-revenue water reduction",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Leakage management in piped systems -> Non-revenue water reduction (RELATED_TO)"
+      },
+      {
+        "source_id": "Q281",
+        "target_id": "Q740",
+        "source_label": "energy and power technologies",
+        "target_label": "technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "energy and power technologies -> technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q281",
+        "target_id": "Q179",
+        "source_label": "energy and power technologies",
+        "target_label": "Grid resilience",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "energy and power technologies -> Grid resilience (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q281",
+        "target_id": "Q180",
+        "source_label": "energy and power technologies",
+        "target_label": "Decentralised energy transmission",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "energy and power technologies -> Decentralised energy transmission (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q281",
+        "target_id": "Q73",
+        "source_label": "energy and power technologies",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "energy and power technologies -> Adaptation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q154",
+        "target_id": "Q73",
+        "source_label": "Drought-resistant crops",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Drought-resistant crops -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q175",
+        "target_id": "Q157",
+        "source_label": "Solar water distillation",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Solar water distillation -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q175",
+        "target_id": "Q73",
+        "source_label": "Solar water distillation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Solar water distillation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q111",
+        "target_id": "Q83",
+        "source_label": "Storm drains",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Storm drains -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q111",
+        "target_id": "Q73",
+        "source_label": "Storm drains",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Storm drains -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q81",
+        "target_id": "Q73",
+        "source_label": "Floating agricultural systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Floating agricultural systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q119",
+        "target_id": "Q83",
+        "source_label": "Sea walls",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Sea walls -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q119",
+        "target_id": "Q73",
+        "source_label": "Sea walls",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Sea walls -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q152",
+        "target_id": "Q73",
+        "source_label": "Improved cultivation techniques",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Improved cultivation techniques -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q998",
+        "target_id": "Q557",
+        "source_label": "maladaptation",
+        "target_label": "adaptation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "maladaptation -> adaptation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q998",
+        "target_id": "Q73",
+        "source_label": "maladaptation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "maladaptation -> Adaptation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q115",
+        "target_id": "Q83",
+        "source_label": "Storm surge barriers and closure dams",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Storm surge barriers and closure dams -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q115",
+        "target_id": "Q73",
+        "source_label": "Storm surge barriers and closure dams",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Storm surge barriers and closure dams -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q174",
+        "target_id": "Q157",
+        "source_label": "Interbasin transfers",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Interbasin transfers -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q174",
+        "target_id": "Q73",
+        "source_label": "Interbasin transfers",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Interbasin transfers -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q108",
+        "target_id": "Q83",
+        "source_label": "River restoration",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "River restoration -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q108",
+        "target_id": "Q73",
+        "source_label": "River restoration",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "River restoration -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q182",
+        "target_id": "Q73",
+        "source_label": "Resilient transport systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Resilient transport systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q184",
+        "target_id": "Q73",
+        "source_label": "Resilient road systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Resilient road systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q143",
+        "target_id": "Q73",
+        "source_label": "soil moisture monitoring",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "soil moisture monitoring -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q82",
+        "target_id": "Q73",
+        "source_label": "Flood and cyclone shelters",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood and cyclone shelters -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q82",
+        "target_id": "Q91",
+        "source_label": "Flood and cyclone shelters",
+        "target_label": "Flood forecasting systems",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Flood and cyclone shelters -> Flood forecasting systems (RELATED_TO)"
+      },
+      {
+        "source_id": "Q126",
+        "target_id": "Q83",
+        "source_label": "Dune construction and stabilisation",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Dune construction and stabilisation -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q126",
+        "target_id": "Q73",
+        "source_label": "Dune construction and stabilisation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Dune construction and stabilisation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q91",
+        "target_id": "Q83",
+        "source_label": "Flood forecasting systems",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood forecasting systems -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q91",
+        "target_id": "Q73",
+        "source_label": "Flood forecasting systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood forecasting systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q91",
+        "target_id": "Q101",
+        "source_label": "Flood forecasting systems",
+        "target_label": "Flood hazard mapping",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Flood forecasting systems -> Flood hazard mapping (RELATED_TO)"
+      },
+      {
+        "source_id": "Q91",
+        "target_id": "Q82",
+        "source_label": "Flood forecasting systems",
+        "target_label": "Flood and cyclone shelters",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Flood forecasting systems -> Flood and cyclone shelters (RELATED_TO)"
+      },
+      {
+        "source_id": "Q142",
+        "target_id": "Q73",
+        "source_label": "Integrated nutrient management",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Integrated nutrient management -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q133",
+        "target_id": "Q73",
+        "source_label": "climate-resilient forest management",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "climate-resilient forest management -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q140",
+        "target_id": "Q73",
+        "source_label": "Forest fire control",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Forest fire control -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q150",
+        "target_id": "Q73",
+        "source_label": "crop insurance",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "crop insurance -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1025",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 6",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 6 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1025",
+        "target_id": "Q157",
+        "source_label": "sustainable development goal 6",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 6 -> Water management and conservation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1025",
+        "target_id": "Q818",
+        "source_label": "sustainable development goal 6",
+        "target_label": "water management sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 6 -> water management sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q98",
+        "target_id": "Q83",
+        "source_label": "Vulnerability assessment tools",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Vulnerability assessment tools -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q98",
+        "target_id": "Q73",
+        "source_label": "Vulnerability assessment tools",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Vulnerability assessment tools -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q740",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water management and conservation technologies -> technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q158",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Non-revenue water reduction",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Non-revenue water reduction (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q159",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Leakage management in piped systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Leakage management in piped systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q160",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Water accounting",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Water accounting (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q161",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Improved irrigation efficiency",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Improved irrigation efficiency (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q162",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Multi-purpose dams",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Multi-purpose dams (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q163",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Wastewater irrigation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Wastewater irrigation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q164",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Drip irrigation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Drip irrigation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q165",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Sprinkler irrigation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Sprinkler irrigation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q166",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "rainwater harvesting",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> rainwater harvesting (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q167",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Water treatment",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Water treatment (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q168",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Flood-proof sanitary latrines",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Flood-proof sanitary latrines (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q169",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Water purification systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Water purification systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q170",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Water reservoirs",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Water reservoirs (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q171",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Soil moisture conservation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Soil moisture conservation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q172",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Indigenous water storage structures",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Indigenous water storage structures (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q173",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Seawater desalination",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Seawater desalination (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q174",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Interbasin transfers",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Interbasin transfers (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q175",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Solar water distillation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Solar water distillation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q176",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Water recycling and reclamation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Water recycling and reclamation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q177",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Fog harvesting",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Water management and conservation technologies -> Fog harvesting (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q73",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Water management and conservation technologies -> Adaptation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q1025",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "sustainable development goal 6",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Water management and conservation technologies -> sustainable development goal 6 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q818",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "water management sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Water management and conservation technologies -> water management sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q156",
+        "target_id": "Q73",
+        "source_label": "Alternative sustainable feeds",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Alternative sustainable feeds -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q93",
+        "target_id": "Q83",
+        "source_label": "Climate model projections",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Climate model projections -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q93",
+        "target_id": "Q73",
+        "source_label": "Climate model projections",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Climate model projections -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q620",
+        "target_id": "Q618",
+        "source_label": "Solar photovoltaic",
+        "target_label": "solar energy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Solar photovoltaic -> solar energy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q110",
+        "target_id": "Q83",
+        "source_label": "Flood-proof wells",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood-proof wells -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q110",
+        "target_id": "Q73",
+        "source_label": "Flood-proof wells",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood-proof wells -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q177",
+        "target_id": "Q157",
+        "source_label": "Fog harvesting",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Fog harvesting -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q177",
+        "target_id": "Q73",
+        "source_label": "Fog harvesting",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Fog harvesting -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q109",
+        "target_id": "Q83",
+        "source_label": "Artificial lowering of glacial lakes",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Artificial lowering of glacial lakes -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q109",
+        "target_id": "Q73",
+        "source_label": "Artificial lowering of glacial lakes",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Artificial lowering of glacial lakes -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q161",
+        "target_id": "Q157",
+        "source_label": "Improved irrigation efficiency",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Improved irrigation efficiency -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q161",
+        "target_id": "Q73",
+        "source_label": "Improved irrigation efficiency",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Improved irrigation efficiency -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q172",
+        "target_id": "Q157",
+        "source_label": "Indigenous water storage structures",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Indigenous water storage structures -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q172",
+        "target_id": "Q73",
+        "source_label": "Indigenous water storage structures",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Indigenous water storage structures -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q173",
+        "target_id": "Q157",
+        "source_label": "Seawater desalination",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Seawater desalination -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q173",
+        "target_id": "Q73",
+        "source_label": "Seawater desalination",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Seawater desalination -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q818",
+        "target_id": "Q166",
+        "source_label": "water management sector",
+        "target_label": "rainwater harvesting",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "water management sector -> rainwater harvesting (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q818",
+        "target_id": "Q1025",
+        "source_label": "water management sector",
+        "target_label": "sustainable development goal 6",
+        "relationship_type": "RELATED_TO",
+        "formatted": "water management sector -> sustainable development goal 6 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q818",
+        "target_id": "Q157",
+        "source_label": "water management sector",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "water management sector -> Water management and conservation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q79",
+        "target_id": "Q73",
+        "source_label": "Groundwater extraction and monitoring",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Groundwater extraction and monitoring -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q176",
+        "target_id": "Q157",
+        "source_label": "Water recycling and reclamation",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water recycling and reclamation -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q176",
+        "target_id": "Q73",
+        "source_label": "Water recycling and reclamation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water recycling and reclamation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q107",
+        "target_id": "Q83",
+        "source_label": "flow-through dam",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "flow-through dam -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q107",
+        "target_id": "Q73",
+        "source_label": "flow-through dam",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "flow-through dam -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q132",
+        "target_id": "Q73",
+        "source_label": "Reduced impact logging",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Reduced impact logging -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q141",
+        "target_id": "Q73",
+        "source_label": "Terracing",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Terracing -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1585",
+        "target_id": "Q73",
+        "source_label": "climate change adaptation governance",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "climate change adaptation governance -> Adaptation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1585",
+        "target_id": "Q557",
+        "source_label": "climate change adaptation governance",
+        "target_label": "adaptation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "climate change adaptation governance -> adaptation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q117",
+        "target_id": "Q83",
+        "source_label": "Jetties",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Jetties -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q117",
+        "target_id": "Q73",
+        "source_label": "Jetties",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Jetties -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q103",
+        "target_id": "Q83",
+        "source_label": "Climate change monitoring",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Climate change monitoring -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q103",
+        "target_id": "Q73",
+        "source_label": "Climate change monitoring",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Climate change monitoring -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q103",
+        "target_id": "Q102",
+        "source_label": "Climate change monitoring",
+        "target_label": "monitoring systems",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Climate change monitoring -> monitoring systems (RELATED_TO)"
+      },
+      {
+        "source_id": "Q135",
+        "target_id": "Q73",
+        "source_label": "Ecological buffer zones",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Ecological buffer zones -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q180",
+        "target_id": "Q73",
+        "source_label": "Decentralised energy transmission",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Decentralised energy transmission -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q121",
+        "target_id": "Q83",
+        "source_label": "Geosynthetics",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Geosynthetics -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q121",
+        "target_id": "Q73",
+        "source_label": "Geosynthetics",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Geosynthetics -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q101",
+        "target_id": "Q83",
+        "source_label": "Flood hazard mapping",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood hazard mapping -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q101",
+        "target_id": "Q73",
+        "source_label": "Flood hazard mapping",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood hazard mapping -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q101",
+        "target_id": "Q91",
+        "source_label": "Flood hazard mapping",
+        "target_label": "Flood forecasting systems",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Flood hazard mapping -> Flood forecasting systems (RELATED_TO)"
+      },
+      {
+        "source_id": "Q149",
+        "target_id": "Q73",
+        "source_label": "crop rotation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "crop rotation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q77",
+        "target_id": "Q73",
+        "source_label": "elevated buildings",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "elevated buildings -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q138",
+        "target_id": "Q73",
+        "source_label": "Control of sand encroachment",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Control of sand encroachment -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q96",
+        "target_id": "Q83",
+        "source_label": "Hazard mapping",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Hazard mapping -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q96",
+        "target_id": "Q73",
+        "source_label": "Hazard mapping",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Hazard mapping -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q185",
+        "target_id": "Q73",
+        "source_label": "Resilient port infrastructure",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Resilient port infrastructure -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1286",
+        "target_id": "Q73",
+        "source_label": "early warning system",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "early warning system -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1286",
+        "target_id": "Q1287",
+        "source_label": "early warning system",
+        "target_label": "multi-hazard early warning system",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "early warning system -> multi-hazard early warning system (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1286",
+        "target_id": "Q83",
+        "source_label": "early warning system",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "early warning system -> Hazard management technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q163",
+        "target_id": "Q157",
+        "source_label": "Wastewater irrigation",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Wastewater irrigation -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q163",
+        "target_id": "Q73",
+        "source_label": "Wastewater irrigation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Wastewater irrigation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q84",
+        "target_id": "Q83",
+        "source_label": "GPS",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "GPS -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q84",
+        "target_id": "Q73",
+        "source_label": "GPS",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "GPS -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q155",
+        "target_id": "Q73",
+        "source_label": "climate tolerant livestock",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "climate tolerant livestock -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q102",
+        "target_id": "Q83",
+        "source_label": "monitoring systems",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "monitoring systems -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q102",
+        "target_id": "Q73",
+        "source_label": "monitoring systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "monitoring systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q102",
+        "target_id": "Q87",
+        "source_label": "monitoring systems",
+        "target_label": "Geographic Information Systems",
+        "relationship_type": "RELATED_TO",
+        "formatted": "monitoring systems -> Geographic Information Systems (RELATED_TO)"
+      },
+      {
+        "source_id": "Q102",
+        "target_id": "Q103",
+        "source_label": "monitoring systems",
+        "target_label": "Climate change monitoring",
+        "relationship_type": "RELATED_TO",
+        "formatted": "monitoring systems -> Climate change monitoring (RELATED_TO)"
+      },
+      {
+        "source_id": "Q100",
+        "target_id": "Q83",
+        "source_label": "Drought risk mapping",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Drought risk mapping -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q100",
+        "target_id": "Q73",
+        "source_label": "Drought risk mapping",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Drought risk mapping -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q118",
+        "target_id": "Q83",
+        "source_label": "Dikes",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Dikes -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q118",
+        "target_id": "Q73",
+        "source_label": "Dikes",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Dikes -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q134",
+        "target_id": "Q73",
+        "source_label": "Forested catchments protection",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Forested catchments protection -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q80",
+        "target_id": "Q73",
+        "source_label": "Floating houses",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Floating houses -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1287",
+        "target_id": "Q1286",
+        "source_label": "multi-hazard early warning system",
+        "target_label": "early warning system",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "multi-hazard early warning system -> early warning system (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1287",
+        "target_id": "Q73",
+        "source_label": "multi-hazard early warning system",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "multi-hazard early warning system -> Adaptation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1287",
+        "target_id": "Q83",
+        "source_label": "multi-hazard early warning system",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "multi-hazard early warning system -> Hazard management technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q112",
+        "target_id": "Q83",
+        "source_label": "Runoff control structures",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Runoff control structures -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q112",
+        "target_id": "Q73",
+        "source_label": "Runoff control structures",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Runoff control structures -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q104",
+        "target_id": "Q83",
+        "source_label": "Light detection and ranging",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Light detection and ranging -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q104",
+        "target_id": "Q73",
+        "source_label": "Light detection and ranging",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Light detection and ranging -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q104",
+        "target_id": "Q86",
+        "source_label": "Light detection and ranging",
+        "target_label": "Remote sensing",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Light detection and ranging -> Remote sensing (RELATED_TO)"
+      },
+      {
+        "source_id": "Q127",
+        "target_id": "Q83",
+        "source_label": "Active motion-damping systems",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Active motion-damping systems -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q127",
+        "target_id": "Q73",
+        "source_label": "Active motion-damping systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Active motion-damping systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q151",
+        "target_id": "Q73",
+        "source_label": "E-agriculture",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "E-agriculture -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q123",
+        "target_id": "Q83",
+        "source_label": "Cliff stabilisation",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Cliff stabilisation -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q123",
+        "target_id": "Q73",
+        "source_label": "Cliff stabilisation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Cliff stabilisation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q86",
+        "target_id": "Q83",
+        "source_label": "Remote sensing",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Remote sensing -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q86",
+        "target_id": "Q73",
+        "source_label": "Remote sensing",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Remote sensing -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q86",
+        "target_id": "Q104",
+        "source_label": "Remote sensing",
+        "target_label": "Light detection and ranging",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Remote sensing -> Light detection and ranging (RELATED_TO)"
+      },
+      {
+        "source_id": "Q171",
+        "target_id": "Q157",
+        "source_label": "Soil moisture conservation",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Soil moisture conservation -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q171",
+        "target_id": "Q73",
+        "source_label": "Soil moisture conservation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Soil moisture conservation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q158",
+        "target_id": "Q157",
+        "source_label": "Non-revenue water reduction",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Non-revenue water reduction -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q158",
+        "target_id": "Q73",
+        "source_label": "Non-revenue water reduction",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Non-revenue water reduction -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q158",
+        "target_id": "Q159",
+        "source_label": "Non-revenue water reduction",
+        "target_label": "Leakage management in piped systems",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Non-revenue water reduction -> Leakage management in piped systems (RELATED_TO)"
+      },
+      {
+        "source_id": "Q114",
+        "target_id": "Q83",
+        "source_label": "Bioswales",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Bioswales -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q114",
+        "target_id": "Q73",
+        "source_label": "Bioswales",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Bioswales -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q122",
+        "target_id": "Q83",
+        "source_label": "Revetments",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Revetments -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q122",
+        "target_id": "Q73",
+        "source_label": "Revetments",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Revetments -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q146",
+        "target_id": "Q73",
+        "source_label": "Fungal symbioses",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Fungal symbioses -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q166",
+        "target_id": "Q157",
+        "source_label": "rainwater harvesting",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "rainwater harvesting -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q166",
+        "target_id": "Q73",
+        "source_label": "rainwater harvesting",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "rainwater harvesting -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q166",
+        "target_id": "Q818",
+        "source_label": "rainwater harvesting",
+        "target_label": "water management sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "rainwater harvesting -> water management sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q89",
+        "target_id": "Q83",
+        "source_label": "Climate scenario development",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Climate scenario development -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q89",
+        "target_id": "Q73",
+        "source_label": "Climate scenario development",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Climate scenario development -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q139",
+        "target_id": "Q73",
+        "source_label": "Biodiversity management systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Biodiversity management systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q76",
+        "target_id": "Q73",
+        "source_label": "Disaster-resilient buildings",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Disaster-resilient buildings -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q165",
+        "target_id": "Q157",
+        "source_label": "Sprinkler irrigation",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Sprinkler irrigation -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q165",
+        "target_id": "Q73",
+        "source_label": "Sprinkler irrigation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Sprinkler irrigation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q557",
+        "target_id": "Q73",
+        "source_label": "adaptation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "adaptation -> Adaptation technologies (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q557",
+        "target_id": "Q998",
+        "source_label": "adaptation",
+        "target_label": "maladaptation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "adaptation -> maladaptation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q557",
+        "target_id": "Q1585",
+        "source_label": "adaptation",
+        "target_label": "climate change adaptation governance",
+        "relationship_type": "RELATED_TO",
+        "formatted": "adaptation -> climate change adaptation governance (RELATED_TO)"
+      },
+      {
+        "source_id": "Q557",
+        "target_id": "Q179",
+        "source_label": "adaptation",
+        "target_label": "Grid resilience",
+        "relationship_type": "RELATED_TO",
+        "formatted": "adaptation -> Grid resilience (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1025",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 6",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 6 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q168",
+        "target_id": "Q157",
+        "source_label": "Flood-proof sanitary latrines",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood-proof sanitary latrines -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q168",
+        "target_id": "Q73",
+        "source_label": "Flood-proof sanitary latrines",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Flood-proof sanitary latrines -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q113",
+        "target_id": "Q83",
+        "source_label": "Permeable parking lots",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Permeable parking lots -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q113",
+        "target_id": "Q73",
+        "source_label": "Permeable parking lots",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Permeable parking lots -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q116",
+        "target_id": "Q83",
+        "source_label": "Breakwaters",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Breakwaters -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q116",
+        "target_id": "Q73",
+        "source_label": "Breakwaters",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Breakwaters -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q170",
+        "target_id": "Q157",
+        "source_label": "Water reservoirs",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water reservoirs -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q170",
+        "target_id": "Q73",
+        "source_label": "Water reservoirs",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water reservoirs -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q148",
+        "target_id": "Q73",
+        "source_label": "Soil remediation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Soil remediation -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q352",
+        "target_id": "Q73",
+        "source_label": "Windbreaks",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Windbreaks -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q179",
+        "target_id": "Q73",
+        "source_label": "Grid resilience",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Grid resilience -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q179",
+        "target_id": "Q557",
+        "source_label": "Grid resilience",
+        "target_label": "adaptation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Grid resilience -> adaptation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q153",
+        "target_id": "Q73",
+        "source_label": "Soil remediation techniques",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Soil remediation techniques -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q136",
+        "target_id": "Q73",
+        "source_label": "Bushfire reduction",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Bushfire reduction -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q183",
+        "target_id": "Q73",
+        "source_label": "Resilient rail systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Resilient rail systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q105",
+        "target_id": "Q83",
+        "source_label": "ecosystem monitoring",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "ecosystem monitoring -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q105",
+        "target_id": "Q73",
+        "source_label": "ecosystem monitoring",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "ecosystem monitoring -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q106",
+        "target_id": "Q83",
+        "source_label": "Riverine flood protection",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Riverine flood protection -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q106",
+        "target_id": "Q73",
+        "source_label": "Riverine flood protection",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Riverine flood protection -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q160",
+        "target_id": "Q157",
+        "source_label": "Water accounting",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water accounting -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q160",
+        "target_id": "Q73",
+        "source_label": "Water accounting",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water accounting -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q130",
+        "target_id": "Q83",
+        "source_label": "Marine monitoring",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Marine monitoring -> Hazard management technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q130",
+        "target_id": "Q73",
+        "source_label": "Marine monitoring",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Marine monitoring -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q78",
+        "target_id": "Q73",
+        "source_label": "Hydrological modelling",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Hydrological modelling -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q147",
+        "target_id": "Q73",
+        "source_label": "crop diversification and new varieties",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "crop diversification and new varieties -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q169",
+        "target_id": "Q157",
+        "source_label": "Water purification systems",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water purification systems -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q169",
+        "target_id": "Q73",
+        "source_label": "Water purification systems",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Water purification systems -> Adaptation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q740",
+        "source_label": "Adaptation technologies",
+        "target_label": "technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Adaptation technologies -> technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q557",
+        "source_label": "Adaptation technologies",
+        "target_label": "adaptation",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Adaptation technologies -> adaptation (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q182",
+        "source_label": "Adaptation technologies",
+        "target_label": "Resilient transport systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Resilient transport systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q183",
+        "source_label": "Adaptation technologies",
+        "target_label": "Resilient rail systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Resilient rail systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q184",
+        "source_label": "Adaptation technologies",
+        "target_label": "Resilient road systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Resilient road systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q185",
+        "source_label": "Adaptation technologies",
+        "target_label": "Resilient port infrastructure",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Resilient port infrastructure (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q75",
+        "source_label": "Adaptation technologies",
+        "target_label": "Cool roofs",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Cool roofs (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q76",
+        "source_label": "Adaptation technologies",
+        "target_label": "Disaster-resilient buildings",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Disaster-resilient buildings (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q77",
+        "source_label": "Adaptation technologies",
+        "target_label": "elevated buildings",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> elevated buildings (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q78",
+        "source_label": "Adaptation technologies",
+        "target_label": "Hydrological modelling",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Hydrological modelling (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q79",
+        "source_label": "Adaptation technologies",
+        "target_label": "Groundwater extraction and monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Groundwater extraction and monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q80",
+        "source_label": "Adaptation technologies",
+        "target_label": "Floating houses",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Floating houses (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q81",
+        "source_label": "Adaptation technologies",
+        "target_label": "Floating agricultural systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Floating agricultural systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q132",
+        "source_label": "Adaptation technologies",
+        "target_label": "Reduced impact logging",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Reduced impact logging (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q133",
+        "source_label": "Adaptation technologies",
+        "target_label": "climate-resilient forest management",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> climate-resilient forest management (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q134",
+        "source_label": "Adaptation technologies",
+        "target_label": "Forested catchments protection",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Forested catchments protection (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q135",
+        "source_label": "Adaptation technologies",
+        "target_label": "Ecological buffer zones",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Ecological buffer zones (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q136",
+        "source_label": "Adaptation technologies",
+        "target_label": "Bushfire reduction",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Bushfire reduction (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q137",
+        "source_label": "Adaptation technologies",
+        "target_label": "Prescribed fire",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Prescribed fire (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q138",
+        "source_label": "Adaptation technologies",
+        "target_label": "Control of sand encroachment",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Control of sand encroachment (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q139",
+        "source_label": "Adaptation technologies",
+        "target_label": "Biodiversity management systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Biodiversity management systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q140",
+        "source_label": "Adaptation technologies",
+        "target_label": "Forest fire control",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Forest fire control (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q141",
+        "source_label": "Adaptation technologies",
+        "target_label": "Terracing",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Terracing (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q142",
+        "source_label": "Adaptation technologies",
+        "target_label": "Integrated nutrient management",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Integrated nutrient management (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q143",
+        "source_label": "Adaptation technologies",
+        "target_label": "soil moisture monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> soil moisture monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q144",
+        "source_label": "Adaptation technologies",
+        "target_label": "Soilless agriculture",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Soilless agriculture (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q146",
+        "source_label": "Adaptation technologies",
+        "target_label": "Fungal symbioses",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Fungal symbioses (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q147",
+        "source_label": "Adaptation technologies",
+        "target_label": "crop diversification and new varieties",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> crop diversification and new varieties (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q148",
+        "source_label": "Adaptation technologies",
+        "target_label": "Soil remediation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Soil remediation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q149",
+        "source_label": "Adaptation technologies",
+        "target_label": "crop rotation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> crop rotation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q150",
+        "source_label": "Adaptation technologies",
+        "target_label": "crop insurance",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> crop insurance (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q151",
+        "source_label": "Adaptation technologies",
+        "target_label": "E-agriculture",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> E-agriculture (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q152",
+        "source_label": "Adaptation technologies",
+        "target_label": "Improved cultivation techniques",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Improved cultivation techniques (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q153",
+        "source_label": "Adaptation technologies",
+        "target_label": "Soil remediation techniques",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Soil remediation techniques (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q154",
+        "source_label": "Adaptation technologies",
+        "target_label": "Drought-resistant crops",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Drought-resistant crops (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q155",
+        "source_label": "Adaptation technologies",
+        "target_label": "climate tolerant livestock",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> climate tolerant livestock (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q156",
+        "source_label": "Adaptation technologies",
+        "target_label": "Alternative sustainable feeds",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Alternative sustainable feeds (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q179",
+        "source_label": "Adaptation technologies",
+        "target_label": "Grid resilience",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Grid resilience (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q180",
+        "source_label": "Adaptation technologies",
+        "target_label": "Decentralised energy transmission",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Decentralised energy transmission (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q158",
+        "source_label": "Adaptation technologies",
+        "target_label": "Non-revenue water reduction",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Non-revenue water reduction (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q159",
+        "source_label": "Adaptation technologies",
+        "target_label": "Leakage management in piped systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Leakage management in piped systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q160",
+        "source_label": "Adaptation technologies",
+        "target_label": "Water accounting",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Water accounting (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q161",
+        "source_label": "Adaptation technologies",
+        "target_label": "Improved irrigation efficiency",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Improved irrigation efficiency (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q162",
+        "source_label": "Adaptation technologies",
+        "target_label": "Multi-purpose dams",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Multi-purpose dams (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q163",
+        "source_label": "Adaptation technologies",
+        "target_label": "Wastewater irrigation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Wastewater irrigation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q164",
+        "source_label": "Adaptation technologies",
+        "target_label": "Drip irrigation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Drip irrigation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q165",
+        "source_label": "Adaptation technologies",
+        "target_label": "Sprinkler irrigation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Sprinkler irrigation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q166",
+        "source_label": "Adaptation technologies",
+        "target_label": "rainwater harvesting",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> rainwater harvesting (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q167",
+        "source_label": "Adaptation technologies",
+        "target_label": "Water treatment",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Water treatment (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q168",
+        "source_label": "Adaptation technologies",
+        "target_label": "Flood-proof sanitary latrines",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Flood-proof sanitary latrines (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q169",
+        "source_label": "Adaptation technologies",
+        "target_label": "Water purification systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Water purification systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q170",
+        "source_label": "Adaptation technologies",
+        "target_label": "Water reservoirs",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Water reservoirs (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q171",
+        "source_label": "Adaptation technologies",
+        "target_label": "Soil moisture conservation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Soil moisture conservation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q172",
+        "source_label": "Adaptation technologies",
+        "target_label": "Indigenous water storage structures",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Indigenous water storage structures (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q173",
+        "source_label": "Adaptation technologies",
+        "target_label": "Seawater desalination",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Seawater desalination (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q176",
+        "source_label": "Adaptation technologies",
+        "target_label": "Water recycling and reclamation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Water recycling and reclamation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q84",
+        "source_label": "Adaptation technologies",
+        "target_label": "GPS",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> GPS (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q86",
+        "source_label": "Adaptation technologies",
+        "target_label": "Remote sensing",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Remote sensing (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q87",
+        "source_label": "Adaptation technologies",
+        "target_label": "Geographic Information Systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Geographic Information Systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q88",
+        "source_label": "Adaptation technologies",
+        "target_label": "Forecasting system",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Forecasting system (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q89",
+        "source_label": "Adaptation technologies",
+        "target_label": "Climate scenario development",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Climate scenario development (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q90",
+        "source_label": "Adaptation technologies",
+        "target_label": "Drought forecasting systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Drought forecasting systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q91",
+        "source_label": "Adaptation technologies",
+        "target_label": "Flood forecasting systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Flood forecasting systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q93",
+        "source_label": "Adaptation technologies",
+        "target_label": "Climate model projections",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Climate model projections (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q96",
+        "source_label": "Adaptation technologies",
+        "target_label": "Hazard mapping",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Hazard mapping (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q97",
+        "source_label": "Adaptation technologies",
+        "target_label": "Seasonal to interannual weather forecast",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Seasonal to interannual weather forecast (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q98",
+        "source_label": "Adaptation technologies",
+        "target_label": "Vulnerability assessment tools",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Vulnerability assessment tools (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q99",
+        "source_label": "Adaptation technologies",
+        "target_label": "Disaster risk assessment tools",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Disaster risk assessment tools (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q100",
+        "source_label": "Adaptation technologies",
+        "target_label": "Drought risk mapping",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Drought risk mapping (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q101",
+        "source_label": "Adaptation technologies",
+        "target_label": "Flood hazard mapping",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Flood hazard mapping (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q102",
+        "source_label": "Adaptation technologies",
+        "target_label": "monitoring systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> monitoring systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q103",
+        "source_label": "Adaptation technologies",
+        "target_label": "Climate change monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Climate change monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q104",
+        "source_label": "Adaptation technologies",
+        "target_label": "Light detection and ranging",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Light detection and ranging (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q105",
+        "source_label": "Adaptation technologies",
+        "target_label": "ecosystem monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> ecosystem monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q106",
+        "source_label": "Adaptation technologies",
+        "target_label": "Riverine flood protection",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Riverine flood protection (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q107",
+        "source_label": "Adaptation technologies",
+        "target_label": "flow-through dam",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> flow-through dam (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q108",
+        "source_label": "Adaptation technologies",
+        "target_label": "River restoration",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> River restoration (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q109",
+        "source_label": "Adaptation technologies",
+        "target_label": "Artificial lowering of glacial lakes",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Artificial lowering of glacial lakes (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q110",
+        "source_label": "Adaptation technologies",
+        "target_label": "Flood-proof wells",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Flood-proof wells (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q111",
+        "source_label": "Adaptation technologies",
+        "target_label": "Storm drains",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Storm drains (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q112",
+        "source_label": "Adaptation technologies",
+        "target_label": "Runoff control structures",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Runoff control structures (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q113",
+        "source_label": "Adaptation technologies",
+        "target_label": "Permeable parking lots",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Permeable parking lots (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q114",
+        "source_label": "Adaptation technologies",
+        "target_label": "Bioswales",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Bioswales (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q115",
+        "source_label": "Adaptation technologies",
+        "target_label": "Storm surge barriers and closure dams",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Storm surge barriers and closure dams (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q116",
+        "source_label": "Adaptation technologies",
+        "target_label": "Breakwaters",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Breakwaters (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q117",
+        "source_label": "Adaptation technologies",
+        "target_label": "Jetties",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Jetties (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q118",
+        "source_label": "Adaptation technologies",
+        "target_label": "Dikes",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Dikes (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q119",
+        "source_label": "Adaptation technologies",
+        "target_label": "Sea walls",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Sea walls (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q120",
+        "source_label": "Adaptation technologies",
+        "target_label": "Groynes",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Groynes (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q121",
+        "source_label": "Adaptation technologies",
+        "target_label": "Geosynthetics",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Geosynthetics (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q122",
+        "source_label": "Adaptation technologies",
+        "target_label": "Revetments",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Revetments (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q123",
+        "source_label": "Adaptation technologies",
+        "target_label": "Cliff stabilisation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Cliff stabilisation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q124",
+        "source_label": "Adaptation technologies",
+        "target_label": "Beach nourishment",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Beach nourishment (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q125",
+        "source_label": "Adaptation technologies",
+        "target_label": "Constructed wetlands",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Constructed wetlands (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q126",
+        "source_label": "Adaptation technologies",
+        "target_label": "Dune construction and stabilisation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Dune construction and stabilisation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q127",
+        "source_label": "Adaptation technologies",
+        "target_label": "Active motion-damping systems",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Active motion-damping systems (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q128",
+        "source_label": "Adaptation technologies",
+        "target_label": "Artificial reefs",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Artificial reefs (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q129",
+        "source_label": "Adaptation technologies",
+        "target_label": "Coastal monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Coastal monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q130",
+        "source_label": "Adaptation technologies",
+        "target_label": "Marine monitoring",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Marine monitoring (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q1286",
+        "source_label": "Adaptation technologies",
+        "target_label": "early warning system",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> early warning system (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q174",
+        "source_label": "Adaptation technologies",
+        "target_label": "Interbasin transfers",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Interbasin transfers (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q175",
+        "source_label": "Adaptation technologies",
+        "target_label": "Solar water distillation",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Solar water distillation (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q177",
+        "source_label": "Adaptation technologies",
+        "target_label": "Fog harvesting",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Fog harvesting (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q82",
+        "source_label": "Adaptation technologies",
+        "target_label": "Flood and cyclone shelters",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "Adaptation technologies -> Flood and cyclone shelters (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q83",
+        "source_label": "Adaptation technologies",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Adaptation technologies -> Hazard management technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q281",
+        "source_label": "Adaptation technologies",
+        "target_label": "energy and power technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Adaptation technologies -> energy and power technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q157",
+        "source_label": "Adaptation technologies",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Adaptation technologies -> Water management and conservation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q1287",
+        "source_label": "Adaptation technologies",
+        "target_label": "multi-hazard early warning system",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Adaptation technologies -> multi-hazard early warning system (RELATED_TO)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q998",
+        "source_label": "Adaptation technologies",
+        "target_label": "maladaptation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Adaptation technologies -> maladaptation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q73",
+        "target_id": "Q1585",
+        "source_label": "Adaptation technologies",
+        "target_label": "climate change adaptation governance",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Adaptation technologies -> climate change adaptation governance (RELATED_TO)"
+      },
+      {
+        "source_id": "Q740",
+        "target_id": "Q73",
+        "source_label": "technologies",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "technologies -> Adaptation technologies (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q740",
+        "target_id": "Q281",
+        "source_label": "technologies",
+        "target_label": "energy and power technologies",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "technologies -> energy and power technologies (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q740",
+        "target_id": "Q157",
+        "source_label": "technologies",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "technologies -> Water management and conservation technologies (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q740",
+        "target_id": "Q83",
+        "source_label": "technologies",
+        "target_label": "Hazard management technologies",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "technologies -> Hazard management technologies (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q164",
+        "target_id": "Q157",
+        "source_label": "Drip irrigation",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Drip irrigation -> Water management and conservation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q164",
+        "target_id": "Q73",
+        "source_label": "Drip irrigation",
+        "target_label": "Adaptation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Drip irrigation -> Adaptation technologies (SUBCONCEPT_OF)"
+      }
+    ]
+  }
+}
