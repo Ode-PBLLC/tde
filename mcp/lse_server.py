@@ -189,9 +189,7 @@ metadata = {
 
 @mcp.tool()
 def GetLSEDatasetOverview() -> Dict[str, Any]:
-    """
-    Get overview of all LSE climate policy datasets and their structure.
-    """
+    """Get overview of LSE climate policy datasets."""
     if not data_manager.all_sheets:
         return {"error": "LSE data not available"}
     
@@ -225,12 +223,7 @@ def _get_module_description(module: str) -> str:
 
 @mcp.tool()
 def GetLSEFileStructure(filename: str) -> Dict[str, Any]:
-    """
-    Get detailed structure of a specific LSE file.
-    
-    Parameters:
-    - filename: Name of the Excel file to examine
-    """
+    """Get structure of specific LSE file."""
     if not data_manager.excel_files:
         return {"error": "LSE data not available"}
     
@@ -259,14 +252,7 @@ def GetLSEFileStructure(filename: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def SearchLSEContent(search_term: str, module_type: Optional[str] = None, limit: int = 10) -> Dict[str, Any]:
-    """
-    Search across LSE content for specific terms.
-    
-    Parameters:
-    - search_term: Term to search for in content
-    - module_type: Optional filter by module (ndc_overview, institutions, plans_policies, subnational, tpi_graphs)
-    - limit: Maximum number of results to return
-    """
+    """Search LSE content for specific terms."""
     if not data_manager.all_sheets:
         return {"error": "LSE data not available"}
     
@@ -285,9 +271,7 @@ def SearchLSEContent(search_term: str, module_type: Optional[str] = None, limit:
 
 @mcp.tool()
 def GetBrazilianStatesOverview() -> Dict[str, Any]:
-    """
-    Get overview of Brazilian state climate governance data.
-    """
+    """Get Brazilian states climate governance overview."""
     if not data_manager.states_cache:
         return {"error": "Brazilian states data not available"}
     
@@ -307,12 +291,7 @@ def GetBrazilianStatesOverview() -> Dict[str, Any]:
 
 @mcp.tool()
 def GetStateClimatePolicy(state_name: str) -> Dict[str, Any]:
-    """
-    Get climate policy information for a specific Brazilian state.
-    
-    Parameters:
-    - state_name: Name of the Brazilian state (e.g., "São Paulo", "Rio de Janeiro")
-    """
+    """Get climate policy for specific Brazilian state."""
     if not data_manager.states_cache:
         return {"error": "Brazilian states data not available"}
     
@@ -372,13 +351,7 @@ def GetStateClimatePolicy(state_name: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def CompareBrazilianStates(states: List[str], policy_area: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Compare climate policies across multiple Brazilian states.
-    
-    Parameters:
-    - states: List of state names to compare
-    - policy_area: Optional filter for specific policy area
-    """
+    """Compare climate policies across Brazilian states."""
     if not data_manager.states_cache:
         return {"error": "Brazilian states data not available"}
     
@@ -442,12 +415,7 @@ def CompareBrazilianStates(states: List[str], policy_area: Optional[str] = None)
 
 @mcp.tool()
 def GetNDCOverviewData(country: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Get NDC (Nationally Determined Contributions) overview data.
-    
-    Parameters:
-    - country: Optional filter for specific country
-    """
+    """Get NDC overview data."""
     if 'ndc_overview' not in data_manager.content_cache:
         return {"error": "NDC overview data not available"}
     
@@ -480,9 +448,7 @@ def GetNDCOverviewData(country: Optional[str] = None) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetInstitutionsProcessesData() -> Dict[str, Any]:
-    """
-    Get institutions and processes module data.
-    """
+    """Get institutions and processes data."""
     if 'institutions' not in data_manager.content_cache:
         return {"error": "Institutions and processes data not available"}
     
@@ -511,9 +477,7 @@ def GetInstitutionsProcessesData() -> Dict[str, Any]:
 
 @mcp.tool()
 def GetPlansAndPoliciesData() -> Dict[str, Any]:
-    """
-    Get plans and policies module data.
-    """
+    """Get plans and policies data."""
     if 'plans_policies' not in data_manager.content_cache:
         return {"error": "Plans and policies data not available"}
     
@@ -545,13 +509,7 @@ def GetPlansAndPoliciesData() -> Dict[str, Any]:
 
 @mcp.tool()
 def GetLSEVisualizationData(viz_type: str, filters: Optional[Dict] = None) -> Dict[str, Any]:
-    """
-    Get structured data for specific visualization types.
-    
-    Parameters:
-    - viz_type: Type of visualization ('states_comparison', 'policy_coverage', 'module_overview', 'governance_status')
-    - filters: Optional filters like {'module': 'subnational', 'region': 'southeast'}
-    """
+    """Get structured data for visualization."""
     if not data_manager.all_sheets:
         return {"error": "LSE data not available"}
     
@@ -707,9 +665,7 @@ def _get_governance_status_viz(filters: Dict) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetLSEDatasetMetadata() -> Dict[str, Any]:
-    """
-    Get comprehensive metadata about the LSE dataset.
-    """
+    """Get LSE dataset metadata."""
     return metadata
 
 # Clean up the exploration script

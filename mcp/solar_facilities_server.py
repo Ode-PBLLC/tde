@@ -33,15 +33,7 @@ metadata = {
 
 @mcp.tool()
 def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit: int = 100) -> Dict[str, Any]:
-    """
-    Get solar facilities summary for a specific country with optional capacity filtering.
-    Returns summary statistics instead of full facility list to avoid context explosion.
-    
-    Parameters:
-    - country: Country name (Brazil, India, South Africa, Vietnam)
-    - min_capacity_mw: Minimum capacity in MW (default: 0)
-    - limit: Maximum number of facilities to return (default: 100)
-    """
+    """Get solar facilities summary for a country."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -67,15 +59,8 @@ def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit:
     return summary
 
 @mcp.tool()
-def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 1000) -> Dict[str, Any]:
-    """
-    Get solar facilities data specifically for map visualization with GeoJSON format.
-    Returns summary statistics for LLM and generates GeoJSON file for frontend.
-    
-    Args:
-        country: Filter by specific country (optional)
-        limit: Maximum number of facilities to return for map display (default 1000)
-    """
+def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
+    """Get facilities data for map visualization."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -110,7 +95,18 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 1000) 
             "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}")
         })
     
-    # Return summary data (lightweight for LLM) + full data for GeoJSON generation
+    # Return summary data (lightweight for LLM) + limited sample for context
+    # Note: full_data is available for GeoJSON generation but not returned to avoid prompt bloat
+    sample_facilities = []
+    if len(filtered_for_map) > 0:
+        # Include just top 3 facilities as examples
+        for _, facility in filtered_for_map.head(3).iterrows():
+            sample_facilities.append({
+                "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}"),
+                "capacity_mw": float(facility['capacity_mw']),
+                "country": facility['country']
+            })
+    
     return {
         "type": "map_data_summary",
         "summary": {
@@ -125,24 +121,19 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 1000) 
                 "avg": float(filtered['capacity_mw'].mean())
             }
         },
-        "full_data": full_data,  # Same exact facilities used for summary stats
+        "sample_facilities": sample_facilities,  # Just 3 examples instead of full_data
+        "full_data": full_data,  # Available for GeoJSON generation by orchestrator
         "metadata": {
             "data_source": "TZ-SAM Q1 2025",
             "geojson_available": True,
-            "truncated_for_display": total_facilities > (limit or 0)
+            "truncated_for_display": total_facilities > (limit or 0),
+            "note": "Full facility data available for map generation but not shown to reduce prompt size"
         }
     }
 
 @mcp.tool()
-def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 1000) -> Dict[str, Any]:
-    """
-    Get solar facilities data for GeoJSON generation (internal use).
-    Returns actual facility records with coordinates for mapping.
-    
-    Args:
-        country: Filter by specific country (optional)
-        limit: Maximum number of facilities to return (default 1000)
-    """
+def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
+    """Get facilities for GeoJSON generation."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -185,10 +176,7 @@ def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 100
 
 @mcp.tool()
 def GetSolarCapacityByCountry() -> Dict[str, Any]:
-    """
-    Get total solar capacity and facility count by country.
-    Returns summary statistics instead of detailed records.
-    """
+    """Get solar capacity by country."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -212,14 +200,7 @@ def GetSolarCapacityByCountry() -> Dict[str, Any]:
 
 @mcp.tool()
 def GetDataForDirectVisualization(request_type: str, country: Optional[str] = None) -> str:
-    """
-    Get data directly for visualization without going through Claude context.
-    Returns a unique identifier that the client can use to fetch full data.
-    
-    Parameters:
-    - request_type: Type of data needed ("country_comparison", "facilities_map", "capacity_distribution", etc.)
-    - country: Optional country filter for certain request types
-    """
+    """Get data ID for direct visualization."""
     if facilities_df.empty:
         return "NO_DATA_AVAILABLE"
     
@@ -238,15 +219,7 @@ def GetDataForDirectVisualization(request_type: str, country: Optional[str] = No
 
 @mcp.tool()
 def GetSolarFacilitiesInRadius(latitude: float, longitude: float, radius_km: float = 50, country: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Find solar facilities within a radius of given coordinates.
-    
-    Parameters:
-    - latitude: Center latitude
-    - longitude: Center longitude  
-    - radius_km: Search radius in kilometers (default: 50)
-    - country: Optional country filter
-    """
+    """Find facilities within radius of coordinates."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -291,14 +264,7 @@ def GetSolarFacilitiesInRadius(latitude: float, longitude: float, radius_km: flo
 
 @mcp.tool()
 def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, country: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Get solar facility construction timeline data.
-    
-    Parameters:
-    - start_year: Start year for timeline (default: 2017)
-    - end_year: End year for timeline (default: 2025)
-    - country: Optional country filter
-    """
+    """Get construction timeline data."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -341,13 +307,7 @@ def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, c
 
 @mcp.tool()
 def GetLargestSolarFacilities(limit: int = 20, country: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Get the largest solar facilities by capacity.
-    
-    Parameters:
-    - limit: Number of facilities to return (default: 20)
-    - country: Optional country filter
-    """
+    """Get largest facilities by capacity."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -375,12 +335,7 @@ def GetLargestSolarFacilities(limit: int = 20, country: Optional[str] = None) ->
 
 @mcp.tool()
 def GetSolarFacilityDetails(cluster_id: str) -> Dict[str, Any]:
-    """
-    Get detailed information for a specific solar facility.
-    
-    Parameters:
-    - cluster_id: Unique facility identifier
-    """
+    """Get details for specific facility."""
     if facilities_df.empty:
         return {}
     
@@ -406,15 +361,7 @@ def GetSolarFacilityDetails(cluster_id: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def SearchSolarFacilitiesByCapacity(min_capacity_mw: float, max_capacity_mw: float, country: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
-    """
-    Search solar facilities within a capacity range.
-    
-    Parameters:
-    - min_capacity_mw: Minimum capacity in MW
-    - max_capacity_mw: Maximum capacity in MW
-    - country: Optional country filter
-    - limit: Maximum number of facilities to return (default: 50)
-    """
+    """Search facilities by capacity range."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -455,14 +402,7 @@ def SearchSolarFacilitiesByCapacity(min_capacity_mw: float, max_capacity_mw: flo
 
 @mcp.tool()
 def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") -> Dict[str, Any]:
-    """
-    Get data formatted for specific visualization types.
-    
-    Parameters:
-    - visualization_type: Type of chart ("by_country", "capacity_distribution", "timeline")
-    
-    Returns structured data ready for plotting
-    """
+    """Get data for visualization. Types: by_country, capacity_distribution, timeline."""
     if facilities_df.empty:
         return {"error": "No facilities data available"}
     
@@ -539,9 +479,7 @@ def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") ->
 
 @mcp.tool()
 def GetSolarDatasetMetadata() -> Dict[str, Any]:
-    """
-    Get metadata about the solar facilities dataset.
-    """
+    """Get dataset metadata."""
     return metadata
 
 if __name__ == "__main__":

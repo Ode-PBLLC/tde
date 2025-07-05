@@ -137,24 +137,17 @@ class DatasetMetadata(BaseModel):
 
 @mcp.tool()
 def GetConcepts() -> List[str]:
-    """
-    Get all concepts in the climate policy radar knowledge graph. This takes no arguments. 
-    """
+    """Get all concepts in the knowledge graph."""
     return concepts["preferred_label"].tolist()
 
 @mcp.tool()
 def CheckConceptExists(concept: str) -> bool:
-    """
-    Check if a given concept exists in the climate policy radar knowledge graph. You should always call this to see what preferred label of 'concept' to use in other tools.
-    """
+    """Check if concept exists in knowledge graph."""
     return concept in concepts["preferred_label"].tolist()
 
 @mcp.tool()
 def GetSemanticallySimilarConcepts(concept: str) -> List[str]:
-    """
-    Return up to five concepts whose pretrained-embedding cosine similarity
-    to *concept* is highest. 
-    """
+    """Return five most semantically similar concepts."""
     client = OpenAI()
     concept_emb = client.embeddings.create(
         input=concept,
@@ -174,16 +167,12 @@ def GetSemanticallySimilarConcepts(concept: str) -> List[str]:
 
 @mcp.tool()
 def GetRelatedConcepts(concept: str) -> List[str]:
-    """
-    Get all related concepts of a given concept in the climate policy radar knowledge graph.
-    """
+    """Get related concepts for given concept."""
     return concepts[concepts["preferred_label"] == concept]["related_concepts"].tolist()
 
 @mcp.tool()
 def GetSubconcepts(concept: str) -> List[str]:
-    """
-    Get all subconcepts of a given concept in the climate policy radar knowledge graph.
-    """
+    """Get subconcepts of given concept."""
 
     subconcept_ids = concepts[concepts["preferred_label"] == concept]["has_subconcept"].tolist()
     subconcept_names = concepts[concepts["wikibase_id"].isin(subconcept_ids)]["preferred_label"].tolist()
@@ -192,9 +181,7 @@ def GetSubconcepts(concept: str) -> List[str]:
 
 @mcp.tool()
 def GetParentConcepts(concept: str) -> str:
-    """
-    Get the parent concept of a given concept in the climate policy radar knowledge graph.
-    """
+    """Get parent concepts of given concept."""
 
     parent_ids = concepts[concepts["preferred_label"] == concept]["subconcept_of"].tolist()
     parent_names = concepts[concepts["wikibase_id"].isin(parent_ids)]["preferred_label"].tolist()
@@ -202,16 +189,12 @@ def GetParentConcepts(concept: str) -> str:
 
 @mcp.tool()
 def GetAlternativeLabels(concept: str) -> List[str]:
-    """
-    Get all alternative labels of a given concept in the climate policy radar knowledge graph.
-    """
+    """Get alternative labels for concept."""
     return concepts[concepts["preferred_label"] == concept]["alternative_labels"].tolist()
 
 @mcp.tool()
 def GetDescription(concept: str) -> str:
-    """
-    Get the description of a given concept in the climate policy radar knowledge graph.
-    """
+    """Get description of given concept."""
     filtered_concepts = concepts[concepts["preferred_label"] == concept]
     if not filtered_concepts.empty:
         description = filtered_concepts["description"].iloc[0]
@@ -225,11 +208,7 @@ def GetDescription(concept: str) -> str:
 
 @mcp.tool()
 def GetPassagesMentioningConcept(concept: str, limit: int = 2) -> List[dict]:
-    """
-    Return up to *limit* passages that MENTION the given concept.
-    Each record: {passage_id, doc_id, text}.
-    Only use terms listed by tools that return concepts (ex. GetConcepts) as the 'concept' argument to this tool.
-    """
+    """Return passages mentioning the concept."""
     cid = _concept_id(concept)
     if not cid:
         return []
@@ -248,9 +227,7 @@ def GetPassagesMentioningConcept(concept: str, limit: int = 2) -> List[dict]:
 
 @mcp.tool()
 def ALWAYSRUN(query: str) -> str:
-    """
-    This tool is used to run the query on the knowledge graph.
-    """
+    """Run query on knowledge graph."""
     return "This tool is used to run the query on the knowledge graph."
 
 @mcp.tool()
@@ -260,18 +237,7 @@ def GetConceptGraphNeighbors(
     direction: str = "both",
     max_results: int = 25,
 ) -> List[dict]:
-    """
-    Return neighbor nodes (concepts, datasets, etc.) directly connected to *concept* in the graph.
-
-    Parameters
-    ----------
-    concept:      preferred label of the starting concept
-    edge_types:   list like ["RELATED_TO","SUBCONCEPT_OF"]; None = any edge
-    direction:    "out", "in", or "both"
-    max_results:  hard cap on number of neighbors returned
-
-    Each record: {node_id, label, kind, via_edge}
-    """
+    """Return neighbor nodes connected to concept in graph."""
     cid = _concept_id(concept)
     if not cid:
         return []
@@ -321,13 +287,7 @@ def FindConceptPathRich(
     target_concept: str,
     max_len: int = 4,
 ) -> List[dict]:
-    """
-    Return the shortest path with node details + edge types.
-
-    Each element:
-      { "from_id":…, "from_kind":…, "edge": "MENTIONS",
-        "to_id":…,   "to_kind":…,   "to_label_or_text": … }
-    """
+    """Find shortest path between concepts with details."""
     s_id, t_id = _concept_id(source_concept), _concept_id(target_concept)
     if None in (s_id, t_id):
         return []
@@ -359,9 +319,7 @@ def FindConceptPathRich(
 
 @mcp.tool()
 def PassagesMentioningBothConcepts(concept_a: str, concept_b: str, limit: int = 2) -> List[dict]:
-    """
-    Passages where *both* concepts are mentioned.
-    """
+    """Find passages mentioning both concepts."""
     a_id, b_id = _concept_id(concept_a), _concept_id(concept_b)
     if None in (a_id, b_id):
         return []
@@ -403,13 +361,7 @@ def FindConceptPathWithEdges(
     target_concept: str,
     max_len: int = 4,
 ) -> List[List[dict]]:
-    """
-    Return every shortest path (≤ max_len hops) between two concepts,
-    *including* the edge type between each hop.
-    Each path is a list like:
-      [{"source":"Education","edge":"RELATED_TO","target":"Human capital"},
-       {"source":"Human capital","edge":"HAS_SUBCONCEPT","target":"Agriculture"}]
-    """
+    """Find all shortest paths between concepts with edge types."""
     s_id, t_id = _concept_id(source_concept), _concept_id(target_concept)
     if not s_id or not t_id:
         return []
@@ -446,10 +398,7 @@ def ExplainConceptRelationship(
     target_concept: str,
     max_len: int = 4,
 ) -> str:
-    """
-    Produce a short narrative of how *source_concept* links to *target_concept*,
-    using the first shortest path with edge labels plus each concept's description.
-    """
+    """Explain relationship between two concepts."""
     paths = FindConceptPathWithEdges(source_concept, target_concept, max_len)
     if not paths:
         return (
@@ -470,10 +419,7 @@ def ExplainConceptRelationship(
 
 @mcp.tool()
 def GetAvailableDatasets() -> List[dict]:
-    """
-    Get all available datasets in the knowledge graph, including external server references.
-    Returns dataset metadata and connection information.
-    """
+    """Get all available datasets in knowledge graph."""
     G = KG()
     datasets = []
     
@@ -494,13 +440,7 @@ def GetAvailableDatasets() -> List[dict]:
 
 @mcp.tool()
 def GetDatasetContent(dataset_id: str) -> List[dict] | str:
-    """
-    Retrieves the data content of a dataset node identified by its unique ID.
-    Returns a list of records if found, or an error message string.
-    Parameters
-    ----------
-    dataset_id: The unique ID of the dataset node (e.g., 'DUMMY_DATASET_EXTREME_WEATHER').
-    """
+    """Get data content of dataset by ID."""
     G = KG()
     if G.has_node(dataset_id):
         node_data = G.nodes[dataset_id]

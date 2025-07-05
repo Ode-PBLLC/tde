@@ -303,25 +303,7 @@ def FormatResponseAsModules(
     title: str = "Climate Policy Analysis",
     citation_registry: Optional[Dict] = None
 ) -> Dict[str, Any]:
-    """
-    Convert a raw response into structured modules format for front-end with inline citations.
-    
-    Generates 5 core module types:
-    - text: Text content with inline citations
-    - chart: Chart.js compatible visualizations (bar, line, pie)
-    - table: Standard data tables
-    - map: GeoJSON maps with interactive markers  
-    - numbered_citation_table: References/sources (always last)
-    
-    Parameters:
-    - response_text: Main text response from Claude
-    - chart_data: Legacy chart data (list of dicts)
-    - visualization_data: Structured visualization data
-    - map_data: Map data for display
-    - sources: Source information
-    - title: Main heading for the response
-    - citation_registry: Citation registry with numbered sources and module mappings
-    """
+    """Format response into structured modules with citations."""
     modules = []
     
     # 1. Add main text response as text module with inline citations
@@ -1789,15 +1771,7 @@ def CreateMultipleTablesFromToolResults(
     query_context: Optional[str] = None,
     citation_registry: Optional[Dict] = None
 ) -> Dict[str, Any]:
-    """
-    Create multiple enhanced tables from tool results with intelligent table typing.
-    
-    Parameters:
-    - tool_results: List of tool results with tool names and data
-    - query_context: Optional context about the query for better table generation
-    
-    Returns modules with multiple appropriately typed tables.
-    """
+    """Create multiple tables from tool results."""
     print(f"🔧 FORMATTER DEBUG: CreateMultipleTablesFromToolResults called")
     print(f"  - Received {len(tool_results)} tool results")
     print(f"  - Query context: '{query_context[:50] if query_context else 'None'}...'")
@@ -1846,17 +1820,7 @@ def OrganizeModulesIntoNarrative(
     query: str,
     citation_registry: Optional[Dict] = None
 ) -> Dict[str, Any]:
-    """
-    Intelligently organize and interweave modules into a cohesive narrative using Sonnet model.
-    
-    Parameters:
-    - modules: List of module dictionaries (text, tables, charts, maps)
-    - query: Original user query for context
-    - citation_registry: Citation registry for maintaining citation continuity
-    
-    Returns:
-    - Dictionary with reorganized modules and transition text
-    """
+    """Organize modules into cohesive narrative."""
     print(f"🎯 NARRATIVE DEBUG: Organizing {len(modules)} modules into narrative")
     
     if not modules:
@@ -2036,7 +2000,7 @@ def _generate_table_heading(tool_name: str, data: List[Dict]) -> str:
 
 @mcp.tool()
 def GetFormatterMetadata() -> Dict[str, Any]:
-    """Get metadata about the response formatter."""
+    """Get response formatter metadata."""
     return metadata
 
 if __name__ == "__main__":

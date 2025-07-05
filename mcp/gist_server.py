@@ -163,14 +163,7 @@ metadata = {
 
 @mcp.tool()
 def GetGistDataDictionary(dataset_name: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Get field definitions from the GIST Data Dictionary.
-    
-    Parameters:
-    - dataset_name: Optional filter for specific dataset
-    
-    Returns dictionary with field definitions and metadata.
-    """
+    """Get field definitions from GIST Data Dictionary."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -204,12 +197,7 @@ def GetGistDataDictionary(dataset_name: Optional[str] = None) -> Dict[str, Any]:
 
 @mcp.tool()
 def SearchGistFields(search_term: str) -> Dict[str, Any]:
-    """
-    Search across all field names and definitions in the GIST data dictionary.
-    
-    Parameters:
-    - search_term: Term to search for in field names and definitions
-    """
+    """Search field names and definitions in GIST dictionary."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -241,9 +229,7 @@ def SearchGistFields(search_term: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistDatasetSchemas() -> Dict[str, Any]:
-    """
-    List all available GIST datasets with their field counts and basic information.
-    """
+    """List all GIST datasets with field counts."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -280,14 +266,7 @@ def _get_dataset_description(sheet_name: str) -> str:
 
 @mcp.tool()
 def GetGistCompanies(sector: Optional[str] = None, country: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
-    """
-    Get list of companies in GIST database with optional filtering.
-    
-    Parameters:
-    - sector: Filter by sector code (OGES, FINS, WHRE, MOMI, REEN)
-    - country: Filter by country name
-    - limit: Maximum number of companies to return
-    """
+    """Get companies with optional sector/country filters."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -307,12 +286,7 @@ def GetGistCompanies(sector: Optional[str] = None, country: Optional[str] = None
 
 @mcp.tool()
 def GetGistCompanyProfile(company_code: str) -> Dict[str, Any]:
-    """
-    Get complete profile for a specific company across all GIST datasets.
-    
-    Parameters:
-    - company_code: Unique company identifier
-    """
+    """Get company profile across all datasets."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -355,9 +329,7 @@ def GetGistCompanyProfile(company_code: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistCompaniesBySector() -> Dict[str, Any]:
-    """
-    Get companies grouped by sector with counts and basic statistics.
-    """
+    """Get companies grouped by sector."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -391,12 +363,7 @@ def GetGistCompaniesBySector() -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistCompanyDataAvailability(company_code: str) -> Dict[str, Any]:
-    """
-    Show which datasets contain data for a specific company.
-    
-    Parameters:
-    - company_code: Unique company identifier
-    """
+    """Show which datasets contain data for a company."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -451,12 +418,7 @@ def _get_data_summary(dataset_name: str, records: List[Dict]) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistCompanyRisks(company_code: str) -> Dict[str, Any]:
-    """
-    Get environmental risk summary for a company from EXSITU data.
-    
-    Parameters:
-    - company_code: Unique company identifier
-    """
+    """Get environmental risk summary for company."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -545,13 +507,7 @@ def _calculate_high_risk_summary(risk_categories: Dict, total_assets: int) -> Di
 
 @mcp.tool()
 def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH") -> Dict[str, Any]:
-    """
-    Get companies by specific risk category and level.
-    
-    Parameters:
-    - risk_type: Type of risk (MSA, WATER_STRESS, DROUGHT, FLOOD_COASTAL, etc.)
-    - risk_level: Risk level (VERY_LOW, LOW, MODERATE, HIGH, VERY_HIGH)
-    """
+    """Get companies by risk category and level."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -596,13 +552,7 @@ def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH") -> Dict[str,
 
 @mcp.tool()
 def GetGistHighRiskCompanies(risk_threshold: float = 14.67, limit: int = 20) -> Dict[str, Any]:
-    """
-    Get companies with highest overall environmental risk exposure.
-    
-    Parameters:
-    - risk_threshold: Minimum percentage of assets at high/very high risk
-    - limit: Maximum number of companies to return
-    """
+    """Get companies with highest environmental risk."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -650,15 +600,8 @@ def GetGistHighRiskCompanies(risk_threshold: float = 14.67, limit: int = 20) -> 
 # =============================================================================
 
 @mcp.tool()
-def GetGistAssetsMapData(company_code: Optional[str] = None, country: Optional[str] = None, limit: int = 1000) -> Dict[str, Any]:
-    """
-    Get asset coordinates for mapping visualization.
-    
-    Parameters:
-    - company_code: Filter by specific company
-    - country: Filter by country code
-    - limit: Maximum number of assets to return
-    """
+def GetGistAssetsMapData(company_code: Optional[str] = None, country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
+    """Get asset coordinates for mapping."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -710,15 +653,7 @@ def GetGistAssetsMapData(company_code: Optional[str] = None, country: Optional[s
 
 @mcp.tool()
 def GetGistAssetsInRadius(latitude: float, longitude: float, radius_km: float = 50.0, limit: int = 100) -> Dict[str, Any]:
-    """
-    Find assets within a radius of given coordinates.
-    
-    Parameters:
-    - latitude: Center latitude
-    - longitude: Center longitude
-    - radius_km: Search radius in kilometers
-    - limit: Maximum number of assets to return
-    """
+    """Find assets within radius of coordinates."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -765,9 +700,7 @@ def GetGistAssetsInRadius(latitude: float, longitude: float, radius_km: float = 
 
 @mcp.tool()
 def GetGistAssetsByCountry() -> Dict[str, Any]:
-    """
-    Get asset distribution by country.
-    """
+    """Get asset distribution by country."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -787,17 +720,12 @@ def GetGistAssetsByCountry() -> Dict[str, Any]:
     
     return {
         "total_countries": len(country_stats),
-        "countries": country_stats.to_dict('records')
+        "countries": country_stats.head(50).to_dict('records')
     }
 
 @mcp.tool()
 def GetGistAssetDetails(asset_id: str) -> Dict[str, Any]:
-    """
-    Get detailed information for a specific asset.
-    
-    Parameters:
-    - asset_id: Unique asset identifier
-    """
+    """Get detailed asset information."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -847,13 +775,7 @@ def GetGistAssetDetails(asset_id: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistScope3Emissions(company_code: str, year: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Get Scope 3 emissions data for a company.
-    
-    Parameters:
-    - company_code: Unique company identifier
-    - year: Optional filter for specific reporting year
-    """
+    """Get Scope 3 emissions for company."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -913,12 +835,7 @@ def GetGistScope3Emissions(company_code: str, year: Optional[int] = None) -> Dic
 
 @mcp.tool()
 def GetGistEmissionsTrends(company_code: str) -> Dict[str, Any]:
-    """
-    Get multi-year emissions trends for a company.
-    
-    Parameters:
-    - company_code: Unique company identifier
-    """
+    """Get emissions trends for company."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -995,12 +912,7 @@ def GetGistEmissionsTrends(company_code: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistEmissionsBySector(year: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Get emissions comparison by sector.
-    
-    Parameters:
-    - year: Optional filter for specific year (default: latest available year)
-    """
+    """Get emissions by sector."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1040,18 +952,12 @@ def GetGistEmissionsBySector(year: Optional[int] = None) -> Dict[str, Any]:
     return {
         "analysis_year": year,
         "total_sectors": len(sector_stats),
-        "sector_emissions": sector_stats.to_dict('records')
+        "sector_emissions": sector_stats.head(50).to_dict('records')
     }
 
 @mcp.tool()
 def GetGistTopEmitters(limit: int = 20, year: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Get highest emitting companies.
-    
-    Parameters:
-    - limit: Maximum number of companies to return
-    - year: Optional filter for specific year (default: latest available)
-    """
+    """Get highest emitting companies."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1108,13 +1014,7 @@ def GetGistTopEmitters(limit: int = 20, year: Optional[int] = None) -> Dict[str,
 
 @mcp.tool()
 def GetGistBiodiversityImpacts(company_code: str, year: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Get biodiversity impact data for a company.
-    
-    Parameters:
-    - company_code: Unique company identifier
-    - year: Optional filter for specific reporting year
-    """
+    """Get biodiversity impacts for company."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1182,12 +1082,7 @@ def GetGistBiodiversityImpacts(company_code: str, year: Optional[int] = None) ->
 
 @mcp.tool()
 def GetGistBiodiversityTrends(company_code: str) -> Dict[str, Any]:
-    """
-    Get multi-year biodiversity impact trends for a company.
-    
-    Parameters:
-    - company_code: Unique company identifier
-    """
+    """Get biodiversity trends for company."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1247,12 +1142,7 @@ def GetGistBiodiversityTrends(company_code: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistBiodiversityBySector(year: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Get biodiversity impact comparison by sector.
-    
-    Parameters:
-    - year: Optional filter for specific year (default: latest available year)
-    """
+    """Get biodiversity impacts by sector."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1293,19 +1183,12 @@ def GetGistBiodiversityBySector(year: Optional[int] = None) -> Dict[str, Any]:
     return {
         "analysis_year": year,
         "total_sectors": len(sector_stats),
-        "sector_biodiversity_impacts": sector_stats.to_dict('records')
+        "sector_biodiversity_impacts": sector_stats.head(50).to_dict('records')
     }
 
 @mcp.tool()
 def GetGistBiodiversityWorstPerformers(metric: str = 'PDF', limit: int = 20, year: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Get companies with highest biodiversity impacts.
-    
-    Parameters:
-    - metric: Impact metric to rank by (PDF, CO2E, LCE)
-    - limit: Maximum number of companies to return
-    - year: Optional filter for specific year (default: latest available)
-    """
+    """Get companies with highest biodiversity impacts."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1373,12 +1256,7 @@ def GetGistBiodiversityWorstPerformers(metric: str = 'PDF', limit: int = 20, yea
 
 @mcp.tool()
 def GetGistDeforestationRisks(company_code: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Get deforestation proximity indicators for companies.
-    
-    Parameters:
-    - company_code: Optional filter for specific company
-    """
+    """Get deforestation proximity indicators."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1442,9 +1320,7 @@ def _calculate_deforestation_risk_level(row: pd.Series) -> str:
 
 @mcp.tool()
 def GetGistDeforestationExposed() -> Dict[str, Any]:
-    """
-    Get companies with high deforestation exposure.
-    """
+    """Get companies with high deforestation exposure."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1490,9 +1366,7 @@ def GetGistDeforestationExposed() -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistForestChangeProximity() -> Dict[str, Any]:
-    """
-    Analysis of forest change proximity across companies.
-    """
+    """Analyze forest change proximity across companies."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1544,16 +1418,7 @@ def GetGistForestChangeProximity() -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistVisualizationData(viz_type: str, filters: Optional[Dict] = None) -> Dict[str, Any]:
-    """
-    Get structured data for specific visualization types.
-    
-    Parameters:
-    - viz_type: Type of visualization ('emissions_by_sector', 'risk_distribution', 'asset_map', 'biodiversity_trends', 'scope3_breakdown')
-    - filters: Optional filters like {'year': 2024, 'sector': 'OGES', 'company_code': 'COMPANY123'}
-    
-    Note: 'biodiversity_trends' and 'scope3_breakdown' require a 'company_code' in filters.
-    If not provided, the function will return available companies to choose from.
-    """
+    """Get data for visualization types: emissions_by_sector, risk_distribution, asset_map, biodiversity_trends, scope3_breakdown."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -1821,9 +1686,7 @@ def _get_scope3_breakdown_viz(filters: Dict) -> Dict[str, Any]:
 
 @mcp.tool()
 def GetGistDatasetMetadata() -> Dict[str, Any]:
-    """
-    Get comprehensive metadata about the GIST dataset.
-    """
+    """Get GIST dataset metadata."""
     return metadata
 
 if __name__ == "__main__":

@@ -1009,43 +1009,11 @@ class MultiServerClient:
                 2. Look for neighbors with `kind: "Dataset"` and connected by edges like `HAS_DATASET_ABOUT` or `DATASET_ON_TOPIC`.
                 3. If a relevant dataset is found, use its `node_id` with the `GetDatasetContent` tool to fetch its data.
             
-            - Solar Facilities Data: For solar energy queries, use these specialized tools:
-                - `GetSolarFacilitiesByCountry`: Get facilities summary for specific countries
-                - `GetSolarCapacityByCountry`: Get capacity statistics by country
-                - `GetSolarFacilitiesMapData`: Get facility coordinates for interactive maps (use for map requests)
-                - `GetSolarFacilitiesInRadius`: Find facilities near coordinates
-                - `GetSolarConstructionTimeline`: Analyze construction trends over time
-                - `GetLargestSolarFacilities`: Find biggest installations
-                - `SearchSolarFacilitiesByCapacity`: Filter by capacity range
-                - `GetSolarCapacityVisualizationData`: Get structured data for charts and graphs
-                
-                Note: For map requests, always use `GetSolarFacilitiesMapData` as it provides the detailed coordinate data needed for map generation.
+            - Solar Facilities Data: Use GetSolarFacilitiesMapData for maps, GetSolarCapacityByCountry for stats, other tools for specific queries.
             
-            - GIST Environmental & Sustainability Data: For corporate sustainability, environmental risk, emissions, or ESG queries:
-                - `GetGistCompanies`: Discover companies with optional sector/country filtering
-                - `GetGistCompanyProfile`: Complete sustainability profile for a specific company
-                - `GetGistCompanyRisks`: Environmental risk assessment across 13 risk categories
-                - `GetGistScope3Emissions`: Detailed Scope 3 emissions data with breakdown by category
-                - `GetGistBiodiversityImpacts`: Biodiversity footprint data (PDF, CO2E, LCE metrics)
-                - `GetGistDeforestationRisks`: Deforestation proximity indicators and forest change analysis
-                - `GetGistAssetsMapData`: Asset-level geographic data for mapping (use for ESG asset mapping)
-                - `GetGistEmissionsTrends`: Multi-year emissions trends and intensity analysis
-                - `GetGistVisualizationData`: Structured data for sustainability dashboards and charts
-                
-                Note: GIST covers 100 companies across 5 sectors (OGES, FINS, WHRE, MOMI, REEN) with 9 years of time series data.
+            - GIST Environmental Data: Use GetGistCompanyProfile for company data, GetGistAssetsMapData for asset maps, other tools for specific ESG metrics.
             
-            - LSE Climate Policy Analysis: For climate governance, policy analysis, NDC, or Brazilian state policy queries:
-                - `GetLSEDatasetOverview`: Get overview of all available LSE policy modules
-                - `GetBrazilianStatesOverview`: Get overview of Brazilian state climate governance
-                - `GetStateClimatePolicy`: Get detailed climate policy info for specific Brazilian states
-                - `CompareBrazilianStates`: Compare climate policies across multiple states
-                - `GetNDCOverviewData`: Get NDC (Nationally Determined Contributions) analysis
-                - `GetInstitutionsProcessesData`: Get climate governance institutions analysis
-                - `GetPlansAndPoliciesData`: Get climate plans and policies assessment
-                - `SearchLSEContent`: Search across all LSE content for specific terms
-                - `GetLSEVisualizationData`: Get structured data for policy analysis charts
-                
-                Note: LSE covers NDC analysis, institutional frameworks, and comprehensive Brazilian state-level governance (all 27 states).
+            - LSE Climate Policy Data: Use GetBrazilianStatesOverview for Brazilian states, GetNDCOverviewData for NDCs, other tools for specific policy analysis.
             
             - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
 
@@ -1066,73 +1034,11 @@ class MultiServerClient:
             - Proactively surface both textual insights AND structured data when available
             - **CRITICAL: Generate multiple data tables for comprehensive analysis. When users ask broad questions, call multiple related tools to create a rich data dashboard.**
             
-            Multi-Table Response Patterns (Use these to enhance your responses):
-            
-            **Corporate Environmental Analysis Queries** (keywords: companies, environmental, risks, emissions, sustainability):
-            → Call: GetGistCompanies + GetGistCompanyRisks + GetGistTopEmitters + GetGistEmissionsBySector + GetPassagesMentioningConcept
-            → Result: 4-5 tables showing company directory, risk assessment, emissions rankings, sector analysis, plus policy context
-            
-            **Geographic Analysis Queries** (keywords: country, countries, region, location, Brazil, India):
-            → Call: GetSolarCapacityByCountry + GetGistAssetsByCountry + GetBrazilianStatesOverview + GetSolarConstructionTimeline + GetSolarFacilitiesMapData
-            → Result: 4-5 tables showing capacity rankings, asset distribution, policy context, development trends, plus interactive map
-            
-            **Sector Analysis Queries** (keywords: sector, industry, oil, gas, renewable, solar):
-            → Call: GetGistCompaniesBySector + GetGistEmissionsBySector + GetSolarCapacityByCountry + GetGistTopEmitters + related passages
-            → Result: 4-5 tables showing sector overview, emissions comparison, capacity data, company rankings, plus policy context
-            
-            **Policy Analysis Queries** (keywords: policy, governance, regulation, NDC, states):
-            → Call: GetBrazilianStatesOverview + CompareBrazilianStates + GetInstitutionsProcessesData + GetPlansAndPoliciesData + GetPassagesMentioningConcept
-            → Result: 4-5 tables showing state overview, policy comparisons, institutions, plans, plus supporting documents
-            
-            **Trend Analysis Queries** (keywords: trends, over time, since, growth, timeline):
-            → Call: GetSolarConstructionTimeline + GetGistEmissionsTrends + GetSolarCapacityByCountry + GetGistBiodiversityTrends + related data
-            → Result: 4-5 tables showing construction trends, emissions evolution, current capacity, biodiversity trends, plus context
-            
-            **Implementation Guidelines:**
-            - For ANY substantive query, aim to call 4-6 data tools to create multiple complementary tables
-            - Always include both quantitative data tools AND knowledge graph passages for complete analysis
-            - When calling GIST tools, also call LSE tools for policy context when relevant
-            - When calling Solar tools, also call GIST tools if companies/environmental aspects are relevant
-            - Combine different table types: rankings + comparisons + trends + summaries for comprehensive insights
-            - This ensures users get complete information: policy context + real data + geographic context + corporate sustainability data + governance frameworks + trend analysis
+            Multi-Table Strategy: For comprehensive queries, call 4-6 complementary tools from different data sources (KG passages + quantitative data + geographic data).
 
-            Visualization and Chart Generation Guidelines:
-            
-            **CRITICAL FOR CHART GENERATION**: When users ask for comparisons, rankings, trends, or data that could be visualized:
-            1. **ALWAYS prioritize visualization tools** over regular data tools when appropriate:
-               - For solar data: Use `GetSolarCapacityVisualizationData` instead of basic data tools
-               - For GIST data: Use `GetGistVisualizationData` with appropriate viz_type:
-                 * `emissions_by_sector` - for sector emissions comparisons
-                 * `risk_distribution` - for environmental risk analysis  
-                 * `biodiversity_trends` - for company biodiversity impacts over time
-                 * `scope3_breakdown` - for detailed emissions category breakdowns
-               - For LSE data: Use `GetLSEVisualizationData` for policy analysis charts
-            
-            2. **Auto-chart generation**: Even regular data tools can generate charts automatically from:
-               - Country/region comparison data (→ bar charts)
-               - Time series data (→ line charts) 
-               - Sector/category breakdowns (→ bar/pie charts)
-               - Ranking/top performers data (→ bar charts)
-               - Risk distribution data (→ bar charts)
-            
-            3. **Chart query indicators**: Watch for these user requests that should trigger visualization tools:
-               - "compare", "show me", "chart", "graph", "visualize", "plot"
-               - "by country", "by sector", "over time", "trends", "distribution"
-               - "top", "largest", "highest", "ranking", "breakdown"
-               - "emissions by", "capacity by", "risk by"
-            
-            4. **Interactive maps**: Automatically generated for facility/asset location queries
-            
-            The system will now automatically generate charts from most data responses, ensuring users get rich visual content.
+            Visualization: Use visualization tools (GetSolarCapacityVisualizationData, GetGistVisualizationData, GetLSEVisualizationData) for chart requests. System auto-generates maps for facility/location queries.
 
-            Output Format:
-            - After completing all necessary tool calls, synthesize the gathered information into a single, comprehensive response to the user. 
-            - Do NOT narrate your tool calling process (e.g., avoid phrases like "First, I will call...", "Next, I found..."). 
-            - Present the final answer as if you are directly answering the user's query based on the knowledge you have acquired.
-            - When presenting solar facility data, include specific numbers and context.
-            - Only mention maps or visualizations if they are explicitly confirmed as available in the context.
-
-            Respond to the user based on the information gathered from the tools.
+            Output: Synthesize tool results into comprehensive response. Don't narrate tool calling process. Include specific numbers and context.
             """
 
         if query.lower() == "show dummy chart": # Override messages for dummy chart query
@@ -1725,30 +1631,9 @@ class MultiServerClient:
                 2. Look for neighbors with `kind: "Dataset"` and connected by edges like `HAS_DATASET_ABOUT` or `DATASET_ON_TOPIC`.
                 3. If a relevant dataset is found, use its `node_id` with the `GetDatasetContent` tool to fetch its data.
             
-            - Solar Facilities Data: For solar energy queries, use these specialized tools:
-                - `GetSolarFacilitiesByCountry`: Get facilities summary for specific countries
-                - `GetSolarCapacityByCountry`: Get capacity statistics by country
-                - `GetSolarFacilitiesMapData`: Get facility coordinates for interactive maps (use for map requests)
-                - `GetSolarFacilitiesInRadius`: Find facilities near coordinates
-                - `GetSolarConstructionTimeline`: Analyze construction trends over time
-                - `GetLargestSolarFacilities`: Find biggest installations
-                - `SearchSolarFacilitiesByCapacity`: Filter by capacity range
-                - `GetSolarCapacityVisualizationData`: Get structured data for charts and graphs
-                
-                Note: For map requests, always use `GetSolarFacilitiesMapData` as it provides the detailed coordinate data needed for map generation.
+            - Solar Facilities Data: Use GetSolarFacilitiesMapData for maps, GetSolarCapacityByCountry for stats, other tools for specific queries.
             
-            - GIST Environmental & Sustainability Data: For corporate sustainability, environmental risk, emissions, or ESG queries:
-                - `GetGistCompanies`: Discover companies with optional sector/country filtering
-                - `GetGistCompanyProfile`: Complete sustainability profile for a specific company
-                - `GetGistCompanyRisks`: Environmental risk assessment across 13 risk categories
-                - `GetGistScope3Emissions`: Detailed Scope 3 emissions data with breakdown by category
-                - `GetGistBiodiversityImpacts`: Biodiversity footprint data (PDF, CO2E, LCE metrics)
-                - `GetGistDeforestationRisks`: Deforestation proximity indicators and forest change analysis
-                - `GetGistAssetsMapData`: Asset-level geographic data for mapping (use for ESG asset mapping)
-                - `GetGistEmissionsTrends`: Multi-year emissions trends and intensity analysis
-                - `GetGistVisualizationData`: Structured data for sustainability dashboards and charts
-                
-                Note: GIST covers 100 companies across 5 sectors (OGES, FINS, WHRE, MOMI, REEN) with 9 years of time series data.
+            - GIST Environmental Data: Use GetGistCompanyProfile for company data, GetGistAssetsMapData for asset maps, other tools for specific ESG metrics.
             
             - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
 
@@ -1775,14 +1660,7 @@ class MultiServerClient:
             - If visualizations are available for the current query, this will be indicated in the context
             - Only reference visualizations if explicitly mentioned in the tool results or context
 
-            Output Format:
-            - After completing all necessary tool calls, synthesize the gathered information into a single, comprehensive response to the user. 
-            - Do NOT narrate your tool calling process (e.g., avoid phrases like "First, I will call...", "Next, I found..."). 
-            - Present the final answer as if you are directly answering the user's query based on the knowledge you have acquired.
-            - When presenting solar facility data, include specific numbers and context.
-            - Only mention maps or visualizations if they are explicitly confirmed as available in the context.
-
-            Respond to the user based on the information gathered from the tools.
+            Output: Synthesize tool results into comprehensive response. Don't narrate tool calling process. Include specific numbers and context.
             """
 
         if query.lower() == "show dummy chart":
