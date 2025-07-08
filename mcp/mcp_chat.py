@@ -20,6 +20,50 @@ import aiohttp
 
 load_dotenv()
 
+# Global singleton client for performance optimization
+_global_client = None
+_client_lock = asyncio.Lock()
+
+async def get_global_client():
+    """Get or create the global singleton MCP client."""
+    global _global_client
+    
+    async with _client_lock:
+        if _global_client is None:
+            _global_client = MultiServerClient()
+            await _global_client.__aenter__()
+            
+            # Connect to all servers
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            mcp_dir = os.path.join(project_root, "mcp")
+            
+            try:
+                await _global_client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
+                await _global_client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
+                await _global_client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
+                await _global_client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
+                await _global_client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
+                print("Global MCP client initialized successfully")
+            except Exception as e:
+                print(f"Error initializing global MCP client: {e}")
+                # Clean up on failure
+                await _global_client.__aexit__(None, None, None)
+                _global_client = None
+                raise
+                
+    return _global_client
+
+async def cleanup_global_client():
+    """Clean up the global singleton client."""
+    global _global_client
+    
+    async with _client_lock:
+        if _global_client is not None:
+            await _global_client.__aexit__(None, None, None)
+            _global_client = None
+            print("Global MCP client cleaned up")
+
 class CitationRegistry:
     """
     Manages citation numbering and tracking for inline citations.
@@ -1955,7 +1999,14 @@ class MultiServerClient:
                                             "args": tool_args
                                         })
                                         print(f"🔍 DATA COLLECTION DEBUG: ✅ Collected {len(table_data)} records from {tool_name}")
-                                        print(f"  - Sample record keys: {list(table_data[0].keys()) if table_data else 'none'}")
+                                        # Handle both list and dict formats
+                                        if isinstance(table_data, list) and len(table_data) > 0:
+                                            print(f"  - Sample record keys: {list(table_data[0].keys()) if isinstance(table_data[0], dict) else 'not a dict'}")
+                                        elif isinstance(table_data, dict) and len(table_data) > 0:
+                                            first_key = list(table_data.keys())[0]
+                                            print(f"  - Sample record keys: {list(table_data[first_key].keys()) if isinstance(table_data[first_key], dict) else 'not a dict'}")
+                                        else:
+                                            print(f"  - Sample record keys: none")
                                     else:
                                         print(f"🔍 DATA COLLECTION DEBUG: ❌ {tool_name} extraction returned empty data")
                                 else:
@@ -2309,18 +2360,12 @@ async def run_query_streaming(q: str):
     os.chdir(project_root)
     
     try:
-        async with MultiServerClient() as client:
-            # Connect to all available servers
-            mcp_dir = os.path.join(project_root, "mcp")
-            await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
-            await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
-            await client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
-            await client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
-            await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
-            
-            # Stream the query processing
-            async for event in client.process_query_streaming(q):
-                yield event
+        # Use the global singleton client instead of creating a new one
+        client = await get_global_client()
+        
+        # Stream the query processing
+        async for event in client.process_query_streaming(q):
+            yield event
                 
     except Exception as e:
         import traceback
@@ -2339,126 +2384,120 @@ async def run_query(q: str):
     project_root = os.path.dirname(script_dir)  # Go up one level from mcp/ to project root
     os.chdir(project_root)
     
-    async with MultiServerClient() as client:          # ← guarantees cleanup
-        # Connect to all available servers (using absolute paths)
-        mcp_dir = os.path.join(project_root, "mcp")
-        await client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
-        await client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
-        await client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
-        await client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
-        await client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
+    # Use the global singleton client instead of creating a new one
+    client = await get_global_client()
+    
+    # Process the main query
+    result = await client.process_query(q)
         
-        # Process the main query
-        result = await client.process_query(q)
+    # For solar queries, rely on the normal MCP flow and formatter to create proper GeoJSON maps
+    # The direct visualization bypass was causing issues
+    
+    # Format the response using the formatter MCP
+    # Debug output (with fallback for undefined variables)
+    try:
+        print(f"DEBUG: map_data = {map_data}")
+    except NameError:
+        map_data = None
+        print(f"DEBUG: map_data was undefined, set to None")
+    
+    try:
+        print(f"DEBUG: chart_data = {chart_data}")
+    except NameError:
+        chart_data = None
+        chart_data_tool = None
+        print(f"DEBUG: chart_data was undefined, set to None")
         
-        # For solar queries, rely on the normal MCP flow and formatter to create proper GeoJSON maps
-        # The direct visualization bypass was causing issues
+    try:
+        print(f"DEBUG: visualization_data = {visualization_data}")
+    except NameError:
+        visualization_data = None
+        print(f"DEBUG: visualization_data was undefined, set to None")
         
-        # Format the response using the formatter MCP
-        # Debug output (with fallback for undefined variables)
-        try:
-            print(f"DEBUG: map_data = {map_data}")
-        except NameError:
-            map_data = None
-            print(f"DEBUG: map_data was undefined, set to None")
-        
-        try:
-            print(f"DEBUG: chart_data = {chart_data}")
-        except NameError:
-            chart_data = None
-            chart_data_tool = None
-            print(f"DEBUG: chart_data was undefined, set to None")
-            
-        try:
-            print(f"DEBUG: visualization_data = {visualization_data}")
-        except NameError:
-            visualization_data = None
-            print(f"DEBUG: visualization_data was undefined, set to None")
-            
-        print(f"DEBUG: result keys = {list(result.keys())}")
-        print(f"DEBUG: result response = {result.get('response', 'NO RESPONSE')[:200]}...")
-        
-        # Check if map_data exists and what it contains
-        map_data_from_result = result.get("map_data")
-        print(f"DEBUG: map_data_from_result type = {type(map_data_from_result)}")
-        if map_data_from_result:
-            print(f"DEBUG: map_data keys = {list(map_data_from_result.keys()) if isinstance(map_data_from_result, dict) else 'not a dict'}")
-            if isinstance(map_data_from_result, dict) and 'data' in map_data_from_result:
-                print(f"DEBUG: map_data has {len(map_data_from_result['data'])} facilities")
-        
-        formatter_args = {
-            "response_text": result.get("response", ""),
-            "chart_data": result.get("chart_data"),
-            "chart_data_tool": result.get("chart_data_tool"),  # Pass tool name for chart_data citations
-            "visualization_data": result.get("visualization_data"), 
-            "map_data": map_data_from_result,  # Use map_data from result dict
-            "sources": result.get("sources"),
-            "title": "Climate Policy Analysis",
-            "citation_registry": {
-                "citations": client.citation_registry.get_all_citations(),
-                "module_citations": client.citation_registry.module_citations
-            }
+    print(f"DEBUG: result keys = {list(result.keys())}")
+    print(f"DEBUG: result response = {result.get('response', 'NO RESPONSE')[:200]}...")
+    
+    # Check if map_data exists and what it contains
+    map_data_from_result = result.get("map_data")
+    print(f"DEBUG: map_data_from_result type = {type(map_data_from_result)}")
+    if map_data_from_result:
+        print(f"DEBUG: map_data keys = {list(map_data_from_result.keys()) if isinstance(map_data_from_result, dict) else 'not a dict'}")
+        if isinstance(map_data_from_result, dict) and 'data' in map_data_from_result:
+            print(f"DEBUG: map_data has {len(map_data_from_result['data'])} facilities")
+    
+    formatter_args = {
+        "response_text": result.get("response", ""),
+        "chart_data": result.get("chart_data"),
+        "chart_data_tool": result.get("chart_data_tool"),  # Pass tool name for chart_data citations
+        "visualization_data": result.get("visualization_data"), 
+        "map_data": map_data_from_result,  # Use map_data from result dict
+        "sources": result.get("sources"),
+        "title": "Climate Policy Analysis",
+        "citation_registry": {
+            "citations": client.citation_registry.get_all_citations(),
+            "module_citations": client.citation_registry.module_citations
         }
-        
-        print(f"DEBUG: formatter_args map_data type = {type(formatter_args['map_data'])}")
-        
-        # Remove None values to avoid issues
-        formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
-        
-        print(f"DEBUG: formatter_args after filtering = {list(formatter_args.keys())}")
-        if 'map_data' in formatter_args:
-            print(f"DEBUG: map_data will be sent to formatter")
-        
-        try:
-            formatted_result = await client.call_tool("FormatResponseAsModules", formatter_args, "formatter")
-            print(f"DEBUG: formatted_result = {formatted_result}")
-        except Exception as e:
-            print(f"ERROR calling formatter: {e}")
-            import traceback
-            traceback.print_exc()
-            raise
-        
-        # Parse the formatted response and integrate additional tables
-        if formatted_result.content and isinstance(formatted_result.content, list):
-            first_content = formatted_result.content[0]
-            if hasattr(first_content, 'text'):
-                import json
-                formatted_data = json.loads(first_content.text)
+    }
+    
+    print(f"DEBUG: formatter_args map_data type = {type(formatter_args['map_data'])}")
+    
+    # Remove None values to avoid issues
+    formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
+    
+    print(f"DEBUG: formatter_args after filtering = {list(formatter_args.keys())}")
+    if 'map_data' in formatter_args:
+        print(f"DEBUG: map_data will be sent to formatter")
+    
+    try:
+        formatted_result = await client.call_tool("FormatResponseAsModules", formatter_args, "formatter")
+        print(f"DEBUG: formatted_result = {formatted_result}")
+    except Exception as e:
+        print(f"ERROR calling formatter: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+    
+    # Parse the formatted response and integrate additional tables
+    if formatted_result.content and isinstance(formatted_result.content, list):
+        first_content = formatted_result.content[0]
+        if hasattr(first_content, 'text'):
+            import json
+            formatted_data = json.loads(first_content.text)
+            
+            # NEW: Integrate additional table data from multi-table generation
+            additional_table_data = result.get("additional_table_data", [])
+            if additional_table_data:
+                print(f"🔍 INTEGRATION DEBUG: Integrating {len(additional_table_data)} additional tables")
                 
-                # NEW: Integrate additional table data from multi-table generation
-                additional_table_data = result.get("additional_table_data", [])
-                if additional_table_data:
-                    print(f"🔍 INTEGRATION DEBUG: Integrating {len(additional_table_data)} additional tables")
-                    
-                    all_modules = formatted_data.get("modules", [])
-                    
-                    # Insert additional tables before the source table
-                    source_table_index = None
-                    for i, module in enumerate(all_modules):
-                        if module.get("type") == "source_table":
-                            source_table_index = i
-                            break
-                    
-                    if source_table_index is not None:
-                        # Insert before source table
-                        all_modules = all_modules[:source_table_index] + additional_table_data + all_modules[source_table_index:]
-                        print(f"🔍 INTEGRATION DEBUG: Inserted tables before source table at index {source_table_index}")
-                    else:
-                        # Append at end
-                        all_modules.extend(additional_table_data)
-                        print(f"🔍 INTEGRATION DEBUG: Appended tables at end (no source table found)")
-                    
-                    formatted_data["modules"] = all_modules
-                    print(f"🔍 INTEGRATION DEBUG: Final module count: {len(all_modules)}")
+                all_modules = formatted_data.get("modules", [])
                 
-                result["formatted_response"] = formatted_data
-                print(f"DEBUG: Successfully set formatted_response with {len(formatted_data.get('modules', []))} modules")
-            else:
-                print(f"DEBUG: formatted_result first_content has no text attribute")
+                # Insert additional tables before the source table
+                source_table_index = None
+                for i, module in enumerate(all_modules):
+                    if module.get("type") == "source_table":
+                        source_table_index = i
+                        break
+                
+                if source_table_index is not None:
+                    # Insert before source table
+                    all_modules = all_modules[:source_table_index] + additional_table_data + all_modules[source_table_index:]
+                    print(f"🔍 INTEGRATION DEBUG: Inserted tables before source table at index {source_table_index}")
+                else:
+                    # Append at end
+                    all_modules.extend(additional_table_data)
+                    print(f"🔍 INTEGRATION DEBUG: Appended tables at end (no source table found)")
+                
+                formatted_data["modules"] = all_modules
+                print(f"🔍 INTEGRATION DEBUG: Final module count: {len(all_modules)}")
+            
+            result["formatted_response"] = formatted_data
+            print(f"DEBUG: Successfully set formatted_response with {len(formatted_data.get('modules', []))} modules")
         else:
-            print(f"DEBUG: formatted_result.content is not a list or is empty")
-        
-        return result
+            print(f"DEBUG: formatted_result first_content has no text attribute")
+    else:
+        print(f"DEBUG: formatted_result.content is not a list or is empty")
+    
+    return result
 def pretty_print(result: dict):
     """
     Nicely prints the 'response' markdown plus a Sources block.

@@ -19,12 +19,33 @@ from kg_embed_generator import KGEmbedGenerator
 
 # Add the mcp directory to the path
 sys.path.append('mcp')
-from mcp_chat import run_query_structured, run_query, run_query_streaming
+from mcp_chat import run_query_structured, run_query, run_query_streaming, get_global_client, cleanup_global_client
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
 # Initialize KG embed generator - will use environment variable or default
 kg_generator = KGEmbedGenerator()
+
+@app.on_event("startup")
+async def startup_event():
+    """Warm up the global MCP client on server startup."""
+    try:
+        print("Warming up global MCP client...")
+        await get_global_client()
+        print("Global MCP client warmed up successfully")
+    except Exception as e:
+        print(f"Warning: Failed to warm up global MCP client: {e}")
+        # Don't fail startup - let individual requests handle fallback
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up the global MCP client on server shutdown."""
+    try:
+        print("Cleaning up global MCP client...")
+        await cleanup_global_client()
+        print("Global MCP client cleanup completed")
+    except Exception as e:
+        print(f"Warning: Error during MCP client cleanup: {e}")
 
 # Mount static files for serving images, GeoJSON, and other static content
 app.mount("/static", StaticFiles(directory="static"), name="static")
