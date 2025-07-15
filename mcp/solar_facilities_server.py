@@ -8,200 +8,198 @@ import folium
 import base64
 from io import BytesIO
 import os
+from solar_db import SolarDatabase
 
 mcp = FastMCP("solar-facilities-server")
 
 # Get absolute paths
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Load filtered solar facilities data
+# Initialize database connection
 try:
-    facilities_df = pd.read_csv(os.path.join(script_dir, "solar_facilities_demo.csv"))
-    print(f"Loaded {len(facilities_df):,} solar facilities from demo dataset")
-except FileNotFoundError:
-    print("Error: solar_facilities_demo.csv not found. Please run data filtering first.")
-    facilities_df = pd.DataFrame()
-
-metadata = {
-    "Name": "Solar Facilities Server", 
-    "Description": "Global solar facility data from TransitionZero Solar Asset Mapper (TZ-SAM) Q1 2025",
-    "Version": "1.0.0",
-    "Author": "Climate Policy Radar Team",
-    "Dataset": "TZ-SAM Q1 2025 - Demo Countries (Brazil, India, South Africa, Vietnam)",
-    "Total_Facilities": len(facilities_df) if not facilities_df.empty else 0
-}
+    db = SolarDatabase()
+    print(f"Connected to solar facilities database with {db.get_total_count():,} facilities")
+    metadata = {
+        "Name": "Solar Facilities Server", 
+        "Description": "Global solar facility data from TransitionZero Solar Asset Mapper (TZ-SAM) Q1 2025",
+        "Version": "2.0.0 - Database Edition",
+        "Author": "Climate Policy Radar Team",
+        "Dataset": "TZ-SAM Q1 2025 - Complete Global Dataset (SQLite)",
+        **db.get_metadata()
+    }
+except Exception as e:
+    print(f"Error: Could not connect to solar facilities database: {e}")
+    db = None
+    metadata = {"error": "Database not available"}
 
 @mcp.tool()
 def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit: int = 100) -> Dict[str, Any]:
     """Get solar facilities summary for a country."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    if not db:
+        return {"error": "Database not available"}
     
-    filtered = facilities_df[
-        (facilities_df['country'].str.lower() == country.lower()) & 
-        (facilities_df['capacity_mw'] >= min_capacity_mw)
-    ].head(limit)
-    
-    if filtered.empty:
-        return {"error": f"No facilities found for {country} with min capacity {min_capacity_mw} MW"}
-    
-    # Return summary instead of full data
-    summary = {
-        "country": country,
-        "total_facilities": len(filtered),
-        "total_capacity_mw": round(filtered['capacity_mw'].sum(), 2),
-        "avg_capacity_mw": round(filtered['capacity_mw'].mean(), 2),
-        "capacity_range": [round(filtered['capacity_mw'].min(), 2), round(filtered['capacity_mw'].max(), 2)],
-        "sample_facilities": filtered.head(3)[['cluster_id', 'capacity_mw', 'latitude', 'longitude']].to_dict('records'),
-        "data_available": True  # Flag that full data can be accessed for visualization
-    }
-    
-    return summary
+    try:
+        facilities = db.get_facilities_by_country(country, limit=limit)
+        
+        if not facilities:
+            return {"error": f"No facilities found for {country}"}
+        
+        # Return summary
+        summary = {
+            "country": country,
+            "total_facilities": len(facilities),
+            "sample_facilities": facilities[:3],  # First 3 as examples
+            "coordinate_range": {
+                "lat_min": min(f['latitude'] for f in facilities),
+                "lat_max": max(f['latitude'] for f in facilities),
+                "lon_min": min(f['longitude'] for f in facilities),
+                "lon_max": max(f['longitude'] for f in facilities)
+            },
+            "data_available": True
+        }
+        
+        return summary
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
     """Get facilities data for map visualization."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    if not db:
+        return {"error": "Database not available"}
     
-    # Filter by country if specified
-    if country:
-        filtered = facilities_df[facilities_df['country'].str.lower() == country.lower()]
-        if filtered.empty:
-            return {"error": f"No facilities found for {country}"}
-    else:
-        filtered = facilities_df.copy()
-    
-    # Get summary statistics for all facilities (not limited)
-    total_facilities = len(filtered)
-    total_capacity = filtered['capacity_mw'].sum()
-    countries = list(filtered['country'].unique())
-    
-    # Sort by capacity (largest first) and limit for map display
-    filtered_for_map = filtered.sort_values('capacity_mw', ascending=False)
-    if limit is not None:
-        filtered_for_map = filtered_for_map.head(limit)
-    
-    # Convert filtered_for_map to list of facility records for GeoJSON generation
-    full_data = []
-    for _, facility in filtered_for_map.iterrows():
-        full_data.append({
-            "cluster_id": facility.get('cluster_id', ''),
-            "capacity_mw": float(facility['capacity_mw']),
-            "latitude": float(facility['latitude']),
-            "longitude": float(facility['longitude']),
-            "country": facility['country'],
-            "completion_year": facility.get('completion_year', 'Unknown'),
-            "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}")
-        })
-    
-    # Return summary data (lightweight for LLM) + limited sample for context
-    # Note: full_data is available for GeoJSON generation but not returned to avoid prompt bloat
-    sample_facilities = []
-    if len(filtered_for_map) > 0:
-        # Include just top 3 facilities as examples
-        for _, facility in filtered_for_map.head(3).iterrows():
-            sample_facilities.append({
-                "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}"),
-                "capacity_mw": float(facility['capacity_mw']),
-                "country": facility['country']
+    try:
+        if country:
+            facilities = db.get_facilities_by_country(country, limit=limit)
+        else:
+            facilities = db.search_facilities(limit=limit)
+        
+        if not facilities:
+            return {"error": f"No facilities found{' for ' + country if country else ''}"}
+        
+        # Get country statistics for summary
+        country_stats = db.get_country_statistics()
+        total_facilities = sum(stat['facility_count'] for stat in country_stats)
+        countries = [stat['country'] for stat in country_stats]
+        
+        # Convert to map-ready format
+        full_data = []
+        for facility in facilities:
+            full_data.append({
+                "cluster_id": facility.get('cluster_id', ''),
+                "latitude": float(facility['latitude']),
+                "longitude": float(facility['longitude']),
+                "country": facility['country'],
+                "source": facility.get('source', 'Unknown'),
+                "capacity_mw": facility.get('capacity_mw'),
+                "constructed_before": facility.get('constructed_before'),
+                "constructed_after": facility.get('constructed_after'),
+                "name": f"Solar Facility {facility.get('cluster_id', '')}"
             })
-    
-    return {
-        "type": "map_data_summary",
-        "summary": {
-            "total_facilities": total_facilities,
-            "total_capacity_mw": float(total_capacity),
-            "countries": countries,
-            "facilities_shown_on_map": len(filtered_for_map),
-            "largest_facilities_shown": True if limit else False,
-            "capacity_range": {
-                "min": float(filtered['capacity_mw'].min()),
-                "max": float(filtered['capacity_mw'].max()),
-                "avg": float(filtered['capacity_mw'].mean())
+        
+        return {
+            "type": "map_data_summary",
+            "summary": {
+                "total_facilities": total_facilities,
+                "countries": countries[:10],  # Top 10 countries
+                "facilities_shown_on_map": len(facilities),
+                "data_from_database": True
+            },
+            "sample_facilities": facilities[:3],  # First 3 as examples
+            "full_data": full_data,
+            "metadata": {
+                "data_source": "TZ-SAM Q1 2025 (SQLite Database)",
+                "geojson_available": True,
+                "query_time_optimized": True
             }
-        },
-        "sample_facilities": sample_facilities,  # Just 3 examples instead of full_data
-        "full_data": full_data,  # Available for GeoJSON generation by orchestrator
-        "metadata": {
-            "data_source": "TZ-SAM Q1 2025",
-            "geojson_available": True,
-            "truncated_for_display": total_facilities > (limit or 0),
-            "note": "Full facility data available for map generation but not shown to reduce prompt size"
         }
-    }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
     """Get facilities for GeoJSON generation."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    if not db:
+        return {"error": "Database not available"}
     
-    # Filter by country if specified
-    if country:
-        filtered = facilities_df[facilities_df['country'].str.lower() == country.lower()]
-        if filtered.empty:
-            return {"error": f"No facilities found for {country}"}
-    else:
-        filtered = facilities_df.copy()
-    
-    # Sort by capacity (largest first) and limit results
-    filtered = filtered.sort_values('capacity_mw', ascending=False)
-    if limit is not None:
-        filtered = filtered.head(limit)
-    
-    # Convert to list of facility records
-    facilities_list = []
-    for _, facility in filtered.iterrows():
-        facilities_list.append({
-            "cluster_id": facility.get('cluster_id', ''),
-            "capacity_mw": float(facility['capacity_mw']),
-            "latitude": float(facility['latitude']),
-            "longitude": float(facility['longitude']),
-            "country": facility['country'],
-            "completion_year": facility.get('completion_year', 'Unknown'),
-            "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}")
-        })
-    
-    return {
-        "type": "map",
-        "data": facilities_list,
-        "metadata": {
-            "total_facilities": len(facilities_list),
-            "total_capacity": float(filtered['capacity_mw'].sum()),
-            "countries": filtered['country'].unique().tolist(),
-            "capacity_range": [float(filtered['capacity_mw'].min()), float(filtered['capacity_mw'].max())]
+    try:
+        if country:
+            facilities = db.get_facilities_by_country(country, limit=limit)
+        else:
+            facilities = db.search_facilities(limit=limit)
+        
+        if not facilities:
+            return {"error": f"No facilities found{' for ' + country if country else ''}"}
+        
+        # Convert to GeoJSON-ready format
+        facilities_list = []
+        countries = set()
+        
+        for facility in facilities:
+            facilities_list.append({
+                "cluster_id": facility.get('cluster_id', ''),
+                "latitude": float(facility['latitude']),
+                "longitude": float(facility['longitude']),
+                "country": facility['country'],
+                "source": facility.get('source', 'Unknown'),
+                "capacity_mw": facility.get('capacity_mw'),
+                "constructed_before": facility.get('constructed_before'),
+                "constructed_after": facility.get('constructed_after'),
+                "name": f"Solar Facility {facility.get('cluster_id', '')}"
+            })
+            countries.add(facility['country'])
+        
+        return {
+            "type": "map",
+            "data": facilities_list,
+            "metadata": {
+                "total_facilities": len(facilities_list),
+                "countries": list(countries),
+                "data_source": "TZ-SAM Q1 2025 Database",
+                "note": "Combined raw and analysis dataset with capacity where available"
+            }
         }
-    }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetSolarCapacityByCountry() -> Dict[str, Any]:
-    """Get solar capacity by country."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    """Get solar facility counts by country."""
+    if not db:
+        return {"error": "Database not available"}
     
-    stats = facilities_df.groupby('country').agg({
-        'capacity_mw': ['sum', 'mean', 'count', 'min', 'max'],
-        'cluster_id': 'count'
-    }).round(2)
-    
-    stats.columns = ['total_capacity_mw', 'avg_capacity_mw', 'facility_count', 'min_capacity_mw', 'max_capacity_mw', 'total_facilities']
-    stats = stats.reset_index()
-    
-    # Return summary of the summary
-    return {
-        "countries_analyzed": stats['country'].tolist(),
-        "total_global_capacity_mw": round(stats['total_capacity_mw'].sum(), 2),
-        "total_global_facilities": int(stats['facility_count'].sum()),
-        "country_with_most_capacity": stats.loc[stats['total_capacity_mw'].idxmax(), 'country'],
-        "country_with_most_facilities": stats.loc[stats['facility_count'].idxmax(), 'country'],
-        "data_available": True  # Flag for direct access
-    }
+    try:
+        country_stats = db.get_country_statistics()
+        
+        if not country_stats:
+            return {"error": "No country statistics available"}
+        
+        # Sort by facility count
+        country_stats.sort(key=lambda x: x['facility_count'], reverse=True)
+        
+        total_facilities = sum(stat['facility_count'] for stat in country_stats)
+        top_country = country_stats[0]
+        
+        return {
+            "countries_analyzed": [stat['country'] for stat in country_stats],
+            "total_global_facilities": total_facilities,
+            "total_countries": len(country_stats),
+            "country_with_most_facilities": top_country['country'],
+            "top_10_countries": country_stats[:10],
+            "data_available": True,
+            "query_optimized": True
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetDataForDirectVisualization(request_type: str, country: Optional[str] = None) -> str:
     """Get data ID for direct visualization."""
-    if facilities_df.empty:
+    if not db:
         return "NO_DATA_AVAILABLE"
     
     # Generate a simple identifier that the client can interpret
@@ -220,181 +218,154 @@ def GetDataForDirectVisualization(request_type: str, country: Optional[str] = No
 @mcp.tool()
 def GetSolarFacilitiesInRadius(latitude: float, longitude: float, radius_km: float = 50, country: Optional[str] = None) -> Dict[str, Any]:
     """Find facilities within radius of coordinates."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    if not db:
+        return {"error": "Database not available"}
     
-    # Simple distance calculation (approximate for small distances)
-    df_copy = facilities_df.copy()
-    
-    # Convert to radians
-    lat1, lon1 = np.radians(latitude), np.radians(longitude)
-    lat2, lon2 = np.radians(df_copy['latitude']), np.radians(df_copy['longitude'])
-    
-    # Haversine formula
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2)**2
-    distance_km = 2 * 6371 * np.arcsin(np.sqrt(a))  # 6371 km = Earth's radius
-    
-    # Filter by distance
-    in_radius = df_copy[distance_km <= radius_km].copy()
-    
-    if in_radius.empty:
-        return {"error": f"No facilities found within {radius_km}km of ({latitude}, {longitude})"}
-    
-    in_radius['distance_km'] = distance_km[distance_km <= radius_km].round(2)
-    
-    # Optional country filter
-    if country:
-        in_radius = in_radius[in_radius['country'].str.lower() == country.lower()]
-        if in_radius.empty:
-            return {"error": f"No facilities found in {country} within {radius_km}km"}
-    
-    # Sort by distance and return summary
-    in_radius = in_radius.sort_values('distance_km')
-    
-    return {
-        "search_center": [latitude, longitude],
-        "radius_km": radius_km,
-        "facilities_found": len(in_radius),
-        "closest_facilities": in_radius.head(5)[['cluster_id', 'capacity_mw', 'distance_km', 'country']].to_dict('records'),
-        "total_capacity_mw": round(in_radius['capacity_mw'].sum(), 2),
-        "data_available": True
-    }
+    try:
+        facilities = db.get_facilities_in_radius(
+            latitude, longitude, radius_km, country, limit=100
+        )
+        
+        if not facilities:
+            return {"error": f"No facilities found within {radius_km}km of ({latitude}, {longitude})"}
+        
+        return {
+            "search_center": [latitude, longitude],
+            "radius_km": radius_km,
+            "facilities_found": len(facilities),
+            "closest_facilities": facilities[:5],  # Top 5 closest
+            "data_available": True,
+            "query_optimized": True
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, country: Optional[str] = None) -> Dict[str, Any]:
-    """Get construction timeline data."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    """Get construction timeline data based on source dates."""
+    if not db:
+        return {"error": "Database not available"}
     
-    df_copy = facilities_df.copy()
-    
-    # Filter by country if specified
-    if country:
-        df_copy = df_copy[df_copy['country'].str.lower() == country.lower()]
-    
-    # Convert timestamps to years (handle NaN values)
-    df_copy = df_copy.dropna(subset=['constructed_before', 'constructed_after'])
-    
-    if df_copy.empty:
-        return {"error": "No timeline data available for the specified criteria"}
-    
-    # Extract years from timestamps (fixed: remove unit='s' for ISO 8601 strings)
-    df_copy['completion_year'] = pd.to_datetime(df_copy['constructed_before'], errors='coerce').dt.year
-    df_copy['start_year'] = pd.to_datetime(df_copy['constructed_after'], errors='coerce').dt.year
-    
-    # Filter by year range
-    df_copy = df_copy[
-        (df_copy['completion_year'] >= start_year) & 
-        (df_copy['completion_year'] <= end_year)
-    ]
-    
-    if df_copy.empty:
-        return {"error": f"No facilities completed between {start_year}-{end_year}"}
-    
-    # Return summary statistics instead of full timeline
-    return {
-        "period": f"{start_year}-{end_year}",
-        "country_filter": country,
-        "total_facilities_completed": len(df_copy),
-        "total_capacity_added_mw": round(df_copy['capacity_mw'].sum(), 2),
-        "peak_year": int(df_copy.groupby('completion_year')['capacity_mw'].sum().idxmax()),
-        "peak_year_capacity_mw": round(df_copy.groupby('completion_year')['capacity_mw'].sum().max(), 2),
-        "years_with_data": sorted(df_copy['completion_year'].unique().tolist()),
-        "data_available": True
-    }
+    try:
+        # Get facilities with source date filtering
+        if country:
+            facilities = db.get_facilities_by_country(country, limit=10000)
+        else:
+            facilities = db.search_facilities(limit=10000)
+        
+        # Filter by source date years
+        timeline_data = []
+        for facility in facilities:
+            if facility.get('source_date'):
+                try:
+                    source_date = pd.to_datetime(facility['source_date'])
+                    year = source_date.year
+                    if start_year <= year <= end_year:
+                        timeline_data.append({
+                            **facility,
+                            'source_year': year
+                        })
+                except:
+                    continue
+        
+        if not timeline_data:
+            return {"error": f"No facilities with source dates between {start_year}-{end_year}"}
+        
+        # Group by year
+        year_counts = {}
+        for facility in timeline_data:
+            year = facility['source_year']
+            year_counts[year] = year_counts.get(year, 0) + 1
+        
+        return {
+            "period": f"{start_year}-{end_year}",
+            "country_filter": country,
+            "total_facilities_in_period": len(timeline_data),
+            "years_with_data": sorted(year_counts.keys()),
+            "yearly_counts": year_counts,
+            "data_available": True,
+            "note": "Based on source_date field in database"
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetLargestSolarFacilities(limit: int = 20, country: Optional[str] = None) -> Dict[str, Any]:
-    """Get largest facilities by capacity."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    """Get largest solar facilities by capacity."""
+    if not db:
+        return {"error": "Database not available"}
     
-    df_copy = facilities_df.copy()
-    
-    # Filter by country if specified
-    if country:
-        df_copy = df_copy[df_copy['country'].str.lower() == country.lower()]
+    try:
+        facilities = db.get_largest_facilities(limit=limit, country=country)
         
-    if df_copy.empty:
-        return {"error": f"No facilities found in {country}" if country else "No facilities found"}
-    
-    # Sort by capacity and get top facilities
-    largest = df_copy.nlargest(limit, 'capacity_mw')
-    
-    return {
-        "search_criteria": {"limit": limit, "country": country},
-        "facilities_found": len(largest),
-        "largest_facility_mw": round(largest.iloc[0]['capacity_mw'], 2) if not largest.empty else 0,
-        "smallest_in_top_mw": round(largest.iloc[-1]['capacity_mw'], 2) if not largest.empty else 0,
-        "total_capacity_top_facilities_mw": round(largest['capacity_mw'].sum(), 2),
-        "top_3_facilities": largest.head(3)[['cluster_id', 'capacity_mw', 'country', 'latitude', 'longitude']].to_dict('records'),
-        "data_available": True
-    }
+        if not facilities:
+            return {"error": f"No facilities found{' in ' + country if country else ''}"}
+        
+        # Convert to list format with capacity data
+        facilities_list = []
+        for facility in facilities:
+            facilities_list.append({
+                "cluster_id": facility.get('cluster_id', ''),
+                "capacity_mw": facility.get('capacity_mw'),
+                "constructed_before": facility.get('constructed_before'),
+                "constructed_after": facility.get('constructed_after'),
+                "latitude": float(facility['latitude']),
+                "longitude": float(facility['longitude']),
+                "country": facility['country'],
+                "name": f"Solar Facility {facility.get('cluster_id', '')}"
+            })
+        
+        return {
+            "search_criteria": {"limit": limit, "country": country},
+            "facilities_found": len(facilities),
+            "top_3_facilities": facilities_list[:3],
+            "all_facilities": facilities_list,
+            "note": "Sorted by capacity (MW) - combined dataset with capacity where available",
+            "data_available": True
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetSolarFacilityDetails(cluster_id: str) -> Dict[str, Any]:
     """Get details for specific facility."""
-    if facilities_df.empty:
-        return {}
+    if not db:
+        return {"error": "Database not available"}
     
-    facility = facilities_df[facilities_df['cluster_id'] == cluster_id]
-    
-    if facility.empty:
-        return {"error": f"Facility with cluster_id '{cluster_id}' not found"}
-    
-    facility_dict = facility.iloc[0].to_dict()
-    
-    # Add derived information (fixed: parse ISO 8601 strings instead of Unix timestamps)
-    if not pd.isna(facility_dict.get('constructed_before')) and not pd.isna(facility_dict.get('constructed_after')):
-        try:
-            start_date = pd.to_datetime(facility_dict['constructed_after'])
-            end_date = pd.to_datetime(facility_dict['constructed_before'])
-            facility_dict['construction_start'] = start_date.strftime('%Y-%m-%d')
-            facility_dict['construction_end'] = end_date.strftime('%Y-%m-%d')
-            facility_dict['construction_duration_days'] = (end_date - start_date).days
-        except Exception as e:
-            print(f"Warning: Could not parse construction dates: {e}")
-    
-    return facility_dict
+    try:
+        facility = db.get_facility_by_id(cluster_id)
+        
+        if not facility:
+            return {"error": f"Facility with cluster_id '{cluster_id}' not found"}
+        
+        # Add derived information if source_date is available
+        if facility.get('source_date'):
+            try:
+                source_date = pd.to_datetime(facility['source_date'])
+                facility['source_year'] = source_date.year
+                facility['source_date_formatted'] = source_date.strftime('%Y-%m-%d')
+            except Exception as e:
+                facility['date_parse_error'] = str(e)
+        
+        return facility
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def SearchSolarFacilitiesByCapacity(min_capacity_mw: float, max_capacity_mw: float, country: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
-    """Search facilities by capacity range."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
-    
-    df_copy = facilities_df.copy()
-    
-    # Filter by capacity range
-    filtered = df_copy[
-        (df_copy['capacity_mw'] >= min_capacity_mw) & 
-        (df_copy['capacity_mw'] <= max_capacity_mw)
-    ]
-    
-    # Filter by country if specified
-    if country:
-        filtered = filtered[filtered['country'].str.lower() == country.lower()]
-    
-    if filtered.empty:
-        return {"error": f"No facilities found in range {min_capacity_mw}-{max_capacity_mw} MW" + (f" in {country}" if country else "")}
-    
-    # Sort by capacity (largest first) and limit results
-    result = filtered.nlargest(limit, 'capacity_mw')
+    """Search facilities by capacity range (capacity data not available in current schema)."""
+    if not db:
+        return {"error": "Database not available"}
     
     return {
-        "search_criteria": {
-            "capacity_range_mw": [min_capacity_mw, max_capacity_mw],
-            "country": country,
-            "limit": limit
-        },
-        "facilities_found": len(filtered),
-        "facilities_returned": len(result),
-        "total_capacity_in_range_mw": round(filtered['capacity_mw'].sum(), 2),
-        "avg_capacity_in_range_mw": round(filtered['capacity_mw'].mean(), 2),
-        "sample_facilities": result.head(3)[['cluster_id', 'capacity_mw', 'country']].to_dict('records'),
-        "data_available": True
+        "error": "Capacity search not available - current database schema doesn't include capacity_mw field",
+        "available_fields": ["cluster_id", "source_id", "source", "source_date", "latitude", "longitude", "country"],
+        "suggestion": "Use GetSolarFacilitiesByCountry or GetSolarFacilitiesInRadius instead",
+        "note": "Original TZ-SAM dataset doesn't include capacity information in the raw polygons file"
     }
 
 # CreateSolarFacilitiesMap tool removed - was causing context explosion
@@ -402,84 +373,76 @@ def SearchSolarFacilitiesByCapacity(min_capacity_mw: float, max_capacity_mw: flo
 
 @mcp.tool()
 def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") -> Dict[str, Any]:
-    """Get data for visualization. Types: by_country, capacity_distribution, timeline."""
-    if facilities_df.empty:
-        return {"error": "No facilities data available"}
+    """Get data for visualization. Types: by_country, source_timeline."""
+    if not db:
+        return {"error": "Database not available"}
     
-    if visualization_type == "by_country":
-        # Country-level statistics
-        country_stats = facilities_df.groupby('country').agg({
-            'capacity_mw': ['sum', 'mean', 'count'],
-            'cluster_id': 'count'
-        }).round(2)
-        
-        country_stats.columns = ['total_capacity_mw', 'avg_capacity_mw', 'facility_count', 'total_facilities']
-        data = country_stats.reset_index().to_dict('records')
-        
-        return {
-            "visualization_type": "by_country",
-            "data": data,
-            "chart_config": {
-                "x_axis": "country",
-                "y_axis": "total_capacity_mw", 
-                "title": "Solar Capacity by Country",
-                "chart_type": "bar"
+    try:
+        if visualization_type == "by_country":
+            # Country-level statistics
+            country_stats = db.get_country_statistics()
+            
+            return {
+                "visualization_type": "by_country",
+                "data": country_stats[:20],  # Top 20 countries
+                "chart_config": {
+                    "x_axis": "country",
+                    "y_axis": "facility_count", 
+                    "title": "Solar Facilities by Country",
+                    "chart_type": "bar"
+                }
             }
-        }
-    
-    elif visualization_type == "capacity_distribution":
-        # Capacity distribution histogram data
-        bins = [0, 1, 5, 10, 25, 50, 100, 500, 3000]
-        bin_labels = ['<1MW', '1-5MW', '5-10MW', '10-25MW', '25-50MW', '50-100MW', '100-500MW', '>500MW']
         
-        facilities_df['capacity_bin'] = pd.cut(facilities_df['capacity_mw'], bins=bins, labels=bin_labels, include_lowest=True)
-        dist_data = facilities_df['capacity_bin'].value_counts().sort_index()
-        
-        data = [{"capacity_range": str(k), "facility_count": v} for k, v in dist_data.items()]
-        
-        return {
-            "visualization_type": "capacity_distribution", 
-            "data": data,
-            "chart_config": {
-                "x_axis": "capacity_range",
-                "y_axis": "facility_count",
-                "title": "Solar Facilities by Capacity Range",
-                "chart_type": "bar"
+        elif visualization_type == "source_timeline":
+            # Timeline based on source dates - use unlimited data for accurate charts
+            facilities = db.search_facilities(limit=None)  # No limit for chart accuracy
+            
+            # Group by source and year
+            timeline_data = {}
+            for facility in facilities:
+                if facility.get('source_date'):
+                    try:
+                        source_date = pd.to_datetime(facility['source_date'])
+                        year = source_date.year
+                        source = facility.get('source', 'Unknown')
+                        
+                        key = f"{source}_{year}"
+                        if key not in timeline_data:
+                            timeline_data[key] = {
+                                "source": source,
+                                "year": year,
+                                "facility_count": 0
+                            }
+                        timeline_data[key]["facility_count"] += 1
+                    except:
+                        continue
+            
+            data = list(timeline_data.values())
+            
+            return {
+                "visualization_type": "source_timeline",
+                "data": data,
+                "chart_config": {
+                    "x_axis": "year",
+                    "y_axis": "facility_count",
+                    "color": "source",
+                    "title": "Solar Facilities by Source and Year",
+                    "chart_type": "line"
+                }
             }
-        }
-    
-    elif visualization_type == "timeline":
-        # Construction timeline (if available)
-        timeline_df = facilities_df.dropna(subset=['constructed_before'])
-        if timeline_df.empty:
-            return {"error": "No timeline data available"}
         
-        timeline_df['completion_year'] = pd.to_datetime(timeline_df['constructed_before'], errors='coerce').dt.year
-        timeline_data = timeline_df.groupby(['completion_year', 'country']).agg({
-            'capacity_mw': 'sum',
-            'cluster_id': 'count'
-        }).reset_index()
-        
-        data = timeline_data.to_dict('records')
-        
-        return {
-            "visualization_type": "timeline",
-            "data": data, 
-            "chart_config": {
-                "x_axis": "completion_year",
-                "y_axis": "capacity_mw",
-                "color": "country",
-                "title": "Solar Capacity Installation Timeline",
-                "chart_type": "line"
-            }
-        }
-    
-    else:
-        return {"error": f"Unknown visualization type: {visualization_type}"}
+        else:
+            return {"error": f"Unknown visualization type: {visualization_type}. Available: by_country, source_timeline"}
+            
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetSolarDatasetMetadata() -> Dict[str, Any]:
     """Get dataset metadata."""
+    if not db:
+        return {"error": "Database not available"}
+    
     return metadata
 
 if __name__ == "__main__":

@@ -689,68 +689,54 @@ async def get_solar_data_direct(client, data_type: str, **kwargs):
             result = await client.call_tool("GetSolarCapacityByCountry", {}, "solar")
             # Parse the result and return structured data
             
-            # Load the CSV directly for visualization
-            csv_path = os.path.join(project_root, "mcp", "solar_facilities_demo.csv")
-            df = pd.read_csv(csv_path) 
-            stats = df.groupby('country').agg({
-                'capacity_mw': ['sum', 'mean', 'count', 'min', 'max']
-            }).round(2)
-            
-            stats.columns = ['total_capacity_mw', 'avg_capacity_mw', 'facility_count', 'min_capacity_mw', 'max_capacity_mw']
-            stats = stats.reset_index()
+            # Use database for visualization (capacity data not available in current schema)
+            from solar_db import SolarDatabase
+            db = SolarDatabase()
+            stats = db.get_country_statistics()
             
             return {
                 "type": "country_comparison",
-                "data": stats.to_dict('records'),
+                "data": stats[:20],  # Top 20 countries
                 "chart_config": {
                     "x": "country",
-                    "y": "total_capacity_mw", 
-                    "title": "Solar Capacity by Country",
+                    "y": "facility_count", 
+                    "title": "Solar Facilities by Country",
                     "chart_type": "bar"
-                }
+                },
+                "note": "Updated to use SQLite database - capacity data not available in current schema"
             }
             
         elif data_type == "facilities_map":
-            # Create map data
-            df = pd.read_csv(os.path.join(project_root, "mcp", "solar_facilities_demo.csv"))
+            # Create map data using database
+            from solar_db import SolarDatabase
+            db = SolarDatabase()
             country_filter = kwargs.get('country')
-            if country_filter:
-                df = df[df['country'].str.lower() == country_filter.lower()]
             
-            # Sort by capacity (largest first)
-            df = df.sort_values('capacity_mw', ascending=False)
+            if country_filter:
+                facilities = db.get_facilities_by_country(country_filter, limit=1000)
+            else:
+                facilities = db.search_facilities(limit=1000)
+                
+            countries = list(set(f['country'] for f in facilities))
                 
             return {
                 "type": "map",
-                "data": df.to_dict('records'),
+                "data": facilities,
                 "metadata": {
-                    "total_facilities": len(df),
-                    "total_capacity": df['capacity_mw'].sum(),
-                    "countries": df['country'].unique().tolist()
-                }
+                    "total_facilities": len(facilities),
+                    "countries": countries,
+                    "data_source": "SQLite Database"
+                },
+                "note": "Updated to use SQLite database for faster queries"
             }
             
         elif data_type == "capacity_distribution":
-            df = pd.read_csv(os.path.join(project_root, "mcp", "solar_facilities_demo.csv"))
-            
-            # Create capacity bins
-            bins = [0, 1, 5, 10, 25, 50, 100, 500, 3000]
-            bin_labels = ['<1MW', '1-5MW', '5-10MW', '10-25MW', '25-50MW', '50-100MW', '100-500MW', '>500MW']
-            
-            df['capacity_bin'] = pd.cut(df['capacity_mw'], bins=bins, labels=bin_labels, include_lowest=True)
-            dist_data = df['capacity_bin'].value_counts().sort_index()
-            
-            chart_data = [{"capacity_range": str(k), "facility_count": v} for k, v in dist_data.items()]
-            
+            # Capacity distribution not available in current database schema
             return {
                 "type": "capacity_distribution",
-                "data": chart_data,
-                "chart_config": {
-                    "x": "capacity_range",
-                    "y": "facility_count",
-                    "title": "Solar Facilities by Capacity Range",
-                    "chart_type": "bar"
-                }
+                "error": "Capacity distribution not available - current database schema doesn't include capacity_mw field",
+                "alternative": "Use country distribution or source timeline instead",
+                "note": "Original TZ-SAM raw polygons file doesn't contain capacity information"
             }
             
     except Exception as e:
@@ -1861,7 +1847,7 @@ class MultiServerClient:
                                                     },
                                                     "properties": {
                                                         "name": facility.get("name", f"Solar Facility {facility.get('cluster_id', '')}"),
-                                                        "capacity_mw": float(facility["capacity_mw"]),
+                                                        "capacity_mw": float(facility.get("capacity_mw", 0)) if facility.get("capacity_mw") is not None else 0.0,
                                                         "country": facility["country"],
                                                         "completion_year": facility.get("completion_year", "Unknown"),
                                                         "cluster_id": facility.get("cluster_id", ""),
