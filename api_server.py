@@ -47,6 +47,73 @@ async def shutdown_event():
     except Exception as e:
         print(f"Warning: Error during MCP client cleanup: {e}")
 
+# Dynamic GeoJSON generation (must be before static mount to avoid conflicts)
+@app.get("/static/maps/{filename}")
+async def get_geojson(filename: str):
+    """
+    Generate GeoJSON data dynamically for solar facilities.
+    """
+    try:
+        # Use SQLite database instead of CSV
+        import sys
+        sys.path.append(os.path.join(os.path.dirname(__file__), 'mcp'))
+        from solar_db import SolarDatabase
+        db = SolarDatabase()
+        
+        # Get facilities from database (limit to 15000 for map performance)
+        # TODO: Once we have capacity data, should order by capacity descending
+        facilities = db.search_facilities(limit=15000)
+        total_count = db.get_total_count()
+        
+        # Convert to GeoJSON format
+        features = []
+        for facility in facilities:
+            feature = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [facility["longitude"], facility["latitude"]]
+                },
+                "properties": {
+                    "name": f"Solar Facility {facility.get('cluster_id', '')}",
+                    "country": facility["country"],
+                    "technology": "Solar PV",
+                    "cluster_id": facility.get("cluster_id", ""),
+                    "capacity_mw": facility.get("capacity_mw") if facility.get("capacity_mw") is not None else 0.0,
+                    "constructed_before": facility.get("constructed_before", "Unknown"),
+                    "constructed_after": facility.get("constructed_after", "Unknown"),
+                    "marker_color": {
+                        'china': '#4CAF50',
+                        'united states of america': '#FF9800', 
+                        'japan': '#F44336',
+                        'germany': '#2196F3',
+                        'italy': '#9C27B0'
+                    }.get(facility["country"].lower(), '#9E9E9E')
+                }
+            }
+            features.append(feature)
+        
+        # Add metadata about limiting
+        limit_applied = len(facilities) >= 15000
+        
+        geojson = {
+            "type": "FeatureCollection",
+            "features": features,
+            "metadata": {
+                "total_facilities_in_database": total_count,
+                "facilities_returned": len(features),
+                "limit_applied": limit_applied,
+                "note": f"Showing {len(features):,} of {total_count:,} facilities" + 
+                       (" (limited for map performance)" if limit_applied else " (all facilities)")
+            }
+        }
+        
+        return geojson
+        
+    except Exception as e:
+        print(f"Error generating GeoJSON: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating GeoJSON: {str(e)}")
+
 # Mount static files for serving images, GeoJSON, and other static content
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -611,64 +678,7 @@ async def stream_query(request: StreamQueryRequest):
         }
     )
 
-@app.get("/static/maps/{filename}")
-async def get_geojson(filename: str):
-    """
-    Generate GeoJSON data dynamically for solar facilities.
-    """
-    try:
-        # Read the CSV file directly
-        import pandas as pd
-        csv_path = os.path.join(os.path.dirname(__file__), "mcp", "solar_facilities_demo.csv")
-        
-        if not os.path.exists(csv_path):
-            raise HTTPException(status_code=404, detail="Solar facilities data not found")
-        
-        # Read facilities data
-        df = pd.read_csv(csv_path)
-        
-        # Sort by capacity and limit to top 1000
-        df = df.sort_values('capacity_mw', ascending=False).head(1000)
-        
-        # Convert to list of facilities
-        facilities = df.to_dict('records')
-        
-        # Convert to GeoJSON format
-        features = []
-        for facility in facilities:
-            feature = {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [facility["longitude"], facility["latitude"]]
-                },
-                "properties": {
-                    "name": facility.get("name", f"Facility {facility.get('cluster_id', '')}"),
-                    "country": facility["country"],
-                    "capacity_mw": facility["capacity_mw"],
-                    "technology": "Solar PV",
-                    "cluster_id": facility.get("cluster_id", ""),
-                    "completion_year": facility.get("completion_year", "Unknown"),
-                    "marker_color": {
-                        'brazil': '#4CAF50',
-                        'india': '#FF9800', 
-                        'south africa': '#F44336',
-                        'vietnam': '#2196F3'
-                    }.get(facility["country"].lower(), '#9E9E9E')
-                }
-            }
-            features.append(feature)
-        
-        geojson = {
-            "type": "FeatureCollection",
-            "features": features
-        }
-        
-        return geojson
-        
-    except Exception as e:
-        print(f"Error generating GeoJSON: {e}")
-        raise HTTPException(status_code=500, detail=f"Error generating GeoJSON: {str(e)}")
+# GeoJSON route moved above to avoid static mount conflict
 
 # Proxy routes for KG visualization
 @app.get("/kg-viz")
@@ -708,4 +718,6 @@ async def proxy_kg_api(path: str, request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8099) # Changed port to 8099 to avoid VS Code conflict
+    import os
+    port = int(os.environ.get("PORT", 8098))  # Default to 8098, allow override via PORT env var
+    uvicorn.run(app, host="0.0.0.0", port=port)
