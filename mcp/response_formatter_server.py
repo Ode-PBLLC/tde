@@ -311,15 +311,23 @@ def FormatResponseAsModules(
         # Split into paragraphs for better formatting
         paragraphs = [p.strip() for p in response_text.split('\n\n') if p.strip()]
         
-        # Add citations to the last paragraph of the main text response
-        # Since this is a synthesis of multiple tool results, cite all sources at the end
+        # Add citations throughout the text content instead of just at the end
         if citation_registry:
             all_tool_citations = _get_all_tool_citations(citation_registry)
             
             if all_tool_citations and paragraphs:
-                # Add all tool citations to the last paragraph
-                superscript = f" ^{','.join(map(str, sorted(all_tool_citations)))}^"
-                paragraphs[-1] = paragraphs[-1] + superscript
+                # Distribute citations across paragraphs for better inline citation
+                # Add to first paragraph (main finding)
+                if len(paragraphs) >= 1:
+                    superscript = f" ^{','.join(map(str, sorted(all_tool_citations)))}^"
+                    paragraphs[0] = paragraphs[0] + superscript
+                
+                # If multiple paragraphs, also add subset citations to middle content
+                if len(paragraphs) >= 3:
+                    # Add partial citations to middle paragraph
+                    mid_citations = all_tool_citations[:len(all_tool_citations)//2] if len(all_tool_citations) > 2 else all_tool_citations
+                    mid_superscript = f" ^{','.join(map(str, sorted(mid_citations)))}^"
+                    paragraphs[len(paragraphs)//2] = paragraphs[len(paragraphs)//2] + mid_superscript
         
         modules.append({
             "type": "text", 
