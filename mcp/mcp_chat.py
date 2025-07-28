@@ -363,6 +363,13 @@ def create_dataset_citation(tool_name: str, tool_args: dict, result_content: lis
             "provider": "TransitionZero",
             "coverage": "Multiple countries"
         },
+        "GetLargestSolarFacilities": {
+            "source_type": "Dataset",
+            "source_name": "TZ-SAM Large Solar Facilities Database",
+            "description": "Database of the world's largest solar installations by capacity",
+            "provider": "TransitionZero",
+            "coverage": "Global - Top 20 facilities"
+        },
         
         # GIST Environmental Tools
         "GetGistAssetsMapData": {

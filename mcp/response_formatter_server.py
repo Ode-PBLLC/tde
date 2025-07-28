@@ -43,6 +43,23 @@ def _generate_unique_module_id(tool_name: str, content_type: str, content: Any =
     
     return f"{tool_name}_{content_type}_{content_hash}_{timestamp}"
 
+def _add_all_citations_fallback(text: str, citation_nums: List[str]) -> str:
+    """Fallback function to add all citations to text when LLM fails."""
+    if not citation_nums:
+        return text
+    
+    # Sort citation numbers properly
+    sorted_citations = sorted(citation_nums, key=int)
+    superscript = f" ^{','.join(sorted_citations)}^"
+    
+    # Add to the end of the first sentence if possible, otherwise to the end
+    sentences = text.split('. ')
+    if len(sentences) > 1:
+        sentences[0] = sentences[0] + superscript
+        return '. '.join(sentences)
+    else:
+        return text + superscript
+
 async def _insert_llm_citations(text: str, citation_registry: Dict, tool_results_context: Optional[Dict] = None) -> str:
     """
     Use Claude LLM to intelligently place citations in text based on content context.
@@ -78,33 +95,38 @@ async def _insert_llm_citations(text: str, citation_registry: Dict, tool_results
                 }
                 citations_info.append(source_info)
         
-        # Create expert citation prompt
-        prompt = f"""You are a citation placement expert. Your job is to insert citation superscripts (^1^, ^2^, etc.) immediately after specific facts they support.
+        # Sort citations by number to ensure proper order
+        citations_info.sort(key=lambda x: int(x['number']))
+        
+        # Create improved citation prompt that REQUIRES using ALL citations
+        all_citation_nums = [c['number'] for c in citations_info]
+        
+        prompt = f"""You are a citation placement expert. Your job is to insert citation superscripts immediately after specific facts they support.
 
-RULES:
-1. Place ^X^ RIGHT AFTER the specific fact it supports, not at sentence end
-2. Use the minimum citations needed to support each fact
-3. Only cite concrete data points (numbers, statistics, specific claims, country data)
-4. Don't cite general statements or common knowledge
-5. Multiple facts can share citations if from the same source
-6. If a sentence contains multiple facts from different sources, cite each fact separately
+CRITICAL REQUIREMENTS:
+1. You MUST use ALL of these citation numbers: {', '.join(all_citation_nums)}
+2. Place ^X^ RIGHT AFTER the specific fact it supports, not at sentence end
+3. Distribute citations logically - different facts should get different citations when possible
+4. Use numerical order (^1^, ^2^, ^3^) based on which source provided which data
+5. If uncertain which citation supports a fact, use multiple citations ^1,2^
 
 TEXT TO PROCESS:
 {text}
 
-AVAILABLE CITATIONS:
+AVAILABLE CITATIONS (USE ALL OF THESE):
 {chr(10).join([f"Citation {c['number']}: {c['title']} ({c['provider']}) - {c['description']}" for c in citations_info])}
 
 EXAMPLES:
-- "Brazil has 2,273 facilities" → "Brazil has 2,273 facilities^1^"
-- "Total capacity of 26,022 MW" → "Total capacity of 26,022 MW^1^" 
-- "China leads with 22,246 facilities" → "China leads with 22,246 facilities^2^"
+- "Brazil has 2,273 facilities^1^ with capacity of 26,022 MW^1^" (same source)
+- "China leads with 22,246 facilities^2^ while India has 4,186 facilities^2^" (same source)
+- "Data shows^1,2,3^ that renewable energy is growing^1,2,3^" (multiple sources)
 
-Return ONLY the text with citations added. Do not include explanations."""
+YOU MUST USE ALL CITATION NUMBERS: {', '.join(all_citation_nums)}
+Return ONLY the text with citations added."""
 
-        # Make API call to Claude
+        # Make API call to Claude - use Sonnet for better citation placement
         response = client.messages.create(
-            model="claude-3-haiku-20240307",  # Fast model for citation placement
+            model="claude-3-5-sonnet-20241022",  # More powerful model for precise citation placement
             max_tokens=2000,
             temperature=0,  # Deterministic for consistent citation placement
             messages=[
@@ -115,12 +137,24 @@ Return ONLY the text with citations added. Do not include explanations."""
         # Extract the response text
         cited_text = response.content[0].text.strip()
         
-        # Basic validation - ensure we didn't lose content
-        if len(cited_text) >= len(text) * 0.8:  # Allow some variation but catch major losses
-            return cited_text
-        else:
-            print(f"⚠️  LLM citation response too short, falling back to original text")
-            return text
+        # Validation 1: Check content length
+        if len(cited_text) < len(text) * 0.8:
+            print(f"⚠️  LLM citation response too short, falling back to simple citations")
+            return _add_all_citations_fallback(text, all_citation_nums)
+            
+        # Validation 2: Ensure ALL citations are used
+        missing_citations = []
+        for citation_num in all_citation_nums:
+            if f"^{citation_num}^" not in cited_text and f"^{citation_num}," not in cited_text and f",{citation_num}^" not in cited_text:
+                missing_citations.append(citation_num)
+        
+        if missing_citations:
+            print(f"⚠️  LLM missed citations {missing_citations}, adding them to end")
+            # Add missing citations to the end of the text
+            missing_superscript = f" ^{','.join(sorted(missing_citations, key=int))}^"
+            cited_text = cited_text + missing_superscript
+            
+        return cited_text
             
     except Exception as e:
         print(f"⚠️  Error in LLM citation placement: {e}")
