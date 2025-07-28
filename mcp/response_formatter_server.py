@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 import hashlib
 import time
+import anthropic
+import asyncio
 
 mcp = FastMCP("response-formatter-server")
 
@@ -40,6 +42,91 @@ def _generate_unique_module_id(tool_name: str, content_type: str, content: Any =
         content_hash = hashlib.md5(f"{tool_name}_{timestamp}".encode()).hexdigest()[:8]
     
     return f"{tool_name}_{content_type}_{content_hash}_{timestamp}"
+
+async def _insert_llm_citations(text: str, citation_registry: Dict, tool_results_context: Optional[Dict] = None) -> str:
+    """
+    Use Claude LLM to intelligently place citations in text based on content context.
+    
+    Args:
+        text: Text content to add citations to
+        citation_registry: Registry containing citation information
+        tool_results_context: Optional context about what data came from which tools
+        
+    Returns:
+        Text with precisely placed inline citations
+    """
+    if not citation_registry or not citation_registry.get("citations"):
+        return text
+    
+    try:
+        # Initialize Anthropic client
+        client = anthropic.Anthropic()
+        
+        # Build citation context for LLM
+        citations_info = []
+        citations_dict = citation_registry.get("citations", {})
+        
+        for citation_num, citation_data in citations_dict.items():
+            if isinstance(citation_data, dict):
+                source_info = {
+                    "number": citation_num,
+                    "title": citation_data.get("title", "Unknown Source"),
+                    "provider": citation_data.get("provider", "Unknown Provider"),
+                    "type": citation_data.get("type", "Unknown Type"),
+                    "tool_used": citation_data.get("passage_id", citation_data.get("tool_used", "Unknown Tool")),
+                    "description": citation_data.get("text", "No description available")[:200]
+                }
+                citations_info.append(source_info)
+        
+        # Create expert citation prompt
+        prompt = f"""You are a citation placement expert. Your job is to insert citation superscripts (^1^, ^2^, etc.) immediately after specific facts they support.
+
+RULES:
+1. Place ^X^ RIGHT AFTER the specific fact it supports, not at sentence end
+2. Use the minimum citations needed to support each fact
+3. Only cite concrete data points (numbers, statistics, specific claims, country data)
+4. Don't cite general statements or common knowledge
+5. Multiple facts can share citations if from the same source
+6. If a sentence contains multiple facts from different sources, cite each fact separately
+
+TEXT TO PROCESS:
+{text}
+
+AVAILABLE CITATIONS:
+{chr(10).join([f"Citation {c['number']}: {c['title']} ({c['provider']}) - {c['description']}" for c in citations_info])}
+
+EXAMPLES:
+- "Brazil has 2,273 facilities" → "Brazil has 2,273 facilities^1^"
+- "Total capacity of 26,022 MW" → "Total capacity of 26,022 MW^1^" 
+- "China leads with 22,246 facilities" → "China leads with 22,246 facilities^2^"
+
+Return ONLY the text with citations added. Do not include explanations."""
+
+        # Make API call to Claude
+        response = client.messages.create(
+            model="claude-3-haiku-20240307",  # Fast model for citation placement
+            max_tokens=2000,
+            temperature=0,  # Deterministic for consistent citation placement
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Extract the response text
+        cited_text = response.content[0].text.strip()
+        
+        # Basic validation - ensure we didn't lose content
+        if len(cited_text) >= len(text) * 0.8:  # Allow some variation but catch major losses
+            return cited_text
+        else:
+            print(f"⚠️  LLM citation response too short, falling back to original text")
+            return text
+            
+    except Exception as e:
+        print(f"⚠️  Error in LLM citation placement: {e}")
+        # Fall back to existing contextual citation logic
+        all_citations = _get_all_tool_citations(citation_registry)
+        return _insert_contextual_citations(text, all_citations, citation_registry)
 
 def _get_tool_citations(tool_name: str, citation_registry: Optional[Dict] = None) -> List[int]:
     """
@@ -293,7 +380,7 @@ def _add_citations_to_table_heading(heading: str, module_id: str, citation_regis
     return heading
 
 @mcp.tool()
-def FormatResponseAsModules(
+async def FormatResponseAsModules(
     response_text: str,
     chart_data: Optional[List[Dict]] = None,
     chart_data_tool: Optional[str] = None,
@@ -311,23 +398,22 @@ def FormatResponseAsModules(
         # Split into paragraphs for better formatting
         paragraphs = [p.strip() for p in response_text.split('\n\n') if p.strip()]
         
-        # Add citations throughout the text content instead of just at the end
+        # Use LLM for intelligent citation placement
         if citation_registry:
-            all_tool_citations = _get_all_tool_citations(citation_registry)
-            
-            if all_tool_citations and paragraphs:
-                # Distribute citations across paragraphs for better inline citation
-                # Add to first paragraph (main finding)
-                if len(paragraphs) >= 1:
+            print("🤖 Using LLM for intelligent citation placement...")
+            try:
+                # Process each paragraph with LLM for contextual citation placement
+                for i, paragraph in enumerate(paragraphs):
+                    paragraphs[i] = await _insert_llm_citations(paragraph, citation_registry)
+                    
+                print(f"✅ LLM citation placement completed for {len(paragraphs)} paragraphs")
+            except Exception as e:
+                print(f"⚠️  LLM citation placement failed: {e}")
+                # Fallback to simple citation placement
+                all_tool_citations = _get_all_tool_citations(citation_registry)
+                if all_tool_citations and paragraphs:
                     superscript = f" ^{','.join(map(str, sorted(all_tool_citations)))}^"
                     paragraphs[0] = paragraphs[0] + superscript
-                
-                # If multiple paragraphs, also add subset citations to middle content
-                if len(paragraphs) >= 3:
-                    # Add partial citations to middle paragraph
-                    mid_citations = all_tool_citations[:len(all_tool_citations)//2] if len(all_tool_citations) > 2 else all_tool_citations
-                    mid_superscript = f" ^{','.join(map(str, sorted(mid_citations)))}^"
-                    paragraphs[len(paragraphs)//2] = paragraphs[len(paragraphs)//2] + mid_superscript
         
         modules.append({
             "type": "text", 
