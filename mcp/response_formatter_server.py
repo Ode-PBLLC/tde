@@ -444,8 +444,9 @@ async def FormatResponseAsModules(
                 # Insert inline citations using the existing function
                 cited_paragraph = _insert_inline_citations(paragraph, module_id, citation_registry)
                 
-                # If no module-specific citations found, add general tool citations to first paragraph
-                if i == 0 and cited_paragraph == paragraph:
+                # CITATION_FIX: Skip fallback citations if structured_citations are provided
+                # This prevents overriding LLM's proper citation placement
+                if i == 0 and cited_paragraph == paragraph and not structured_citations:
                     all_tool_citations = _get_all_tool_citations(citation_registry)
                     if all_tool_citations:
                         superscript = f" ^{','.join(map(str, sorted(all_tool_citations)))}^"

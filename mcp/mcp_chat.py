@@ -17,6 +17,107 @@ import streamlit.components.v1 as components
 import re
 import aiohttp
 
+def create_citation_info_for_tool(tool_name: str, tool_args: dict = None) -> dict:
+    """
+    Create citation metadata for a given tool call.
+    
+    Args:
+        tool_name: Name of the tool called
+        tool_args: Arguments passed to the tool
+        
+    Returns:
+        Citation info dictionary with source_name, provider, etc.
+    """
+    # Tool name to citation info mapping
+    citation_mapping = {
+        "CheckConceptExists": {
+            "source_name": "Climate Policy Knowledge Graph - Concepts",
+            "provider": "Climate Policy Radar",
+            "spatial_coverage": "Global climate policy concepts",
+            "temporal_coverage": "Current",
+            "source_url": "https://climatepolicyradar.org"
+        },
+        "GetPassagesMentioningConcept": {
+            "source_name": "Climate Policy Knowledge Graph - Passages", 
+            "provider": "Climate Policy Radar",
+            "spatial_coverage": "Global policy documents",
+            "temporal_coverage": "Historical and current",
+            "source_url": "https://climatepolicyradar.org"
+        },
+        "GetSolarFacilitiesByCountry": {
+            "source_name": "TZ-SAM Q1 2025 Solar Database",
+            "provider": "TransitionZero",
+            "spatial_coverage": tool_args.get("country", "Global") if tool_args else "Global",
+            "temporal_coverage": "Q1 2025",
+            "source_url": "https://transitionzero.org"
+        },
+        "GetSolarFacilitiesMapData": {
+            "source_name": "TZ-SAM Q1 2025 Solar Facilities Database",
+            "provider": "TransitionZero", 
+            "spatial_coverage": "Brazil, India, South Africa, Vietnam",
+            "temporal_coverage": "Q1 2025",
+            "source_url": "https://transitionzero.org"
+        },
+        "GetSolarCapacityByCountry": {
+            "source_name": "TZ-SAM Solar Capacity Database",
+            "provider": "TransitionZero",
+            "spatial_coverage": "Global",
+            "temporal_coverage": "Q1 2025", 
+            "source_url": "https://transitionzero.org"
+        },
+        "GetSolarFacilityDetails": {
+            "source_name": "TZ-SAM Q1 2025 Solar Facility Details",
+            "provider": "TransitionZero",
+            "spatial_coverage": "Global solar facilities",
+            "temporal_coverage": "Q1 2025",
+            "source_url": "https://transitionzero.org"
+        },
+        "GetGistCompanies": {
+            "source_name": "GIST Corporate ESG Database",
+            "provider": "GIST",
+            "spatial_coverage": "Global corporations",
+            "temporal_coverage": "2016-2024",
+            "source_url": "https://gist.com"
+        },
+        "GetBrazilianStatesOverview": {
+            "source_name": "LSE Brazilian Climate Governance Database",
+            "provider": "London School of Economics",
+            "spatial_coverage": "Brazil (all 27 states)",
+            "temporal_coverage": "Current",
+            "source_url": "https://lse.ac.uk"
+        }
+    }
+    
+    # Get citation info for this tool, with fallback
+    citation_info = citation_mapping.get(tool_name, {
+        "source_name": f"{tool_name} Dataset",
+        "provider": "Unknown Provider",
+        "spatial_coverage": "Unknown Coverage", 
+        "temporal_coverage": "Unknown Period",
+        "source_url": ""
+    })
+    
+    return citation_info
+
+def wrap_tool_result_with_citation(tool_name: str, tool_result_text: str, tool_args: dict = None) -> dict:
+    """
+    Wrap a tool result with citation information in the expected format.
+    
+    Args:
+        tool_name: Name of the tool that generated the result
+        tool_result_text: Raw JSON text result from the tool
+        tool_args: Arguments passed to the tool
+        
+    Returns:
+        Dictionary in {"fact": result, "citation_info": {...}} format
+    """
+    citation_info = create_citation_info_for_tool(tool_name, tool_args)
+    
+    return {
+        "fact": tool_result_text,  # Keep original JSON string as the fact
+        "citation_info": citation_info
+    }
+
 def convert_citation_format(text: str) -> str:
     """
     Convert [citation_X] format to ^X^ format for frontend compatibility.
@@ -1243,7 +1344,26 @@ class MultiServerClient:
                     except Exception:
                         pass
 
-                    # CITATION_FIX: Check for structured fact/citation format from tools
+                    # CITATION_FIX: Wrap tool result with citation info for enhanced synthesis
+                    try:
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            tool_result_text = result.content[0].text
+                            wrapped_result = wrap_tool_result_with_citation(tool_name, tool_result_text, tool_args)
+                            intermediate_facts_with_citations.append({
+                                "fact": wrapped_result["fact"],
+                                "citation_info": wrapped_result["citation_info"],
+                                "tool_context": {
+                                    "tool_name": tool_name,
+                                    "tool_args": tool_args
+                                }
+                            })
+                            print(f"CITATION_FIX DEBUG: Wrapped tool result from {tool_name} (total facts: {len(intermediate_facts_with_citations)})")
+                        else:
+                            print(f"CITATION_FIX DEBUG: Skipped {tool_name} - no content or malformed result")
+                    except Exception as e:
+                        print(f"CITATION_FIX DEBUG: Error wrapping tool result from {tool_name}: {e}")
+
+                    # CITATION_FIX: Check for structured fact/citation format from tools (legacy)
                     parsed_tool_result = None
                     citation_info = None
                     
@@ -1446,6 +1566,12 @@ class MultiServerClient:
                 "Place citations where they naturally support key claims or data points. "
                 "If the facts mention that visualizations are available, you may reference them appropriately.")
             
+            # DEBUG: Log what we're sending to LLM for regular function
+            print(f"CITATION_FIX LLM DEBUG (regular): Sending {len(facts_for_llm)} facts to LLM synthesis:")
+            for i, fact in enumerate(facts_for_llm, 1):
+                print(f"  Fact {i}: citation_id={fact['citation_id']}, tool={fact['tool_context']['tool_name']}")
+                print(f"    fact preview: {fact['fact'][:100]}...")
+            
             synthesis_messages = [
                 {"role": "user", "content": f"User's original query: {query}\n\nFacts with Citation IDs:\n{json.dumps(facts_for_llm, indent=2)}"}
             ]
@@ -1459,6 +1585,46 @@ class MultiServerClient:
             final_response_text = summary_resp.content[0].text.strip()
             # CITATION_FIX: Convert citation format for frontend compatibility
             final_response_text = convert_citation_format(final_response_text)
+            
+            # CITATION_FIX: Filter and renumber citations based on what's actually used in text
+            if final_citations_list:
+                import re
+                # Find all ^1^, ^2^, ^3^ citations in the text
+                citation_pattern = r'\^(\d+)\^'
+                used_citation_numbers = set()
+                for match in re.finditer(citation_pattern, final_response_text):
+                    used_citation_numbers.add(int(match.group(1)))
+                
+                if used_citation_numbers:
+                    # Create mapping of old citation numbers to new sequential numbers
+                    old_to_new = {}
+                    new_citation_counter = 1
+                    used_citations = []
+                    
+                    # Build filtered citation list with only used citations, in order of appearance
+                    sorted_used = sorted(used_citation_numbers)
+                    for old_num in sorted_used:
+                        if old_num <= len(final_citations_list):
+                            old_to_new[old_num] = new_citation_counter
+                            citation_copy = final_citations_list[old_num - 1].copy()  # Convert to 0-based index
+                            citation_copy['id'] = f"citation_{new_citation_counter}"
+                            used_citations.append(citation_copy)
+                            new_citation_counter += 1
+                    
+                    # Update text with renumbered citations  
+                    def renumber_citation(match):
+                        old_num = int(match.group(1))
+                        new_num = old_to_new.get(old_num, old_num)
+                        return f"^{new_num}^"
+                    
+                    final_response_text = re.sub(citation_pattern, renumber_citation, final_response_text)
+                    final_citations_list = used_citations
+                    
+                    print(f"CITATION_FIX DEBUG: Filtered from {len(facts_for_llm)} facts to {len(final_citations_list)} used citations: {sorted_used}")
+                else:
+                    # No citations found in text, clear the citation list
+                    final_citations_list = []
+                    print("CITATION_FIX DEBUG: No citations found in text, cleared citation list")
             
         elif len(context_chunks) > 0:
             # Fallback to traditional synthesis for backwards compatibility
@@ -2097,7 +2263,26 @@ class MultiServerClient:
                     except Exception:
                         pass
 
-                    # CITATION_FIX: Check for structured fact/citation format from tools (streaming)
+                    # CITATION_FIX: Wrap tool result with citation info for enhanced synthesis (streaming)
+                    try:
+                        if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                            tool_result_text = result.content[0].text
+                            wrapped_result = wrap_tool_result_with_citation(tool_name, tool_result_text, tool_args)
+                            intermediate_facts_with_citations.append({
+                                "fact": wrapped_result["fact"],
+                                "citation_info": wrapped_result["citation_info"],
+                                "tool_context": {
+                                    "tool_name": tool_name,
+                                    "tool_args": tool_args
+                                }
+                            })
+                            print(f"STREAMING CITATION_FIX DEBUG: Wrapped tool result from {tool_name} (total facts: {len(intermediate_facts_with_citations)})")
+                        else:
+                            print(f"STREAMING CITATION_FIX DEBUG: Skipped {tool_name} - no content or malformed result")
+                    except Exception as e:
+                        print(f"STREAMING CITATION_FIX DEBUG: Error wrapping tool result from {tool_name}: {e}")
+
+                    # CITATION_FIX: Check for structured fact/citation format from tools (streaming) (legacy)
                     if result.content and isinstance(result.content, list) and len(result.content) > 0:
                         first_content_block = result.content[0]
                         if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
@@ -2310,6 +2495,12 @@ class MultiServerClient:
                 "Place citations where they naturally support key claims or data points. "
                 "If the facts mention that visualizations are available, you may reference them appropriately.")
             
+            # DEBUG: Log what we're sending to LLM for streaming function
+            print(f"STREAMING CITATION_FIX LLM DEBUG: Sending {len(facts_for_llm)} facts to LLM synthesis:")
+            for i, fact in enumerate(facts_for_llm, 1):
+                print(f"  Fact {i}: citation_id={fact['citation_id']}, tool={fact['tool_context']['tool_name']}")
+                print(f"    fact preview: {fact['fact'][:100]}...")
+            
             synthesis_messages = [
                 {"role": "user", "content": f"User's original query: {query}\n\nFacts with Citation IDs:\n{json.dumps(facts_for_llm, indent=2)}"}
             ]
@@ -2345,6 +2536,46 @@ class MultiServerClient:
             final_response_text = summary_resp.content[0].text.strip()
             # CITATION_FIX: Convert citation format for frontend compatibility (streaming)
             final_response_text = convert_citation_format(final_response_text)
+            
+            # CITATION_FIX: Filter and renumber citations based on what's actually used in text (streaming)
+            if final_citations_list:
+                import re
+                # Find all ^1^, ^2^, ^3^ citations in the text
+                citation_pattern = r'\^(\d+)\^'
+                used_citation_numbers = set()
+                for match in re.finditer(citation_pattern, final_response_text):
+                    used_citation_numbers.add(int(match.group(1)))
+                
+                if used_citation_numbers:
+                    # Create mapping of old citation numbers to new sequential numbers
+                    old_to_new = {}
+                    new_citation_counter = 1
+                    used_citations = []
+                    
+                    # Build filtered citation list with only used citations, in order of appearance
+                    sorted_used = sorted(used_citation_numbers)
+                    for old_num in sorted_used:
+                        if old_num <= len(final_citations_list):
+                            old_to_new[old_num] = new_citation_counter
+                            citation_copy = final_citations_list[old_num - 1].copy()  # Convert to 0-based index
+                            citation_copy['id'] = f"citation_{new_citation_counter}"
+                            used_citations.append(citation_copy)
+                            new_citation_counter += 1
+                    
+                    # Update text with renumbered citations  
+                    def renumber_citation(match):
+                        old_num = int(match.group(1))
+                        new_num = old_to_new.get(old_num, old_num)
+                        return f"^{new_num}^"
+                    
+                    final_response_text = re.sub(citation_pattern, renumber_citation, final_response_text)
+                    final_citations_list = used_citations
+                    
+                    print(f"STREAMING CITATION_FIX DEBUG: Filtered from {len(facts_for_llm)} facts to {len(final_citations_list)} used citations: {sorted_used}")
+                else:
+                    # No citations found in text, clear the citation list
+                    final_citations_list = []
+                    print("STREAMING CITATION_FIX DEBUG: No citations found in text, cleared citation list")
 
         # Stream synthesis completion
         yield {
