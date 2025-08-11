@@ -1105,6 +1105,9 @@ class MultiServerClient:
         table_ready_data = []       # List of {tool_name, data} for table generation
         tool_results_for_tables = [] # Structured tool results for enhanced table creation
         
+        # CITATION_FIX: Structured fact collection
+        intermediate_facts_with_citations = []  # Facts with citation info from tools
+        
         intermediate_ai_text_parts = [] # Collect all AI text parts during the process
         last_assistant_text = "" # Store the last piece of text from the assistant
 
@@ -1210,6 +1213,49 @@ class MultiServerClient:
                     except Exception:
                         pass
 
+                    # CITATION_FIX: Check for structured fact/citation format from tools
+                    parsed_tool_result = None
+                    citation_info = None
+                    
+                    # Check if the tool result has structured citation format
+                    if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                        first_content_block = result.content[0]
+                        if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                            try:
+                                # Attempt to parse the tool result as JSON
+                                parsed_tool_result = json.loads(first_content_block.text)
+
+                                if isinstance(parsed_tool_result, dict) and "fact" in parsed_tool_result:
+                                    # Handle a single fact result
+                                    facts_to_process = [parsed_tool_result]
+                                elif isinstance(parsed_tool_result, list):
+                                    # Handle a list of facts - check if any have the fact/citation_info structure
+                                    facts_to_process = [item for item in parsed_tool_result if isinstance(item, dict) and "fact" in item]
+                                else:
+                                    # Not a recognized format, so skip processing for citations
+                                    facts_to_process = []
+                                
+                                # Process the list of facts (even if it's just one)
+                                for fact_item in facts_to_process:
+                                    fact_text = fact_item.get("fact", "")
+                                    citation_info = fact_item.get("citation_info", {})
+                                
+                                    # Append to our intermediate facts list
+                                    if fact_text and citation_info:
+                                        intermediate_facts_with_citations.append({
+                                            "fact": fact_text,
+                                            "citation_info": citation_info,
+                                            "tool_context": {
+                                                "tool_name": tool_name,
+                                                "tool_args": tool_args
+                                            }
+                                        })
+                                        print(f"CITATION_FIX DEBUG: Added structured fact from {tool_name}")
+
+                            except json.JSONDecodeError:
+                                # Handle cases where the tool result is not JSON - continue with existing flow
+                                print(f"CITATION_FIX DEBUG: Tool result from {tool_name} is not valid JSON. Using fallback approach.")
+
                     # 1) legacy metadata capture
                     if tool_name.lower() == "getmetadata":
                         sources_used.append(result.content)
@@ -1311,9 +1357,80 @@ class MultiServerClient:
         if current_turn_text_parts: # This will be the text from the AI's last turn
             last_assistant_text = "\n".join(current_turn_text_parts)
 
+        # CITATION_FIX: Consolidate citations and prepare facts for LLM
+        final_citations_list = []
+        citation_id_map = {}
+        facts_for_llm = []
+        
+        if len(intermediate_facts_with_citations) > 0:
+            print(f"CITATION_FIX DEBUG: Processing {len(intermediate_facts_with_citations)} structured facts with citations")
+            
+            # Consolidate citations by deduplicating based on source_name and source_url
+            citation_id_counter = 1
+            
+            for item in intermediate_facts_with_citations:
+                citation_info = item["citation_info"]
+                citation_key = (citation_info.get('source_name', ''), citation_info.get('source_url', ''))
+
+                if citation_key not in citation_id_map:
+                    new_id = f"citation_{citation_id_counter}"
+                    citation_id_map[citation_key] = new_id
+                    final_citations_list.append({
+                        "id": new_id,
+                        "source_name": citation_info.get('source_name', 'Unknown Source'),
+                        "provider": citation_info.get('provider', 'Unknown Provider'),
+                        "spatial_coverage": citation_info.get('spatial_coverage', ''),
+                        "temporal_coverage": citation_info.get('temporal_coverage', ''),
+                        "source_url": citation_info.get('source_url', '')
+                    })
+                    citation_id_counter += 1
+                    print(f"CITATION_FIX DEBUG: Added new citation {new_id}: {citation_info.get('source_name', 'Unknown')}")
+            
+            # Tag the facts with their corresponding citation IDs
+            for item in intermediate_facts_with_citations:
+                citation_info = item["citation_info"]
+                citation_key = (citation_info.get('source_name', ''), citation_info.get('source_url', ''))
+                final_id = citation_id_map.get(citation_key, 'citation_unknown')
+
+                facts_for_llm.append({
+                    "fact": item["fact"],
+                    "citation_id": final_id,
+                    "tool_context": item["tool_context"]
+                })
+            
+            print(f"CITATION_FIX DEBUG: Created {len(final_citations_list)} unique citations and {len(facts_for_llm)} tagged facts")
+
         # --- final synthesis / response construction ---------------------------------
         final_response_text = ""
-        if len(context_chunks) > 0:
+        
+        # CITATION_FIX: Use enhanced synthesis with structured facts when available
+        if len(facts_for_llm) > 0:
+            print(f"CITATION_FIX DEBUG: Using enhanced synthesis with {len(facts_for_llm)} structured facts")
+            
+            # Enhanced synthesis system prompt for structured facts
+            synthesis_system_prompt = (SUMMARY_PROMPT +
+                "Based on the following structured facts with citation IDs, synthesize a comprehensive answer to the user's original query. "
+                "Present it as a direct answer, not a summary of the facts themselves. Avoid narrating the tool process. "
+                "IMPORTANT: When referring to information from the facts, include the citation ID in square brackets like [citation_1] at the relevant point in your text. "
+                "Use citations judiciously - typically one per paragraph or logical section, not after every single fact. "
+                "Place citations where they naturally support key claims or data points. "
+                "If the facts mention that visualizations are available, you may reference them appropriately.")
+            
+            synthesis_messages = [
+                {"role": "user", "content": f"User's original query: {query}\n\nFacts with Citation IDs:\n{json.dumps(facts_for_llm, indent=2)}"}
+            ]
+            
+            summary_resp = self.anthropic.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1000,
+                system=synthesis_system_prompt,
+                messages=synthesis_messages,
+            )
+            final_response_text = summary_resp.content[0].text.strip()
+            
+        elif len(context_chunks) > 0:
+            # Fallback to traditional synthesis for backwards compatibility
+            print("CITATION_FIX DEBUG: Using traditional synthesis (no structured facts available)")
             # AGGRESSIVE context trimming to prevent token explosion
             joined_ctx = "\n\n".join(context_chunks)
             # Much smaller limit to stay well under token limits
@@ -2174,6 +2291,23 @@ class MultiServerClient:
                 "module_citations": self.citation_registry.module_citations
             }
         }
+        
+        # CITATION_FIX: Use final_citations_list when available for better source formatting
+        if final_citations_list:
+            print(f"CITATION_FIX DEBUG: Passing {len(final_citations_list)} structured citations to formatter")
+            # Convert final_citations_list to sources format for API compatibility
+            structured_sources = []
+            for citation in final_citations_list:
+                structured_sources.append({
+                    "id": citation["id"],
+                    "source_name": citation["source_name"],
+                    "provider": citation["provider"],
+                    "spatial_coverage": citation["spatial_coverage"],
+                    "temporal_coverage": citation["temporal_coverage"],
+                    "source_url": citation["source_url"]
+                })
+            formatter_args["sources"] = structured_sources
+            print(f"CITATION_FIX DEBUG: Converted citations to structured sources format")
         
         # Remove None values
         formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
