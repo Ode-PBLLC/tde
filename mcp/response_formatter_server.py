@@ -1305,7 +1305,7 @@ def _create_table_from_data(data: List[Dict], heading: str) -> Optional[Dict]:
             "type": "table",
             "heading": heading,
             "columns": display_df.columns.tolist(),
-            "rows": display_df.values.tolist()
+            "rows": display_df.fillna(None).values.tolist()
         }
         
     except Exception as e:
@@ -1730,11 +1730,14 @@ def _create_comparison_table(data: List[Dict], heading: str, tool_name: str = ""
             superscript = f" ^{','.join(map(str, tool_citations))}^"
             cited_heading = f"{heading}{superscript}"
         
+        # Convert NaN values to null for JSON compatibility
+        rows_data = display_df.fillna(None).values.tolist()
+        
         return {
             "type": "comparison_table",
             "heading": cited_heading,
             "columns": display_df.columns.tolist(),
-            "rows": display_df.values.tolist(),
+            "rows": rows_data,
             "metadata": {
                 "tool_used": tool_name,
                 "module_id": module_id,
@@ -1779,7 +1782,7 @@ def _create_ranking_table(data: List[Dict], heading: str, tool_name: str = "", c
             "type": "ranking_table", 
             "heading": cited_heading,
             "columns": display_df.columns.tolist(),
-            "rows": display_df.values.tolist(),
+            "rows": display_df.fillna(None).values.tolist(),
             "metadata": {
                 "tool_used": tool_name,
                 "module_id": module_id,
@@ -1815,7 +1818,7 @@ def _create_trend_table(data: List[Dict], heading: str, tool_name: str = "", cit
             "type": "trend_table",
             "heading": heading,
             "columns": display_df.columns.tolist(), 
-            "rows": display_df.values.tolist(),
+            "rows": display_df.fillna(None).values.tolist(),
             "metadata": {
                 "tool_used": tool_name,
                 "total_periods": len(df),
@@ -1854,7 +1857,7 @@ def _create_summary_table(data: List[Dict], heading: str, tool_name: str = "", c
             "type": "summary_table",
             "heading": cited_heading,
             "columns": display_df.columns.tolist(),
-            "rows": display_df.values.tolist(),
+            "rows": display_df.fillna(None).values.tolist(),
             "metadata": {
                 "tool_used": tool_name,
                 "module_id": module_id,
@@ -1883,7 +1886,7 @@ def _create_detail_table(data: List[Dict], heading: str, tool_name: str = "", ci
             "type": "detail_table",
             "heading": heading,
             "columns": display_df.columns.tolist(),
-            "rows": display_df.values.tolist(),
+            "rows": display_df.fillna(None).values.tolist(),
             "metadata": {
                 "tool_used": tool_name,
                 "total_records": len(df),
@@ -1910,7 +1913,7 @@ def _create_geographic_table(data: List[Dict], heading: str, tool_name: str = ""
             "type": "geographic_table", 
             "heading": heading,
             "columns": display_df.columns.tolist(),
-            "rows": display_df.values.tolist(),
+            "rows": display_df.fillna(None).values.tolist(),
             "metadata": {
                 "tool_used": tool_name,
                 "total_locations": len(df),
