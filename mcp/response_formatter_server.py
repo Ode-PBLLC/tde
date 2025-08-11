@@ -17,7 +17,7 @@ metadata = {
     "Name": "Response Formatter Server",
     "Description": "Formats responses into structured modules for front-end consumption", 
     "Version": "1.0.0",
-    "Author": "Climate Policy Radar Team"
+    "Author": "Mason Grimshaw"
 }
 
 def _generate_unique_module_id(tool_name: str, content_type: str, content: Any = None) -> str:
@@ -117,9 +117,9 @@ AVAILABLE CITATIONS (USE ALL OF THESE):
 {chr(10).join([f"Citation {c['number']}: {c['title']} ({c['provider']}) - {c['description']}" for c in citations_info])}
 
 EXAMPLES:
-- "Brazil has 2,273 facilities^1^ with capacity of 26,022 MW^1^" (same source)
-- "China leads with 22,246 facilities^2^ while India has 4,186 facilities^2^" (same source)
-- "Data shows^1,2,3^ that renewable energy is growing^1,2,3^" (multiple sources)
+- "Brazil has 2,273 facilities with capacity of 26,022 MW^1^"
+- "China leads with 22,246 facilities while India has 4,186 facilities^2^"
+- "Data shows that renewable energy is growing^1,2,3^" (multiple sources)
 
 YOU MUST USE ALL CITATION NUMBERS: {', '.join(all_citation_nums)}
 Return ONLY the text with citations added."""
@@ -1560,6 +1560,12 @@ def _create_sources_table(sources: List) -> Optional[Dict]:
     
     print(f"FORMATTER DEBUG: Creating comprehensive sources table with {len(sources) if sources else 0} sources")
     
+    # CITATION_FIX: Check if sources are in new structured citation format
+    has_structured_citations = sources and len(sources) > 0 and isinstance(sources[0], dict) and "id" in sources[0]
+    if has_structured_citations:
+        print("FORMATTER DEBUG: Detected CITATION_FIX structured citation format")
+        return _create_citation_fix_sources_table(sources)
+    
     # Handle empty sources or "No source captured"
     if not sources or sources == ["No source captured"]:
         rows.append(["1", "N/A", "N/A", "N/A", "N/A", "No sources available for this response"])
@@ -1625,6 +1631,40 @@ def _create_sources_table(sources: List) -> Optional[Dict]:
         "type": "source_table",
         "heading": "Sources and References",
         "columns": ["#", "Source", "ID/Tool", "Type", "Method", "Description"],
+        "rows": rows
+    }
+
+def _create_citation_fix_sources_table(sources: List[Dict]) -> Optional[Dict]:
+    """Create a sources table for CITATION_FIX structured citations."""
+    rows = []
+    
+    print(f"FORMATTER DEBUG: Creating CITATION_FIX sources table with {len(sources)} structured citations")
+    
+    for source in sources:
+        citation_id = source.get("id", "citation_?")
+        citation_number = citation_id.replace("citation_", "")
+        source_name = source.get("source_name", "Unknown Source")
+        provider = source.get("provider", "Unknown Provider")
+        spatial_coverage = source.get("spatial_coverage", "N/A")
+        temporal_coverage = source.get("temporal_coverage", "N/A")
+        source_url = source.get("source_url", "No URL available")
+        
+        rows.append([
+            citation_number,
+            source_name,
+            provider,
+            spatial_coverage,
+            temporal_coverage,
+            source_url
+        ])
+    
+    return {
+        "type": "source_table",
+        "heading": "Sources",
+        "columns": [
+            "#", "Source", "Provider",
+            "Spatial Coverage", "Temporal Coverage", "Source URL"
+        ],
         "rows": rows
     }
 
