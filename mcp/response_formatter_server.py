@@ -422,7 +422,8 @@ async def FormatResponseAsModules(
     map_data: Optional[Dict] = None,
     sources: Optional[List] = None,
     title: str = "Climate Policy Analysis",
-    citation_registry: Optional[Dict] = None
+    citation_registry: Optional[Dict] = None,
+    structured_citations: Optional[List[Dict]] = None
 ) -> Dict[str, Any]:
     """Format response into structured modules with citations."""
     modules = []
@@ -520,8 +521,14 @@ async def FormatResponseAsModules(
         print("FORMATTER DEBUG: No map module created - no map_data provided")
     
     # 5. Add sources as numbered citation table or legacy sources table
-    if citation_registry:
-        # Use new numbered citation table
+    if structured_citations:
+        # CITATION_FIX: Use structured citations format
+        print(f"FORMATTER DEBUG: Using structured_citations with {len(structured_citations)} citations")
+        citation_table = _create_citation_fix_sources_table(structured_citations)
+        if citation_table:
+            modules.append(citation_table)
+    elif citation_registry:
+        # Use numbered citation table from registry
         citation_table = _create_numbered_citation_table(citation_registry)
         if citation_table:
             modules.append(citation_table)

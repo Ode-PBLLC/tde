@@ -17,6 +17,36 @@ import streamlit.components.v1 as components
 import re
 import aiohttp
 
+def convert_citation_format(text: str) -> str:
+    """
+    Convert [citation_X] format to ^X^ format for frontend compatibility.
+    
+    Args:
+        text: Text containing [citation_1], [citation_2] style citations
+        
+    Returns:
+        Text with ^1^, ^2^ style citations
+    """
+    if not text:
+        return text
+        
+    # Replace [citation_1] with ^1^, [citation_2] with ^2^, etc.
+    def replace_citation(match):
+        citation_id = match.group(1)  # Extract the number part
+        # Handle both citation_1 and just 1 formats
+        if citation_id.startswith('citation_'):
+            number = citation_id.replace('citation_', '')
+        else:
+            number = citation_id
+        return f"^{number}^"
+    
+    # Pattern matches [citation_1], [citation_2], etc.
+    pattern = r'\[citation_(\w+)\]'
+    converted_text = re.sub(pattern, replace_citation, text)
+    
+    print(f"CITATION FORMAT DEBUG: Converted citations in text: {len(re.findall(pattern, text))} found")
+    return converted_text
+
 
 load_dotenv()
 
@@ -1411,7 +1441,7 @@ class MultiServerClient:
             synthesis_system_prompt = (SUMMARY_PROMPT +
                 "Based on the following structured facts with citation IDs, synthesize a comprehensive answer to the user's original query. "
                 "Present it as a direct answer, not a summary of the facts themselves. Avoid narrating the tool process. "
-                "IMPORTANT: When referring to information from the facts, include the citation ID in square brackets like [citation_1] at the relevant point in your text. "
+                "IMPORTANT: When referring to information from the facts, include the citation number in caret format like ^1^ at the relevant point in your text. Use the numeric part of the citation_id (e.g., for 'citation_1', use ^1^). "
                 "Use citations judiciously - typically one per paragraph or logical section, not after every single fact. "
                 "Place citations where they naturally support key claims or data points. "
                 "If the facts mention that visualizations are available, you may reference them appropriately.")
@@ -1427,6 +1457,8 @@ class MultiServerClient:
                 messages=synthesis_messages,
             )
             final_response_text = summary_resp.content[0].text.strip()
+            # CITATION_FIX: Convert citation format for frontend compatibility
+            final_response_text = convert_citation_format(final_response_text)
             
         elif len(context_chunks) > 0:
             # Fallback to traditional synthesis for backwards compatibility
@@ -1455,8 +1487,12 @@ class MultiServerClient:
                 messages=synthesis_messages,
             )
             final_response_text = summary_resp.content[0].text.strip()
+            # CITATION_FIX: Convert citation format for frontend compatibility (fallback case)
+            final_response_text = convert_citation_format(final_response_text)
         elif last_assistant_text: # No context chunks, but AI provided a final text response
             final_response_text = last_assistant_text
+            # CITATION_FIX: Convert citation format for frontend compatibility (last assistant text)
+            final_response_text = convert_citation_format(final_response_text)
         else: # Should not happen if AI always responds with text eventually
             final_response_text = "I was unable to produce a response."
 
@@ -1510,6 +1546,7 @@ class MultiServerClient:
             "all_tool_outputs_for_debug": all_tool_outputs_for_debug, # For Feature 2
             "ai_thought_process": "\n".join(intermediate_ai_text_parts), # Add the collected thoughts
             "additional_table_data": additional_table_data,  # NEW: Multi-table data for formatter integration
+            "final_citations_list": final_citations_list,  # CITATION_FIX: Include structured citations
             "citation_registry": {  # NEW: Citation registry for KG generation
                 "citations": self.citation_registry.get_all_citations(),
                 "module_citations": self.citation_registry.module_citations
@@ -1842,6 +1879,10 @@ class MultiServerClient:
         # NEW: Multi-table data collection for streaming
         tool_results_for_tables = []
         
+        # CITATION_FIX: Structured fact collection for streaming
+        intermediate_facts_with_citations = []
+        final_citations_list = []  # Initialize to prevent errors, full implementation later
+        
         while True:
             assistant_message_content = []
 
@@ -2056,6 +2097,45 @@ class MultiServerClient:
                     except Exception:
                         pass
 
+                    # CITATION_FIX: Check for structured fact/citation format from tools (streaming)
+                    if result.content and isinstance(result.content, list) and len(result.content) > 0:
+                        first_content_block = result.content[0]
+                        if hasattr(first_content_block, 'type') and first_content_block.type == 'text' and hasattr(first_content_block, 'text'):
+                            try:
+                                # Attempt to parse the tool result as JSON
+                                parsed_tool_result = json.loads(first_content_block.text)
+
+                                if isinstance(parsed_tool_result, dict) and "fact" in parsed_tool_result:
+                                    # Handle a single fact result
+                                    facts_to_process = [parsed_tool_result]
+                                elif isinstance(parsed_tool_result, list):
+                                    # Handle a list of facts - check if any have the fact/citation_info structure
+                                    facts_to_process = [item for item in parsed_tool_result if isinstance(item, dict) and "fact" in item]
+                                else:
+                                    # Not a recognized format, so skip processing for citations
+                                    facts_to_process = []
+                                
+                                # Process the list of facts (even if it's just one)
+                                for fact_item in facts_to_process:
+                                    fact_text = fact_item.get("fact", "")
+                                    citation_info = fact_item.get("citation_info", {})
+                                
+                                    # Append to our intermediate facts list
+                                    if fact_text and citation_info:
+                                        intermediate_facts_with_citations.append({
+                                            "fact": fact_text,
+                                            "citation_info": citation_info,
+                                            "tool_context": {
+                                                "tool_name": tool_name,
+                                                "tool_args": tool_args
+                                            }
+                                        })
+                                        print(f"STREAMING CITATION_FIX DEBUG: Added structured fact from {tool_name}")
+
+                            except json.JSONDecodeError:
+                                # Handle cases where the tool result is not JSON - continue with existing flow
+                                print(f"STREAMING CITATION_FIX DEBUG: Tool result from {tool_name} is not valid JSON. Using fallback approach.")
+
                     # Collect passage sources
                     if tool_name.lower() == "getmetadata":
                         sources_used.append(result.content)
@@ -2157,6 +2237,54 @@ class MultiServerClient:
                 tools=available_tools,
             )
 
+        # CITATION_FIX: Consolidate citations and prepare facts for LLM (streaming) - MOVED BEFORE SYNTHESIS
+        citation_id_map = {}
+        facts_for_llm = []
+        
+        if len(intermediate_facts_with_citations) > 0:
+            print(f"STREAMING CITATION_FIX DEBUG: Processing {len(intermediate_facts_with_citations)} structured facts with citations")
+            
+            # Consolidate citations by deduplicating based on source_name and source_url
+            citation_id_counter = 1
+            final_citations_list = []  # Reset the placeholder initialization
+            
+            for item in intermediate_facts_with_citations:
+                citation_info = item["citation_info"]
+                citation_key = (citation_info.get('source_name', ''), citation_info.get('source_url', ''))
+
+                if citation_key not in citation_id_map:
+                    new_id = f"citation_{citation_id_counter}"
+                    citation_id_map[citation_key] = new_id
+                    final_citations_list.append({
+                        "id": new_id,
+                        "source_name": citation_info.get('source_name', 'Unknown Source'),
+                        "provider": citation_info.get('provider', 'Unknown Provider'),
+                        "spatial_coverage": citation_info.get('spatial_coverage', ''),
+                        "temporal_coverage": citation_info.get('temporal_coverage', ''),
+                        "source_url": citation_info.get('source_url', '')
+                    })
+                    citation_id_counter += 1
+                    print(f"STREAMING CITATION_FIX DEBUG: Added new citation {new_id}: {citation_info.get('source_name', 'Unknown')}")
+            
+            # Tag the facts with their corresponding citation IDs
+            for item in intermediate_facts_with_citations:
+                citation_info = item["citation_info"]
+                citation_key = (citation_info.get('source_name', ''), citation_info.get('source_url', ''))
+                final_id = citation_id_map.get(citation_key, 'citation_unknown')
+
+                facts_for_llm.append({
+                    "fact": item["fact"],
+                    "citation_id": final_id,
+                    "tool_context": item["tool_context"]
+                })
+            
+            print(f"STREAMING CITATION_FIX DEBUG: Created {len(final_citations_list)} unique citations and {len(facts_for_llm)} tagged facts")
+        
+        else:
+            # If no structured facts, keep the empty initialization
+            final_citations_list = []
+            print("STREAMING CITATION_FIX DEBUG: No intermediate facts with citations found - final_citations_list remains empty")
+
         # Stream synthesis notification
         yield {
             "type": "thinking",
@@ -2166,9 +2294,28 @@ class MultiServerClient:
             }
         }
         
-        # Final synthesis
+        # Final synthesis - prioritize structured facts when available (streaming)
         final_response_text = ""
-        if len(context_chunks) > 0:
+        
+        # CITATION_FIX: Use enhanced synthesis with structured facts when available (streaming)
+        if len(facts_for_llm) > 0:
+            print(f"STREAMING CITATION_FIX DEBUG: Using enhanced synthesis with {len(facts_for_llm)} structured facts")
+            
+            # Enhanced synthesis system prompt for structured facts
+            synthesis_system_prompt = (SUMMARY_PROMPT +
+                "Based on the following structured facts with citation IDs, synthesize a comprehensive answer to the user's original query. "
+                "Present it as a direct answer, not a summary of the facts themselves. Avoid narrating the tool process. "
+                "IMPORTANT: When referring to information from the facts, include the citation number in caret format like ^1^ at the relevant point in your text. Use the numeric part of the citation_id (e.g., for 'citation_1', use ^1^). "
+                "Use citations judiciously - typically one per paragraph or logical section, not after every single fact. "
+                "Place citations where they naturally support key claims or data points. "
+                "If the facts mention that visualizations are available, you may reference them appropriately.")
+            
+            synthesis_messages = [
+                {"role": "user", "content": f"User's original query: {query}\n\nFacts with Citation IDs:\n{json.dumps(facts_for_llm, indent=2)}"}
+            ]
+            
+        elif len(context_chunks) > 0:
+            print("STREAMING CITATION_FIX DEBUG: Using traditional synthesis (no structured facts available)")
             joined_ctx = "\n\n".join(context_chunks)
             SAFE_CTX_LIMIT = 8000
             if len(joined_ctx) > SAFE_CTX_LIMIT:
@@ -2182,7 +2329,13 @@ class MultiServerClient:
             synthesis_messages = [
                 {"role": "user", "content": f"User's original query: {query}\n\nTool-derived Context:\n{joined_ctx}"}
             ]
-            
+        else:
+            # No context at all - should not happen if AI always responds with text eventually
+            final_response_text = "I was unable to produce a response."
+            synthesis_messages = None
+        
+        # Only run synthesis if we have messages to process
+        if synthesis_messages:
             summary_resp = self.anthropic.messages.create(
                 model="claude-3-5-haiku-20241022",
                 max_tokens=1000,
@@ -2190,6 +2343,8 @@ class MultiServerClient:
                 messages=synthesis_messages,
             )
             final_response_text = summary_resp.content[0].text.strip()
+            # CITATION_FIX: Convert citation format for frontend compatibility (streaming)
+            final_response_text = convert_citation_format(final_response_text)
 
         # Stream synthesis completion
         yield {
@@ -2206,6 +2361,7 @@ class MultiServerClient:
         if uniq_passages:
             sources_used.extend(uniq_passages.values())
             print(f"DEBUG STREAMING: Sources used now contains {len(sources_used)} items")
+
 
         # NEW: Generate multiple tables from collected tool results
         additional_modules = []
@@ -2292,22 +2448,12 @@ class MultiServerClient:
             }
         }
         
-        # CITATION_FIX: Use final_citations_list when available for better source formatting
+        # CITATION_FIX: Add final_citations_list when available (keep original sources)
         if final_citations_list:
-            print(f"CITATION_FIX DEBUG: Passing {len(final_citations_list)} structured citations to formatter")
-            # Convert final_citations_list to sources format for API compatibility
-            structured_sources = []
-            for citation in final_citations_list:
-                structured_sources.append({
-                    "id": citation["id"],
-                    "source_name": citation["source_name"],
-                    "provider": citation["provider"],
-                    "spatial_coverage": citation["spatial_coverage"],
-                    "temporal_coverage": citation["temporal_coverage"],
-                    "source_url": citation["source_url"]
-                })
-            formatter_args["sources"] = structured_sources
-            print(f"CITATION_FIX DEBUG: Converted citations to structured sources format")
+            print(f"CITATION_FIX DEBUG: Adding {len(final_citations_list)} structured citations to formatter args")
+            # Add structured citations as a separate field, keep original sources intact
+            formatter_args["structured_citations"] = final_citations_list
+            print(f"CITATION_FIX DEBUG: Added structured_citations field")
         
         # Remove None values
         formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
@@ -2559,6 +2705,7 @@ async def run_query(q: str):
         "visualization_data": result.get("visualization_data"), 
         "map_data": map_data_from_result,  # Use map_data from result dict
         "sources": result.get("sources"),
+        "structured_citations": result.get("final_citations_list"),  # CITATION_FIX: Pass structured citations
         "title": "Climate Policy Analysis",
         "citation_registry": {
             "citations": client.citation_registry.get_all_citations(),
