@@ -1636,9 +1636,9 @@ def _create_sources_table(sources: List) -> Optional[Dict]:
                 rows.append([str(i), "General Reference", "N/A", "General", "Legacy", str(source)[:150]])
     
     return {
-        "type": "source_table",
-        "heading": "Sources and References",
-        "columns": ["#", "Source", "ID/Tool", "Type", "Method", "Description"],
+        "type": "numbered_citation_table",
+        "heading": "References",
+        "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
         "rows": rows
     }
 
@@ -1657,22 +1657,23 @@ def _create_citation_fix_sources_table(sources: List[Dict]) -> Optional[Dict]:
         temporal_coverage = source.get("temporal_coverage", "N/A")
         source_url = source.get("source_url", "No URL available")
         
+        # Map provider to ID/Tool and create description
+        tool_id = f"{provider} Database" if provider != "Unknown Provider" else "Unknown Tool"
+        data_type = "Database" if "Database" in source_name else "Dataset"
+        description = f"{spatial_coverage} - {temporal_coverage}"
+        
         rows.append([
             citation_number,
             source_name,
-            provider,
-            spatial_coverage,
-            temporal_coverage,
-            source_url
+            tool_id,
+            data_type,
+            description
         ])
     
     return {
-        "type": "source_table",
-        "heading": "Sources",
-        "columns": [
-            "#", "Source", "Provider",
-            "Spatial Coverage", "Temporal Coverage", "Source URL"
-        ],
+        "type": "numbered_citation_table", 
+        "heading": "References",
+        "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
         "rows": rows
     }
 

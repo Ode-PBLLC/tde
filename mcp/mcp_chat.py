@@ -2706,7 +2706,7 @@ class MultiServerClient:
                         # Insert additional tables before the source table
                         source_table_index = None
                         for i, module in enumerate(all_modules):
-                            if module.get("type") == "source_table":
+                            if module.get("type") == "numbered_citation_table":
                                 source_table_index = i
                                 break
                         
@@ -2786,7 +2786,7 @@ class MultiServerClient:
                                 "modules_count": len(all_modules),
                                 "has_maps": any(m.get("type") == "map" for m in all_modules),
                                 "has_charts": any(m.get("type") == "chart" for m in all_modules),
-                                "has_tables": any(m.get("type") in ["table", "source_table", "comparison_table", "ranking_table", "trend_table", "summary_table", "detail_table", "geographic_table"] for m in all_modules),
+                                "has_tables": any(m.get("type") in ["table", "numbered_citation_table", "comparison_table", "ranking_table", "trend_table", "summary_table", "detail_table", "geographic_table"] for m in all_modules),
                                 "table_types": list(set(m.get("type") for m in all_modules if m.get("type", "").endswith("_table"))),
                                 "enhanced_tables_count": len(additional_modules),
                                 "kg_visualization_url": "/kg-viz",
@@ -2979,7 +2979,7 @@ async def run_query(q: str):
                 # Insert additional tables before the source table
                 source_table_index = None
                 for i, module in enumerate(all_modules):
-                    if module.get("type") == "source_table":
+                    if module.get("type") == "numbered_citation_table":
                         source_table_index = i
                         break
                 
