@@ -384,3 +384,54 @@ System: [References both Brazil and India context from conversation history]
 - Obtain governance data from Alex
 - Integrate governance data into existing MCP server infrastructure
 - Update knowledge graph and query capabilities to include governance information
+
+### Develop Stress Testing Framework for Response Times and Costs
+**Date Added**: August 5, 2025  
+**Priority**: High  
+**Component**: Testing infrastructure and performance analysis
+
+**Current Behavior**:
+- No systematic way to measure system performance under load
+- Response times and API costs not tracked during burst traffic
+- No benchmarking framework for stress testing
+
+**Desired Behavior**:
+- Develop comprehensive stress testing framework
+- Benchmark response times under various load conditions
+- Track API costs during burst queries
+- Identify performance bottlenecks and scalability limits
+
+**Implementation Ideas**:
+1. Create test suite that generates burst queries with configurable:
+   - Concurrent request counts (10, 50, 100+ simultaneous queries)
+   - Query complexity levels (simple vs. complex multi-tool queries)
+   - Duration and frequency patterns
+2. Implement metrics collection for:
+   - Time to first token (TTFT)
+   - Total response time
+   - API token usage and costs per provider
+   - Error rates and failure modes
+   - Memory usage and system resources
+3. Add performance regression detection
+4. Create load testing scenarios that simulate real user behavior
+5. Generate performance reports with visualizations
+
+**Testing Scenarios**:
+- Sustained load: 20 concurrent users for 10 minutes
+- Burst traffic: 100 simultaneous queries
+- Complex query stress: KG + visualization + formatting pipeline
+- Rate limit testing: Push API limits to measure graceful degradation
+- Mixed query types: Combine simple and complex queries
+
+**Deliverables**:
+- Stress testing script in test_scripts directory
+- Performance benchmarking dashboard
+- Cost analysis reporting
+- System scalability recommendations
+- Performance regression test suite
+
+**Benefits**:
+- Identify system bottlenecks before production issues
+- Optimize API costs through better understanding of usage patterns
+- Validate system reliability under load
+- Data-driven capacity planning and scaling decisions

@@ -432,22 +432,27 @@ async def FormatResponseAsModules(
         # Split into paragraphs for better formatting
         paragraphs = [p.strip() for p in response_text.split('\n\n') if p.strip()]
         
-        # Use LLM for intelligent citation placement
-        if citation_registry:
-            print("🤖 Using LLM for intelligent citation placement...")
-            try:
-                # Process each paragraph with LLM for contextual citation placement
-                for i, paragraph in enumerate(paragraphs):
-                    paragraphs[i] = await _insert_llm_citations(paragraph, citation_registry)
-                    
-                print(f"✅ LLM citation placement completed for {len(paragraphs)} paragraphs")
-            except Exception as e:
-                print(f"⚠️  LLM citation placement failed: {e}")
-                # Fallback to simple citation placement
-                all_tool_citations = _get_all_tool_citations(citation_registry)
-                if all_tool_citations and paragraphs:
-                    superscript = f" ^{','.join(map(str, sorted(all_tool_citations)))}^"
-                    paragraphs[0] = paragraphs[0] + superscript
+        # Add inline citations to each paragraph using proper citation mapping
+        if citation_registry and paragraphs:
+            # Process each paragraph with inline citations
+            cited_paragraphs = []
+            for i, paragraph in enumerate(paragraphs):
+                # Use a generic module ID for the main text response
+                module_id = f"text_module_{i}"
+                
+                # Insert inline citations using the existing function
+                cited_paragraph = _insert_inline_citations(paragraph, module_id, citation_registry)
+                
+                # If no module-specific citations found, add general tool citations to first paragraph
+                if i == 0 and cited_paragraph == paragraph:
+                    all_tool_citations = _get_all_tool_citations(citation_registry)
+                    if all_tool_citations:
+                        superscript = f" ^{','.join(map(str, sorted(all_tool_citations)))}^"
+                        cited_paragraph = paragraph + superscript
+                
+                cited_paragraphs.append(cited_paragraph)
+            
+            paragraphs = cited_paragraphs
         
         modules.append({
             "type": "text", 
