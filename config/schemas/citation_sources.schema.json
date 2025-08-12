@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Citation Sources Configuration Schema",
+  "description": "Schema for validating citation sources configuration files",
+  "type": "object",
+  "properties": {
+    "tool_citations": {
+      "type": "object",
+      "description": "Mapping of tool names to their citation information",
+      "patternProperties": {
+        "^[a-zA-Z0-9_]+$": {
+          "type": "object",
+          "description": "Citation information for a specific tool",
+          "properties": {
+            "source_name": {
+              "type": "string",
+              "description": "Human-readable name of the data source",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "provider": {
+              "type": "string",
+              "description": "Organization or entity providing the data",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "spatial_coverage": {
+              "type": "string",
+              "description": "Geographic scope of the data (supports template variables like {country})",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "temporal_coverage": {
+              "type": "string",
+              "description": "Time period covered by the data",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "source_url": {
+              "type": "string",
+              "description": "URL to the data source (can be empty string)",
+              "format": "uri",
+              "maxLength": 500
+            }
+          },
+          "required": ["source_name", "provider", "spatial_coverage", "temporal_coverage", "source_url"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "domain_examples": {
+      "type": "object",
+      "description": "Optional examples for different domains",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9_]+$": {
+              "type": "object",
+              "properties": {
+                "source_name": {"type": "string"},
+                "provider": {"type": "string"},
+                "spatial_coverage": {"type": "string"},
+                "temporal_coverage": {"type": "string"},
+                "source_url": {"type": "string", "format": "uri"}
+              },
+              "required": ["source_name", "provider", "spatial_coverage", "temporal_coverage", "source_url"]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "required_fields": {
+      "type": "object",
+      "description": "Documentation of required fields",
+      "properties": {
+        "source_name": {"type": "string"},
+        "provider": {"type": "string"},
+        "spatial_coverage": {"type": "string"},
+        "temporal_coverage": {"type": "string"},
+        "source_url": {"type": "string"}
+      }
+    },
+    "setup_instructions": {
+      "type": "array",
+      "description": "Optional setup instructions for documentation",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["tool_citations"],
+  "additionalProperties": false
+}

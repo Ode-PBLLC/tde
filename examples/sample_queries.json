@@ -1,0 +1,171 @@
+{
+  "_comment": "Sample queries for testing and demonstration",
+  "_documentation": "These queries work with the template server and demonstrate various capabilities",
+  
+  "basic_queries": [
+    {
+      "id": "simple-overview",
+      "title": "Simple Data Overview",
+      "query": "Show me an overview of the available data with key statistics",
+      "expected_tools": ["GetTemplateStatistics", "GetTemplateData"],
+      "description": "Basic query to test data loading and statistics"
+    },
+    {
+      "id": "search-technology",
+      "title": "Search Technology Items", 
+      "query": "Find all technology-related items and show their details",
+      "expected_tools": ["SearchTemplateData", "CreateTableVisualization"],
+      "description": "Tests search functionality and table generation"
+    },
+    {
+      "id": "category-breakdown",
+      "title": "Category Analysis",
+      "query": "Analyze the different categories in the dataset and create a chart showing the distribution",
+      "expected_tools": ["GetAvailableCategories", "CreateBarChart", "CreatePieChart"],
+      "description": "Tests category analysis and chart generation"
+    }
+  ],
+  
+  "visualization_queries": [
+    {
+      "id": "value-distribution",
+      "title": "Value Distribution Analysis",
+      "query": "Show me the distribution of values across all items with a histogram and summary statistics",
+      "expected_tools": ["GetTemplateData", "CreateHistogram", "GetTemplateStatistics"],
+      "description": "Tests histogram generation and statistical analysis"
+    },
+    {
+      "id": "category-comparison",
+      "title": "Category Comparison Chart",
+      "query": "Create a bar chart comparing average values by category",
+      "expected_tools": ["GetTemplateStatistics", "CreateBarChart"],
+      "description": "Tests aggregated data visualization"
+    },
+    {
+      "id": "status-pie-chart",
+      "title": "Status Distribution",
+      "query": "Show the distribution of item statuses using a pie chart",
+      "expected_tools": ["GetTemplateStatistics", "CreatePieChart"],
+      "description": "Tests pie chart generation with categorical data"
+    }
+  ],
+  
+  "advanced_queries": [
+    {
+      "id": "filtered-analysis",
+      "title": "Filtered Data Analysis",
+      "query": "Find all active items with value greater than 200, show them in a table and create a chart of their categories",
+      "expected_tools": ["SearchTemplateData", "CreateTableVisualization", "CreateBarChart"],
+      "description": "Tests complex filtering and multiple visualization types"
+    },
+    {
+      "id": "comprehensive-report",
+      "title": "Comprehensive Data Report",
+      "query": "Generate a comprehensive report including data statistics, category breakdown, value distribution, and key insights with appropriate visualizations",
+      "expected_tools": ["GetTemplateStatistics", "GetAvailableCategories", "CreateBarChart", "CreateHistogram", "CreateTableVisualization"],
+      "description": "Tests multiple tools working together for comprehensive analysis"
+    }
+  ],
+  
+  "domain_specific_examples": {
+    "finance": [
+      {
+        "id": "stock-analysis",
+        "title": "Stock Price Analysis",
+        "query": "Show me the price history for AAPL over the last 30 days and create a line chart",
+        "expected_tools": ["GetPriceHistory", "CreateTimeSeriesChart"]
+      },
+      {
+        "id": "sector-comparison",
+        "title": "Sector Performance",
+        "query": "Compare the performance of different market sectors with market cap analysis",
+        "expected_tools": ["GetAvailableSectors", "GetSectorAnalysis", "CreateBarChart"]
+      }
+    ],
+    
+    "environmental": [
+      {
+        "id": "pollution-analysis",
+        "title": "Air Quality Analysis",
+        "query": "Analyze air quality data for major cities and show trends over time",
+        "expected_tools": ["SearchEnvironmentalData", "CreateTimeSeriesChart", "CreateMap"]
+      },
+      {
+        "id": "geographic-distribution",
+        "title": "Geographic Distribution",
+        "query": "Show the geographic distribution of monitoring stations on a map",
+        "expected_tools": ["GetMonitoringStations", "CreatePointMap"]
+      }
+    ],
+    
+    "healthcare": [
+      {
+        "id": "clinical-trials",
+        "title": "Clinical Trial Analysis", 
+        "query": "Analyze clinical trial data by phase and therapeutic area",
+        "expected_tools": ["SearchClinicalTrials", "CreateBarChart", "CreatePieChart"]
+      },
+      {
+        "id": "drug-approval-trends",
+        "title": "Drug Approval Trends",
+        "query": "Show drug approval trends over the past 5 years with timeline visualization",
+        "expected_tools": ["GetDrugApprovals", "CreateTimeSeriesChart"]
+      }
+    ]
+  },
+  
+  "testing_queries": {
+    "error_handling": [
+      {
+        "id": "invalid-search",
+        "title": "Invalid Search Test",
+        "query": "Search for XYZ123 which should not exist",
+        "purpose": "Test empty result handling"
+      },
+      {
+        "id": "malformed-request",
+        "title": "Edge Case Test", 
+        "query": "Get category breakdown for a category that doesn't exist",
+        "purpose": "Test error handling for invalid parameters"
+      }
+    ],
+    
+    "performance": [
+      {
+        "id": "large-dataset",
+        "title": "Large Result Test",
+        "query": "Get all available data without filters",
+        "purpose": "Test handling of large result sets"
+      },
+      {
+        "id": "complex-visualization",
+        "title": "Complex Chart Test",
+        "query": "Create multiple charts showing data from different perspectives",
+        "purpose": "Test complex visualization generation"
+      }
+    ]
+  },
+  
+  "query_patterns": {
+    "data_retrieval": [
+      "Show me [data type]",
+      "Get information about [entity]",
+      "Find all [category] items",
+      "List available [resource]"
+    ],
+    
+    "analysis": [
+      "Analyze [data] by [dimension]",
+      "Compare [entity1] with [entity2]",
+      "What are the trends in [data]?",
+      "Show the distribution of [attribute]"
+    ],
+    
+    "visualization": [
+      "Create a chart showing [data]",
+      "Visualize the relationship between [x] and [y]",
+      "Show [data] on a map",
+      "Generate a report with charts for [analysis]"
+    ]
+  }
+}

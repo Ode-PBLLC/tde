@@ -1,0 +1,103 @@
+{
+  "_comment": "Finance Domain Citation Sources Configuration",
+  "_documentation": "Maps financial data tools to their citation information",
+  
+  "tool_citations": {
+    "GetStockPrice": {
+      "source_name": "Demo Financial Database - Stock Prices",
+      "provider": "ODE Framework Finance Example",
+      "spatial_coverage": "US Stock Markets (Demo Data)",
+      "temporal_coverage": "Past 12 months (simulated)",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "SearchCompanies": {
+      "source_name": "Demo Company Information Database",
+      "provider": "ODE Framework Finance Example",
+      "spatial_coverage": "US Public Companies (Demo Data)",
+      "temporal_coverage": "Current company information (simulated)",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "GetSectorAnalysis": {
+      "source_name": "Demo Sector Analysis Engine",
+      "provider": "ODE Framework Finance Example", 
+      "spatial_coverage": "US Market Sectors (Demo Data)",
+      "temporal_coverage": "Current market data (simulated)",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "GetMarketOverview": {
+      "source_name": "Demo Market Statistics Database",
+      "provider": "ODE Framework Finance Example",
+      "spatial_coverage": "US Financial Markets (Demo Data)", 
+      "temporal_coverage": "Current market state (simulated)",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "GetPriceHistory": {
+      "source_name": "Demo Historical Price Database",
+      "provider": "ODE Framework Finance Example",
+      "spatial_coverage": "US Stock Markets (Demo Data)",
+      "temporal_coverage": "Past 12 months (simulated)",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "GetAvailableSectors": {
+      "source_name": "Demo Market Sector Classifications",
+      "provider": "ODE Framework Finance Example",
+      "spatial_coverage": "US Market Classifications (Demo Data)",
+      "temporal_coverage": "Current sector definitions",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "HealthCheck": {
+      "source_name": "Finance Server Health Monitor",
+      "provider": "ODE Framework Finance Example",
+      "spatial_coverage": "Server status information",
+      "temporal_coverage": "Real-time",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "CreateLineChart": {
+      "source_name": "Generic Visualization Engine",
+      "provider": "ODE Framework",
+      "spatial_coverage": "Chart generation service",
+      "temporal_coverage": "Real-time chart creation",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    },
+    "CreateBarChart": {
+      "source_name": "Generic Visualization Engine",
+      "provider": "ODE Framework",
+      "spatial_coverage": "Chart generation service",
+      "temporal_coverage": "Real-time chart creation",
+      "source_url": "https://github.com/ode-pbllc/ode-mcp-generic"
+    }
+  },
+  
+  "real_world_examples": {
+    "_note": "In a production finance system, you would replace demo citations with real sources",
+    
+    "GetStockPriceRealWorld": {
+      "source_name": "Yahoo Finance API",
+      "provider": "Yahoo Finance",
+      "spatial_coverage": "Global stock markets",
+      "temporal_coverage": "Real-time and historical data",
+      "source_url": "https://finance.yahoo.com"
+    },
+    "GetCompanyDataRealWorld": {
+      "source_name": "SEC EDGAR Database",
+      "provider": "U.S. Securities and Exchange Commission",
+      "spatial_coverage": "US public companies",
+      "temporal_coverage": "1994-present",
+      "source_url": "https://sec.gov/edgar"
+    },
+    "GetMarketDataRealWorld": {
+      "source_name": "Alpha Vantage Financial API",
+      "provider": "Alpha Vantage Inc.",
+      "spatial_coverage": "Global financial markets",
+      "temporal_coverage": "Real-time and 20+ years historical",
+      "source_url": "https://alphavantage.co"
+    }
+  },
+  
+  "citation_guidelines": {
+    "data_accuracy": "Demo data is simulated and should not be used for actual investment decisions",
+    "update_frequency": "In production, update citations when data sources change",
+    "compliance": "Ensure citations meet financial data compliance requirements",
+    "attribution": "Always properly attribute data sources for regulatory compliance"
+  }
+}

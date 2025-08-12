@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Server Configuration Schema",
+  "description": "Schema for validating MCP server configuration files",
+  "type": "object",
+  "properties": {
+    "servers": {
+      "type": "array",
+      "description": "Array of MCP server definitions",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique name for the server",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative path to the server script",
+            "pattern": "^[a-zA-Z0-9_/-]+\\.(py|js)$",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the server",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "example_tools": {
+            "type": "array",
+            "description": "Optional list of example tools provided by this server",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_]+$"
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this server is enabled (defaults to true)",
+            "default": true
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether this server is required for the application to function",
+            "default": false
+          }
+        },
+        "required": ["name", "path", "description"],
+        "additionalProperties": false
+      }
+    },
+    "configuration_notes": {
+      "type": "array",
+      "description": "Optional configuration notes for documentation",
+      "items": {
+        "type": "string"
+      }
+    },
+    "domain_examples": {
+      "type": "object",
+      "description": "Optional examples for different domains",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "properties": {
+            "servers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["servers"],
+  "additionalProperties": false
+}

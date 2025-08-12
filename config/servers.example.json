@@ -1,0 +1,57 @@
+{
+  "_comment": "MCP Server Configuration Template",
+  "_instructions": "Copy this file to 'servers.json' and customize for your domain",
+  "_documentation": "Each server entry defines an MCP server that will be connected to the orchestration system",
+  
+  "servers": [
+    {
+      "name": "knowledge_graph",
+      "path": "mcp/kg_server.py",
+      "description": "Domain-specific knowledge graph server",
+      "example_tools": ["GetConcepts", "GetRelationships", "SearchKnowledge"]
+    },
+    {
+      "name": "domain_data", 
+      "path": "mcp/data_server.py",
+      "description": "Main domain data server",
+      "example_tools": ["SearchData", "GetStatistics", "GetDetails"]
+    },
+    {
+      "name": "visualization",
+      "path": "mcp/visualization_server.py",
+      "description": "Generic chart and visualization server",
+      "example_tools": ["CreateLineChart", "CreateBarChart", "CreatePieChart", "CreateScatterPlot"]
+    },
+    {
+      "name": "geographic",
+      "path": "mcp/geographic_server.py",
+      "description": "Universal mapping and geographic analysis server",
+      "example_tools": ["CreateMap", "CreateChoropleth", "GeocodeLocations", "SpatialAnalysis"]
+    },
+    {
+      "name": "response_formatter",
+      "path": "mcp/response_formatter_server.py", 
+      "description": "Citation system and response formatting server",
+      "example_tools": ["FormatResponse", "AddCitations", "CreateModule"]
+    }
+  ],
+  
+  "configuration_notes": [
+    "The 'path' should be relative to the project root directory",
+    "Server names should be unique and descriptive",
+    "All servers should implement the BaseMCPServer abstract class",
+    "Only include servers that are essential for your domain"
+  ],
+  
+  "domain_examples": {
+    "finance": {
+      "servers": ["market_data_server.py", "portfolio_analysis_server.py", "risk_assessment_server.py"]
+    },
+    "healthcare": {
+      "servers": ["patient_data_server.py", "clinical_research_server.py", "drug_database_server.py"]
+    },
+    "environmental": {
+      "servers": ["environmental_data_server.py", "climate_analysis_server.py", "pollution_monitoring_server.py"]
+    }
+  }
+}

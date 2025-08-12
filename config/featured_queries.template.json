@@ -1,0 +1,113 @@
+{
+  "_comment": "Featured Queries Configuration Template",
+  "_instructions": "Copy this file to 'featured_queries.json' and customize with domain-specific example queries",
+  "_documentation": "Defines showcase queries that demonstrate your domain's capabilities",
+  
+  "featured_queries": [
+    {
+      "id": "example-overview",
+      "title": "Domain Overview Analysis",
+      "query": "Provide a comprehensive overview of the key trends and statistics in our domain. Include visualizations and data summaries.",
+      "category": "Overview",
+      "description": "High-level analysis showcasing multiple data sources and visualization capabilities",
+      "image": "/static/images/domain-overview.jpg",
+      "estimated_response_time": "15-30 seconds",
+      "demonstrates": ["Multi-source data integration", "Visualization generation", "Citation system"]
+    },
+    {
+      "id": "example-detailed-analysis", 
+      "title": "Detailed Comparative Analysis",
+      "query": "Compare performance metrics across different categories. Show trends over time and highlight key insights with supporting data.",
+      "category": "Analysis",
+      "description": "In-depth comparative analysis with time-series data and insights",
+      "image": "/static/images/comparative-analysis.jpg", 
+      "estimated_response_time": "20-45 seconds",
+      "demonstrates": ["Time-series analysis", "Comparative visualizations", "Data insights"]
+    }
+  ],
+  
+  "domain_examples": {
+    "finance": [
+      {
+        "id": "portfolio-analysis",
+        "title": "Portfolio Risk Assessment",
+        "query": "Analyze the risk profile of my technology stock portfolio. Show sector diversification, volatility metrics, and correlation analysis with market indices.",
+        "category": "Risk Analysis",
+        "description": "Comprehensive portfolio risk analysis with diversification insights"
+      },
+      {
+        "id": "market-trends",
+        "title": "Market Trend Analysis",
+        "query": "Show current market trends for renewable energy stocks. Include price movements, volume analysis, and correlation with ESG factors.",
+        "category": "Market Analysis", 
+        "description": "Market trend analysis focusing on sustainable investments"
+      }
+    ],
+    
+    "environmental": [
+      {
+        "id": "air-quality-analysis",
+        "title": "Regional Air Quality Assessment",
+        "query": "Analyze air quality trends in major metropolitan areas over the past 5 years. Show pollutant levels, seasonal patterns, and policy impact analysis.",
+        "category": "Air Quality",
+        "description": "Comprehensive air quality analysis with trend identification and policy correlation"
+      },
+      {
+        "id": "climate-impact",
+        "title": "Climate Change Impact Analysis", 
+        "query": "Assess climate change impacts on agricultural regions. Include temperature trends, precipitation changes, and crop yield correlations.",
+        "category": "Climate Analysis",
+        "description": "Climate impact analysis focusing on agricultural implications"
+      }
+    ],
+    
+    "healthcare": [
+      {
+        "id": "drug-efficacy-analysis",
+        "title": "Drug Efficacy Comparison",
+        "query": "Compare the efficacy rates of diabetes medications approved in the last 5 years. Include side effect profiles and cost-effectiveness analysis.",
+        "category": "Drug Analysis",
+        "description": "Comprehensive pharmaceutical analysis with efficacy and safety comparisons"
+      },
+      {
+        "id": "clinical-trial-trends",
+        "title": "Clinical Trial Trend Analysis",
+        "query": "Analyze trends in oncology clinical trials. Show geographic distribution, funding sources, and success rates by cancer type.",
+        "category": "Research Analysis",
+        "description": "Clinical research trend analysis with geographic and funding insights"
+      }
+    ]
+  },
+  
+  "query_structure_guidelines": {
+    "effective_queries": [
+      "Be specific about the type of analysis desired",
+      "Mention desired visualizations (charts, maps, tables)",
+      "Include time frames when relevant",
+      "Request comparisons or trend analysis",
+      "Ask for supporting data and citations"
+    ],
+    "query_components": {
+      "scope": "Define what to analyze (entities, regions, time periods)",
+      "analysis_type": "Specify comparison, trend, overview, or detailed analysis",
+      "visualizations": "Request specific chart types or visual representations",
+      "context": "Provide domain-specific context or constraints"
+    }
+  },
+  
+  "setup_instructions": [
+    "1. Copy this file to config/featured_queries.json",
+    "2. Replace example queries with domain-specific examples",
+    "3. Ensure queries work with your MCP servers and data sources",
+    "4. Add appropriate images to static/images/ directory",
+    "5. Test queries using the API endpoints",
+    "6. Update categories and descriptions to match your domain"
+  ],
+  
+  "image_guidelines": {
+    "recommended_size": "1200x630 pixels",
+    "format": "JPG or PNG",
+    "content": "Relevant visualization or domain imagery",
+    "location": "static/images/ directory"
+  }
+}

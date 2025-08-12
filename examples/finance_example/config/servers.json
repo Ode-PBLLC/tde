@@ -1,0 +1,52 @@
+{
+  "_comment": "Finance Domain Server Configuration Example",
+  "_documentation": "This shows how to configure servers for a finance domain implementation",
+  
+  "servers": [
+    {
+      "name": "finance_data",
+      "path": "examples/finance_example/mcp/finance_server.py",
+      "description": "Main financial data server with stock prices and company information"
+    },
+    {
+      "name": "visualization",
+      "path": "mcp/visualization_server.py",
+      "description": "Generic visualization server for charts and graphs"
+    },
+    {
+      "name": "response_formatter",
+      "path": "mcp/response_formatter_server.py",
+      "description": "Citation system and response formatting"
+    },
+    {
+      "name": "geographic",
+      "path": "mcp/geographic_server.py",
+      "description": "Geographic tools for regional market analysis"
+    }
+  ],
+  
+  "domain_configuration": {
+    "domain_name": "finance",
+    "description": "Financial market data and analysis",
+    "primary_data_sources": [
+      "Stock price data",
+      "Company information",
+      "Market indices",
+      "Sector classifications"
+    ],
+    "key_capabilities": [
+      "Stock price lookup",
+      "Company search and analysis",
+      "Sector performance analysis",
+      "Historical price charting",
+      "Market overview statistics"
+    ]
+  },
+  
+  "setup_notes": [
+    "Ensure finance_server.py is properly configured with data paths",
+    "The visualization server enables price charts and sector analysis",
+    "Geographic server can be used for regional market analysis",
+    "All servers support the advanced citation system"
+  ]
+}

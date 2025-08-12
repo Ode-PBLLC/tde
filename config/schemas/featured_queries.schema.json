@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Featured Queries Configuration Schema",
+  "description": "Schema for validating featured queries configuration files",
+  "type": "object",
+  "properties": {
+    "queries": {
+      "type": "array",
+      "description": "Array of featured queries for the domain",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the query",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title for the query",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what this query demonstrates",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "query": {
+            "type": "string",
+            "description": "The actual query text",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "category": {
+            "type": "string",
+            "description": "Category for grouping queries",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "difficulty": {
+            "type": "string",
+            "description": "Difficulty level of the query",
+            "enum": ["beginner", "intermediate", "advanced"]
+          },
+          "expected_tools": {
+            "type": "array",
+            "description": "Tools expected to be used by this query",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_]+$"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tags for filtering and search",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "maxLength": 30
+            }
+          }
+        },
+        "required": ["id", "title", "description", "query", "category"],
+        "additionalProperties": false
+      }
+    },
+    "categories": {
+      "type": "array",
+      "description": "Available query categories",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Category name",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "description": {
+            "type": "string",
+            "description": "Category description",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": ["name", "description"],
+        "additionalProperties": false
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Metadata about the query collection",
+      "properties": {
+        "domain": {
+          "type": "string",
+          "description": "Domain these queries are for",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the query collection",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "last_updated": {
+          "type": "string",
+          "description": "Last update date in ISO format",
+          "format": "date"
+        }
+      }
+    }
+  },
+  "required": ["queries"],
+  "additionalProperties": false
+}

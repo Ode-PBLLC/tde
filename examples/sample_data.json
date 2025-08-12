@@ -1,0 +1,98 @@
+{
+  "sample_dataset": {
+    "description": "Minimal sample dataset for testing and demonstration",
+    "version": "1.0.0",
+    "created": "2024-01-15",
+    "records": [
+      {
+        "id": "SAMPLE_001",
+        "name": "Sample Item Alpha",
+        "category": "Technology",
+        "value": 150,
+        "description": "First sample item for testing",
+        "status": "active",
+        "metadata": {
+          "priority": "high",
+          "tags": ["sample", "test", "technology"]
+        }
+      },
+      {
+        "id": "SAMPLE_002", 
+        "name": "Sample Item Beta",
+        "category": "Healthcare",
+        "value": 275,
+        "description": "Second sample item for testing",
+        "status": "active",
+        "metadata": {
+          "priority": "medium",
+          "tags": ["sample", "test", "healthcare"]
+        }
+      },
+      {
+        "id": "SAMPLE_003",
+        "name": "Sample Item Gamma",
+        "category": "Finance",
+        "value": 425,
+        "description": "Third sample item for testing",
+        "status": "inactive",
+        "metadata": {
+          "priority": "low",
+          "tags": ["sample", "test", "finance"]
+        }
+      },
+      {
+        "id": "SAMPLE_004",
+        "name": "Sample Item Delta",
+        "category": "Energy",
+        "value": 325,
+        "description": "Fourth sample item for testing",
+        "status": "pending",
+        "metadata": {
+          "priority": "high",
+          "tags": ["sample", "test", "energy"]
+        }
+      },
+      {
+        "id": "SAMPLE_005",
+        "name": "Sample Item Epsilon",
+        "category": "Education",
+        "value": 200,
+        "description": "Fifth sample item for testing",
+        "status": "active",
+        "metadata": {
+          "priority": "medium",
+          "tags": ["sample", "test", "education"]
+        }
+      }
+    ]
+  },
+  
+  "usage_examples": {
+    "search_queries": [
+      "alpha",
+      "technology",
+      "high priority",
+      "active"
+    ],
+    "filter_examples": {
+      "category": "Technology",
+      "status": "active", 
+      "min_value": 200,
+      "max_value": 400
+    }
+  },
+  
+  "schema": {
+    "required_fields": ["id", "name", "category", "value"],
+    "optional_fields": ["description", "status", "metadata"],
+    "field_types": {
+      "id": "string",
+      "name": "string", 
+      "category": "string",
+      "value": "number",
+      "description": "string",
+      "status": "string (active|inactive|pending)",
+      "metadata": "object"
+    }
+  }
+}

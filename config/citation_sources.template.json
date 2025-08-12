@@ -1,0 +1,91 @@
+{
+  "_comment": "Citation Sources Configuration Template",
+  "_instructions": "Copy this file to 'citation_sources.json' and customize for your domain's data sources",
+  "_documentation": "Maps MCP tool names to their citation metadata for proper attribution",
+  
+  "tool_citations": {
+    "ExampleDataTool": {
+      "source_name": "Example Dataset Name",
+      "provider": "Data Provider Organization",
+      "spatial_coverage": "Geographic coverage description",
+      "temporal_coverage": "Time period covered",
+      "source_url": "https://datasource.example.com"
+    },
+    "ExampleAnalysisTool": {
+      "source_name": "Analysis Engine v2.1",
+      "provider": "Research Institute",
+      "spatial_coverage": "Global",
+      "temporal_coverage": "Real-time",
+      "source_url": "https://research.example.com/analysis-engine"
+    }
+  },
+  
+  "domain_examples": {
+    "finance": {
+      "GetStockPrice": {
+        "source_name": "Yahoo Finance API",
+        "provider": "Yahoo Finance",
+        "spatial_coverage": "Global markets",
+        "temporal_coverage": "Real-time",
+        "source_url": "https://finance.yahoo.com"
+      },
+      "GetCompanyFinancials": {
+        "source_name": "SEC EDGAR Database",
+        "provider": "U.S. Securities and Exchange Commission",
+        "spatial_coverage": "United States public companies",
+        "temporal_coverage": "1994-present",
+        "source_url": "https://sec.gov/edgar"
+      }
+    },
+    
+    "environmental": {
+      "GetAirQualityData": {
+        "source_name": "EPA Air Quality System",
+        "provider": "U.S. Environmental Protection Agency",
+        "spatial_coverage": "United States",
+        "temporal_coverage": "1980-present",
+        "source_url": "https://epa.gov/aqs"
+      },
+      "GetClimateData": {
+        "source_name": "NOAA Climate Data",
+        "provider": "National Oceanic and Atmospheric Administration",
+        "spatial_coverage": "Global",
+        "temporal_coverage": "1880-present", 
+        "source_url": "https://noaa.gov/climate"
+      }
+    },
+    
+    "healthcare": {
+      "GetDrugInformation": {
+        "source_name": "FDA Orange Book",
+        "provider": "U.S. Food and Drug Administration",
+        "spatial_coverage": "United States approved drugs",
+        "temporal_coverage": "Current approved drugs",
+        "source_url": "https://fda.gov/drugs/drug-approvals-and-databases/orange-book-data-files"
+      },
+      "GetClinicalTrials": {
+        "source_name": "ClinicalTrials.gov Database",
+        "provider": "U.S. National Library of Medicine",
+        "spatial_coverage": "Global clinical trials",
+        "temporal_coverage": "2000-present",
+        "source_url": "https://clinicaltrials.gov"
+      }
+    }
+  },
+  
+  "required_fields": {
+    "source_name": "Human-readable name of the data source",
+    "provider": "Organization or entity providing the data",
+    "spatial_coverage": "Geographic scope (e.g., 'Global', 'United States', 'Europe')",
+    "temporal_coverage": "Time period covered (e.g., '2020-2024', 'Real-time', 'Historical')",
+    "source_url": "URL to the data source (use empty string if not applicable)"
+  },
+  
+  "setup_instructions": [
+    "1. Copy this file to config/citation_sources.json",
+    "2. Replace example entries with your actual MCP tool names",
+    "3. Fill in accurate citation information for each data source",
+    "4. Ensure all tool names match exactly with your MCP server implementations",
+    "5. Test the citation system using the test scripts in test_scripts/"
+  ]
+}
