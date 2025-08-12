@@ -111,7 +111,34 @@ def wrap_tool_result_with_citation(tool_name: str, tool_result_text: str, tool_a
     Returns:
         Dictionary in {"fact": result, "citation_info": {...}} format
     """
+    # CITATION DEBUG: Analyze tool result for errors/failures
+    tool_success = True
+    error_reasons = []
+    
+    # Check for common failure patterns
+    if "Error" in tool_result_text:
+        tool_success = False
+        error_reasons.append("Error in result")
+    elif tool_result_text.strip() in ["[]", "{}", '""']:
+        tool_success = False
+        error_reasons.append("Empty result")
+    # Note: "false" is a valid boolean response, not a failure
+    elif "null" in tool_result_text.lower():
+        tool_success = False
+        error_reasons.append("Null result")
+    
+    # Log the analysis
+    status = "SUCCESS" if tool_success else "FAILED"
+    print(f"🔍 CITATION DEBUG - Tool: {tool_name}, Status: {status}")
+    if not tool_success:
+        print(f"   ❌ Failure reasons: {', '.join(error_reasons)}")
+        print(f"   📄 Result snippet: {tool_result_text[:100]}...")
+    
     citation_info = create_citation_info_for_tool(tool_name, tool_args)
+    
+    # Add success/failure metadata to citation info
+    citation_info["tool_success"] = tool_success
+    citation_info["error_reasons"] = error_reasons
     
     return {
         "fact": tool_result_text,  # Keep original JSON string as the fact

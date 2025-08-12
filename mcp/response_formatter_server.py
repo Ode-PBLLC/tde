@@ -48,9 +48,10 @@ def _add_all_citations_fallback(text: str, citation_nums: List[str]) -> str:
     if not citation_nums:
         return text
     
-    # Sort citation numbers properly
+    # CITATION FIX: Sort citation numbers and use individual format
     sorted_citations = sorted(citation_nums, key=int)
-    superscript = f" ^{','.join(sorted_citations)}^"
+    individual_citations = ' '.join([f"^{c}^" for c in sorted_citations])
+    superscript = f" {individual_citations}"
     
     # Add to the end of the first sentence if possible, otherwise to the end
     sentences = text.split('. ')
@@ -151,7 +152,9 @@ Return ONLY the text with citations added."""
         if missing_citations:
             print(f"⚠️  LLM missed citations {missing_citations}, adding them to end")
             # Add missing citations to the end of the text
-            missing_superscript = f" ^{','.join(sorted(missing_citations, key=int))}^"
+            # CITATION FIX: Use individual citations for missing citations too
+            individual_missing = ' '.join([f"^{c}^" for c in sorted(missing_citations, key=int)])
+            missing_superscript = f" {individual_missing}"
             cited_text = cited_text + missing_superscript
             
         return cited_text
@@ -286,12 +289,16 @@ def _insert_contextual_citations(text: str, all_citations: List[int], citation_r
         if len(sentences) > 1:
             # Add citations to the first sentence only
             if sentences[0] and not sentences[0].endswith('^'):
-                superscript = f" ^{','.join(map(str, sorted(relevant_citations)))}^"
+                # CITATION FIX: Use individual citations instead of bunched format
+                individual_citations = ' '.join([f"^{c}^" for c in sorted(relevant_citations)])
+                superscript = f" {individual_citations}"
                 sentences[0] = sentences[0] + superscript
                 return '. '.join(sentences)
         else:
             # Single sentence - add citation after the text
-            superscript = f" ^{','.join(map(str, sorted(relevant_citations)))}^"
+            # CITATION FIX: Use individual citations instead of bunched format
+            individual_citations = ' '.join([f"^{c}^" for c in sorted(relevant_citations)])
+            superscript = f" {individual_citations}"
             return text + superscript
     
     return text
@@ -449,7 +456,10 @@ async def FormatResponseAsModules(
                 if i == 0 and cited_paragraph == paragraph and not structured_citations:
                     all_tool_citations = _get_all_tool_citations(citation_registry)
                     if all_tool_citations:
-                        superscript = f" ^{','.join(map(str, sorted(all_tool_citations)))}^"
+                        # CITATION FIX: Use individual citations instead of bunched format
+                        print(f"🔧 CITATION DEBUG - Applying fallback citations for {len(all_tool_citations)} tools")
+                        individual_citations = ' '.join([f"^{c}^" for c in sorted(all_tool_citations)])
+                        superscript = f" {individual_citations}"
                         cited_paragraph = paragraph + superscript
                 
                 cited_paragraphs.append(cited_paragraph)

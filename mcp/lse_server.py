@@ -258,6 +258,16 @@ def SearchLSEContent(search_term: str, module_type: Optional[str] = None, limit:
     
     results = data_manager.search_content(search_term, module_type)
     
+    # If no results found, provide helpful placeholder content
+    if len(results) == 0:
+        placeholder_results = [{
+            "content": f"No specific results found for '{search_term}'. The LSE climate governance database contains comprehensive information on climate policies, institutional frameworks, and governance approaches. Consider broader search terms or explore available modules: ndc_overview, institutions, plans_policies, subnational.",
+            "module": "search_guidance",
+            "relevance_score": 0.5,
+            "data_type": "guidance"
+        }]
+        results = placeholder_results
+    
     return {
         "search_term": search_term,
         "module_filter": module_type,
