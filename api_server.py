@@ -21,12 +21,18 @@ import sys
 sys.path.append('mcp')
 from mcp_chat import run_query_structured, run_query, run_query_streaming, get_global_client, cleanup_global_client
 from citation_validation import validate_citation_coverage_sync
+from pathing import get_path
+
+# Get API configuration from environment
+API_TITLE = os.getenv("API_TITLE", "ODE MCP Generic API")
+API_VERSION = os.getenv("API_VERSION", "1.0.0")
+API_DESCRIPTION = os.getenv("API_DESCRIPTION", "Domain-agnostic MCP API with advanced citation system")
 
 # Generic FastAPI app - customize title/version for your domain
 app = FastAPI(
-    title="ODE MCP Generic API", 
-    version="1.0.0",
-    description="Domain-agnostic MCP API with advanced citation system"
+    title=API_TITLE,
+    version=API_VERSION,
+    description=API_DESCRIPTION
 )
 
 @app.on_event("startup")
@@ -69,9 +75,10 @@ async def shutdown_event():
         print(f"⚠️ Warning: Error during MCP client cleanup: {e}")
 
 # Mount static files for serving domain-specific content
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-    print("📁 Static files mounted at /static")
+static_dir = get_path("static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    print(f"📁 Static files mounted at /static (from {static_dir})")
 
 # Enable CORS for front-end access
 app.add_middleware(
@@ -158,6 +165,7 @@ async def stream_query_endpoint(request: StreamQueryRequest):
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""
+    service_name = os.getenv("SERVICE_NAME", API_TITLE)
     try:
         # Test MCP client connectivity
         client = await get_global_client()
@@ -199,9 +207,10 @@ async def health_check():
     
     response = {
         "status": overall_status,
+        "message": f"{service_name} is {overall_status}",
         "timestamp": datetime.now().isoformat(),
         "mcp_client": client_status,
-        "api_version": "1.0.0",
+        "api_version": API_VERSION,
         "server_health": server_health
     }
     
@@ -229,7 +238,10 @@ async def get_featured_queries():
     """
     try:
         # Try config first, fallback to static
-        for path in ["config/featured_queries.json", "static/featured_queries.json"]:
+        for path in [
+            get_path("config", "featured_queries.json"), 
+            get_path("static", "featured_queries.json")
+        ]:
             if os.path.exists(path):
                 with open(path, 'r') as f:
                     queries = json.load(f)
