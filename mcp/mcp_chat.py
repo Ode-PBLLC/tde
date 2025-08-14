@@ -477,7 +477,573 @@ class MultiServerClient:
             # Return non-blocking error as JSON string that LLM can handle
             return json.dumps(error_result)
 
-# Main query processing functions (simplified - full implementation would continue)
+    async def get_all_available_tools(self):
+        """Get all available tools from all connected servers."""
+        all_tools = {}
+        for server_name, session in self.sessions.items():
+            try:
+                tools_result = await session.list_tools()
+                server_tools = []
+                for tool in tools_result.tools:
+                    server_tools.append({
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.input_schema,
+                        "server": server_name
+                    })
+                all_tools[server_name] = server_tools
+                mcp_logger.debug(f"Retrieved {len(server_tools)} tools from {server_name}")
+            except Exception as e:
+                mcp_logger.error(f"Failed to get tools from {server_name}: {e}")
+                all_tools[server_name] = []
+        
+        return all_tools
+
+    def _determine_server_for_tool(self, tool_name: str, all_tools: dict) -> str:
+        """Determine which server hosts a given tool."""
+        for server_name, tools in all_tools.items():
+            for tool in tools:
+                if tool["name"] == tool_name:
+                    return server_name
+        
+        # Fallback to first available server
+        if all_tools:
+            return list(all_tools.keys())[0]
+        
+        raise ValueError(f"No server found for tool: {tool_name}")
+
+    async def process_query(self, query: str):
+        """
+        Main orchestration method: processes a user query using available MCP tools.
+        """
+        messages = [
+            {"role": "user", "content": query}
+        ]
+        
+        # Get tools from all connected servers  
+        all_tools = await self.get_all_available_tools()
+        available_tools = []
+        for server_name, tools in all_tools.items():
+            # Remove server field before sending to Claude API
+            clean_tools = []
+            for tool in tools:
+                clean_tool = {
+                    "name": tool["name"],
+                    "description": tool["description"], 
+                    "input_schema": tool["input_schema"]
+                }
+                clean_tools.append(clean_tool)
+            available_tools.extend(clean_tools)
+
+        # Generic system prompt - domain agnostic
+        system_prompt = """
+            You are an expert data analyst and research assistant. Your task is to help users find, analyze, and understand information from available data sources.
+
+            Core Responsibilities:
+            1. Understand the user's query and information needs
+            2. Use available tools to gather relevant data from connected sources
+            3. Synthesize information to provide comprehensive, well-sourced answers
+
+            Tool Usage Guidelines:
+            - Always start by exploring what tools and data sources are available
+            - Use multiple tools when needed to provide comprehensive answers
+            - Cross-reference information from different sources when possible
+            - Focus on providing accurate, well-attributed information
+
+            Data Discovery Strategy:
+            1. Identify relevant tools based on the user's query
+            2. Call appropriate tools to gather data
+            3. If one source doesn't have complete information, try related tools
+            4. Combine insights from multiple sources for comprehensive answers
+
+            Response Guidelines:
+            - Provide clear, actionable insights
+            - Include specific data points and evidence
+            - Acknowledge limitations in available data
+            - Structure information logically (overview → details → implications)
+
+            Quality Standards:
+            - Accuracy: Ensure all data points are correctly reported
+            - Completeness: Use multiple sources to provide full picture
+            - Clarity: Present complex information in understandable terms
+            - Attribution: Properly cite all data sources used
+        """
+
+        try:
+            response = self.anthropic.messages.create(
+                model="claude-3-5-haiku-latest",
+                max_tokens=1000,
+                system=system_prompt,
+                messages=messages,
+                tools=available_tools
+            )
+        except Exception as e:
+            mcp_logger.error(f"Failed to get initial response from Claude: {e}")
+            raise
+
+        # Initialize data collection variables
+        final_text = []
+        sources_used = []
+        context_chunks = []
+        chart_data = None
+        chart_data_tool = None
+        map_data = None
+        visualization_data = None
+        all_tool_outputs_for_debug = []
+        intermediate_facts_with_citations = []
+        intermediate_ai_text_parts = []
+
+        # Main orchestration loop
+        while True:
+            assistant_message_content = []
+            current_turn_text_parts = []
+
+            for content in response.content:
+                if content.type == "text":
+                    current_turn_text_parts.append(content.text)
+                    intermediate_ai_text_parts.append(content.text)
+                    assistant_message_content.append(content)
+                elif content.type == "tool_use":
+                    tool_name = content.name
+                    tool_args = content.input
+                    
+                    # Determine which server to route this tool call to
+                    server_name = self._determine_server_for_tool(tool_name, all_tools)
+                    
+                    print(f"🔧 Calling tool {tool_name} on {server_name} with args: {tool_args}")
+                    
+                    # Execute the tool call
+                    try:
+                        result = await self.call_tool(server_name, tool_name, tool_args)
+                        
+                        # Store for debugging
+                        all_tool_outputs_for_debug.append({
+                            "tool_name": tool_name,
+                            "tool_args": tool_args,
+                            "server_name": server_name,
+                            "result": result
+                        })
+
+                        # Parse structured data based on tool output
+                        try:
+                            parsed_content = json.loads(result) if isinstance(result, str) else result
+                            
+                            # Check for map data
+                            if isinstance(parsed_content, dict):
+                                if parsed_content.get("type") == "map" or "geojson" in parsed_content:
+                                    map_data = parsed_content
+                                    print(f"📍 Parsed map data from {tool_name}")
+                                
+                                # Check for chart/visualization data
+                                elif "data" in parsed_content and isinstance(parsed_content["data"], list):
+                                    if not chart_data:  # Only set if not already set
+                                        chart_data = parsed_content["data"]
+                                        chart_data_tool = tool_name
+                                        print(f"📊 Parsed chart data from {tool_name}: {len(chart_data)} records")
+                                
+                                # Check for structured visualization data
+                                elif "visualization_type" in parsed_content:
+                                    visualization_data = parsed_content
+                                    print(f"📈 Parsed visualization data from {tool_name}")
+                            
+                            # Handle list data (potential chart data)
+                            elif isinstance(parsed_content, list) and parsed_content:
+                                if all(isinstance(item, dict) for item in parsed_content):
+                                    if not chart_data:  # Only set if not already set
+                                        chart_data = parsed_content
+                                        chart_data_tool = tool_name
+                                        print(f"📊 Parsed list data from {tool_name}: {len(chart_data)} records")
+
+                        except (json.JSONDecodeError, TypeError):
+                            print(f"📄 Tool {tool_name} returned non-JSON data")
+
+                        # Add to context (truncate if too long)
+                        content_str = str(result)
+                        if len(content_str) > 1000:
+                            content_str = content_str[:1000] + "... [truncated]"
+                        context_chunks.append(content_str)
+
+                        # Wrap tool result with citation info
+                        wrapped_result = wrap_tool_result_with_citation(tool_name, str(result), tool_args)
+                        intermediate_facts_with_citations.append({
+                            "fact": wrapped_result["fact"],
+                            "citation_info": wrapped_result["citation_info"],
+                            "tool_context": {
+                                "tool_name": tool_name,
+                                "tool_args": tool_args,
+                                "server_name": server_name
+                            }
+                        })
+
+                        # Create tool result for Claude
+                        tool_result_content = [{
+                            "type": "text",
+                            "text": str(result)
+                        }]
+
+                    except Exception as e:
+                        error_msg = f"Tool {tool_name} failed: {str(e)}"
+                        print(f"❌ {error_msg}")
+                        mcp_logger.error(error_msg)
+                        
+                        # Create error result for Claude
+                        tool_result_content = [{
+                            "type": "text", 
+                            "text": f"Error: {error_msg}"
+                        }]
+
+                    # Attach tool_use to assistant message
+                    assistant_message_content.append(content)
+                    messages.append({"role": "assistant", "content": assistant_message_content})
+                    messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": content.id,
+                            "content": tool_result_content
+                        }]
+                    })
+
+                    # Break early and send updated messages to Claude
+                    break
+            else:
+                # No tool_use found → conversation complete
+                messages.append({"role": "assistant", "content": assistant_message_content})
+                break
+
+            # Ask Claude for the next step
+            try:
+                response = self.anthropic.messages.create(
+                    model="claude-3-5-haiku-latest",
+                    max_tokens=1000,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=available_tools,
+                )
+            except Exception as e:
+                mcp_logger.error(f"Failed to get follow-up response from Claude: {e}")
+                break
+
+        # Process final response
+        if current_turn_text_parts:
+            final_response_text = "\\n".join(current_turn_text_parts)
+        else:
+            final_response_text = "\\n".join(intermediate_ai_text_parts)
+
+        # Convert citation format for frontend compatibility
+        final_response_text = convert_citation_format(final_response_text)
+
+        # Prepare result dictionary
+        result = {
+            "response": final_response_text,
+            "sources": sources_used,
+            "context_chunks": context_chunks,
+            "chart_data": chart_data,
+            "chart_data_tool": chart_data_tool,
+            "map_data": map_data,
+            "visualization_data": visualization_data,
+            "all_tool_outputs_for_debug": all_tool_outputs_for_debug,
+            "final_citations_list": intermediate_facts_with_citations,
+            "citation_registry": self.citation_registry
+        }
+
+        mcp_logger.info(f"Query processing completed. Tools called: {len(all_tool_outputs_for_debug)}")
+        return result
+
+    async def process_query_streaming(self, query: str):
+        """
+        Streaming version of process_query that yields events as they happen.
+        """
+        def translate_tool_to_action(tool_name: str, tool_args: dict) -> dict:
+            """Convert technical tool calls to user-friendly action messages."""
+            if not tool_args:
+                return {
+                    "message": f"🔧 Calling {tool_name}...",
+                    "category": "tool_execution"
+                }
+                
+            # Extract common arguments for friendly display
+            common_args = []
+            if "query" in tool_args:
+                common_args.append(f"query: {tool_args['query'][:50]}...")
+            if "country" in tool_args:
+                common_args.append(f"country: {tool_args['country']}")
+            if "concept" in tool_args:
+                common_args.append(f"concept: {tool_args['concept']}")
+            
+            args_display = ", ".join(common_args) if common_args else "processing request"
+            
+            return {
+                "message": f"🔧 Executing {tool_name} ({args_display})",
+                "category": "tool_execution"
+            }
+
+        # Yield initial status
+        yield {
+            "type": "thinking",
+            "data": {
+                "message": "🚀 Initializing analysis...",
+                "category": "initialization"
+            }
+        }
+
+        messages = [{"role": "user", "content": query}]
+        
+        # Get available tools
+        try:
+            all_tools = await self.get_all_available_tools()
+            available_tools = []
+            for server_name, tools in all_tools.items():
+                clean_tools = []
+                for tool in tools:
+                    clean_tool = {
+                        "name": tool["name"],
+                        "description": tool["description"], 
+                        "input_schema": tool["input_schema"]
+                    }
+                    clean_tools.append(clean_tool)
+                available_tools.extend(clean_tools)
+            
+            yield {
+                "type": "thinking", 
+                "data": {
+                    "message": f"📋 Found {len(available_tools)} available tools across {len(all_tools)} servers",
+                    "category": "discovery"
+                }
+            }
+        except Exception as e:
+            yield {
+                "type": "error",
+                "data": {
+                    "message": f"Failed to get available tools: {str(e)}"
+                }
+            }
+            return
+
+        # Same system prompt as non-streaming version
+        system_prompt = """
+            You are an expert data analyst and research assistant. Your task is to help users find, analyze, and understand information from available data sources.
+
+            Core Responsibilities:
+            1. Understand the user's query and information needs
+            2. Use available tools to gather relevant data from connected sources
+            3. Synthesize information to provide comprehensive, well-sourced answers
+
+            Tool Usage Guidelines:
+            - Always start by exploring what tools and data sources are available
+            - Use multiple tools when needed to provide comprehensive answers
+            - Cross-reference information from different sources when possible
+            - Focus on providing accurate, well-attributed information
+
+            Data Discovery Strategy:
+            1. Identify relevant tools based on the user's query
+            2. Call appropriate tools to gather data
+            3. If one source doesn't have complete information, try related tools
+            4. Combine insights from multiple sources for comprehensive answers
+
+            Response Guidelines:
+            - Provide clear, actionable insights
+            - Include specific data points and evidence
+            - Acknowledge limitations in available data
+            - Structure information logically (overview → details → implications)
+
+            Quality Standards:
+            - Accuracy: Ensure all data points are correctly reported
+            - Completeness: Use multiple sources to provide full picture
+            - Clarity: Present complex information in understandable terms
+            - Attribution: Properly cite all data sources used
+        """
+
+        # Get initial response from Claude
+        try:
+            response = self.anthropic.messages.create(
+                model="claude-3-5-haiku-latest",
+                max_tokens=1000,
+                system=system_prompt,
+                messages=messages,
+                tools=available_tools
+            )
+        except Exception as e:
+            yield {
+                "type": "error",
+                "data": {
+                    "message": f"Failed to get initial response: {str(e)}"
+                }
+            }
+            return
+
+        # Initialize collection variables
+        intermediate_facts_with_citations = []
+        all_tool_outputs_for_debug = []
+        chart_data = None
+        map_data = None
+        visualization_data = None
+
+        # Main streaming loop
+        while True:
+            assistant_message_content = []
+            current_turn_text_parts = []
+
+            for content in response.content:
+                if content.type == "text":
+                    current_turn_text_parts.append(content.text)
+                    assistant_message_content.append(content)
+                    
+                    # Yield thinking event
+                    yield {
+                        "type": "thinking",
+                        "data": {
+                            "message": content.text,
+                            "category": "analysis"
+                        }
+                    }
+                    
+                elif content.type == "tool_use":
+                    tool_name = content.name
+                    tool_args = content.input
+                    
+                    # Yield tool call event
+                    action_info = translate_tool_to_action(tool_name, tool_args)
+                    yield {
+                        "type": "tool_call",
+                        "data": {
+                            "tool": tool_name,
+                            "args": tool_args,
+                            "message": action_info["message"],
+                            "category": action_info["category"]
+                        }
+                    }
+                    
+                    # Execute tool
+                    try:
+                        server_name = self._determine_server_for_tool(tool_name, all_tools)
+                        result = await self.call_tool(server_name, tool_name, tool_args)
+                        
+                        # Store result
+                        all_tool_outputs_for_debug.append({
+                            "tool_name": tool_name,
+                            "tool_args": tool_args,
+                            "server_name": server_name,
+                            "result": result
+                        })
+
+                        # Parse and collect structured data (same logic as non-streaming)
+                        try:
+                            parsed_content = json.loads(result) if isinstance(result, str) else result
+                            
+                            if isinstance(parsed_content, dict):
+                                if parsed_content.get("type") == "map" or "geojson" in parsed_content:
+                                    map_data = parsed_content
+                                elif "data" in parsed_content and isinstance(parsed_content["data"], list):
+                                    if not chart_data:
+                                        chart_data = parsed_content["data"]
+                                elif "visualization_type" in parsed_content:
+                                    visualization_data = parsed_content
+                            elif isinstance(parsed_content, list) and parsed_content:
+                                if all(isinstance(item, dict) for item in parsed_content):
+                                    if not chart_data:
+                                        chart_data = parsed_content
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
+                        # Add citation
+                        wrapped_result = wrap_tool_result_with_citation(tool_name, str(result), tool_args)
+                        intermediate_facts_with_citations.append({
+                            "fact": wrapped_result["fact"],
+                            "citation_info": wrapped_result["citation_info"],
+                            "tool_context": {
+                                "tool_name": tool_name,
+                                "tool_args": tool_args,
+                                "server_name": server_name
+                            }
+                        })
+
+                        # Yield tool result event
+                        yield {
+                            "type": "tool_result",
+                            "data": {
+                                "tool": tool_name,
+                                "success": True,
+                                "message": f"✅ {tool_name} completed successfully"
+                            }
+                        }
+
+                        tool_result_content = [{"type": "text", "text": str(result)}]
+
+                    except Exception as e:
+                        error_msg = f"Tool {tool_name} failed: {str(e)}"
+                        
+                        yield {
+                            "type": "tool_result", 
+                            "data": {
+                                "tool": tool_name,
+                                "success": False,
+                                "message": f"❌ {error_msg}"
+                            }
+                        }
+                        
+                        tool_result_content = [{"type": "text", "text": f"Error: {error_msg}"}]
+
+                    # Update messages for Claude
+                    assistant_message_content.append(content)
+                    messages.append({"role": "assistant", "content": assistant_message_content})
+                    messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": content.id,
+                            "content": tool_result_content
+                        }]
+                    })
+
+                    break
+            else:
+                # No tool_use found → conversation complete
+                messages.append({"role": "assistant", "content": assistant_message_content})
+                break
+
+            # Get next response from Claude
+            try:
+                response = self.anthropic.messages.create(
+                    model="claude-3-5-haiku-latest",
+                    max_tokens=1000,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=available_tools,
+                )
+            except Exception as e:
+                yield {
+                    "type": "error",
+                    "data": {
+                        "message": f"Failed to get follow-up response: {str(e)}"
+                    }
+                }
+                break
+
+        # Yield final completion event
+        final_response_text = "\\n".join(current_turn_text_parts) if current_turn_text_parts else "Query completed"
+        final_response_text = convert_citation_format(final_response_text)
+
+        yield {
+            "type": "complete",
+            "data": {
+                "query": query,
+                "response": final_response_text,
+                "modules": [],  # Will be populated by formatter
+                "metadata": {
+                    "tools_called": len(all_tool_outputs_for_debug),
+                    "citations_count": len(intermediate_facts_with_citations)
+                },
+                "chart_data": chart_data,
+                "map_data": map_data,
+                "visualization_data": visualization_data,
+                "citation_registry": {
+                    "citations": self.citation_registry.get_all_citations()
+                }
+            }
+        }
+
+# Main query processing functions 
 async def run_query_structured(query: str) -> Dict[str, Any]:
     """
     Process a query using the MCP orchestration system.
@@ -487,17 +1053,17 @@ async def run_query_structured(query: str) -> Dict[str, Any]:
         client = await get_global_client()
         
         # Process query through orchestration
-        # [Implementation continues with the same logic as original, 
-        #  but using configuration-driven servers and citations]
+        result = await client.process_query(query)
         
-        return {
-            "response": "Query processed successfully",
+        # Extract structured response (will be set by formatter if available)
+        return result.get("formatted_response", {
             "modules": [],
             "metadata": {
                 "processing_time": 0,
-                "citations_count": 0
+                "citations_count": len(result.get("final_citations_list", [])),
+                "tools_called": len(result.get("all_tool_outputs_for_debug", []))
             }
-        }
+        })
     except Exception as e:
         print(f"❌ Query processing error: {e}")
         raise
@@ -511,21 +1077,75 @@ async def run_query_streaming(query: str):
         client = await get_global_client()
         
         # Stream processing implementation
-        yield {
-            "type": "status",
-            "content": "Starting query processing..."
-        }
-        
-        # [Implementation continues with streaming logic]
+        async for event in client.process_query_streaming(query):
+            yield event
         
     except Exception as e:
+        import traceback
         yield {
             "type": "error",
-            "content": f"Streaming error: {str(e)}"
+            "data": {
+                "message": f"Streaming error: {str(e)}",
+                "traceback": traceback.format_exc()
+            }
         }
 
-# Legacy function for compatibility
-async def run_query(query: str) -> str:
-    """Legacy function - returns simple string response"""
-    result = await run_query_structured(query)
-    return result.get("response", "No response generated")
+async def run_query(query: str) -> Dict[str, Any]:
+    """
+    Complete query processing function that returns full result including metadata.
+    """
+    try:
+        # Ensure we're in the correct working directory
+        import os
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        os.chdir(project_root)
+        
+        # Use the global singleton client
+        client = await get_global_client()
+        
+        # Process the main query
+        result = await client.process_query(query)
+        
+        # Format the response using the formatter MCP (if available)
+        formatter_args = {
+            "response_text": result.get("response", ""),
+            "chart_data": result.get("chart_data"),
+            "chart_data_tool": result.get("chart_data_tool"),
+            "visualization_data": result.get("visualization_data"), 
+            "map_data": result.get("map_data"),
+            "sources": result.get("sources"),
+            "structured_citations": result.get("final_citations_list"),
+            "title": "Data Analysis Results",
+            "citation_registry": {
+                "citations": client.citation_registry.get_all_citations() if hasattr(client.citation_registry, 'get_all_citations') else {},
+                "module_citations": getattr(client.citation_registry, 'module_citations', {})
+            }
+        }
+        
+        # Remove None values to avoid issues
+        formatter_args = {k: v for k, v in formatter_args.items() if v is not None}
+        
+        # Try to format response if formatter is available
+        try:
+            formatted_result = await client.call_tool("response_formatter", "FormatResponseAsModules", formatter_args)
+            
+            # Parse the formatted response
+            if hasattr(formatted_result, 'content') and isinstance(formatted_result.content, list):
+                first_content = formatted_result.content[0]
+                if hasattr(first_content, 'text'):
+                    import json
+                    formatted_data = json.loads(first_content.text)
+                    result["formatted_response"] = formatted_data
+                    print(f"✅ Successfully formatted response with {len(formatted_data.get('modules', []))} modules")
+        except Exception as e:
+            print(f"⚠️ Formatter not available or failed: {e}")
+            # Continue without formatting - the raw result is still useful
+        
+        return result
+        
+    except Exception as e:
+        import traceback
+        error_detail = f"Query processing failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        print(f"❌ API ERROR: {error_detail}")
+        raise
