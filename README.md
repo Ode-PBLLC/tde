@@ -65,6 +65,7 @@ curl http://localhost:8099/featured-queries
 |----------|-------------|
 | **[API_GUIDE.md](API_GUIDE.md)** | Complete developer guide with examples and integration code |
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | Local setup, production deployment, and maintenance |
+| **[docs/](docs/)** | Detailed implementation guides and technical documentation |
 | `static/README.md` | Content management for featured queries |
 
 ## 🏗️ System Architecture
@@ -204,6 +205,28 @@ Unlike traditional APIs that require explicit data requests, this system **autom
 
 Achieved through AI reasoning + knowledge graph relationships + automatic tool discovery.
 
+## 🗂️ Repository Structure
+
+```
+tde/
+├── README.md                 # This file - project overview
+├── API_GUIDE.md             # Complete API documentation
+├── DEPLOYMENT.md            # Production deployment guide
+├── CLAUDE.md                # Development notes and configuration
+├── requirements.txt         # Python dependencies
+├── api_server.py           # Main FastAPI application
+├── kg_embed_generator.py   # Knowledge graph embedding utilities
+├── kg_visualization_server.py # KG visualization server
+├── mcp/                    # MCP integration layer
+├── data/                   # Datasets (solar, climate, policy)
+├── static/                 # Frontend assets (maps, charts, cache)
+├── scripts/                # Essential utilities and maintenance
+├── deploy/                 # Production deployment configurations
+├── docs/                   # Detailed implementation documentation
+├── knowledge-graph/        # Core knowledge graph system
+└── geocode/               # Geographic data utilities
+```
+
 ## 🧪 Development & Testing
 
 ```bash
@@ -214,6 +237,8 @@ uvicorn api_server:app --reload --host 0.0.0.0 --port 8099
 curl -X POST http://localhost:8099/query/stream \
   -H "Content-Type: application/json" \
   -d '{"query": "test"}'
+
+# Essential test scripts are in test_scripts/ directory
 ```
 
 ## 📊 Data Sources
@@ -238,7 +263,7 @@ curl -X POST http://localhost:8099/query/stream \
 4. Update documentation
 5. Submit a pull request
 
-See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) for detailed contribution guidelines.
+See the `docs/` directory for detailed technical documentation and implementation guides.
 
 ## 📜 License
 

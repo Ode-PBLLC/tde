@@ -1,0 +1,2986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph: Brazil energy transition policies</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
+        .container { width: 100%; height: 500px; border: 1px solid #ddd; position: relative; }
+        .graph { width: 100%; height: 100%; }
+        .tooltip { 
+            position: absolute; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            pointer-events: none; 
+            opacity: 0;
+        }
+        .query-title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            color: #333;
+        }
+        .node { cursor: pointer; }
+        .link { stroke: #999; stroke-opacity: 0.6; stroke-width: 1.5px; }
+        .node-label { font-size: 10px; fill: #333; text-anchor: middle; }
+    </style>
+</head>
+<body>
+    <div class="query-title">Knowledge Graph: Brazil energy transition policies</div>
+    <div class="container">
+        <svg class="graph" id="kg-graph"></svg>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <script>
+        // Embedded KG data
+        const kgData = {
+  "nodes": [
+    {
+      "id": "Q1665",
+      "kind": "Concept",
+      "label": "hazardous pesticide standard",
+      "description": "It proposes guidelines, recommendations, and regulations aimed at ensuring the safe and effective use of pesticides. These standards help protect human health, the environment, and ensure food safety."
+    },
+    {
+      "id": "Q1713",
+      "kind": "Concept",
+      "label": "standard for soil quality",
+      "description": "Soil quality standards are guidelines that protect and improve the health of soil. They are important for agriculture, biodiversity, and carbon sequestration."
+    },
+    {
+      "id": "Q804",
+      "kind": "Concept",
+      "label": "manufacture of coke",
+      "description": ""
+    },
+    {
+      "id": "Q1395",
+      "kind": "Concept",
+      "label": "building code and standard",
+      "description": "The term 'building codes' refers to regulations that set out the standards to which all buildings and other structures must conform. They cover design, construction, alteration, repair and maintenance, and specify the minimum requirements necessary to safeguard the health, as well as other impacts on the environment."
+    },
+    {
+      "id": "Q1508",
+      "kind": "Concept",
+      "label": "energy transmission sector",
+      "description": "Transportation of energy from generation or production sites to distribution points through various infrastructure"
+    },
+    {
+      "id": "Q870",
+      "kind": "Concept",
+      "label": "steam and air conditioning supply",
+      "description": "Production and distribution of steam and chilled water for air conditioning purposes"
+    },
+    {
+      "id": "Q281",
+      "kind": "Concept",
+      "label": "energy and power technologies",
+      "description": ""
+    },
+    {
+      "id": "Q871",
+      "kind": "Concept",
+      "label": "activities of brokers and agents for electric power and natural gas",
+      "description": ""
+    },
+    {
+      "id": "Q1399",
+      "kind": "Concept",
+      "label": "technology standard",
+      "description": "Technology standards take a more prescriptive approach by requiring a specific technology, process or product than performance standards."
+    },
+    {
+      "id": "Q1420",
+      "kind": "Concept",
+      "label": "energy efficiency labels",
+      "description": "An energy efficiency label is a label that shows how energy efficient a product is."
+    },
+    {
+      "id": "Q802",
+      "kind": "Concept",
+      "label": "paper manufacturing",
+      "description": ""
+    },
+    {
+      "id": "Q883",
+      "kind": "Concept",
+      "label": "active labour market policies",
+      "description": "Government programmes that intervene in the labour market to help the unemployed find work, but also for the underemployed and employees looking for better jobs."
+    },
+    {
+      "id": "Q1397",
+      "kind": "Concept",
+      "label": "renewable portfolio standard",
+      "description": "Renewable Portfolio Standards (RPS) require that a minimum percentage of electricity is generated from specified renewable sources."
+    },
+    {
+      "id": "Q908",
+      "kind": "Concept",
+      "label": "manufacture of refined petroleum products",
+      "description": ""
+    },
+    {
+      "id": "Q1281",
+      "kind": "Concept",
+      "label": "codes and standards",
+      "description": "Codes and standards are regulatory instruments that specify minimum standards to protect health and safety. This ranges from performance standards, which prescribe outcomes while allowing flexibility to achieve compliance, to the more prescriptive approach of technology-specific standards."
+    },
+    {
+      "id": "Q1658",
+      "kind": "Concept",
+      "label": "waste management standard",
+      "description": "They are policies to improve the way businesses and/or households sort their waste, optimising the waste collection and recycling."
+    },
+    {
+      "id": "Q1066",
+      "kind": "Concept",
+      "label": "plastic gasification",
+      "description": "The process of converting plastic waste into syngas"
+    },
+    {
+      "id": "Q869",
+      "kind": "Concept",
+      "label": "gas supply",
+      "description": "Activities of providing gas to end users, from manufacturing and processing to transportation and distribution"
+    },
+    {
+      "id": "Q868",
+      "kind": "Concept",
+      "label": "electricity supply sector",
+      "description": "electric power generation, transmission and distribution activities"
+    },
+    {
+      "id": "Q1660",
+      "kind": "Concept",
+      "label": "environmental noise standard",
+      "description": "It provides recommendations on acceptable noise levels to protect human health."
+    },
+    {
+      "id": "Q912",
+      "kind": "Concept",
+      "label": "procedural justice",
+      "description": "concerns the empowerment and agency of those affected by the transition, to have a say in the decisions that will affect them."
+    },
+    {
+      "id": "Q1396",
+      "kind": "Concept",
+      "label": "energy efficiency standard",
+      "description": "Energy efficiency standards are government regulations that set a minimum level of energy performance for buildings or appliances, typically measured by an energy rating scale (like A-G), meaning that products or properties must meet a certain level of efficiency to be sold or rented, aiming to reduce energy consumption and carbon emissions; in practice, this often means landlords must ensure their rental properties reach a minimum energy efficiency rating."
+    },
+    {
+      "id": "Q1659",
+      "kind": "Concept",
+      "label": "nuclear safety standard",
+      "description": "These standards aim to protect human health and the environment against the dangers arising from ionising radiation. It sets limits on the maximum radiation dose that anyone should receive under normal conditions, as well as sets protective limits on the radioactivity in soil, water and air that comes from human activities."
+    },
+    {
+      "id": "Q911",
+      "kind": "Concept",
+      "label": "distributive justice",
+      "description": "Measures that are concerned with the fair distribution of risks and opportunities that arise as a result of the transition."
+    },
+    {
+      "id": "Q1512",
+      "kind": "Concept",
+      "label": "bioenergy supply",
+      "description": "Production, processing, and distribution of energy from biomass sources, including biofuels, biopower, and biomass heat"
+    },
+    {
+      "id": "Q814",
+      "kind": "Concept",
+      "label": "transport equipment manufacturing",
+      "description": ""
+    },
+    {
+      "id": "Q1509",
+      "kind": "Concept",
+      "label": "energy distribution sector",
+      "description": "Delivery of energy from transmission grids or hubs to end-users through local infrastructure (e.g., distribution grids, pipelines, storage facilities)"
+    },
+    {
+      "id": "Q1507",
+      "kind": "Concept",
+      "label": "energy generation sector",
+      "description": "activities related to initial processing of primary energy sources for producing energy from different sources like fossil fuels"
+    },
+    {
+      "id": "Q709",
+      "kind": "Concept",
+      "label": "economic sector",
+      "description": "Area of the economy in which actors engage in identical or related activities."
+    },
+    {
+      "id": "Q1207",
+      "kind": "Concept",
+      "label": "regulatory instrument",
+      "description": "Regulatory instruments, or \"authority\" in Hood and Margetts' NATO scheme, set boundaries on behaviour through rules, like emissions disclosure, fossil fuel bans, and spatial planning laws."
+    },
+    {
+      "id": "Q909",
+      "kind": "Concept",
+      "label": "plastic production",
+      "description": "This phase includes the production and manufacturing of plastic products through the refinement of raw materials, which includes the classification of plastic resins."
+    },
+    {
+      "id": "Q760",
+      "kind": "Concept",
+      "label": "extractive sector",
+      "description": "Activities of industries that extract natural resources, such as mining, oil, and gas, for commercial use."
+    },
+    {
+      "id": "Q1711",
+      "kind": "Concept",
+      "label": "environmental standard",
+      "description": "Environmental standards are legal tools used by governments to limit pollution and enforce climate action. They set thresholds for air, water, emissions, and waste, ensuring industries comply. Examples include air quality limits, emissions caps, and energy efficiency rules, promoting sustainability."
+    },
+    {
+      "id": "Q1024",
+      "kind": "Concept",
+      "label": "sustainable development goal 7",
+      "description": "SDG7: affordable and clean energy"
+    },
+    {
+      "id": "Q1393",
+      "kind": "Concept",
+      "label": "air pollution standard",
+      "description": "There are national or regional policies setting limit values to the concentration of different pollutants in the air to protect the public health and the environment."
+    },
+    {
+      "id": "Q286",
+      "kind": "Concept",
+      "label": "energy efficiency",
+      "description": "Practice of improving energy consumption to perform the same task or produce the same result. Involves implementing strategies, technologies, and behaviours that optimise energy use without compromising output quality, comfort, or productivity"
+    },
+    {
+      "id": "Q810",
+      "kind": "Concept",
+      "label": "fabricated metal product manufacturing",
+      "description": ""
+    },
+    {
+      "id": "Q47",
+      "kind": "Concept",
+      "label": "just transition",
+      "description": "Broadly defined as ensuring that no one is left behind or pushed behind in the transition to low-carbon."
+    },
+    {
+      "id": "Q809",
+      "kind": "Concept",
+      "label": "manufacture of basic metals",
+      "description": ""
+    },
+    {
+      "id": "Q1656",
+      "kind": "Concept",
+      "label": "water quality standard",
+      "description": "It regulates the quality of water bodies aiming to prevent, reduce and/or eliminate pollution. It describes the desired condition of a water body and the means by which that condition will be protected or achieved"
+    },
+    {
+      "id": "Q905",
+      "kind": "Concept",
+      "label": "welfare activities",
+      "description": "Support services provided by a range of actors, including but not limited to the state."
+    },
+    {
+      "id": "Q1712",
+      "kind": "Concept",
+      "label": "emission standard",
+      "description": "Emission standards are legal limits on the amount of pollutants that can be released into the atmosphere. They apply to vehicles, engines, and fuels."
+    },
+    {
+      "id": "Q1477",
+      "kind": "Concept",
+      "label": "energy market",
+      "description": "Commodity market where products like electricity, heat, and fuel are traded"
+    },
+    {
+      "id": "Q1657",
+      "kind": "Concept",
+      "label": "drinking water standard",
+      "description": "It sets legal limits for contaminants in drinking water aiming to guarantee its safety and protect human health."
+    },
+    {
+      "id": "Q1165",
+      "kind": "Concept",
+      "label": "workers impacted by the transition",
+      "description": "People whose job is at risk due to the societal changes necessary to respond to climate change"
+    },
+    {
+      "id": "Q1160",
+      "kind": "Concept",
+      "label": "impacted workers",
+      "description": "Working people who are disproportionately impacted by climate change or the response to climate change"
+    },
+    {
+      "id": "Q638",
+      "kind": "Concept",
+      "label": "fossil fuel",
+      "description": "Fossil fuel is a generic term for non-renewable energy sources such as coal, fossil gas, crude oil, and petroleum products. Fossil fuels are carbon-based and release carbon into the atmosphere when burned."
+    },
+    {
+      "id": "Q1663",
+      "kind": "Concept",
+      "label": "food safety standards",
+      "description": "Food safety standards are a set of rules and regulations established by governments, international organizations, and industry bodies to ensure the safety and quality of the food supply chain."
+    },
+    {
+      "id": "Q1478",
+      "kind": "Concept",
+      "label": "energy supply infrastructure",
+      "description": "Physical assets enabling energy production, transport, and delivery to end-users."
+    },
+    {
+      "id": "Q762",
+      "kind": "Concept",
+      "label": "energy supply sector",
+      "description": "The activities of industries involved in the production, distribution, and sale of energy, including electricity, gas, and renewables."
+    },
+    {
+      "id": "Q374",
+      "kind": "Concept",
+      "label": "extreme weather",
+      "description": "Extreme weather refers to events where a weather variable exceeds (or falls below) a threshold. Meaning it is significantly different from the average or usual weather pattern."
+    }
+  ],
+  "edges": [
+    {
+      "source": "Q1665",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1713",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q804",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1395",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1508",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q870",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q281",
+      "target": "Q286",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q281",
+      "target": "Q1066",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q281",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q871",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1399",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q802",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q883",
+      "target": "Q47",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1397",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q908",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1207",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1393",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1395",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1396",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1397",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1399",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1656",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1657",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1658",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1659",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1660",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1663",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1665",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1711",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1713",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1712",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1658",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1066",
+      "target": "Q869",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1066",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1066",
+      "target": "Q281",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q869",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q869",
+      "target": "Q1066",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1660",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q912",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1396",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1659",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q911",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1512",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q814",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1509",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1507",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q709",
+      "target": "Q760",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q709",
+      "target": "Q762",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1207",
+      "target": "Q1281",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q909",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q760",
+      "target": "Q709",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q760",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1711",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1024",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1393",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q286",
+      "target": "Q281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q286",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q286",
+      "target": "Q868",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q810",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q883",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q1160",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q1165",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q905",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q809",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1656",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q905",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q905",
+      "target": "Q47",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1712",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1477",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1657",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q1160",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q47",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q760",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q814",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q908",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q802",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q804",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q809",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q810",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q909",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q911",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q912",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q905",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1160",
+      "target": "Q47",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1160",
+      "target": "Q1165",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q868",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1663",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1478",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q709",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q868",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q868",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q869",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q870",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q871",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1477",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1507",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1508",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1509",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1512",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1478",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q281",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1024",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1066",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ],
+  "query_concepts": [
+    "Q1396",
+    "Q1420",
+    "Q1477",
+    "Q1478",
+    "Q1507",
+    "Q1165",
+    "Q883"
+  ],
+  "query_concept_labels": [
+    "energy market",
+    "energy efficiency standard",
+    "workers impacted by the transition",
+    "energy generation sector",
+    "energy efficiency labels",
+    "active labour market policies",
+    "energy supply infrastructure"
+  ],
+  "total_found": 51,
+  "concepts": [
+    {
+      "id": "Q1665",
+      "label": "hazardous pesticide standard"
+    },
+    {
+      "id": "Q1713",
+      "label": "standard for soil quality"
+    },
+    {
+      "id": "Q804",
+      "label": "manufacture of coke"
+    },
+    {
+      "id": "Q1395",
+      "label": "building code and standard"
+    },
+    {
+      "id": "Q1508",
+      "label": "energy transmission sector"
+    },
+    {
+      "id": "Q870",
+      "label": "steam and air conditioning supply"
+    },
+    {
+      "id": "Q281",
+      "label": "energy and power technologies"
+    },
+    {
+      "id": "Q871",
+      "label": "activities of brokers and agents for electric power and natural gas"
+    },
+    {
+      "id": "Q1399",
+      "label": "technology standard"
+    },
+    {
+      "id": "Q1420",
+      "label": "energy efficiency labels"
+    },
+    {
+      "id": "Q802",
+      "label": "paper manufacturing"
+    },
+    {
+      "id": "Q883",
+      "label": "active labour market policies"
+    },
+    {
+      "id": "Q1397",
+      "label": "renewable portfolio standard"
+    },
+    {
+      "id": "Q908",
+      "label": "manufacture of refined petroleum products"
+    },
+    {
+      "id": "Q1281",
+      "label": "codes and standards"
+    },
+    {
+      "id": "Q1658",
+      "label": "waste management standard"
+    },
+    {
+      "id": "Q1066",
+      "label": "plastic gasification"
+    },
+    {
+      "id": "Q869",
+      "label": "gas supply"
+    },
+    {
+      "id": "Q868",
+      "label": "electricity supply sector"
+    },
+    {
+      "id": "Q1660",
+      "label": "environmental noise standard"
+    },
+    {
+      "id": "Q912",
+      "label": "procedural justice"
+    },
+    {
+      "id": "Q1396",
+      "label": "energy efficiency standard"
+    },
+    {
+      "id": "Q1659",
+      "label": "nuclear safety standard"
+    },
+    {
+      "id": "Q911",
+      "label": "distributive justice"
+    },
+    {
+      "id": "Q1512",
+      "label": "bioenergy supply"
+    },
+    {
+      "id": "Q814",
+      "label": "transport equipment manufacturing"
+    },
+    {
+      "id": "Q1509",
+      "label": "energy distribution sector"
+    },
+    {
+      "id": "Q1507",
+      "label": "energy generation sector"
+    },
+    {
+      "id": "Q709",
+      "label": "economic sector"
+    },
+    {
+      "id": "Q1207",
+      "label": "regulatory instrument"
+    },
+    {
+      "id": "Q909",
+      "label": "plastic production"
+    },
+    {
+      "id": "Q760",
+      "label": "extractive sector"
+    },
+    {
+      "id": "Q1711",
+      "label": "environmental standard"
+    },
+    {
+      "id": "Q1024",
+      "label": "sustainable development goal 7"
+    },
+    {
+      "id": "Q1393",
+      "label": "air pollution standard"
+    },
+    {
+      "id": "Q286",
+      "label": "energy efficiency"
+    },
+    {
+      "id": "Q810",
+      "label": "fabricated metal product manufacturing"
+    },
+    {
+      "id": "Q47",
+      "label": "just transition"
+    },
+    {
+      "id": "Q809",
+      "label": "manufacture of basic metals"
+    },
+    {
+      "id": "Q1656",
+      "label": "water quality standard"
+    },
+    {
+      "id": "Q905",
+      "label": "welfare activities"
+    },
+    {
+      "id": "Q1712",
+      "label": "emission standard"
+    },
+    {
+      "id": "Q1477",
+      "label": "energy market"
+    },
+    {
+      "id": "Q1657",
+      "label": "drinking water standard"
+    },
+    {
+      "id": "Q1165",
+      "label": "workers impacted by the transition"
+    },
+    {
+      "id": "Q1160",
+      "label": "impacted workers"
+    },
+    {
+      "id": "Q638",
+      "label": "fossil fuel"
+    },
+    {
+      "id": "Q1663",
+      "label": "food safety standards"
+    },
+    {
+      "id": "Q1478",
+      "label": "energy supply infrastructure"
+    },
+    {
+      "id": "Q762",
+      "label": "energy supply sector"
+    },
+    {
+      "id": "Q374",
+      "label": "extreme weather"
+    }
+  ],
+  "relationships": [
+    {
+      "source_id": "Q1665",
+      "target_id": "Q1281",
+      "source_label": "hazardous pesticide standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "hazardous pesticide standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1713",
+      "target_id": "Q1281",
+      "source_label": "standard for soil quality",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "standard for soil quality -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q804",
+      "target_id": "Q1165",
+      "source_label": "manufacture of coke",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "manufacture of coke -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1395",
+      "target_id": "Q1281",
+      "source_label": "building code and standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "building code and standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1508",
+      "target_id": "Q762",
+      "source_label": "energy transmission sector",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy transmission sector -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q870",
+      "target_id": "Q762",
+      "source_label": "steam and air conditioning supply",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "steam and air conditioning supply -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q281",
+      "target_id": "Q286",
+      "source_label": "energy and power technologies",
+      "target_label": "energy efficiency",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy and power technologies -> energy efficiency (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q281",
+      "target_id": "Q1066",
+      "source_label": "energy and power technologies",
+      "target_label": "plastic gasification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy and power technologies -> plastic gasification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q281",
+      "target_id": "Q762",
+      "source_label": "energy and power technologies",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy and power technologies -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q871",
+      "target_id": "Q762",
+      "source_label": "activities of brokers and agents for electric power and natural gas",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "activities of brokers and agents for electric power and natural gas -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1399",
+      "target_id": "Q1281",
+      "source_label": "technology standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "technology standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q802",
+      "target_id": "Q1165",
+      "source_label": "paper manufacturing",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "paper manufacturing -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q883",
+      "target_id": "Q47",
+      "source_label": "active labour market policies",
+      "target_label": "just transition",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "active labour market policies -> just transition (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1397",
+      "target_id": "Q1281",
+      "source_label": "renewable portfolio standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "renewable portfolio standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q908",
+      "target_id": "Q1165",
+      "source_label": "manufacture of refined petroleum products",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "manufacture of refined petroleum products -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1207",
+      "source_label": "codes and standards",
+      "target_label": "regulatory instrument",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "codes and standards -> regulatory instrument (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1393",
+      "source_label": "codes and standards",
+      "target_label": "air pollution standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> air pollution standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1395",
+      "source_label": "codes and standards",
+      "target_label": "building code and standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> building code and standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1396",
+      "source_label": "codes and standards",
+      "target_label": "energy efficiency standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> energy efficiency standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1397",
+      "source_label": "codes and standards",
+      "target_label": "renewable portfolio standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> renewable portfolio standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1399",
+      "source_label": "codes and standards",
+      "target_label": "technology standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> technology standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1656",
+      "source_label": "codes and standards",
+      "target_label": "water quality standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> water quality standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1657",
+      "source_label": "codes and standards",
+      "target_label": "drinking water standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> drinking water standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1658",
+      "source_label": "codes and standards",
+      "target_label": "waste management standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> waste management standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1659",
+      "source_label": "codes and standards",
+      "target_label": "nuclear safety standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> nuclear safety standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1660",
+      "source_label": "codes and standards",
+      "target_label": "environmental noise standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> environmental noise standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1663",
+      "source_label": "codes and standards",
+      "target_label": "food safety standards",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> food safety standards (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1665",
+      "source_label": "codes and standards",
+      "target_label": "hazardous pesticide standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> hazardous pesticide standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1711",
+      "source_label": "codes and standards",
+      "target_label": "environmental standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> environmental standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1713",
+      "source_label": "codes and standards",
+      "target_label": "standard for soil quality",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> standard for soil quality (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1281",
+      "target_id": "Q1712",
+      "source_label": "codes and standards",
+      "target_label": "emission standard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "codes and standards -> emission standard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1658",
+      "target_id": "Q1281",
+      "source_label": "waste management standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "waste management standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1066",
+      "target_id": "Q869",
+      "source_label": "plastic gasification",
+      "target_label": "gas supply",
+      "relationship_type": "RELATED_TO",
+      "formatted": "plastic gasification -> gas supply (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1066",
+      "target_id": "Q762",
+      "source_label": "plastic gasification",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "plastic gasification -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1066",
+      "target_id": "Q281",
+      "source_label": "plastic gasification",
+      "target_label": "energy and power technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "plastic gasification -> energy and power technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q869",
+      "target_id": "Q762",
+      "source_label": "gas supply",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "gas supply -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q869",
+      "target_id": "Q1066",
+      "source_label": "gas supply",
+      "target_label": "plastic gasification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "gas supply -> plastic gasification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q868",
+      "target_id": "Q762",
+      "source_label": "electricity supply sector",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "electricity supply sector -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q868",
+      "target_id": "Q762",
+      "source_label": "electricity supply sector",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "electricity supply sector -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q868",
+      "target_id": "Q638",
+      "source_label": "electricity supply sector",
+      "target_label": "fossil fuel",
+      "relationship_type": "RELATED_TO",
+      "formatted": "electricity supply sector -> fossil fuel (RELATED_TO)"
+    },
+    {
+      "source_id": "Q868",
+      "target_id": "Q286",
+      "source_label": "electricity supply sector",
+      "target_label": "energy efficiency",
+      "relationship_type": "RELATED_TO",
+      "formatted": "electricity supply sector -> energy efficiency (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1660",
+      "target_id": "Q1281",
+      "source_label": "environmental noise standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "environmental noise standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q912",
+      "target_id": "Q1165",
+      "source_label": "procedural justice",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "procedural justice -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1396",
+      "target_id": "Q1281",
+      "source_label": "energy efficiency standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy efficiency standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1659",
+      "target_id": "Q1281",
+      "source_label": "nuclear safety standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "nuclear safety standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q911",
+      "target_id": "Q1165",
+      "source_label": "distributive justice",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "distributive justice -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1512",
+      "target_id": "Q762",
+      "source_label": "bioenergy supply",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "bioenergy supply -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q814",
+      "target_id": "Q1165",
+      "source_label": "transport equipment manufacturing",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "transport equipment manufacturing -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1509",
+      "target_id": "Q762",
+      "source_label": "energy distribution sector",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy distribution sector -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1507",
+      "target_id": "Q762",
+      "source_label": "energy generation sector",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy generation sector -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q709",
+      "target_id": "Q760",
+      "source_label": "economic sector",
+      "target_label": "extractive sector",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic sector -> extractive sector (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q709",
+      "target_id": "Q762",
+      "source_label": "economic sector",
+      "target_label": "energy supply sector",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "economic sector -> energy supply sector (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1207",
+      "target_id": "Q1281",
+      "source_label": "regulatory instrument",
+      "target_label": "codes and standards",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "regulatory instrument -> codes and standards (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q909",
+      "target_id": "Q1165",
+      "source_label": "plastic production",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "plastic production -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q760",
+      "target_id": "Q709",
+      "source_label": "extractive sector",
+      "target_label": "economic sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "extractive sector -> economic sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q760",
+      "target_id": "Q1165",
+      "source_label": "extractive sector",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extractive sector -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1711",
+      "target_id": "Q1281",
+      "source_label": "environmental standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "environmental standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1024",
+      "target_id": "Q762",
+      "source_label": "sustainable development goal 7",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "sustainable development goal 7 -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1393",
+      "target_id": "Q1281",
+      "source_label": "air pollution standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "air pollution standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q286",
+      "target_id": "Q281",
+      "source_label": "energy efficiency",
+      "target_label": "energy and power technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy efficiency -> energy and power technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q286",
+      "target_id": "Q762",
+      "source_label": "energy efficiency",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy efficiency -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q286",
+      "target_id": "Q868",
+      "source_label": "energy efficiency",
+      "target_label": "electricity supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy efficiency -> electricity supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q810",
+      "target_id": "Q1165",
+      "source_label": "fabricated metal product manufacturing",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fabricated metal product manufacturing -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q47",
+      "target_id": "Q883",
+      "source_label": "just transition",
+      "target_label": "active labour market policies",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "just transition -> active labour market policies (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q47",
+      "target_id": "Q1160",
+      "source_label": "just transition",
+      "target_label": "impacted workers",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "just transition -> impacted workers (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q47",
+      "target_id": "Q1165",
+      "source_label": "just transition",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "just transition -> workers impacted by the transition (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q47",
+      "target_id": "Q905",
+      "source_label": "just transition",
+      "target_label": "welfare activities",
+      "relationship_type": "RELATED_TO",
+      "formatted": "just transition -> welfare activities (RELATED_TO)"
+    },
+    {
+      "source_id": "Q809",
+      "target_id": "Q1165",
+      "source_label": "manufacture of basic metals",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "manufacture of basic metals -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1656",
+      "target_id": "Q1281",
+      "source_label": "water quality standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "water quality standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q905",
+      "target_id": "Q1165",
+      "source_label": "welfare activities",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "welfare activities -> workers impacted by the transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q905",
+      "target_id": "Q47",
+      "source_label": "welfare activities",
+      "target_label": "just transition",
+      "relationship_type": "RELATED_TO",
+      "formatted": "welfare activities -> just transition (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1712",
+      "target_id": "Q1281",
+      "source_label": "emission standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "emission standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1477",
+      "target_id": "Q762",
+      "source_label": "energy market",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy market -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1657",
+      "target_id": "Q1281",
+      "source_label": "drinking water standard",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "drinking water standard -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q1160",
+      "source_label": "workers impacted by the transition",
+      "target_label": "impacted workers",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "workers impacted by the transition -> impacted workers (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q47",
+      "source_label": "workers impacted by the transition",
+      "target_label": "just transition",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "workers impacted by the transition -> just transition (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q760",
+      "source_label": "workers impacted by the transition",
+      "target_label": "extractive sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> extractive sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q814",
+      "source_label": "workers impacted by the transition",
+      "target_label": "transport equipment manufacturing",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> transport equipment manufacturing (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q908",
+      "source_label": "workers impacted by the transition",
+      "target_label": "manufacture of refined petroleum products",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> manufacture of refined petroleum products (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q802",
+      "source_label": "workers impacted by the transition",
+      "target_label": "paper manufacturing",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> paper manufacturing (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q804",
+      "source_label": "workers impacted by the transition",
+      "target_label": "manufacture of coke",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> manufacture of coke (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q809",
+      "source_label": "workers impacted by the transition",
+      "target_label": "manufacture of basic metals",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> manufacture of basic metals (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q810",
+      "source_label": "workers impacted by the transition",
+      "target_label": "fabricated metal product manufacturing",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> fabricated metal product manufacturing (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q909",
+      "source_label": "workers impacted by the transition",
+      "target_label": "plastic production",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> plastic production (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q911",
+      "source_label": "workers impacted by the transition",
+      "target_label": "distributive justice",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> distributive justice (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q912",
+      "source_label": "workers impacted by the transition",
+      "target_label": "procedural justice",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> procedural justice (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1165",
+      "target_id": "Q905",
+      "source_label": "workers impacted by the transition",
+      "target_label": "welfare activities",
+      "relationship_type": "RELATED_TO",
+      "formatted": "workers impacted by the transition -> welfare activities (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1160",
+      "target_id": "Q47",
+      "source_label": "impacted workers",
+      "target_label": "just transition",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "impacted workers -> just transition (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1160",
+      "target_id": "Q1165",
+      "source_label": "impacted workers",
+      "target_label": "workers impacted by the transition",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "impacted workers -> workers impacted by the transition (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q638",
+      "target_id": "Q762",
+      "source_label": "fossil fuel",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fossil fuel -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q638",
+      "target_id": "Q868",
+      "source_label": "fossil fuel",
+      "target_label": "electricity supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fossil fuel -> electricity supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1663",
+      "target_id": "Q1281",
+      "source_label": "food safety standards",
+      "target_label": "codes and standards",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "food safety standards -> codes and standards (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1478",
+      "target_id": "Q762",
+      "source_label": "energy supply infrastructure",
+      "target_label": "energy supply sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy supply infrastructure -> energy supply sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q709",
+      "source_label": "energy supply sector",
+      "target_label": "economic sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "energy supply sector -> economic sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q868",
+      "source_label": "energy supply sector",
+      "target_label": "electricity supply sector",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> electricity supply sector (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q868",
+      "source_label": "energy supply sector",
+      "target_label": "electricity supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> electricity supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q869",
+      "source_label": "energy supply sector",
+      "target_label": "gas supply",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> gas supply (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q870",
+      "source_label": "energy supply sector",
+      "target_label": "steam and air conditioning supply",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> steam and air conditioning supply (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q871",
+      "source_label": "energy supply sector",
+      "target_label": "activities of brokers and agents for electric power and natural gas",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> activities of brokers and agents for electric power and natural gas (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1477",
+      "source_label": "energy supply sector",
+      "target_label": "energy market",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> energy market (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1507",
+      "source_label": "energy supply sector",
+      "target_label": "energy generation sector",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> energy generation sector (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1508",
+      "source_label": "energy supply sector",
+      "target_label": "energy transmission sector",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> energy transmission sector (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1509",
+      "source_label": "energy supply sector",
+      "target_label": "energy distribution sector",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> energy distribution sector (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1512",
+      "source_label": "energy supply sector",
+      "target_label": "bioenergy supply",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> bioenergy supply (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1478",
+      "source_label": "energy supply sector",
+      "target_label": "energy supply infrastructure",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "energy supply sector -> energy supply infrastructure (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q638",
+      "source_label": "energy supply sector",
+      "target_label": "fossil fuel",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> fossil fuel (RELATED_TO)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q281",
+      "source_label": "energy supply sector",
+      "target_label": "energy and power technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> energy and power technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q286",
+      "source_label": "energy supply sector",
+      "target_label": "energy efficiency",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> energy efficiency (RELATED_TO)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q374",
+      "source_label": "energy supply sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1024",
+      "source_label": "energy supply sector",
+      "target_label": "sustainable development goal 7",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> sustainable development goal 7 (RELATED_TO)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q1066",
+      "source_label": "energy supply sector",
+      "target_label": "plastic gasification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> plastic gasification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q762",
+      "source_label": "extreme weather",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q762",
+      "source_label": "extreme weather",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q374",
+      "source_label": "extreme weather",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> extreme weather (RELATED_TO)"
+    }
+  ],
+  "query": "Brazil energy transition policies",
+  "extraction_method": "query_and_mcp_enhanced",
+  "query_concepts_count": 7,
+  "mcp_concepts_count": 0,
+  "total_concepts_found": 7,
+  "mcp_concepts": [],
+  "links": [
+    {
+      "source": "Q1665",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1713",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q804",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1395",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1508",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q870",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q281",
+      "target": "Q286",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q281",
+      "target": "Q1066",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q281",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q871",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1399",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q802",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q883",
+      "target": "Q47",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1397",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q908",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1207",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1393",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1395",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1396",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1397",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1399",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1656",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1657",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1658",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1659",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1660",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1663",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1665",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1711",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1713",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1281",
+      "target": "Q1712",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1658",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1066",
+      "target": "Q869",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1066",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1066",
+      "target": "Q281",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q869",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q869",
+      "target": "Q1066",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q868",
+      "target": "Q286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1660",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q912",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1396",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1659",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q911",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1512",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q814",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1509",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1507",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q709",
+      "target": "Q760",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q709",
+      "target": "Q762",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1207",
+      "target": "Q1281",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q909",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q760",
+      "target": "Q709",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q760",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1711",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1024",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1393",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q286",
+      "target": "Q281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q286",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q286",
+      "target": "Q868",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q810",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q883",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q1160",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q1165",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q47",
+      "target": "Q905",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q809",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1656",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q905",
+      "target": "Q1165",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q905",
+      "target": "Q47",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1712",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1477",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1657",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q1160",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q47",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q760",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q814",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q908",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q802",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q804",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q809",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q810",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q909",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q911",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q912",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1165",
+      "target": "Q905",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1160",
+      "target": "Q47",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1160",
+      "target": "Q1165",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q638",
+      "target": "Q868",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1663",
+      "target": "Q1281",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1478",
+      "target": "Q762",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q709",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q868",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q868",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q869",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q870",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q871",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1477",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1507",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1508",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1509",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1512",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1478",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q638",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q281",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1024",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q1066",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ]
+};
+        
+        // Initialize visualization
+        const width = 800;
+        const height = 500;
+        
+        const svg = d3.select("#kg-graph")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`);
+            
+        const g = svg.append("g");
+        
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+        svg.call(zoom);
+        
+        // Process data
+        const nodes = kgData.nodes || [];
+        const links = kgData.links || [];
+        
+        // Color mapping
+        const nodeColors = {
+            'Concept': '#1f77b4',
+            'Dataset': '#ff7f0e', 
+            'Passage': '#2ca02c',
+            'Document': '#d62728',
+            'Unknown': '#7f7f7f'
+        };
+        
+        // Create simulation
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(60))
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+        
+        // Create links
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link");
+        
+        // Create nodes
+        const node = g.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", d => Math.max(5, Math.min(15, (d.importance || 1) * 8)))
+            .attr("fill", d => nodeColors[d.type] || nodeColors['Unknown'])
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+        
+        // Add labels
+        const label = g.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("class", "node-label")
+            .attr("dy", -18)
+            .text(d => d.label || d.id);
+        
+        // Tooltip
+        const tooltip = d3.select("#tooltip");
+        
+        node.on("mouseover", function(event, d) {
+            tooltip.transition().duration(200).style("opacity", .9);
+            tooltip.html(`<strong>${d.label || d.id}</strong><br/>Type: ${d.type}<br/>Importance: ${d.importance || 'N/A'}`)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function(d) {
+            tooltip.transition().duration(500).style("opacity", 0);
+        });
+        
+        // Update positions on simulation tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+            
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => d.y);
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    </script>
+</body>
+</html>

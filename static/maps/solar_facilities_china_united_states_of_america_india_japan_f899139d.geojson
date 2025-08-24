@@ -1,0 +1,1905 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.59857582066374,
+          34.241943588298874
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 85682",
+        "capacity_mw": 0.254000100272162,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "85682",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.78858112977473,
+          37.608166050120886
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 23477",
+        "capacity_mw": 0.2541305073646234,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "23477",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.35279498906512,
+          36.85964523520815
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 108433",
+        "capacity_mw": 0.2541952292684333,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "108433",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.24327049824917,
+          40.58446395786442
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 77511",
+        "capacity_mw": 0.2542332082077342,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "77511",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.00830425146869,
+          37.90909307284618
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 64541",
+        "capacity_mw": 0.2544490900593199,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "64541",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -92.03129531988311,
+          33.93447460124162
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 97456",
+        "capacity_mw": 0.2544713479157106,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "97456",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.2436925,
+          34.656697
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 59520",
+        "capacity_mw": 0.254792190607522,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "59520",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -121.08018512752156,
+          39.03242930473856
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 112862",
+        "capacity_mw": 0.2548082544502487,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "112862",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.56173668859446,
+          36.25327762610719
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 99484",
+        "capacity_mw": 0.2548366144331207,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "99484",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.7457750040842,
+          35.292476233964265
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 91241",
+        "capacity_mw": 0.2550341904366652,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "91241",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.56690038368524,
+          34.277709490103085
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 47475",
+        "capacity_mw": 0.2550357912317807,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "47475",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.63520352059686,
+          38.11445258037179
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 84988",
+        "capacity_mw": 0.2552254682097507,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "84988",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -75.5907864134024,
+          39.1949263031186
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 106938",
+        "capacity_mw": 0.2559347013888029,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "106938",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -121.86994310673688,
+          41.764982178473446
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 67325",
+        "capacity_mw": 0.2559811101317029,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "67325",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -75.92502923698454,
+          38.78074927512152
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 54568",
+        "capacity_mw": 0.2561630742388504,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "54568",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.65453195715747,
+          35.00762160681103
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 61515",
+        "capacity_mw": 0.2561870018603449,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "61515",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.71022175392451,
+          40.88304047614714
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 94272",
+        "capacity_mw": 0.2562522051435466,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "94272",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -121.84796559682096,
+          37.31944082464948
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 105500",
+        "capacity_mw": 0.256469265246818,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "105500",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -72.5700413453377,
+          41.79845645968111
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 99329",
+        "capacity_mw": 0.2565668092201693,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "99329",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -81.92437886519652,
+          36.24219884964415
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 92242",
+        "capacity_mw": 0.2567801943894606,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "92242",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.31338981490975,
+          35.94226677680055
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 20932",
+        "capacity_mw": 0.2568883502061989,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "20932",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -111.82923783061868,
+          33.27526901889845
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 36986",
+        "capacity_mw": 0.2571641832848998,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "36986",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -90.03364286526569,
+          43.52999631018549
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 110884",
+        "capacity_mw": 0.257263849682485,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "110884",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.79543250916984,
+          33.72135548219735
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 24911",
+        "capacity_mw": 0.2574668488281136,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "24911",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.67123134637043,
+          35.690751572185405
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 95845",
+        "capacity_mw": 0.2574818392225044,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "95845",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -89.51364193292208,
+          43.12301635764699
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 96605",
+        "capacity_mw": 0.2576613754964348,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "96605",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.07620780252432,
+          46.19399868680432
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 122077",
+        "capacity_mw": 0.2577623936969833,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "122077",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -121.31320831446988,
+          37.99815563278034
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 48966",
+        "capacity_mw": 0.2578189239858796,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "48966",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.0139798906552,
+          41.0729335707288
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 110043",
+        "capacity_mw": 0.2581077103391914,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "110043",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.14635958805684,
+          34.599776926641425
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 115252",
+        "capacity_mw": 0.2582117973461545,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "115252",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -108.58286310827891,
+          39.0832047079606
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 40642",
+        "capacity_mw": 0.258370377486447,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "40642",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.20351150542504,
+          32.70290161250527
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 94448",
+        "capacity_mw": 0.2584425973235681,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "94448",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.9981942094352,
+          34.438992084584434
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 112550",
+        "capacity_mw": 0.2589123099430048,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "112550",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.05800379694112,
+          40.28579911381164
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 68500",
+        "capacity_mw": 0.2590308043375681,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "68500",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -112.44330369819228,
+          33.63370188603113
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 37548",
+        "capacity_mw": 0.2594039020998139,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "37548",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -76.9591159393686,
+          39.17956095037757
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 115443",
+        "capacity_mw": 0.2594122240346485,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "115443",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.34273776584055,
+          33.68899255729527
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 98064",
+        "capacity_mw": 0.2595131513164112,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "98064",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.72768266266677,
+          36.89202373767951
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 70560",
+        "capacity_mw": 0.2596152335867281,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "70560",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.24461096140082,
+          44.18759873632206
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 110786",
+        "capacity_mw": 0.2601330244738634,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "110786",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.24543550278021,
+          40.90911506404636
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 7508",
+        "capacity_mw": 0.2601860420308477,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "7508",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.04490155084724,
+          40.23143125879914
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 104554",
+        "capacity_mw": 0.2602896569533868,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "104554",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -159.39695354704594,
+          21.97411976075857
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 94506",
+        "capacity_mw": 0.2609478356641616,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "94506",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.30813503459147,
+          43.63882260474973
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 117803",
+        "capacity_mw": 0.2611534284469204,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "117803",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.76613651597258,
+          35.62745039611124
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 118941",
+        "capacity_mw": 0.2611724766741739,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "118941",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.8659142541904,
+          41.57587033628315
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 84548",
+        "capacity_mw": 0.2612739104235209,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "84548",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -158.16141744143343,
+          21.462702099790512
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 95966",
+        "capacity_mw": 0.2613781469191387,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "95966",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.8284283933884,
+          26.14444075123757
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 56879",
+        "capacity_mw": 0.2617845860051297,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "56879",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.79810245583798,
+          34.27355013640466
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 122966",
+        "capacity_mw": 0.2617895041579269,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "122966",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.45475287331898,
+          34.43861328713629
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 87209",
+        "capacity_mw": 0.2618570669948472,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "87209",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -90.50276816873208,
+          35.66442061590382
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 105469",
+        "capacity_mw": 0.2619058243197246,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "105469",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -124.09337278938226,
+          40.87410220142639
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 70944",
+        "capacity_mw": 0.2620547132397579,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "70944",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.88631180560195,
+          35.71918327612163
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 101400",
+        "capacity_mw": 0.262647793910301,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "101400",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -116.94936008251484,
+          33.78971972298778
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 118831",
+        "capacity_mw": 0.2632994157613852,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "118831",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -90.1073485,
+          38.739508
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 121430",
+        "capacity_mw": 0.263405889239037,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "121430",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -76.85340662804566,
+          38.86542726562975
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 108085",
+        "capacity_mw": 0.2634401432526003,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "108085",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.82564643302196,
+          34.09897627884695
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 72836",
+        "capacity_mw": 0.2636364656377499,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "72836",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.1152081812831,
+          35.848625043665294
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 113511",
+        "capacity_mw": 0.2637381312973192,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "113511",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.15829035445104,
+          40.04701937302299
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 84652",
+        "capacity_mw": 0.2639864853613247,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "84652",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.131033493356,
+          34.90348124501544
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 111358",
+        "capacity_mw": 0.2642544525356179,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "111358",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -121.89054009313412,
+          39.78636735501954
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 82373",
+        "capacity_mw": 0.2644149672037857,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "82373",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -104.90465543649388,
+          39.84963032662432
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 75550",
+        "capacity_mw": 0.2645246299165579,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "75550",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -72.39904824178953,
+          43.61219927453548
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 51399",
+        "capacity_mw": 0.2646375161190331,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "51399",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.52707622273452,
+          32.7255419671516
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 20305",
+        "capacity_mw": 0.26475659255132,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "20305",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.25612932294894,
+          34.07656632001576
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 89415",
+        "capacity_mw": 0.2647948071369176,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "89415",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.26741999192662,
+          34.542341717191306
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 86256",
+        "capacity_mw": 0.2648053773748385,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "86256",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -104.41701577027044,
+          33.33622774246055
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 121162",
+        "capacity_mw": 0.2650440927347506,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "121162",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.66091467246704,
+          35.1947681591972
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 119014",
+        "capacity_mw": 0.2652492817966319,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "119014",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.48191234679616,
+          37.41684970874029
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 112788",
+        "capacity_mw": 0.2652642941365252,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "112788",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.79716849968902,
+          34.15189642054285
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 121509",
+        "capacity_mw": 0.2654375737566014,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "121509",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.21931234978292,
+          33.880174498907564
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 84241",
+        "capacity_mw": 0.265485372073712,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "84241",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -83.41155898299158,
+          42.38856881486923
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 119661",
+        "capacity_mw": 0.2657429404041582,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "119661",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.33235620304652,
+          40.5519887013003
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 68089",
+        "capacity_mw": 0.265982468768194,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "68089",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -72.92355382126419,
+          44.80473798007
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 110829",
+        "capacity_mw": 0.2660131040760679,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "110829",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.6110218239328,
+          37.49985411864014
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 114664",
+        "capacity_mw": 0.2660405676294732,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "114664",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.1285087378901,
+          42.6438509807449
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 86403",
+        "capacity_mw": 0.2661481592702848,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "86403",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.57639168567236,
+          42.34489410864874
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 24640",
+        "capacity_mw": 0.2663569728704025,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "24640",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.33041743561856,
+          33.855144247393625
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 110732",
+        "capacity_mw": 0.266626865429502,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "110732",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.31708747167625,
+          35.77434829868274
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 93200",
+        "capacity_mw": 0.2666564040345035,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "93200",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.81974825934864,
+          34.05356800245478
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 95664",
+        "capacity_mw": 0.2667878565013993,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "95664",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -75.60511688967176,
+          38.34854702698551
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 46798",
+        "capacity_mw": 0.2668862260941523,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "46798",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.63437510873688,
+          35.019839531185994
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 84535",
+        "capacity_mw": 0.2669649425881386,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "84535",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -75.31996633857045,
+          40.67637854699334
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 111682",
+        "capacity_mw": 0.2670897685267471,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "111682",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.6264784970266,
+          34.19020036649765
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 95913",
+        "capacity_mw": 0.2670998606427006,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "95913",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -75.2339074138106,
+          40.76431586107909
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 72421",
+        "capacity_mw": 0.2671575954494775,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "72421",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.22362038243426,
+          32.89311544404213
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 73878",
+        "capacity_mw": 0.2671909186666619,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "73878",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -110.77037580356276,
+          32.19093835890414
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 123388",
+        "capacity_mw": 0.2672601716781314,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "123388",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.91573771754871,
+          42.00723195089503
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 109751",
+        "capacity_mw": 0.2676055984204922,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "109751",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28212653349682,
+          39.14847954076225
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 73000",
+        "capacity_mw": 0.2678415280886335,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "73000",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -76.8062363310762,
+          40.24662444073487
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 104074",
+        "capacity_mw": 0.2678577013883159,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "104074",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.02178924049224,
+          36.42932958121804
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 54815",
+        "capacity_mw": 0.2679543790535285,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "54815",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -104.9947941621682,
+          39.93670303364064
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 115624",
+        "capacity_mw": 0.2680167652535903,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "115624",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.2658366845817,
+          34.13745914696906
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 103156",
+        "capacity_mw": 0.2680442108579545,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "103156",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.376898,
+          34.1248105
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 99149",
+        "capacity_mw": 0.2681757491307137,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "99149",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.10550219576484,
+          32.827233119015354
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 72952",
+        "capacity_mw": 0.268217557346632,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "72952",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.9226753432955,
+          34.182196094368166
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 110101",
+        "capacity_mw": 0.2682475054777566,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "110101",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.30540021203868,
+          38.331291736167934
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 81700",
+        "capacity_mw": 0.2683916064821082,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "81700",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -74.70098993578056,
+          40.112583920411
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 112385",
+        "capacity_mw": 0.2689574470211419,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "112385",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.0249639722919,
+          33.73121576579825
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 110129",
+        "capacity_mw": 0.2689663079548361,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "110129",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.46806308655376,
+          33.96735773404446
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 114466",
+        "capacity_mw": 0.2692825915681652,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "114466",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.12772991173732,
+          42.36794372494819
+        ]
+      },
+      "properties": {
+        "name": "Solar Facility 112915",
+        "capacity_mw": 0.2693039400723816,
+        "country": "United States of America",
+        "completion_year": "Unknown",
+        "cluster_id": "112915",
+        "technology": "Solar PV",
+        "marker_color": "#9E9E9E"
+      }
+    }
+  ]
+}
