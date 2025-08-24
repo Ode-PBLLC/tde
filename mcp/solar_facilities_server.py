@@ -1,12 +1,7 @@
 import pandas as pd
-import numpy as np
 from fastmcp import FastMCP
 from typing import List, Optional, Dict, Any
-from datetime import datetime
-import json
 import folium
-import base64
-from io import BytesIO
 import os
 from solar_db import SolarDatabase
 
@@ -434,6 +429,194 @@ def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") ->
         else:
             return {"error": f"Unknown visualization type: {visualization_type}. Available: by_country, source_timeline"}
             
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@mcp.tool()
+def GetSolarFacilitiesMap(country: Optional[str] = None, limit: int = 200) -> Dict[str, Any]:
+    """Generate an interactive map of solar facilities with proper country filtering."""
+    if not db:
+        return {"error": "Database not available"}
+    
+    try:
+        if country:
+            facilities = db.get_facilities_by_country(country, limit=limit)
+        else:
+            facilities = db.search_facilities(limit=limit)
+        
+        if not facilities:
+            return {"error": f"No facilities found{' for ' + country if country else ''}"}
+        
+        # Calculate map center based on facilities
+        lats = [f['latitude'] for f in facilities if f['latitude']]
+        lons = [f['longitude'] for f in facilities if f['longitude']]
+        
+        center_lat = sum(lats) / len(lats)
+        center_lon = sum(lons) / len(lons)
+        
+        # Create map
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=6)
+        
+        # Add markers
+        for facility in facilities:
+            if facility.get('latitude') and facility.get('longitude'):
+                popup_text = f"""
+                <b>Capacity:</b> {facility.get('capacity_mw', 'Unknown')} MW<br>
+                <b>Country:</b> {facility.get('country', 'Unknown')}<br>
+                <b>Cluster ID:</b> {facility.get('cluster_id', 'Unknown')}
+                """
+                
+                folium.CircleMarker(
+                    location=[facility['latitude'], facility['longitude']],
+                    radius=5,
+                    popup=popup_text,
+                    color='red',
+                    fillColor='orange',
+                    fillOpacity=0.7
+                ).add_to(m)
+        
+        # Save to temp file and get HTML
+        import uuid
+        
+        temp_id = str(uuid.uuid4())[:8]
+        temp_file = f"/tmp/solar_map_{temp_id}.html"
+        m.save(temp_file)
+        
+        with open(temp_file, 'r') as f:
+            map_html = f.read()
+        
+        # Clean up temp file
+        os.remove(temp_file)
+        
+        return {
+            "type": "interactive_map",
+            "country_filter": country,
+            "facilities_count": len(facilities),
+            "map_html": map_html,
+            "center": [center_lat, center_lon],
+            "data_available": True
+        }
+        
+    except Exception as e:
+        return {"error": f"Map generation failed: {str(e)}"}
+
+@mcp.tool()
+def GetSolarFacilitiesInBounds(north: float, south: float, east: float, west: float, limit: int = 500) -> Dict[str, Any]:
+    """Get solar facilities within geographic bounds (bounding box)."""
+    if not db:
+        return {"error": "Database not available"}
+    
+    try:
+        facilities = db.get_facilities_in_bounds(north, south, east, west, limit=limit)
+        
+        if not facilities:
+            return {"error": f"No facilities found in bounds: N{north} S{south} E{east} W{west}"}
+        
+        # Group by country for summary
+        countries = {}
+        for facility in facilities:
+            country = facility.get('country', 'Unknown')
+            if country not in countries:
+                countries[country] = 0
+            countries[country] += 1
+        
+        return {
+            "bounds": {"north": north, "south": south, "east": east, "west": west},
+            "facilities_found": len(facilities),
+            "countries_in_bounds": list(countries.keys()),
+            "facilities_by_country": countries,
+            "sample_facilities": facilities[:5],
+            "all_facilities": facilities,
+            "data_available": True
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@mcp.tool()
+def GetSolarFacilitiesMultipleCountries(countries: List[str], limit: int = 200) -> Dict[str, Any]:
+    """Get solar facilities for multiple countries at once."""
+    if not db:
+        return {"error": "Database not available"}
+    
+    try:
+        all_facilities = []
+        country_results = {}
+        
+        for country in countries:
+            facilities = db.get_facilities_by_country(country, limit=limit//len(countries))
+            all_facilities.extend(facilities)
+            country_results[country] = len(facilities)
+        
+        if not all_facilities:
+            return {"error": f"No facilities found for countries: {', '.join(countries)}"}
+        
+        return {
+            "countries_requested": countries,
+            "total_facilities": len(all_facilities),
+            "facilities_by_country": country_results,
+            "sample_facilities": all_facilities[:5],
+            "all_facilities": all_facilities,
+            "data_available": True
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@mcp.tool()
+def GetSolarFacilitiesCountries() -> Dict[str, Any]:
+    """Get list of all countries with solar facilities in the database."""
+    if not db:
+        return {"error": "Database not available"}
+    
+    try:
+        all_countries = db.get_all_country_names()
+        country_stats = db.get_country_statistics()
+        
+        # Create a lookup for facility counts
+        country_counts = {stat['country']: stat['facility_count'] for stat in country_stats}
+        
+        countries_with_counts = [
+            {
+                "country": country,
+                "facility_count": country_counts.get(country, 0)
+            }
+            for country in all_countries
+        ]
+        
+        # Sort by facility count descending
+        countries_with_counts.sort(key=lambda x: x['facility_count'], reverse=True)
+        
+        return {
+            "total_countries": len(all_countries),
+            "countries": countries_with_counts,
+            "top_10_countries": countries_with_counts[:10],
+            "data_available": True,
+            "note": "Use exact country names for filtering. Case insensitive matching supported."
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@mcp.tool()
+def FindSolarFacilitiesCountries(partial_name: str) -> Dict[str, Any]:
+    """Find countries with solar facilities by partial name match."""
+    if not db:
+        return {"error": "Database not available"}
+    
+    try:
+        matching_countries = db.find_country_by_partial_name(partial_name)
+        
+        if not matching_countries:
+            return {"error": f"No countries found matching '{partial_name}'"}
+        
+        return {
+            "search_term": partial_name,
+            "matching_countries": matching_countries,
+            "match_count": len(matching_countries),
+            "data_available": True
+        }
+        
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 

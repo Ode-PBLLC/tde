@@ -314,7 +314,6 @@ SUMMARY_PROMPT = (
     "You should look for data to support the user's query, especially when they ask for it."
     "If given multiple concepts, you should look for passages that are relevant to all of them."
     "You should call at least one of the following tools AT LEAST ONCE for every query: GetPassagesMentioningConcept, PassagesMentioningBothConcepts"
-    "You MUST ALWAYS CALL THE ALWAYSRUN TOOL FOR EVERY QUERY"
     "Passages are not Datasets. They are distinct. You find datasets by looking for 'HAS_DATASET_ABOUT' or 'DATASET_ON_TOPIC' edges."
 )
 

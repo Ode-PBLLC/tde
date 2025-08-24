@@ -301,3 +301,30 @@ class SolarDatabase:
                 'total_countries': total_countries,
                 'database_path': self.db_path
             }
+    
+    def get_facilities_in_bounds(self, north: float, south: float, east: float, west: float, limit: int = 500) -> List[Dict[str, Any]]:
+        """Get facilities within geographic bounding box."""
+        return self.search_facilities(
+            lat_min=south, lat_max=north,
+            lon_min=west, lon_max=east,
+            limit=limit
+        )
+    
+    def get_all_country_names(self) -> List[str]:
+        """Get all unique country names in the database."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT country FROM solar_facilities ORDER BY country")
+            rows = cursor.fetchall()
+            return [row[0] for row in rows]
+    
+    def find_country_by_partial_name(self, partial_name: str) -> List[str]:
+        """Find countries by partial name match."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT DISTINCT country FROM solar_facilities WHERE country LIKE ? ORDER BY country",
+                (f"%{partial_name}%",)
+            )
+            rows = cursor.fetchall()
+            return [row[0] for row in rows]
