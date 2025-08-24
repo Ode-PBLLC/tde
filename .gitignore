@@ -1,10 +1,34 @@
+# Environment and credentials
 .env
 .env.*
+
+# Data directories (large datasets)
 data/
 extras/
+
+# Python cache
 __pycache__/
 *.pyc
 mcp/__pycache__/
+
+# Temporary and build files
 aggregated/
 aggregated.tar.gz
+
+# Logs and temporary files
+*.log
+*response*.json
+test_*.json
+*_test.txt
+streaming_response.txt
+chart_*.json
+
+# IDE and editor
 .claude/
+.vscode/
+.idea/
+
+# Test outputs and debug files
+test_output*.txt
+debug_*.py
+*_debug.py
