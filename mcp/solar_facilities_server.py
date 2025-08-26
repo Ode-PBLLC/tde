@@ -3,6 +3,8 @@ from fastmcp import FastMCP
 from typing import List, Optional, Dict, Any
 import folium
 import os
+import json
+import hashlib
 from solar_db import SolarDatabase
 
 mcp = FastMCP("solar-facilities-server")
@@ -27,9 +29,119 @@ except Exception as e:
     db = None
     metadata = {"error": "Database not available"}
 
+def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world", extra_metadata: Dict = None) -> Dict[str, Any]:
+    """
+    Generate GeoJSON file from facilities data and save to static/maps/.
+    Returns URL, filename, and statistics about the data.
+    """
+    # Create GeoJSON structure
+    geojson = {
+        "type": "FeatureCollection",
+        "features": []
+    }
+    
+    # Color mapping by country
+    country_colors = {
+        'brazil': '#4CAF50',
+        'india': '#FF9800',
+        'south africa': '#F44336',
+        'vietnam': '#2196F3',
+        'china': '#9C27B0',
+        'united states of america': '#FF5722',
+        'japan': '#3F51B5',
+        'germany': '#009688',
+        'spain': '#FFC107',
+        'italy': '#795548'
+    }
+    
+    # Statistics tracking
+    total_capacity = 0
+    capacities = []
+    countries = set()
+    
+    for facility in facilities:
+        # Track statistics
+        countries.add(facility.get('country', 'Unknown'))
+        capacity = facility.get('capacity_mw')
+        if capacity is not None and capacity > 0:
+            capacities.append(capacity)
+            total_capacity += capacity
+        
+        # Create GeoJSON feature
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [float(facility['longitude']), float(facility['latitude'])]
+            },
+            "properties": {
+                "name": facility.get('name', f"Solar Facility {facility.get('cluster_id', '')}"),
+                "capacity_mw": capacity if capacity is not None else 0.0,
+                "country": facility.get('country', 'Unknown'),
+                "cluster_id": facility.get('cluster_id', ''),
+                "technology": "Solar PV",
+                "constructed_before": facility.get('constructed_before'),
+                "constructed_after": facility.get('constructed_after'),
+                "marker_color": country_colors.get(facility.get('country', '').lower(), "#9E9E9E")
+            }
+        }
+        geojson["features"].append(feature)
+    
+    # Calculate statistics
+    stats = {
+        "total_facilities": len(facilities),
+        "total_capacity_mw": round(total_capacity, 1) if total_capacity > 0 else None,
+        "countries": sorted(list(countries)),
+        "capacity_range_mw": {
+            "min": round(min(capacities), 1) if capacities else None,
+            "max": round(max(capacities), 1) if capacities else None,
+            "average": round(sum(capacities) / len(capacities), 1) if capacities else None
+        } if capacities else None
+    }
+    
+    # Save GeoJSON file
+    try:
+        project_root = os.path.dirname(script_dir)
+        static_maps_dir = os.path.join(project_root, "static", "maps")
+        os.makedirs(static_maps_dir, exist_ok=True)
+        
+        # Create unique filename
+        identifier_str = identifier.lower().replace(" ", "_").replace(",", "")[:50]
+        data_hash = hashlib.md5(f"{identifier_str}_{len(facilities)}".encode()).hexdigest()[:8]
+        filename = f"solar_facilities_{identifier_str}_{data_hash}.geojson"
+        
+        geojson_path = os.path.join(static_maps_dir, filename)
+        
+        # Add metadata to GeoJSON
+        if extra_metadata:
+            geojson["metadata"] = extra_metadata
+        geojson["metadata"] = {**geojson.get("metadata", {}), **stats}
+        
+        with open(geojson_path, 'w') as f:
+            json.dump(geojson, f)
+        
+        print(f"Generated GeoJSON file: {filename} with {len(geojson['features'])} features")
+        
+        return {
+            "success": True,
+            "geojson_url": f"/static/maps/{filename}",
+            "geojson_filename": filename,
+            "file_size_kb": round(os.path.getsize(geojson_path) / 1024, 1),
+            "stats": stats
+        }
+        
+    except Exception as e:
+        print(f"Error generating GeoJSON file: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "stats": stats
+        }
+
 @mcp.tool()
-def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit: int = 100) -> Dict[str, Any]:
-    """Get solar facilities summary for a country."""
+def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit: int = 10000) -> Dict[str, Any]:
+    """Get solar facilities summary for a country.
+    Default limit of 10,000 allows for complete country datasets (Brazil has ~2,273 facilities)."""
     if not db:
         return {"error": "Database not available"}
     
@@ -59,8 +171,11 @@ def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit:
         return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
-def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
-    """Get facilities data for map visualization."""
+def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 10000) -> Dict[str, Any]:
+    """PRIMARY MAP FUNCTION: Get facilities data for map visualization - generates GeoJSON file.
+    Returns GeoJSON URL for frontend consumption. 
+    Default limit of 10,000 allows for complete country datasets (Brazil has ~2,273 facilities)."""
+    print(f"DEBUG GetSolarFacilitiesMapData called with country={country}, limit={limit}")
     if not db:
         return {"error": "Database not available"}
     
@@ -75,47 +190,72 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 100) -
         
         # Get country statistics for summary
         country_stats = db.get_country_statistics()
-        total_facilities = sum(stat['facility_count'] for stat in country_stats)
-        countries = [stat['country'] for stat in country_stats]
+        total_facilities_global = sum(stat['facility_count'] for stat in country_stats)
+        countries_global = [stat['country'] for stat in country_stats]
         
-        # Convert to map-ready format
-        full_data = []
-        for facility in facilities:
-            full_data.append({
-                "cluster_id": facility.get('cluster_id', ''),
-                "latitude": float(facility['latitude']),
-                "longitude": float(facility['longitude']),
-                "country": facility['country'],
-                "source": facility.get('source', 'Unknown'),
-                "capacity_mw": facility.get('capacity_mw'),
-                "constructed_before": facility.get('constructed_before'),
-                "constructed_after": facility.get('constructed_after'),
-                "name": f"Solar Facility {facility.get('cluster_id', '')}"
-            })
+        # Generate GeoJSON file
+        identifier = country if country else "world"
+        geojson_result = generate_and_save_geojson(
+            facilities, 
+            identifier,
+            extra_metadata={
+                "data_source": "TZ-SAM Q1 2025",
+                "query_limit": limit,
+                "country_filter": country
+            }
+        )
         
-        return {
+        if not geojson_result["success"]:
+            return {"error": f"Failed to generate GeoJSON: {geojson_result.get('error')}"}
+        
+        stats = geojson_result["stats"]
+        
+        # Create description for LLM
+        description = f"Generated map with {stats['total_facilities']:,} solar facilities"
+        if country:
+            description += f" in {country}"
+        if stats.get('total_capacity_mw'):
+            description += f" totaling {stats['total_capacity_mw']:,.1f} MW"
+        if stats.get('capacity_range_mw'):
+            cap_range = stats['capacity_range_mw']
+            if cap_range.get('min') and cap_range.get('max'):
+                description += f" (range: {cap_range['min']}-{cap_range['max']} MW)"
+        
+        result = {
             "type": "map_data_summary",
             "summary": {
-                "total_facilities": total_facilities,
-                "countries": countries[:10],  # Top 10 countries
-                "facilities_shown_on_map": len(facilities),
+                "description": description,
+                "total_facilities": stats['total_facilities'],
+                "total_capacity_mw": stats.get('total_capacity_mw'),
+                "capacity_range_mw": stats.get('capacity_range_mw'),
+                "countries": stats['countries'],
+                "facilities_shown_on_map": stats['total_facilities'],
+                "global_context": {
+                    "total_facilities_global": total_facilities_global,
+                    "countries_with_data": countries_global[:10]
+                },
                 "data_from_database": True
             },
+            "geojson_url": geojson_result["geojson_url"],
+            "geojson_filename": geojson_result["geojson_filename"],
+            "file_size_kb": geojson_result["file_size_kb"],
             "sample_facilities": facilities[:3],  # First 3 as examples
-            "full_data": full_data,
             "metadata": {
                 "data_source": "TZ-SAM Q1 2025 (SQLite Database)",
                 "geojson_available": True,
-                "query_time_optimized": True
+                "query_time_optimized": True,
+                "note": "Full facility data saved to GeoJSON file"
             }
         }
+        print(f"DEBUG GetSolarFacilitiesMapData returning keys: {list(result.keys())}, NO full_data present")
+        return result
         
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
 def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
-    """Get facilities for GeoJSON generation."""
+    """Get facilities for GeoJSON generation - generates file and returns reference."""
     if not db:
         return {"error": "Database not available"}
     
@@ -128,32 +268,34 @@ def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 100
         if not facilities:
             return {"error": f"No facilities found{' for ' + country if country else ''}"}
         
-        # Convert to GeoJSON-ready format
-        facilities_list = []
-        countries = set()
+        # Generate GeoJSON file
+        identifier = country if country else "world"
+        geojson_result = generate_and_save_geojson(
+            facilities, 
+            identifier,
+            extra_metadata={
+                "data_source": "TZ-SAM Q1 2025 Database",
+                "query_limit": limit,
+                "country_filter": country,
+                "note": "Combined raw and analysis dataset with capacity where available"
+            }
+        )
         
-        for facility in facilities:
-            facilities_list.append({
-                "cluster_id": facility.get('cluster_id', ''),
-                "latitude": float(facility['latitude']),
-                "longitude": float(facility['longitude']),
-                "country": facility['country'],
-                "source": facility.get('source', 'Unknown'),
-                "capacity_mw": facility.get('capacity_mw'),
-                "constructed_before": facility.get('constructed_before'),
-                "constructed_after": facility.get('constructed_after'),
-                "name": f"Solar Facility {facility.get('cluster_id', '')}"
-            })
-            countries.add(facility['country'])
+        if not geojson_result["success"]:
+            return {"error": f"Failed to generate GeoJSON: {geojson_result.get('error')}"}
+        
+        stats = geojson_result["stats"]
         
         return {
             "type": "map",
-            "data": facilities_list,
+            "geojson_url": geojson_result["geojson_url"],
+            "geojson_filename": geojson_result["geojson_filename"],
             "metadata": {
-                "total_facilities": len(facilities_list),
-                "countries": list(countries),
+                "total_facilities": stats['total_facilities'],
+                "countries": stats['countries'],
+                "total_capacity_mw": stats.get('total_capacity_mw'),
                 "data_source": "TZ-SAM Q1 2025 Database",
-                "note": "Combined raw and analysis dataset with capacity where available"
+                "note": "GeoJSON file generated with full facility data"
             }
         }
         
@@ -288,7 +430,7 @@ def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, c
 
 @mcp.tool()
 def GetLargestSolarFacilities(limit: int = 20, country: Optional[str] = None) -> Dict[str, Any]:
-    """Get largest solar facilities by capacity."""
+    """Get largest solar facilities by capacity - generates GeoJSON for mapping."""
     if not db:
         return {"error": "Database not available"}
     
@@ -298,26 +440,43 @@ def GetLargestSolarFacilities(limit: int = 20, country: Optional[str] = None) ->
         if not facilities:
             return {"error": f"No facilities found{' in ' + country if country else ''}"}
         
-        # Convert to list format with capacity data
-        facilities_list = []
-        for facility in facilities:
-            facilities_list.append({
+        # Generate GeoJSON file for these large facilities
+        identifier = f"largest_{country}" if country else "largest_global"
+        geojson_result = generate_and_save_geojson(
+            facilities, 
+            identifier,
+            extra_metadata={
+                "data_source": "TZ-SAM Q1 2025",
+                "query_type": "largest_facilities",
+                "limit": limit,
+                "country_filter": country
+            }
+        )
+        
+        # Prepare facility summaries
+        facilities_summary = []
+        for i, facility in enumerate(facilities[:10], 1):  # Top 10 for summary
+            facilities_summary.append({
+                "rank": i,
                 "cluster_id": facility.get('cluster_id', ''),
                 "capacity_mw": facility.get('capacity_mw'),
-                "constructed_before": facility.get('constructed_before'),
-                "constructed_after": facility.get('constructed_after'),
-                "latitude": float(facility['latitude']),
-                "longitude": float(facility['longitude']),
                 "country": facility['country'],
                 "name": f"Solar Facility {facility.get('cluster_id', '')}"
             })
         
+        stats = geojson_result["stats"] if geojson_result["success"] else {}
+        
         return {
             "search_criteria": {"limit": limit, "country": country},
             "facilities_found": len(facilities),
-            "top_3_facilities": facilities_list[:3],
-            "all_facilities": facilities_list,
-            "note": "Sorted by capacity (MW) - combined dataset with capacity where available",
+            "top_10_facilities": facilities_summary,
+            "capacity_stats": {
+                "total_mw": stats.get('total_capacity_mw'),
+                "range_mw": stats.get('capacity_range_mw')
+            },
+            "geojson_url": geojson_result.get("geojson_url") if geojson_result["success"] else None,
+            "geojson_filename": geojson_result.get("geojson_filename") if geojson_result["success"] else None,
+            "note": "Sorted by capacity (MW) - full list available in GeoJSON file",
             "data_available": True
         }
         
@@ -432,9 +591,11 @@ def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") ->
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
-@mcp.tool()
-def GetSolarFacilitiesMap(country: Optional[str] = None, limit: int = 200) -> Dict[str, Any]:
-    """Generate an interactive map of solar facilities with proper country filtering."""
+# DEPRECATED: HTML map generation - use GetSolarFacilitiesMapData for GeoJSON URLs instead
+# @mcp.tool()
+def GetSolarFacilitiesMap_DEPRECATED(country: Optional[str] = None, limit: int = 10000) -> Dict[str, Any]:
+    """DEPRECATED: Generate an interactive HTML map of solar facilities.
+    Use GetSolarFacilitiesMapData instead for GeoJSON URL generation."""
     if not db:
         return {"error": "Database not available"}
     
@@ -502,7 +663,7 @@ def GetSolarFacilitiesMap(country: Optional[str] = None, limit: int = 200) -> Di
 
 @mcp.tool()
 def GetSolarFacilitiesInBounds(north: float, south: float, east: float, west: float, limit: int = 500) -> Dict[str, Any]:
-    """Get solar facilities within geographic bounds (bounding box)."""
+    """Get solar facilities within geographic bounds - generates GeoJSON."""
     if not db:
         return {"error": "Database not available"}
     
@@ -512,6 +673,18 @@ def GetSolarFacilitiesInBounds(north: float, south: float, east: float, west: fl
         if not facilities:
             return {"error": f"No facilities found in bounds: N{north} S{south} E{east} W{west}"}
         
+        # Generate GeoJSON file
+        identifier = f"bounds_n{north:.1f}_s{south:.1f}_e{east:.1f}_w{west:.1f}"
+        geojson_result = generate_and_save_geojson(
+            facilities, 
+            identifier,
+            extra_metadata={
+                "data_source": "TZ-SAM Q1 2025",
+                "query_type": "geographic_bounds",
+                "bounds": {"north": north, "south": south, "east": east, "west": west}
+            }
+        )
+        
         # Group by country for summary
         countries = {}
         for facility in facilities:
@@ -520,13 +693,20 @@ def GetSolarFacilitiesInBounds(north: float, south: float, east: float, west: fl
                 countries[country] = 0
             countries[country] += 1
         
+        stats = geojson_result["stats"] if geojson_result["success"] else {}
+        
         return {
             "bounds": {"north": north, "south": south, "east": east, "west": west},
             "facilities_found": len(facilities),
             "countries_in_bounds": list(countries.keys()),
             "facilities_by_country": countries,
+            "capacity_stats": {
+                "total_mw": stats.get('total_capacity_mw'),
+                "range_mw": stats.get('capacity_range_mw')
+            },
             "sample_facilities": facilities[:5],
-            "all_facilities": facilities,
+            "geojson_url": geojson_result.get("geojson_url") if geojson_result["success"] else None,
+            "geojson_filename": geojson_result.get("geojson_filename") if geojson_result["success"] else None,
             "data_available": True
         }
         
@@ -535,7 +715,7 @@ def GetSolarFacilitiesInBounds(north: float, south: float, east: float, west: fl
 
 @mcp.tool()
 def GetSolarFacilitiesMultipleCountries(countries: List[str], limit: int = 200) -> Dict[str, Any]:
-    """Get solar facilities for multiple countries at once."""
+    """Get solar facilities for multiple countries - generates GeoJSON."""
     if not db:
         return {"error": "Database not available"}
     
@@ -551,12 +731,31 @@ def GetSolarFacilitiesMultipleCountries(countries: List[str], limit: int = 200) 
         if not all_facilities:
             return {"error": f"No facilities found for countries: {', '.join(countries)}"}
         
+        # Generate GeoJSON file
+        identifier = "_".join(c.lower().replace(" ", "")[:10] for c in countries[:3])  # First 3 countries
+        geojson_result = generate_and_save_geojson(
+            all_facilities, 
+            identifier,
+            extra_metadata={
+                "data_source": "TZ-SAM Q1 2025",
+                "query_type": "multiple_countries",
+                "countries": countries
+            }
+        )
+        
+        stats = geojson_result["stats"] if geojson_result["success"] else {}
+        
         return {
             "countries_requested": countries,
             "total_facilities": len(all_facilities),
             "facilities_by_country": country_results,
+            "capacity_stats": {
+                "total_mw": stats.get('total_capacity_mw'),
+                "range_mw": stats.get('capacity_range_mw')
+            },
             "sample_facilities": all_facilities[:5],
-            "all_facilities": all_facilities,
+            "geojson_url": geojson_result.get("geojson_url") if geojson_result["success"] else None,
+            "geojson_filename": geojson_result.get("geojson_filename") if geojson_result["success"] else None,
             "data_available": True
         }
         
