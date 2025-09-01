@@ -16,15 +16,148 @@ import sys
 import os
 import aiohttp
 from kg_embed_generator import KGEmbedGenerator
+import secrets
+from typing import List, Tuple
+from datetime import timedelta
+import csv
+from pathlib import Path
 
 # Add the mcp directory to the path
 sys.path.append('mcp')
-from mcp_chat import run_query_structured, run_query, run_query_streaming, get_global_client, cleanup_global_client
+# from mcp_chat import run_query_structured, run_query, run_query_streaming, get_global_client, cleanup_global_client
+from mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
 # Initialize KG embed generator - will use environment variable or default
 kg_generator = KGEmbedGenerator()
+
+SESSION_TTL_SECONDS = 20 * 60  # 20 minutes inactivity timeout; tweak as desired
+CONVERSATION_LOG_PATH = Path("conversation_logs.csv")
+MAX_CONTEXT_TURNS = 2  # Number of previous conversation turns to include as context
+
+class SessionStore:
+    """Ephemeral in-memory conversation store with TTL."""
+    def __init__(self, ttl_seconds: int = SESSION_TTL_SECONDS):
+        self.ttl = ttl_seconds
+        self._sessions: Dict[str, Dict[str, Any]] = {}  # conversation_id -> {history, last_seen, created_at}
+
+    def _new_id(self) -> str:
+        return secrets.token_urlsafe(16)
+
+    def get_or_create(self, conversation_id: Optional[str] = None) -> str:
+        now = datetime.utcnow().timestamp()
+        self.gc(now)
+        if conversation_id and conversation_id in self._sessions:
+            self._sessions[conversation_id]["last_seen"] = now
+            return conversation_id
+        # create new
+        cid = self._new_id()
+        self._sessions[cid] = {"history": [], "last_seen": now, "created_at": now}
+        return cid
+
+    def reset(self, conversation_id: str):
+        now = datetime.utcnow().timestamp()
+        self._sessions[conversation_id] = {"history": [], "last_seen": now, "created_at": now}
+
+    def append(self, conversation_id: str, role: str, content: str):
+        now = datetime.utcnow().timestamp()
+        if conversation_id not in self._sessions:
+            # recreate lazily if expired
+            self._sessions[conversation_id] = {"history": [], "last_seen": now, "created_at": now}
+        self._sessions[conversation_id]["history"].append({"role": role, "content": content})
+        self._sessions[conversation_id]["last_seen"] = now
+
+    def get_history(self, conversation_id: str) -> List[Dict[str, str]]:
+        if conversation_id not in self._sessions:
+            return []
+        return self._sessions[conversation_id]["history"]
+
+    def gc(self, now_ts: Optional[float] = None):
+        now_ts = now_ts or datetime.utcnow().timestamp()
+        to_delete = []
+        for cid, data in self._sessions.items():
+            if now_ts - data["last_seen"] > self.ttl:
+                to_delete.append(cid)
+        for cid in to_delete:
+            del self._sessions[cid]
+    
+    def get_context_for_llm(self, conversation_id: str, max_turns: int = MAX_CONTEXT_TURNS) -> List[Dict[str, str]]:
+        """Get the most recent N turns for LLM context."""
+        history = self.get_history(conversation_id)
+        
+        # Get last max_turns * 2 messages (user + assistant pairs)
+        context_window = history[-(max_turns * 2):] if len(history) > max_turns * 2 else history
+        
+        return context_window
+    
+    def extract_response_summary(self, modules: List[Dict[str, Any]], max_length: int = 500) -> str:
+        """Extract text summary from response modules for history storage."""
+        text_parts = []
+        for module in modules:
+            if module.get("type") == "text":
+                text_parts.append(module.get("content", ""))
+        
+        summary = " ".join(text_parts)
+        if len(summary) > max_length:
+            summary = summary[:max_length] + "..."
+        return summary
+    
+    def log_conversation(self, conversation_id: str, query: str, 
+                        response_modules: Optional[List[Dict]] = None,
+                        error: Optional[str] = None,
+                        tokens_used: Optional[int] = None):
+        """Enhanced conversation logging for analytics."""
+        file_exists = CONVERSATION_LOG_PATH.exists()
+        
+        session_data = self._sessions.get(conversation_id, {})
+        created_at = session_data.get("created_at", datetime.utcnow().timestamp())
+        session_duration = datetime.utcnow().timestamp() - created_at
+        turn_number = len(self.get_history(conversation_id)) // 2 + 1  # Pairs of user/assistant
+        
+        # Determine message type
+        if turn_number == 1:
+            message_type = "new_conversation"
+        elif session_duration < 5:  # Reset if very quick succession
+            message_type = "reset"
+        else:
+            message_type = "continuation"
+        
+        # Extract module types
+        module_types = []
+        response_summary = ""
+        if response_modules:
+            module_types = list(set(m.get("type") for m in response_modules if m.get("type")))
+            response_summary = self.extract_response_summary(response_modules)
+        
+        # Calculate context included
+        context_included = min(turn_number - 1, MAX_CONTEXT_TURNS)
+        
+        with open(CONVERSATION_LOG_PATH, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                # Write header if file is new
+                writer.writerow([
+                    'timestamp', 'conversation_id', 'turn_number', 'message_type',
+                    'query', 'response_summary', 'response_modules', 'context_included',
+                    'session_duration_seconds', 'tokens_used', 'error_flag'
+                ])
+            
+            writer.writerow([
+                datetime.utcnow().isoformat(),
+                conversation_id,
+                turn_number,
+                message_type,
+                query,
+                response_summary[:500] if response_summary else "",
+                json.dumps(module_types) if module_types else "[]",
+                context_included,
+                round(session_duration, 2),
+                tokens_used or 0,
+                1 if error else 0
+            ])
+
+session_store = SessionStore()
 
 @app.on_event("startup")
 async def startup_event():
@@ -129,9 +262,13 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     query: str
     include_thinking: bool = False
+    conversation_id: Optional[str] = None
+    reset: bool = False  # allow client to explicitly reset this conversation
 
 class StreamQueryRequest(BaseModel):
     query: str
+    conversation_id: Optional[str] = None
+    reset: bool = False
 
 async def _fetch_kg_data(query: str) -> Dict[str, Any]:
     """
@@ -161,13 +298,15 @@ async def _fetch_kg_data(query: str) -> Dict[str, Any]:
                         "kg_extraction_method": data.get("extraction_method", "unknown")
                     }
                 else:
-                    print(f"KG server returned status {response.status}")
+                    # Silently return empty data for non-200 status
                     return _empty_kg_data()
     except asyncio.TimeoutError:
-        print("KG server timeout - continuing without KG data")
+        # Silently continue without KG data
         return _empty_kg_data()
     except Exception as e:
-        print(f"Error fetching KG data: {e}")
+        # Only log if it's not a connection error (which is expected when KG server is off)
+        if "Cannot connect to host" not in str(e):
+            print(f"KG data fetch issue: {e}")
         return _empty_kg_data()
 
 def _empty_kg_data() -> Dict[str, Any]:
@@ -270,25 +409,70 @@ class QueryResponse(BaseModel):
     metadata: Dict[str, Any]
     concepts: list = []
     relationships: list = []
+    session_id: Optional[str] = None
 
 @app.post("/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
     """
-    Process a climate policy query and return structured JSON response.
+    Process a climate policy query and return structured JSON response with session management.
     
     Returns:
     - modules: Array of structured content (text, charts, tables, maps with GeoJSON)
     - thinking_process: AI's step-by-step reasoning (if requested)
     - metadata: Query metadata and performance info
+    - session_id: Conversation session ID for multi-turn conversations
     """
     print(f"🔥 RECEIVED QUERY REQUEST: {request.query}")
+    
+    # Handle session management
+    if request.reset and request.conversation_id:
+        session_store.reset(request.conversation_id)
+    
+    # Get or create session ID
+    session_id = session_store.get_or_create(request.conversation_id)
+    
+    # Log will happen after we get the response (so we can log response modules too)
+    
+    # Get conversation history for context (limited to last N turns)
+    context = session_store.get_context_for_llm(session_id)
+    if context:
+        print(f"📝 Using conversation context: {len(context)} messages from session {session_id}")
+    else:
+        print(f"📝 No conversation history for session {session_id}")
+    
     try:
         # Set working directory for MCP servers - use current script location
         script_dir = os.path.dirname(os.path.abspath(__file__))
         os.chdir(script_dir)
         
-        # Always get full result for KG generation (needed for citation registry)
-        full_result = await run_query(request.query)
+        # Pass conversation context to process_chat_query
+        full_result = await process_chat_query(request.query, conversation_history=context)
+        
+        # Check if this is an off-topic redirect response
+        if isinstance(full_result, dict) and full_result.get("metadata", {}).get("query_type") == "off_topic_redirect":
+            # Store conversation and return immediately without KG processing
+            session_store.append(session_id, "user", request.query)
+            session_store.append(session_id, "assistant", "I can help you with climate and environmental topics...")
+            
+            session_store.log_conversation(
+                session_id,
+                request.query,
+                response_modules=full_result.get("modules", []),
+                error=None,
+                tokens_used=0
+            )
+            
+            return QueryResponse(
+                query=request.query,
+                modules=full_result.get("modules", []),
+                thinking_process=None,
+                metadata=full_result.get("metadata", {}),
+                concepts=[],
+                relationships=[],
+                session_id=session_id
+            )
+        
+        # Normal processing for on-topic queries
         structured_response = full_result.get("formatted_response", {"modules": []})
         
         if request.include_thinking:
@@ -363,19 +547,47 @@ async def process_query(request: QueryRequest):
         else:
             print(f"⚠️  No KG embed path - KG embed info will be None")
         
+        # Get modules for response
+        modules = structured_response.get("modules", [])
+        
+        # Store query and response in session history
+        session_store.append(session_id, "user", request.query)
+        response_summary = session_store.extract_response_summary(modules)
+        session_store.append(session_id, "assistant", response_summary)
+        
+        # Log conversation with full details
+        session_store.log_conversation(
+            session_id, 
+            request.query, 
+            response_modules=modules,
+            error=None,
+            tokens_used=None  # TODO: Extract token usage from full_result if available
+        )
+        
         return QueryResponse(
             query=request.query,
-            modules=structured_response.get("modules", []),
+            modules=modules,
             thinking_process=thinking_process,
             metadata=_generate_enhanced_metadata(structured_response, full_result if request.include_thinking else None, request.query, kg_embed_info),
             concepts=kg_data["concepts"],
-            relationships=kg_data["relationships"]
+            relationships=kg_data["relationships"],
+            session_id=session_id
         )
         
     except Exception as e:
         import traceback
         error_detail = f"Query processing failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
         print(f"API ERROR: {error_detail}")
+        
+        # Log error in conversation
+        session_store.log_conversation(
+            session_id, 
+            request.query, 
+            response_modules=None,
+            error=str(e),
+            tokens_used=None
+        )
+        
         raise HTTPException(status_code=500, detail=error_detail)
 
 @app.get("/health")
@@ -609,7 +821,7 @@ async def thorough_query_response(request: QueryRequest):
         os.chdir(script_dir)
         
         # Get the complete raw response from MCP
-        full_result = await run_query(request.query)
+        full_result = await process_chat_query(request.query)
         
         # Return everything - no filtering or formatting
         return {
@@ -631,9 +843,10 @@ async def thorough_query_response(request: QueryRequest):
 @app.post("/query/stream")
 async def stream_query(request: StreamQueryRequest):
     """
-    Stream query processing with real-time thinking traces.
+    Stream query processing with real-time thinking traces and session management.
     
     Returns Server-Sent Events (SSE) stream with:
+    - session_id: The conversation session ID (sent first if new)
     - thinking: AI reasoning steps as they happen
     - tool_call: Tool execution notifications
     - tool_result: Tool execution results
@@ -642,22 +855,77 @@ async def stream_query(request: StreamQueryRequest):
     """
     print(f"🔥 RECEIVED STREAM REQUEST: {request.query}")
     
+    # Handle session management
+    if request.reset and request.conversation_id:
+        session_store.reset(request.conversation_id)
+    
+    # Get or create session ID
+    session_id = session_store.get_or_create(request.conversation_id)
+    
+    # Get conversation history for context (limited to last N turns)
+    context = session_store.get_context_for_llm(session_id)
+    if context:
+        print(f"📝 Using conversation context: {len(context)} messages from session {session_id}")
+    else:
+        print(f"📝 No conversation history for session {session_id}")
+    
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
+            # Send session ID as first event if it's new or different
+            if not request.conversation_id or request.conversation_id != session_id:
+                session_event = {
+                    "type": "session_id",
+                    "data": {"session_id": session_id}
+                }
+                yield f"data: {json.dumps(session_event)}\n\n"
+            
             # Set working directory for MCP servers
             script_dir = os.path.dirname(os.path.abspath(__file__))
             os.chdir(script_dir)
             
-            # Process query with streaming callback
-            async for event in run_query_streaming(request.query):
+            # Track response content for session history
+            response_modules = []
+            
+            # Pass conversation context to stream_chat_query
+            async for event in stream_chat_query(request.query, conversation_history=context):
+                # Capture complete event for history
+                if event.get("type") == "complete":
+                    response_data = event.get("data", {})
+                    if isinstance(response_data, dict):
+                        response_modules = response_data.get("modules", [])
+                
                 # Format as Server-Sent Events
                 event_data = json.dumps(event, ensure_ascii=False)
                 yield f"data: {event_data}\n\n"
+            
+            # Store the query and response in session history
+            session_store.append(session_id, "user", request.query)
+            if response_modules:
+                response_summary = session_store.extract_response_summary(response_modules)
+                session_store.append(session_id, "assistant", response_summary)
+            
+            # Log conversation with full details
+            session_store.log_conversation(
+                session_id, 
+                request.query, 
+                response_modules=response_modules,
+                error=None,
+                tokens_used=None  # TODO: Extract token usage if available
+            )
                 
         except Exception as e:
             import traceback
             error_detail = f"Streaming query failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
             print(f"STREAM API ERROR: {error_detail}")
+            
+            # Log error in conversation
+            session_store.log_conversation(
+                session_id, 
+                request.query, 
+                response_modules=None,
+                error=str(e),
+                tokens_used=None
+            )
             
             error_event = {
                 "type": "error",
