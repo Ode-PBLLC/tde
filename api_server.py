@@ -871,11 +871,11 @@ async def stream_query(request: StreamQueryRequest):
     
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
-            # Send session ID as first event if it's new or different
+            # Send conversation ID as first event if it's new or different
             if not request.conversation_id or request.conversation_id != session_id:
                 session_event = {
-                    "type": "session_id",
-                    "data": {"session_id": session_id}
+                    "type": "conversation_id",
+                    "data": {"conversation_id": session_id}
                 }
                 yield f"data: {json.dumps(session_event)}\n\n"
             
