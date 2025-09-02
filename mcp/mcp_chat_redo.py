@@ -19,6 +19,7 @@ from typing import Dict, List, Any, Optional, Union, Tuple
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from enum import Enum
+from datetime import datetime
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -1243,6 +1244,13 @@ When you have collected enough information, respond with text summarizing what y
         except Exception as e:
             print(f"  Extract facts error for {tool_name}: {e}")
         
+        # Debug logging when enabled
+        if os.getenv("TDE_DEBUG_FACTS") and facts:
+            print(f"  DEBUG: Extracted {len(facts)} facts from {tool_name}")
+            for i, fact in enumerate(facts[:3], 1):  # Show first 3 facts
+                preview = fact.text_content[:100] + "..." if len(fact.text_content) > 100 else fact.text_content
+                print(f"    Fact {i}: {preview}")
+        
         return facts
     
     def _get_source_name_for_tool(self, tool_name: str, server_name: str) -> str:
@@ -1662,6 +1670,13 @@ Otherwise, call tools to gather the missing information."""
                 "heading": "No Results", 
                 "texts": ["No relevant information found for your query."]
             }]
+        
+        # Debug: Log facts going into synthesis
+        if os.getenv("TDE_DEBUG_FACTS"):
+            print(f"DEBUG: Phase 3 synthesis starting with {len(all_facts)} total facts")
+            for server_name, result in deep_dive_results.items():
+                if result.facts:
+                    print(f"  {server_name}: {len(result.facts)} facts")
         
         # Step 2: Generate narrative with placeholder citations
         narrative_with_placeholders = await self._synthesize_narrative(user_query, all_facts)
@@ -2678,6 +2693,7 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
         # ========== PHASE 1: SEQUENTIAL COLLECTION ==========
         collection_results = {}
         total_facts = 0
+        facts_by_server = {}  # Track facts for debugging
         
         for server_name in relevant_servers:
             if server_name not in server_descriptions:
@@ -2706,6 +2722,7 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
                 if result.facts:
                     fact_count = len(result.facts)
                     total_facts += fact_count
+                    facts_by_server[server_name] = fact_count
                     yield {
                         "type": "thinking",
                         "data": {
@@ -2736,6 +2753,43 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
                     facts=[],
                     reasoning=f"Error: {str(e)}"
                 )
+        
+        # Debug logging for Phase 1 facts
+        if os.getenv("TDE_DEBUG_FACTS") and total_facts > 0:
+            facts_data = {
+                "timestamp": datetime.now().isoformat(),
+                "query": user_query,
+                "phase": "post_phase1",
+                "total_facts": total_facts,
+                "facts_by_server": {
+                    server: [
+                        {
+                            "text": f.text_content,
+                            "source_key": f.source_key,
+                            "tool": f.metadata.get("tool", "unknown")
+                        } for f in result.facts
+                    ]
+                    for server, result in collection_results.items() if result.facts
+                }
+            }
+            filename = f"/tmp/tde_facts_{datetime.now().strftime('%Y%m%d_%H%M%S')}_phase1.json"
+            try:
+                with open(filename, "w") as f:
+                    json.dump(facts_data, f, indent=2, default=str)
+                print(f"DEBUG: Saved {total_facts} Phase 1 facts to {filename}")
+            except Exception as e:
+                print(f"DEBUG: Could not save facts: {e}")
+        
+        # Yield fact collection summary event
+        if facts_by_server:
+            yield {
+                "type": "facts_summary",
+                "data": {
+                    "phase": 1,
+                    "total": total_facts,
+                    "by_server": facts_by_server
+                }
+            }
         
         # ========== PHASE 2: DEEP DIVE (if needed) ==========
         # Use LLM to decide if Phase 2 is needed
@@ -2779,6 +2833,17 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
             
             # Use deep dive results for synthesis
             final_results = deep_dive_results
+            
+            # Yield Phase 2 facts summary
+            phase2_facts = sum(len(r.facts) for r in deep_dive_results.values() if r.facts)
+            yield {
+                "type": "facts_summary",
+                "data": {
+                    "phase": 2,
+                    "total": phase2_facts,
+                    "new_facts": phase2_facts - total_facts
+                }
+            }
         else:
             # Skip Phase 2, use Phase 1 results
             final_results = collection_results
@@ -2790,6 +2855,34 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
                         "category": "analysis"
                     }
                 }
+        
+        # Debug logging before synthesis
+        if os.getenv("TDE_DEBUG_FACTS"):
+            final_facts_count = sum(len(r.facts) for r in final_results.values() if r.facts)
+            facts_data = {
+                "timestamp": datetime.now().isoformat(),
+                "query": user_query,
+                "phase": "pre_synthesis",
+                "total_facts": final_facts_count,
+                "facts_by_server": {
+                    server: [
+                        {
+                            "text": f.text_content,
+                            "source_key": f.source_key,
+                            "tool": f.metadata.get("tool", "unknown"),
+                            "has_raw_result": "raw_result" in f.metadata
+                        } for f in result.facts
+                    ]
+                    for server, result in final_results.items() if result.facts
+                }
+            }
+            filename = f"/tmp/tde_facts_{datetime.now().strftime('%Y%m%d_%H%M%S')}_final.json"
+            try:
+                with open(filename, "w") as f:
+                    json.dump(facts_data, f, indent=2, default=str)
+                print(f"DEBUG: Saved {final_facts_count} final facts to {filename}")
+            except Exception as e:
+                print(f"DEBUG: Could not save final facts: {e}")
         
         # ========== PHASE 3: SYNTHESIS ==========
         yield {
