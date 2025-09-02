@@ -470,8 +470,6 @@ async def get_global_client() -> MultiServerClient:
                 await _global_client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
                 await _global_client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
                 await _global_client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
-                # Formatter is now handled directly via response_formatter.py functions
-                # await _global_client.connect_to_server("formatter", os.path.join(mcp_dir, "response_formatter_server.py"))
                 # TEMPORARILY DISABLED: Viz server may be causing issues
                 # await _global_client.connect_to_server("viz", os.path.join(mcp_dir, "viz_server.py"))
                 print("Global MCP client initialized successfully")
@@ -539,10 +537,132 @@ class QueryOrchestrator:
     - Response formatter handles artifact embedding
     """
     
-    def __init__(self, client: MultiServerClient):
+    def __init__(self, client: MultiServerClient, conversation_history: Optional[List[Dict[str, str]]] = None):
         self.client = client
         self.citation_registry = client.citation_registry
         self.token_budget_remaining = 50000  # Conservative starting budget
+        self.conversation_history = conversation_history or []
+    
+    def _format_conversation_history(self) -> str:
+        """Format conversation history for LLM context."""
+        if not self.conversation_history:
+            return ""
+        
+        formatted = []
+        for msg in self.conversation_history:
+            role = "User" if msg["role"] == "user" else "Assistant"
+            formatted.append(f"{role}: {msg['content']}")
+        
+        return "\n".join(formatted)
+    
+    async def _is_query_relevant(self, user_query: str) -> bool:
+        """
+        Check if the query is relevant to climate/environment/policy domain.
+        
+        Args:
+            user_query: User's query to check
+            
+        Returns:
+            True if relevant, False if off-topic
+        """
+        # If there's conversation history, be more lenient - allow follow-ups
+        if self.conversation_history:
+            # Check if this is a follow-up question in an existing conversation
+            if any(phrase in user_query.lower() for phrase in [
+                "what", "tell me", "you said", "you mentioned", "earlier",
+                "my", "i said", "i told", "remember", "recall"
+            ]):
+                print(f"✅ Allowing follow-up question in existing conversation: {user_query[:50]}...")
+                return True
+        
+        relevance_prompt = f"""Determine if this query is related to our domain of expertise.
+
+Our domain includes:
+- Climate change, impacts, and policies
+- Environmental data and sustainability
+- Energy systems, renewable energy, solar facilities
+- Corporate environmental performance and ESG
+- Water resources, biodiversity, and ecosystems
+- Environmental regulations, NDCs, and climate governance
+- Physical climate risks (floods, droughts, heat stress)
+- GHG emissions and carbon footprint
+- Environmental justice and climate adaptation
+
+The query: "{user_query}"
+
+Answer with just YES if the query is related to our domain, or NO if it's about:
+- Personal preferences or opinions unrelated to environment
+- General knowledge, trivia, or entertainment
+- Programming, math, or technical topics unrelated to climate
+- Medical, legal, or financial advice unrelated to climate
+- Other topics clearly outside environmental/climate scope
+
+Answer (YES/NO):"""
+        
+        try:
+            response = await call_small_model(
+                system="You are a query classifier. Respond with only YES or NO.",
+                user_prompt=relevance_prompt,
+                max_tokens=10,
+                temperature=0
+            )
+            
+            # Check response
+            response_lower = response.strip().lower()
+            is_relevant = "yes" in response_lower
+            
+            if not is_relevant:
+                print(f"🚫 Off-topic query detected: {user_query[:100]}...")
+            
+            return is_relevant
+            
+        except Exception as e:
+            # If relevance check fails, default to processing the query
+            print(f"⚠️ Relevance check failed: {e}. Defaulting to processing query.")
+            return True
+    
+    def _create_redirect_response(self, user_query: str) -> Dict:
+        """
+        Create a friendly redirect response for off-topic queries.
+        
+        Args:
+            user_query: The off-topic query
+            
+        Returns:
+            API-compliant response with redirect message
+        """
+        redirect_module = {
+            "type": "text",
+            "heading": "Let me help you with climate and environmental topics",
+            "content": """I'm specialized in climate policy, environmental data, and sustainability topics. I can help you with questions about:
+
+• **Climate Policy**: National climate strategies, NDCs, carbon pricing, adaptation plans
+• **Renewable Energy**: Solar facilities, wind power, renewable capacity by country/region
+• **Corporate Sustainability**: Company environmental impacts, water stress, GHG emissions
+• **Physical Climate Risks**: Floods, droughts, heat exposure, extreme weather impacts
+• **Environmental Data**: Biodiversity loss, deforestation, water resources, air quality
+
+**Example questions you could ask:**
+- "What are the water stress risks for major companies in Brazil?"
+- "Show me solar capacity growth in India over the last 5 years"
+- "How are financial institutions addressing climate risks?"
+- "What climate adaptation policies has Nigeria implemented?"
+- "Compare renewable energy deployment between China and the US"
+
+How can I help you explore climate and environmental topics today?"""
+        }
+        
+        return {
+            "query": user_query,
+            "modules": [redirect_module],
+            "metadata": {
+                "query_type": "off_topic_redirect",
+                "modules_count": 1,
+                "has_maps": False,
+                "has_charts": False,
+                "has_tables": False
+            }
+        }
         
     async def process_query(self, user_query: str) -> Dict:
         """
@@ -557,6 +677,11 @@ class QueryOrchestrator:
             Dictionary with query, modules, and metadata
         """
         try:
+            # First check if query is relevant to our domain
+            is_relevant = await self._is_query_relevant(user_query)
+            if not is_relevant:
+                return self._create_redirect_response(user_query)
+            
             # Phase 1: Collect Information
             collection_results = await self._phase1_collect_information(user_query)
             
@@ -868,10 +993,19 @@ Guidelines:
 When you have collected enough information, respond with text summarizing what you found instead of calling more tools."""
 
             # Initialize messages for the conversation
-            messages = [{
+            messages = []
+            
+            # Include conversation history if available
+            if self.conversation_history:
+                messages.append({
+                    "role": "user",
+                    "content": f"Previous conversation context:\n{self._format_conversation_history()}\n\nNow, for the current query:"
+                })
+            
+            messages.append({
                 "role": "user",
                 "content": f"Query: {user_query}\n\nCollect relevant information from your available tools."
-            }]
+            })
             
             # Track collected facts
             facts = []
@@ -1338,14 +1472,18 @@ Otherwise, call tools to gather the missing information."""
                     max_tokens=2000
                 )
                 
-                # Check if complete
-                if isinstance(response, str) and "COMPLETE" in response.upper():
-                    print(f"Phase 2 complete after {iteration} iterations")
-                    break
+                # Check if complete - response.content is the list of blocks
+                # Check if any text block contains COMPLETE
+                for block in response.content:
+                    print(block)
+                    print(type(block))
+                    if block.type == "text" and "COMPLETE" in block.text.upper():
+                        print(f"Phase 2 complete after {iteration} iterations")
+                        break
                 
                 # Process tool calls
                 tool_called = False
-                for block in response:
+                for block in response.content:
                     if block.type == "tool_use":
                         tool_called = True
                         prefixed_name = block.name
@@ -2007,7 +2145,17 @@ Otherwise, call tools to gather the missing information."""
         if display_context:
             display_info = f"\nIMPORTANT - The following visualizations WILL be included with your response:\n" + "\n".join(f"- {item}" for item in display_context) + "\n"
         
-        prompt = f"""User Query: {user_query}
+        # Add conversation history if available
+        context_section = ""
+        if self.conversation_history:
+            context_section = f"""Previous Conversation Context:
+{self._format_conversation_history()}
+
+Current Query: {user_query}"""
+        else:
+            context_section = f"User Query: {user_query}"
+        
+        prompt = f"""{context_section}
 
 Available Facts:
 {chr(10).join(fact_list)}
@@ -2361,7 +2509,7 @@ class ArtifactManager:
 # PHASE 4: MAIN API INTERFACE
 # =============================================================================
 
-async def process_chat_query(user_query: str) -> Dict:
+async def process_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict:
     """
     Main entry point for processing chat queries synchronously.
     
@@ -2369,6 +2517,8 @@ async def process_chat_query(user_query: str) -> Dict:
     
     Args:
         user_query: User's natural language query
+        conversation_history: Optional list of previous messages in format
+                            [{"role": "user"|"assistant", "content": "..."}]
         
     Returns:
         Dictionary with query, modules, and metadata
@@ -2378,7 +2528,7 @@ async def process_chat_query(user_query: str) -> Dict:
         client = await get_global_client()
         
         # Create orchestrator for this query
-        orchestrator = QueryOrchestrator(client)
+        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history)
         
         # Process through 3-phase architecture
         response = await orchestrator.process_query(user_query)
@@ -2390,7 +2540,7 @@ async def process_chat_query(user_query: str) -> Dict:
         return f"Error processing query: {str(e)}"
 
 
-async def stream_chat_query(user_query: str):
+async def stream_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None):
     """
     Streaming version of chat query processing with thinking objects.
     
@@ -2420,9 +2570,30 @@ async def stream_chat_query(user_query: str):
         client = await get_global_client()
         print("DEBUG: Got global client")
         
-        # Create orchestrator for this query
-        orchestrator = QueryOrchestrator(client)
+        # Create orchestrator for this query with conversation history
+        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history)
         print("DEBUG: Created orchestrator")
+        
+        # Check if query is off-topic
+        is_relevant = await orchestrator._is_query_relevant(user_query)
+        if not is_relevant:
+            # Send off-topic redirect response
+            yield {
+                "type": "thinking",
+                "data": {
+                    "message": "🚫 Query appears to be outside my climate/environment expertise...",
+                    "category": "relevance_check"
+                }
+            }
+            
+            redirect_response = orchestrator._create_redirect_response(user_query)
+            
+            yield {
+                "type": "complete",
+                "data": redirect_response
+            }
+            return
+        
         server_descriptions = orchestrator._get_server_descriptions()
         print("DEBUG: Got server descriptions")
         
