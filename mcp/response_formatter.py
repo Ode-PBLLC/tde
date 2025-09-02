@@ -150,6 +150,29 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
         countries = summary.get("countries", [])
         bounds, center = _calculate_map_bounds(countries)
         
+        # Generate legend items for countries
+        country_colors = {
+            "brazil": "#4CAF50",
+            "india": "#2196F3", 
+            "china": "#FF9800",
+            "united states": "#9C27B0",
+            "japan": "#F44336",
+            "germany": "#009688",
+            "australia": "#FFEB3B",
+            "south africa": "#795548",
+            "mexico": "#607D8B",
+            "chile": "#E91E63"
+        }
+        
+        legend_items = [
+            {
+                "label": country.title(),
+                "color": country_colors.get(country.lower(), "#9E9E9E"),
+                "description": "Size represents capacity"
+            }
+            for country in countries[:10]  # Limit to 10 countries for legend
+        ]
+        
         return {
             "type": "map",
             "mapType": "geojson_url",
@@ -158,6 +181,10 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "center": center,
                 "zoom": 6,
                 "bounds": bounds
+            },
+            "legend": {
+                "title": "Solar Facilities",
+                "items": legend_items
             },
             "metadata": {
                 "total_facilities": summary.get("total_facilities", 0),
