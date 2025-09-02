@@ -1192,8 +1192,24 @@ When you have collected enough information, respond with text summarizing what y
                         meta = result_data['metadata']
                         fact_text = f"Data: {', '.join([f'{k}={v}' for k, v in meta.items()])}"
                     else:
-                        # Generic dict fact
-                        fact_text = f"Retrieved {len(result_data)} data fields"
+                        # Extract actual key-value pairs for meaningful facts
+                        key_values = []
+                        for key, value in result_data.items():
+                            if isinstance(value, (str, int, float, bool)):
+                                key_values.append(f"{key}: {value}")
+                            elif isinstance(value, list) and len(value) > 0:
+                                key_values.append(f"{key}: {len(value)} items")
+                            elif isinstance(value, dict):
+                                key_values.append(f"{key}: {len(value)} fields")
+                        
+                        if key_values:
+                            # Join first few key-value pairs for the fact
+                            fact_text = "; ".join(key_values[:5])  # Limit to 5 to keep it concise
+                            if len(key_values) > 5:
+                                fact_text += f" (and {len(key_values) - 5} more fields)"
+                        else:
+                            # Fallback only if no extractable content
+                            fact_text = f"Retrieved {len(result_data)} data fields"
                     
                     facts.append(Fact(
                         text_content=fact_text,
@@ -2230,7 +2246,29 @@ Format sections clearly with ## headings and use citations for all factual claim
         Returns:
             Text with final ^n^ citations
         """
+        import re
+        
         final_text = narrative
+        
+        # First handle grouped citations like [CITE_2, CITE_3, CITE_5]
+        def replace_grouped(match):
+            grouped_text = match.group(0)  # e.g., "[CITE_2, CITE_3, CITE_5]"
+            citations = re.findall(r'CITE_(\d+)', grouped_text)
+            
+            # Replace each citation with its mapped number
+            replaced_citations = []
+            for cite_num in citations:
+                placeholder = f"CITE_{cite_num}"
+                if placeholder in citation_map:
+                    replaced_citations.append(f"^{citation_map[placeholder]}^")
+            
+            # Return space-separated superscript citations
+            return ' '.join(replaced_citations) if replaced_citations else grouped_text
+        
+        # Replace grouped citations first
+        final_text = re.sub(r'\[CITE_\d+(?:, CITE_\d+)*\]', replace_grouped, final_text)
+        
+        # Then handle any remaining individual citations [CITE_n]
         for placeholder, citation_num in citation_map.items():
             final_text = final_text.replace(f"[{placeholder}]", f"^{citation_num}^")
         
