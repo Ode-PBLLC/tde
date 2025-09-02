@@ -566,17 +566,56 @@ class QueryOrchestrator:
         Returns:
             True if relevant, False if off-topic
         """
-        # If there's conversation history, be more lenient - allow follow-ups
-        if self.conversation_history:
-            # Check if this is a follow-up question in an existing conversation
-            if any(phrase in user_query.lower() for phrase in [
-                "what", "tell me", "you said", "you mentioned", "earlier",
-                "my", "i said", "i told", "remember", "recall"
-            ]):
-                print(f"✅ Allowing follow-up question in existing conversation: {user_query[:50]}...")
-                return True
-        
-        relevance_prompt = f"""Determine if this query is related to our domain of expertise.
+        # If there's conversation history, include it in the relevance check
+        if self.conversation_history and len(self.conversation_history) > 0:
+            # Build context summary from recent messages
+            recent_context = ""
+            for msg in self.conversation_history[-4:]:  # Last 2 exchanges
+                if msg["role"] == "user":
+                    recent_context += f"User previously asked: {msg['content'][:200]}...\n"
+                elif msg["role"] == "assistant":
+                    recent_context += f"Assistant discussed: {msg['content'][:200]}...\n"
+            
+            relevance_prompt = f"""Determine if this query is relevant given the conversation context.
+
+CONVERSATION CONTEXT:
+{recent_context}
+
+CURRENT QUERY: "{user_query}"
+
+Our domain includes:
+- Climate change, impacts, and policies
+- Environmental data and sustainability
+- Energy systems, renewable energy, solar facilities
+- Corporate environmental performance and ESG
+- Water resources, biodiversity, and ecosystems
+- Environmental regulations, NDCs, and climate governance
+- Physical climate risks (floods, droughts, heat stress)
+- GHG emissions and carbon footprint
+- Environmental justice and climate adaptation
+
+IMPORTANT: If the query refers to or follows up on ANYTHING from the conversation context above,
+it is IMMEDIATELY RELEVANT (answer YES), even if it doesn't explicitly mention climate/environment terms.
+
+Examples of relevant follow-ups:
+- "What about the totals?" (referring to previous data)
+- "Tell me more about that" (referring to previous topic)
+- "How does that compare?" (referring to previous information)
+- "Summarize what you just said" (referring to previous response)
+- "Remind me about X" (where X was discussed earlier)
+
+Answer YES if:
+1. The query is about climate/environment topics, OR
+2. The query refers to information from the conversation context
+
+Answer NO only if:
+- It's completely unrelated to both our domain AND the conversation context
+- It's asking about personal preferences, entertainment, or other clearly off-topic subjects
+
+Answer (YES/NO):"""
+        else:
+            # No conversation history - use standard relevance check
+            relevance_prompt = f"""Determine if this query is related to our domain of expertise.
 
 Our domain includes:
 - Climate change, impacts, and policies
@@ -614,6 +653,11 @@ Answer (YES/NO):"""
             
             if not is_relevant:
                 print(f"🚫 Off-topic query detected: {user_query[:100]}...")
+                if self.conversation_history:
+                    print(f"   Note: Had {len(self.conversation_history)} messages in context")
+            else:
+                if self.conversation_history:
+                    print(f"✅ Query relevant (with {len(self.conversation_history)} context messages): {user_query[:50]}...")
             
             return is_relevant
             
