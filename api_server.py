@@ -8,7 +8,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, AsyncGenerator
 import json
@@ -184,9 +184,16 @@ async def shutdown_event():
 @app.get("/static/maps/{filename}")
 async def get_geojson(filename: str):
     """
-    Generate GeoJSON data dynamically for solar facilities.
+    Serve existing GeoJSON files or generate dynamically for solar facilities.
     """
     try:
+        # First, check if the file exists in the static/maps directory
+        file_path = os.path.join(os.path.dirname(__file__), "static", "maps", filename)
+        if os.path.exists(file_path):
+            # Serve the existing file
+            return FileResponse(file_path, media_type="application/geo+json")
+        
+        # If file doesn't exist, generate dynamically (fallback for legacy behavior)
         # Use SQLite database instead of CSV
         import sys
         sys.path.append(os.path.join(os.path.dirname(__file__), 'mcp'))
