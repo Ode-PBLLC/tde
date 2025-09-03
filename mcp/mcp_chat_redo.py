@@ -1728,26 +1728,36 @@ Respond with JSON:
             
             # Build the unified prompt
             system_prompt = """You are analyzing information to answer a user query.
-            You have access to tools from multiple data sources.
-            Call tools to fill gaps and correlate information across sources.
-            When you have sufficient information, respond with 'COMPLETE'."""
+            You have access to tools from multiple data sources including visualization tools.
+            Call tools to gather data and create appropriate visualizations.
+            When you have sufficient information AND visualizations, respond with 'COMPLETE'."""
             
             user_prompt = f"""User Query: {user_query}
 
 What We Know So Far:
 {facts_context}
 
-You have access to tools from these servers: {', '.join(relevant_servers.keys())}
+Available servers and their capabilities:
+- solar: Solar facility data, maps, capacity statistics
+- viz: Create charts, tables, and comparisons
+- kg: Knowledge graph and climate policy data
+- lse: Climate legislation and NDC data
 
-Analyze what information is still needed to fully answer the query.
+IMPORTANT: Consider what the user is asking for:
+- If they want "geographic distribution" → use map generation tools
+- If they want "comparison" or "compare" → use CreateComparisonTable from viz server
+- If they have facility counts by country → create a comparison table
+- If they mention multiple entities → gather data for each and create comparisons
+
+Analyze what information and visualizations are still needed.
 Call relevant tools to:
 1. Fill specific gaps in our knowledge
-2. Correlate data across different sources  
-3. Resolve any contradictions
-4. Get deeper insights where valuable
+2. Create visualizations (maps, tables, charts) as appropriate
+3. Generate comparisons when multiple entities are involved
+4. Provide comprehensive answers with data and visuals
 
-If you have sufficient information, respond with just the word 'COMPLETE'.
-Otherwise, call tools to gather the missing information."""
+If you have gathered sufficient information AND created appropriate visualizations, respond with just 'COMPLETE'.
+Otherwise, call tools to gather missing data or create needed visualizations."""
             
             # Convert tools to format expected by call_model_with_tools
             tools_list = [
@@ -1787,7 +1797,18 @@ Otherwise, call tools to gather the missing information."""
                         # Extract server name and actual tool name
                         if prefixed_name in tool_to_server_map:
                             server_name = tool_to_server_map[prefixed_name]
-                            actual_tool_name = prefixed_name.split('.', 1)[1]
+                            # Handle different tool name formats flexibly
+                            if '_' in prefixed_name:
+                                # Format: server_ToolName
+                                parts = prefixed_name.split('_', 1)
+                                actual_tool_name = parts[1] if len(parts) > 1 else prefixed_name
+                            elif '.' in prefixed_name:
+                                # Format: server.ToolName
+                                parts = prefixed_name.split('.', 1)
+                                actual_tool_name = parts[1] if len(parts) > 1 else prefixed_name
+                            else:
+                                # No prefix, use as is
+                                actual_tool_name = prefixed_name
                             
                             try:
                                 # Call the tool on the appropriate server
@@ -1797,15 +1818,26 @@ Otherwise, call tools to gather the missing information."""
                                     server_name=server_name
                                 )
                                 
-                                # Create fact from result
+                                # Parse the result to extract structured data
+                                result_data = {}
+                                if hasattr(result, 'content'):
+                                    for item in result.content:
+                                        if hasattr(item, 'text'):
+                                            try:
+                                                result_data = json.loads(item.text)
+                                            except:
+                                                result_data = {"text": item.text}
+                                
+                                # Create fact from result with full metadata
                                 fact = Fact(
-                                    text_content=f"[Phase 2] {str(result)[:500]}",  # Reasonable limit
+                                    text_content=f"[Phase 2 - {actual_tool_name}] {str(result)[:500]}",
                                     source_key=f"phase2_{server_name}_{actual_tool_name}_{iteration}",
                                     server_origin=server_name,
                                     metadata={
                                         "phase": 2,
                                         "iteration": iteration,
-                                        "tool": actual_tool_name
+                                        "tool": actual_tool_name,
+                                        "raw_result": result_data  # Store structured data for Phase 3
                                     },
                                     citation_data={
                                         "tool_used": actual_tool_name,
@@ -1921,7 +1953,8 @@ Otherwise, call tools to gather the missing information."""
         all_facts = []
         map_data_list = []  # Store ALL map data, not just one
         chart_data = None  # Will store chart data
-        table_data_list = []  # Store table data
+        table_data_list = []  # Store table data for creating comparison tables
+        viz_table_modules = []  # Store actual table modules from viz server
         
         for server_name, result in deep_dive_results.items():
             if result.is_relevant:
@@ -1984,6 +2017,17 @@ Otherwise, call tools to gather the missing information."""
                             # Check for capacity statistics that could become charts/tables
                             if raw_result.get("capacity_stats") or raw_result.get("facilities_by_country"):
                                 print(f"DEBUG: Found potential table/chart data in fact {i}")
+                
+                # Extract table/chart modules from viz server facts
+                elif server_name == "viz":
+                    print(f"DEBUG: Checking {len(result.facts)} viz facts for tables and charts")
+                    for i, fact in enumerate(result.facts):
+                        raw_result = fact.metadata.get("raw_result", {})
+                        if raw_result and isinstance(raw_result, dict):
+                            # Check if it's a table module from CreateComparisonTable
+                            if raw_result.get("type") == "table":
+                                print(f"DEBUG: Found table from viz server in fact {i}")
+                                viz_table_modules.append(raw_result)
         
         if not all_facts:
             return [{
@@ -2040,7 +2084,8 @@ Otherwise, call tools to gather the missing information."""
             chart_data=chart_data,
             sources=sources,
             additional_maps=map_data_list[1:] if len(map_data_list) > 1 else [],
-            table_data_list=table_data_list
+            table_data_list=table_data_list,
+            viz_table_modules=viz_table_modules
         )
         
         return modules
@@ -2262,7 +2307,8 @@ Otherwise, call tools to gather the missing information."""
         chart_data: Optional[List[Dict]] = None,
         sources: Optional[List] = None,
         additional_maps: Optional[List[Dict]] = None,
-        table_data_list: Optional[List[Dict]] = None
+        table_data_list: Optional[List[Dict]] = None,
+        viz_table_modules: Optional[List[Dict]] = None
     ) -> List[Dict]:
         """
         Use LLM to intelligently order modules for natural narrative flow.
@@ -2298,21 +2344,22 @@ Otherwise, call tools to gather the missing information."""
         # Add additional maps if provided
         if additional_maps:
             for extra_map in additional_maps:
-                extra_module = self._create_single_map_module(extra_map)
-                if extra_module:
-                    map_modules.append(extra_module)
+                # Use response_formatter's _create_map_module directly
+                try:
+                    from response_formatter import _create_map_module
+                    extra_module = _create_map_module(extra_map)
+                    if extra_module:
+                        map_modules.append(extra_module)
+                except Exception as e:
+                    print(f"Error creating additional map module: {e}")
         
         # Create table modules from facts and additional table data
         table_modules = self._create_table_modules(facts)
         
-        # Add comparison tables from table_data_list using viz server
-        if table_data_list:
-            for table_data in table_data_list:
-                if table_data.get("type") == "country_comparison":
-                    # Call viz server to create comparison table
-                    comparison_table = await self._create_comparison_table_via_viz(table_data)
-                    if comparison_table:
-                        table_modules.append(comparison_table)
+        # Add tables created by viz server during Phase 2
+        if viz_table_modules:
+            print(f"DEBUG: Adding {len(viz_table_modules)} tables from viz server")
+            table_modules.extend(viz_table_modules)
         
         print(f"DEBUG: Visualization modules created:")
         print(f"  Charts: {len(chart_modules)}")
@@ -3015,101 +3062,6 @@ Format sections clearly with ## headings and use citations for all factual claim
             "zoom": 2
         }
     
-    def _create_single_map_module(self, map_data: Dict) -> Optional[Dict]:
-        """
-        Create a single map module with proper context from map data.
-        Uses the response_formatter's _create_map_module for consistency.
-        """
-        if not map_data or not map_data.get("geojson_url"):
-            return None
-        
-        try:
-            from response_formatter import _create_map_module
-            map_module = _create_map_module(map_data)
-            
-            # The map module already has metadata with context from summary
-            return map_module
-            
-        except Exception as e:
-            print(f"Error creating single map module: {e}")
-            return None
-    
-    async def _create_comparison_table_via_viz(self, table_data: Dict) -> Optional[Dict]:
-        """
-        Create a comparison table by calling the viz server's CreateComparisonTable tool.
-        
-        Args:
-            table_data: Dictionary with 'type': 'country_comparison', 'data': facilities_by_country, 'countries': list
-        
-        Returns:
-            Table module from viz server or None
-        """
-        if table_data.get("type") != "country_comparison":
-            return None
-        
-        facilities_by_country = table_data.get("data", {})
-        countries = table_data.get("countries", [])
-        
-        if not facilities_by_country:
-            return None
-        
-        try:
-            # Transform data for viz server format
-            data_points = [
-                {"name": country, "value": count}
-                for country, count in facilities_by_country.items()
-            ]
-            
-            # Call viz server tool
-            client = await get_global_mcp_client()
-            result = await client.call_tool(
-                server="viz",
-                tool="CreateComparisonTable",
-                arguments={
-                    "data_points": data_points,
-                    "comparison_type": "facilities",
-                    "entity_key": "name",
-                    "value_key": "value",
-                    "include_percentages": True,
-                    "include_totals": True,
-                    "sort_by": "value",
-                    "sort_descending": True
-                }
-            )
-            
-            # Extract the table module from the result
-            if result and hasattr(result, 'content'):
-                for content_item in result.content:
-                    if hasattr(content_item, 'text'):
-                        # Parse the JSON response
-                        table_module = json.loads(content_item.text)
-                        return table_module
-            
-            return None
-            
-        except Exception as e:
-            print(f"Error calling viz server for comparison table: {e}")
-            # Fallback to simple table
-            return self._create_simple_comparison_table(facilities_by_country, countries)
-    
-    def _create_simple_comparison_table(self, facilities_by_country: Dict, countries: List[str]) -> Dict:
-        """Simple fallback comparison table if viz server fails."""
-        rows = []
-        total = sum(facilities_by_country.values())
-        
-        for country in sorted(countries, key=lambda c: facilities_by_country.get(c, 0), reverse=True):
-            count = facilities_by_country.get(country, 0)
-            percentage = (count / total * 100) if total > 0 else 0
-            rows.append([country.title(), f"{count:,}", f"{percentage:.1f}%"])
-        
-        rows.append(["**Total**", f"**{total:,}**", "100.0%"])
-        
-        return {
-            "type": "table",
-            "heading": "Solar Facility Distribution by Country",
-            "columns": ["Country", "Number of Facilities", "% of Total"],
-            "rows": rows
-        }
 
 
 # =============================================================================
