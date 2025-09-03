@@ -379,14 +379,20 @@ def GetSolarFacilitiesInRadius(latitude: float, longitude: float, radius_km: flo
         return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
-def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, country: Optional[str] = None) -> Dict[str, Any]:
-    """Get construction timeline data based on source dates."""
+def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, country: Optional[str] = None, countries: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Get construction timeline data based on source dates. Accepts either a single country or list of countries."""
     if not db:
         return {"error": "Database not available"}
     
     try:
         # Get facilities with source date filtering
-        if country:
+        if countries and not country:
+            # Multiple countries requested
+            facilities = []
+            for c in countries:
+                country_facilities = db.get_facilities_by_country(c, limit=3000)  # Limit per country
+                facilities.extend(country_facilities)
+        elif country:
             facilities = db.get_facilities_by_country(country, limit=10000)
         else:
             facilities = db.search_facilities(limit=10000)
