@@ -543,6 +543,8 @@ class QueryOrchestrator:
         self.citation_registry = client.citation_registry
         self.token_budget_remaining = 50000  # Conservative starting budget
         self.conversation_history = conversation_history or []
+        self.cached_facts: List[Fact] = []  # Cache facts from previous responses
+        self.cached_response_text: str = ""  # Cache the last response text
     
     def _format_conversation_history(self) -> str:
         """Format conversation history for LLM context."""
@@ -709,11 +711,205 @@ How can I help you explore climate and environmental topics today?"""
             }
         }
         
+    async def _classify_query_type(self, user_query: str) -> str:
+        """
+        Classify query as new_topic, follow_up_simple, or follow_up_complex.
+        
+        Args:
+            user_query: User's query to classify
+            
+        Returns:
+            Query classification type
+        """
+        if not self.conversation_history or not self.cached_facts:
+            return "new_topic"
+        
+        # Build context for classification
+        recent_exchange = ""
+        if len(self.conversation_history) >= 2:
+            recent_exchange = f"Previous question: {self.conversation_history[-2]['content']}\nPrevious answer summary: {self.conversation_history[-1]['content'][:500]}"
+        
+        classification_prompt = f"""Classify this follow-up query based on the conversation context.
+
+Recent exchange:
+{recent_exchange}
+
+Current query: "{user_query}"
+
+Classification rules:
+- "follow_up_simple": Query asks for clarification, specific details, or facts already mentioned in previous response (e.g., "How many?", "What was the capacity?", "Tell me more about X that you mentioned")
+- "follow_up_complex": Query extends the topic but needs some new data (e.g., "What about other countries?", "Show me trends over time")
+- "new_topic": Query is unrelated to previous discussion or asks about completely different aspect
+
+Return ONLY one of: follow_up_simple, follow_up_complex, new_topic"""
+        
+        try:
+            response = await call_small_model(
+                system="You classify queries based on conversation context.",
+                user_prompt=classification_prompt,
+                max_tokens=20,
+                temperature=0
+            )
+            
+            classification = response.strip().lower()
+            if classification not in ["follow_up_simple", "follow_up_complex", "new_topic"]:
+                return "new_topic"
+            
+            return classification
+            
+        except Exception as e:
+            print(f"Query classification failed: {e}. Defaulting to new_topic.")
+            return "new_topic"
+    
+    async def _can_answer_from_context(self, user_query: str) -> Tuple[bool, str]:
+        """
+        Check if query can be answered from cached facts and conversation history.
+        
+        Args:
+            user_query: User's query to check
+            
+        Returns:
+            Tuple of (can_answer, reasoning)
+        """
+        if not self.cached_facts or not self.conversation_history:
+            return False, "No cached context available"
+        
+        # Get query classification
+        query_type = await self._classify_query_type(user_query)
+        
+        if query_type == "new_topic":
+            return False, "Query is about a new topic"
+        elif query_type == "follow_up_complex":
+            return False, "Query requires additional data beyond cached context"
+        else:  # follow_up_simple
+            # Check if we have relevant facts to answer
+            fact_summary = "\n".join([f"- {fact.text_content[:100]}..." for fact in self.cached_facts[:10]])
+            
+            check_prompt = f"""Can this query be answered using ONLY the available facts?
+
+Query: "{user_query}"
+
+Available facts:
+{fact_summary}
+
+Previous response included: {self.cached_response_text[:500]}...
+
+Answer with YES if the facts contain the specific information needed, or NO if new data is required."""
+            
+            try:
+                response = await call_small_model(
+                    system="You determine if cached facts can answer a query.",
+                    user_prompt=check_prompt,
+                    max_tokens=10,
+                    temperature=0
+                )
+                
+                can_answer = "yes" in response.strip().lower()
+                reasoning = "Cached facts contain the required information" if can_answer else "Need to fetch new data"
+                return can_answer, reasoning
+                
+            except Exception as e:
+                return False, f"Context check failed: {e}"
+    
+    async def _answer_from_context(self, user_query: str) -> List[Dict]:
+        """
+        Generate response directly from cached facts without new MCP calls.
+        
+        Args:
+            user_query: User's query to answer
+            
+        Returns:
+            List of modules for the response
+        """
+        print(">> Generating fast response from cached context...")
+        
+        # Use synthesis to create response from cached facts
+        from response_formatter import format_response_as_modules
+        
+        # Create a focused narrative from cached facts
+        fact_list = "\n".join([f"{i+1}. {fact.text_content}" for i, fact in enumerate(self.cached_facts)])
+        
+        synthesis_prompt = f"""Answer this follow-up question using ONLY the provided facts.
+
+Question: {user_query}
+
+Available facts from previous response:
+{fact_list}
+
+Instructions:
+1. Answer the specific question directly and concisely
+2. Use placeholder citations [CITE_n] when referencing facts
+3. Do not add information not present in the facts
+4. If the exact answer isn't in the facts, say so clearly"""
+        
+        try:
+            narrative = await call_large_model(
+                system="You answer follow-up questions using cached information.",
+                user_prompt=synthesis_prompt,
+                max_tokens=500
+            )
+            
+            # Build citation map and apply citations
+            citation_map = self._build_citation_map(self.cached_facts, narrative)
+            final_narrative = self._apply_citations(narrative, citation_map)
+            
+            # Format as modules
+            sources = []
+            for fact in self.cached_facts:
+                if fact.citation:
+                    sources.append({
+                        "name": fact.citation.source_name,
+                        "type": fact.citation.source_type,
+                        "provider": fact.citation.server_origin
+                    })
+            
+            # Check for any cached map/chart data
+            map_data = None
+            for fact in self.cached_facts:
+                if 'raw_result' in fact.metadata:
+                    raw = fact.metadata['raw_result']
+                    if isinstance(raw, dict) and raw.get('type') == 'map_data_summary' and raw.get('geojson_url'):
+                        map_data = raw
+                        break
+            
+            formatted_response = format_response_as_modules(
+                response_text=final_narrative,
+                facts=self.cached_facts,
+                map_data=map_data,
+                chart_data=None,
+                sources=sources,
+                citation_registry={"citations": [], "module_citations": {}}
+            )
+            
+            return formatted_response.get("modules", [])
+            
+        except Exception as e:
+            print(f"Error generating context-based response: {e}")
+            # Fall back to full process
+            return None
+    
+    def _cache_facts_from_results(self, results: Dict[str, PhaseResult]):
+        """
+        Cache facts from phase results for future context-based responses.
+        
+        Args:
+            results: Dictionary of PhaseResults from data collection
+        """
+        self.cached_facts = []
+        for server_name, result in results.items():
+            if result.is_relevant and result.facts:
+                self.cached_facts.extend(result.facts)
+        
+        # Also cache a summary of the response (will be populated from synthesis)
+        if self.cached_facts:
+            print(f"[CACHE] Stored {len(self.cached_facts)} facts for future context")
+    
     async def process_query(self, user_query: str) -> Dict:
         """
         Main entry point for query processing.
         
         Orchestrates all three phases and returns API-compliant response.
+        Now includes context-aware optimization for follow-up queries.
         
         Args:
             user_query: The user's natural language query
@@ -726,6 +922,31 @@ How can I help you explore climate and environmental topics today?"""
             is_relevant = await self._is_query_relevant(user_query)
             if not is_relevant:
                 return self._create_redirect_response(user_query)
+            
+            # NEW: Check if we can answer from cached context
+            can_use_context, reasoning = await self._can_answer_from_context(user_query)
+            
+            if can_use_context:
+                print(f"[CACHED] Using cached context: {reasoning}")
+                context_modules = await self._answer_from_context(user_query)
+                
+                if context_modules:
+                    # Successfully answered from context
+                    return {
+                        "query": user_query,
+                        "modules": context_modules,
+                        "metadata": {
+                            "modules_count": len(context_modules),
+                            "has_maps": any(m.get("type") == "map" for m in context_modules),
+                            "has_charts": any(m.get("type") == "chart" for m in context_modules),
+                            "has_tables": any(m.get("type") == "table" for m in context_modules),
+                            "used_cached_context": True  # Flag for monitoring
+                        }
+                    }
+                else:
+                    print("[WARNING] Context response failed, falling back to full process")
+            else:
+                print(f"[FULL] Running full process: {reasoning}")
             
             # Phase 1: Collect Information
             collection_results = await self._phase1_collect_information(user_query)
@@ -745,6 +966,9 @@ How can I help you explore climate and environmental topics today?"""
             # Phase 3: Synthesis
             modules = await self._phase3_synthesis(user_query, deep_dive_results)
             
+            # Cache facts for potential follow-up queries
+            self._cache_facts_from_results(deep_dive_results)
+            
             # Build API response
             return {
                 "query": user_query,
@@ -753,7 +977,8 @@ How can I help you explore climate and environmental topics today?"""
                     "modules_count": len(modules),
                     "has_maps": any(m.get("type") == "map" for m in modules),
                     "has_charts": any(m.get("type") == "chart" for m in modules),
-                    "has_tables": any(m.get("type") == "table" for m in modules)
+                    "has_tables": any(m.get("type") == "table" for m in modules),
+                    "used_cached_context": False
                 }
             }
             
@@ -1731,7 +1956,7 @@ Otherwise, call tools to gather the missing information."""
         # Step 4: Replace placeholders with ^n^ format
         final_narrative = self._apply_citations(narrative_with_placeholders, citation_map)
         
-        # Step 5: Build sources list for formatter
+        # Step 5: Build sources list for citation table
         sources = []
         citation_registry = {"citations": [], "module_citations": {}}
         
@@ -1749,17 +1974,19 @@ Otherwise, call tools to gather the missing information."""
                     "description": fact.text_content
                 })
         
-        # Step 6: Use direct formatter instead of assembling modules manually
-        formatted_response = format_response_as_modules(
-            response_text=final_narrative,
+        # Step 6: Use intelligent module assembly for better narrative interleaving
+        # This replaces the simple formatter with context-aware module ordering
+        modules = await self._assemble_modules_intelligently(
+            narrative=final_narrative,
             facts=all_facts,
+            citation_map=citation_map,
+            user_query=user_query,
             map_data=map_data,
             chart_data=chart_data,
-            sources=sources,
-            citation_registry=citation_registry
+            sources=sources
         )
         
-        return formatted_response.get("modules", [])
+        return modules
     
     async def _enhance_facts_with_visualization_data(self, facts: List[Fact]):
         """
@@ -1973,16 +2200,19 @@ Otherwise, call tools to gather the missing information."""
         narrative: str, 
         facts: List[Fact], 
         citation_map: Dict[str, int],
-        user_query: str
+        user_query: str,
+        map_data: Optional[Dict] = None,
+        chart_data: Optional[List[Dict]] = None,
+        sources: Optional[List] = None
     ) -> List[Dict]:
         """
-        Assemble modules in context-aware order rather than fixed sequence.
+        Use LLM to intelligently order modules for natural narrative flow.
         
         Strategy:
-        1. Parse narrative to understand flow
-        2. Insert visualizations near relevant text
-        3. Place maps when geographic context is discussed
-        4. Position tables where data comparison is mentioned
+        1. Parse narrative into sections
+        2. Gather all available visualizations
+        3. Ask LLM to determine optimal placement
+        4. Assemble modules in LLM-suggested order
         5. Always put citation table last
         
         Args:
@@ -1990,80 +2220,197 @@ Otherwise, call tools to gather the missing information."""
             facts: All facts with visualization data
             citation_map: Citation mapping for deduplication
             user_query: Original user query
+            map_data: Map data from solar server
+            chart_data: Chart data
+            sources: Sources for citations
             
         Returns:
             List of modules in intelligent order
         """
         # Parse narrative into sections
         sections = self._parse_narrative_sections(narrative)
-        modules = []
-        
-        # Track which visualizations have been used
-        used_charts = set()
-        used_maps = set()
-        used_tables = set()
         
         # Get all available visualizations
         chart_modules = await self._create_chart_modules(facts)
-        map_modules = self._create_map_modules(facts)
+        map_modules = self._create_map_modules(facts, map_data)
         table_modules = self._create_table_modules(facts)
         
-        # Process each narrative section
+        # If we have visualizations, use LLM to determine placement
+        if chart_modules or map_modules or table_modules:
+            ordered_modules = await self._llm_order_modules(
+                sections=sections,
+                chart_modules=chart_modules,
+                map_modules=map_modules, 
+                table_modules=table_modules,
+                user_query=user_query
+            )
+        else:
+            # No visualizations, just use text sections
+            ordered_modules = []
+            for section in sections:
+                ordered_modules.append({
+                    "type": "text",
+                    "heading": section["heading"],
+                    "texts": section["paragraphs"]
+                })
+        
+        # Citation table always goes last
+        citation_table = self._create_citation_table(citation_map, facts, sources)
+        if citation_table:
+            ordered_modules.append(citation_table)
+        
+        return ordered_modules
+    
+    async def _llm_order_modules(
+        self,
+        sections: List[Dict],
+        chart_modules: List[Dict],
+        map_modules: List[Dict],
+        table_modules: List[Dict],
+        user_query: str
+    ) -> List[Dict]:
+        """
+        Use LLM to determine optimal module ordering for narrative flow.
+        
+        Args:
+            sections: Parsed narrative text sections
+            chart_modules: Available chart visualizations
+            map_modules: Available map visualizations
+            table_modules: Available tables
+            user_query: Original user query for context
+            
+        Returns:
+            List of all modules in optimal order
+        """
+        # Build concise descriptions for the LLM
+        section_summaries = []
+        for i, section in enumerate(sections):
+            summary = f"Text{i}: {section['heading'] or 'Introduction'} - {section['content'][:150]}..."
+            section_summaries.append(summary)
+        
+        chart_summaries = []
+        for i, chart in enumerate(chart_modules):
+            summary = f"Chart{i}: {chart.get('heading', 'Data visualization')}"
+            chart_summaries.append(summary)
+            
+        map_summaries = []
+        for i, map_module in enumerate(map_modules):
+            summary = f"Map{i}: {map_module.get('heading', 'Geographic visualization')}"
+            map_summaries.append(summary)
+            
+        table_summaries = []
+        for i, table in enumerate(table_modules):
+            summary = f"Table{i}: {table.get('heading', 'Data table')}"
+            table_summaries.append(summary)
+        
+        # Create the ordering prompt
+        prompt = f"""You are arranging content modules for a response about: {user_query}
+
+Available content modules:
+
+TEXT SECTIONS:
+{chr(10).join(section_summaries)}
+
+VISUALIZATIONS:
+{chr(10).join(chart_summaries) if chart_summaries else '(No charts)'}
+{chr(10).join(map_summaries) if map_summaries else '(No maps)'}
+{chr(10).join(table_summaries) if table_summaries else '(No tables)'}
+
+Create an optimal reading order where:
+1. Text introduces concepts before related visualizations
+2. Maps appear when geographic context is established
+3. Charts follow discussions of trends or comparisons
+4. Tables accompany detailed data discussions
+5. Related content flows naturally together
+
+Return a JSON array of module IDs in order, like:
+["Text0", "Map0", "Text1", "Chart0", "Text2", "Table0"]
+
+Only include modules that exist above. Ensure all modules are included exactly once."""
+
+        try:
+            response = await call_small_model(
+                system="You are an expert at organizing content for optimal narrative flow. Return only valid JSON.",
+                user_prompt=prompt,
+                max_tokens=500,
+                temperature=0
+            )
+            
+            # Parse the ordering
+            import re
+            # Extract JSON array from response
+            json_match = re.search(r'\[.*?\]', response, re.DOTALL)
+            if json_match:
+                order = json.loads(json_match.group())
+            else:
+                # Fallback to simple interleaving
+                order = self._create_fallback_order(sections, chart_modules, map_modules, table_modules)
+            
+            # Build the final module list based on the order
+            ordered_modules = []
+            for module_id in order:
+                if module_id.startswith("Text"):
+                    idx = int(module_id[4:])
+                    if idx < len(sections):
+                        ordered_modules.append({
+                            "type": "text",
+                            "heading": sections[idx]["heading"],
+                            "texts": sections[idx]["paragraphs"]
+                        })
+                elif module_id.startswith("Chart"):
+                    idx = int(module_id[5:])
+                    if idx < len(chart_modules):
+                        ordered_modules.append(chart_modules[idx])
+                elif module_id.startswith("Map"):
+                    idx = int(module_id[3:])
+                    if idx < len(map_modules):
+                        ordered_modules.append(map_modules[idx])
+                elif module_id.startswith("Table"):
+                    idx = int(module_id[5:])
+                    if idx < len(table_modules):
+                        ordered_modules.append(table_modules[idx])
+            
+            return ordered_modules
+            
+        except Exception as e:
+            print(f"LLM ordering failed: {e}. Using fallback order.")
+            return self._create_fallback_order_modules(sections, chart_modules, map_modules, table_modules)
+    
+    def _create_fallback_order(self, sections, chart_modules, map_modules, table_modules):
+        """Create a simple fallback ordering if LLM fails."""
+        order = []
+        for i in range(len(sections)):
+            order.append(f"Text{i}")
+        for i in range(len(map_modules)):
+            order.append(f"Map{i}")
+        for i in range(len(chart_modules)):
+            order.append(f"Chart{i}")
+        for i in range(len(table_modules)):
+            order.append(f"Table{i}")
+        return order
+    
+    def _create_fallback_order_modules(self, sections, chart_modules, map_modules, table_modules):
+        """Create fallback module list if LLM ordering fails."""
+        modules = []
+        
+        # Add all text sections first
         for section in sections:
-            # Add text module for this section
-            text_module = {
+            modules.append({
                 "type": "text",
                 "heading": section["heading"],
                 "texts": section["paragraphs"]
-            }
-            modules.append(text_module)
-            
-            # Intelligently insert relevant visualizations after text
-            
-            # Insert relevant charts
-            for i, chart in enumerate(chart_modules):
-                if i not in used_charts:
-                    if self._is_chart_relevant_to_section(chart, section["content"]):
-                        modules.append(chart)
-                        used_charts.add(i)
-            
-            # Insert relevant maps
-            for i, map_module in enumerate(map_modules):
-                if i not in used_maps:
-                    if self._is_map_relevant_to_section(map_module, section["content"]):
-                        modules.append(map_module)
-                        used_maps.add(i)
-            
-            # Insert relevant tables
-            for i, table in enumerate(table_modules):
-                if i not in used_tables:
-                    if self._is_table_relevant_to_section(table, section["content"]):
-                        modules.append(table)
-                        used_tables.add(i)
+            })
         
-        # Add any remaining visualizations that weren't placed
-        for i, chart in enumerate(chart_modules):
-            if i not in used_charts:
-                modules.append(chart)
-        
-        for i, map_module in enumerate(map_modules):
-            if i not in used_maps:
-                modules.append(map_module)
-        
-        for i, table in enumerate(table_modules):
-            if i not in used_tables:
-                modules.append(table)
-        
-        # Citation table always goes last
-        citation_table = self._create_citation_table(citation_map, facts)
-        modules.append(citation_table)
+        # Then add visualizations
+        modules.extend(map_modules)
+        modules.extend(chart_modules)
+        modules.extend(table_modules)
         
         return modules
-    
+
     def _parse_narrative_sections(self, narrative: str) -> List[Dict]:
         """
-        Parse narrative into logical sections.
-        Looks for ## headings or natural breaks.
+        Parse narrative into logical sections based on headers and paragraphs.
         
         Args:
             narrative: The complete narrative text
@@ -2073,35 +2420,73 @@ Otherwise, call tools to gather the missing information."""
         """
         sections = []
         current_section = {"heading": "", "paragraphs": [], "content": ""}
+        current_paragraph = []
         
-        for line in narrative.split('\n'):
-            line = line.strip()
-            if not line:
-                continue
+        lines = narrative.split('\n')
+        for line in lines:
+            line_stripped = line.strip()
+            
+            # Check for section headers
+            if line_stripped.startswith('##'):
+                # Save current paragraph if exists
+                if current_paragraph:
+                    paragraph_text = ' '.join(current_paragraph)
+                    current_section["paragraphs"].append(paragraph_text)
+                    current_section["content"] += " " + paragraph_text
+                    current_paragraph = []
                 
-            if line.startswith('##'):
-                # New section
+                # Save current section if it has content
                 if current_section["paragraphs"]:
                     sections.append(current_section)
+                
+                # Start new section
                 current_section = {
-                    "heading": line.replace('##', '').strip(),
+                    "heading": line_stripped.replace('##', '').strip(),
                     "paragraphs": [],
                     "content": ""
                 }
-            elif line:
-                current_section["paragraphs"].append(line)
-                current_section["content"] += " " + line
+            
+            # Empty line indicates paragraph break
+            elif not line_stripped:
+                if current_paragraph:
+                    paragraph_text = ' '.join(current_paragraph)
+                    current_section["paragraphs"].append(paragraph_text)
+                    current_section["content"] += " " + paragraph_text
+                    current_paragraph = []
+            
+            # Regular content line
+            else:
+                current_paragraph.append(line_stripped)
         
+        # Save any remaining paragraph
+        if current_paragraph:
+            paragraph_text = ' '.join(current_paragraph)
+            current_section["paragraphs"].append(paragraph_text)
+            current_section["content"] += " " + paragraph_text
+        
+        # Save any remaining section
         if current_section["paragraphs"]:
             sections.append(current_section)
         
-        # If no sections were found, create one default section
+        # If no sections found, split by double newlines
         if not sections:
-            sections.append({
-                "heading": "Analysis",
-                "paragraphs": narrative.split('\n\n') if narrative else ["No content"],
-                "content": narrative
-            })
+            paragraphs = [p.strip() for p in narrative.split('\n\n') if p.strip()]
+            if paragraphs:
+                # Group into logical sections (max 2-3 paragraphs per section)
+                for i in range(0, len(paragraphs), 2):
+                    section_paragraphs = paragraphs[i:i+2]
+                    sections.append({
+                        "heading": "",
+                        "paragraphs": section_paragraphs,
+                        "content": " ".join(section_paragraphs)
+                    })
+            else:
+                # Fallback: treat entire narrative as one section
+                sections.append({
+                    "heading": "",
+                    "paragraphs": [narrative] if narrative else ["No content"],
+                    "content": narrative
+                })
         
         return sections
     
@@ -2241,7 +2626,11 @@ Instructions:
 3. Group related information into logical sections with ## headings
 4. Be concise but thorough
 5. Focus on answering the user's query directly
-{f'6. Since a map WILL be displayed, refer to it as "The map shows..." or "As shown in the map..." rather than saying you cannot display it' if has_map_data else ''}
+{f'6. When discussing geographic data, reference the map naturally: "The map below shows..." or "As illustrated in the geographic distribution..."' if has_map_data else ''}
+{f'7. When presenting numerical trends or comparisons, reference charts: "The chart illustrates..." or "This trend is visualized below..."' if has_chart_data else ''}
+8. Structure your response to have clear transitions between topics
+9. Use paragraph breaks to separate distinct ideas or data points
+10. When transitioning from text to data visualization topics, use bridging phrases
 
 Format sections clearly with ## headings and use citations for all factual claims."""
         
@@ -2377,19 +2766,32 @@ Format sections clearly with ## headings and use citations for all factual claim
         
         return modules
     
-    def _create_map_modules(self, facts: List[Fact]) -> List[Dict]:
+    def _create_map_modules(self, facts: List[Fact], map_data: Optional[Dict] = None) -> List[Dict]:
         """
-        Create map modules from geographic facts.
+        Create map modules from geographic facts or solar map data.
         Maps are already saved to static/maps/ by servers.
         
         Args:
             facts: All facts, filtered for those with map_reference
+            map_data: Direct map data from solar server with geojson_url
             
         Returns:
             List of map modules
         """
         modules = []
         
+        # First check if we have direct map_data from solar server
+        if map_data and map_data.get("type") == "map_data_summary" and map_data.get("geojson_url"):
+            try:
+                # Use the response_formatter approach for consistency
+                from response_formatter import _create_map_module
+                map_module = _create_map_module(map_data)
+                if map_module:
+                    modules.append(map_module)
+            except Exception as e:
+                print(f"Error creating map from solar data: {e}")
+        
+        # Also check facts for additional maps
         for fact in facts:
             if fact.map_reference and fact.data_type == "geographic":
                 try:
@@ -2444,16 +2846,17 @@ Format sections clearly with ## headings and use citations for all factual claim
         
         return modules
     
-    def _create_citation_table(self, citation_map: Dict[str, int], facts: List[Fact]) -> Dict:
+    def _create_citation_table(self, citation_map: Dict[str, int], facts: List[Fact], sources: Optional[List] = None) -> Optional[Dict]:
         """
         Build the citation table module.
         
         Args:
             citation_map: Citation mapping with deduplication
             facts: All facts for citation lookup
+            sources: Optional list of sources for fallback
             
         Returns:
-            Citation table module
+            Citation table module or None if no citations
         """
         # Build reverse map: citation_number -> source_key
         used_citations = {}
