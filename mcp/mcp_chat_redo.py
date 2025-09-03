@@ -1067,6 +1067,18 @@ Instructions:
                 - Include legal framework details when analyzing governance
                 - Collect mitigation AND adaptation strategy information
                 - For trends, gather historical governance scores and policy evolution"""
+            },
+            "viz": {
+                "brief": "Data visualization tools for creating charts, tables, and comparisons",
+                "detailed": "Visualization server providing smart chart generation, comparison tables, and data visualization tools. Can create Bar/Line/Pie charts, comparison tables with percentages and totals, and optimize visualization types based on data characteristics",
+                "routing_prompt": "Use when needing to create visualizations, comparison tables, or formatted data presentations. Especially useful for multi-entity comparisons.",
+                "collection_instructions": """Tool usage strategy for Viz Server:
+                - Use 'CreateComparisonTable' when comparing multiple entities (countries, companies, etc)
+                - Use 'create_smart_chart' for automatic chart type selection
+                - Use 'create_comparison_chart' for side-by-side comparisons
+                - Always provide clear comparison_type for better formatting
+                - Include percentages for proportion analysis
+                - Use additional_fields to show multiple metrics"""
             }
         }
     
@@ -1103,7 +1115,8 @@ Instructions:
         - Be selective: only include servers that are clearly relevant
         - For general queries, include multiple relevant servers
         - For specific queries, be more targeted
-        - Include 'formatter' ONLY if the query explicitly asks for maps, charts, or visualizations
+        - Include 'viz' if the query asks for comparisons, tables, or charts
+        - If comparing multiple entities, include 'viz' for comparison tables
         - If no servers seem relevant, return empty array []
 
         Return a JSON array of relevant server IDs only.
@@ -1839,21 +1852,17 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                                         "tool": actual_tool_name,
                                         "raw_result": result_data  # Store structured data for Phase 3
                                     },
-                                    citation_data={
-                                        "tool_used": actual_tool_name,
-                                        "source_name": f"{server_name} Phase 2",
-                                        "phase": 2
-                                    }
+                                    citation=Citation(
+                                        source_name=f"{server_name.upper()} Database",
+                                        tool_id=actual_tool_name,
+                                        server_origin=server_name,
+                                        source_type="database",
+                                        description=f"Phase 2 call to {actual_tool_name}"
+                                    )
                                 )
                                 
                                 phase2_facts.append(fact)
                                 accumulated_facts.append(fact)
-                                
-                                # Add to citation registry
-                                self.client.citation_registry.add_source(
-                                    source=fact.citation_data,
-                                    module_id=f"phase2_{server_name}"
-                                )
                                 
                                 # Update facts context for next iteration
                                 facts_context += f"\n- {fact.text_content}"
