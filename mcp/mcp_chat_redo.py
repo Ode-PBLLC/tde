@@ -471,8 +471,7 @@ async def get_global_client() -> MultiServerClient:
                 await _global_client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
                 await _global_client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
                 await _global_client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
-                # TEMPORARILY DISABLED: Viz server may be causing issues
-                # await _global_client.connect_to_server("viz", os.path.join(mcp_dir, "viz_server.py"))
+                await _global_client.connect_to_server("viz", os.path.join(mcp_dir, "viz_server.py"))
                 print("Global MCP client initialized successfully")
             except Exception as e:
                 print(f"Error initializing global MCP client: {e}")
@@ -1032,13 +1031,14 @@ Instructions:
                 "detailed": "Comprehensive solar facility database with geospatial locations, capacity data (MW), facility metadata, country/region aggregations, renewable energy infrastructure mapping, and solar deployment trends",
                 "routing_prompt": "Determine if this query needs solar facility locations, renewable capacity data, solar infrastructure mapping, or country/region solar statistics.",
                 "collection_instructions": """Tool usage strategy for Solar Database:
-                - Use 'get_facilities_by_country' for country-level analysis
-                - Use 'get_facilities_by_region' for geographic area searches
-                - Always collect both facility counts AND total capacity (MW)
-                - For location queries, gather latitude/longitude coordinates
-                - When analyzing trends, collect year-over-year data if available
-                - For comparative analysis, collect data for multiple countries/regions
-                - Consider using capacity thresholds to filter for utility-scale vs distributed solar"""
+                - IMPORTANT: Call 'GetSolarFacilitiesMapData' when you need to show geographic distribution
+                - Use 'GetSolarFacilitiesByCountry' for detailed country-level facility data
+                - Use 'GetSolarCapacityByCountry' for capacity statistics across countries
+                - Use 'GetSolarConstructionTimeline' for temporal trends and growth analysis
+                - Use 'GetLargestSolarFacilities' to highlight major installations
+                - For multi-country analysis, use 'GetSolarFacilitiesMultipleCountries'
+                - Map tools automatically generate interactive visualizations
+                - Always aim to provide both statistics AND geographic visualizations"""
             },
             "gist": {
                 "brief": "Company environmental data: water stress (MSA), drought/flood risks, heat exposure, GHG emissions",
@@ -1450,6 +1450,9 @@ When you have collected enough information, respond with text summarizing what y
                     
                 elif isinstance(result_data, dict):
                     # Dictionary - extract key information
+                    if tool_name == "GetSolarFacilitiesMultipleCountries":
+                        print(f"DEBUG: GetSolarFacilitiesMultipleCountries result_data keys: {list(result_data.keys())}")
+                        print(f"DEBUG: Has geojson_url: {'geojson_url' in result_data}")
                     if 'data' in result_data and isinstance(result_data['data'], list):
                         count = len(result_data['data'])
                         fact_text = f"Found {count} records"
@@ -1925,12 +1928,46 @@ Otherwise, call tools to gather the missing information."""
                 
                 # Extract map data from solar server facts
                 if server_name == "solar":
-                    for fact in result.facts:
+                    print(f"DEBUG: Checking {len(result.facts)} solar facts for map data")
+                    for i, fact in enumerate(result.facts):
                         raw_result = fact.metadata.get("raw_result", {})
+                        if raw_result and isinstance(raw_result, dict):
+                            print(f"DEBUG: Solar fact {i} ALL keys: {list(raw_result.keys())}")
+                            if "geojson_url" in raw_result:
+                                print(f"DEBUG: Found geojson_url in fact {i}: {raw_result['geojson_url']}")
                         if isinstance(raw_result, dict):
-                            # Check if this is map data from GetSolarFacilitiesMapData
+                            # Check for map data in multiple formats
+                            # Format 1: GetSolarFacilitiesMapData returns type: "map_data_summary"
                             if raw_result.get("type") == "map_data_summary" and raw_result.get("geojson_url"):
                                 map_data = raw_result
+                                break
+                            # Format 2: GetSolarFacilitiesMultipleCountries returns geojson_url directly
+                            elif raw_result.get("geojson_url") and raw_result.get("countries_requested"):
+                                # Convert to standard format
+                                map_data = {
+                                    "type": "map_data_summary",
+                                    "summary": {
+                                        "description": f"Solar facilities in {', '.join(raw_result.get('countries_requested', []))}",
+                                        "total_facilities": raw_result.get("total_facilities", 0),
+                                        "countries": raw_result.get("countries_requested", []),
+                                        "facilities_by_country": raw_result.get("facilities_by_country", {})
+                                    },
+                                    "geojson_url": raw_result["geojson_url"],
+                                    "geojson_filename": raw_result.get("geojson_filename")
+                                }
+                                break
+                            # Format 3: Other tools that return geojson_url
+                            elif raw_result.get("geojson_url"):
+                                # Generic format conversion
+                                map_data = {
+                                    "type": "map_data_summary", 
+                                    "summary": {
+                                        "description": "Solar facilities map",
+                                        "total_facilities": raw_result.get("total_facilities", 0)
+                                    },
+                                    "geojson_url": raw_result["geojson_url"]
+                                }
+                                print(f"DEBUG: Map data extracted successfully! map_data = {map_data.get('geojson_url')}")
                                 break
         
         if not all_facts:
@@ -2235,6 +2272,13 @@ Otherwise, call tools to gather the missing information."""
         map_modules = self._create_map_modules(facts, map_data)
         table_modules = self._create_table_modules(facts)
         
+        print(f"DEBUG: Visualization modules created:")
+        print(f"  Charts: {len(chart_modules)}")
+        print(f"  Maps: {len(map_modules)}")
+        print(f"  Tables: {len(table_modules)}")
+        if map_modules:
+            print(f"  Map module[0]: {map_modules[0].get('heading', 'No heading')}")
+        
         # If we have visualizations, use LLM to determine placement
         if chart_modules or map_modules or table_modules:
             ordered_modules = await self._llm_order_modules(
@@ -2329,12 +2373,14 @@ Return a JSON array of module IDs in order, like:
 Only include modules that exist above. Ensure all modules are included exactly once."""
 
         try:
+            print(f"DEBUG: Calling LLM to order modules...")
             response = await call_small_model(
                 system="You are an expert at organizing content for optimal narrative flow. Return only valid JSON.",
                 user_prompt=prompt,
                 max_tokens=500,
                 temperature=0
             )
+            print(f"DEBUG: LLM response received")
             
             # Parse the ordering
             import re
@@ -2347,6 +2393,7 @@ Only include modules that exist above. Ensure all modules are included exactly o
                 order = self._create_fallback_order(sections, chart_modules, map_modules, table_modules)
             
             # Build the final module list based on the order
+            print(f"DEBUG: LLM ordered modules as: {order}")
             ordered_modules = []
             for module_id in order:
                 if module_id.startswith("Text"):
@@ -2738,31 +2785,29 @@ Format sections clearly with ## headings and use citations for all factual claim
         numerical_facts = [f for f in facts if f.numerical_data and f.data_type in ['time_series', 'comparison']]
         
         for fact in numerical_facts:
-            # TEMPORARILY DISABLED: Viz server disabled
-            # try:
-            #     # Call visualization server
-            #     chart_config = await self.client.call_tool(
-            #         tool_name="create_smart_chart",
-            #         tool_args={
-            #             "data": fact.numerical_data.get("values", []),
-            #             "context": f"{fact.data_type}: {fact.text_content}",
-            #             "title": self._generate_chart_title(fact)
-            #         },
-            #         server_name="viz"
-            #     )
-            #     
-            #     # Create module
-            #     modules.append({
-            #         "type": "chart",
-            #         "chartType": chart_config["type"],
-            #         "heading": chart_config.get("title", self._generate_chart_title(fact)),
-            #         "data": chart_config["data"],
-            #         "options": chart_config.get("options", {})
-            #     })
-            continue  # Skip chart creation for now
-            # except Exception as e:
-            #     print(f"Error creating chart for fact: {e}")
-            #     # Skip failed charts rather than break the whole process
+            try:
+                # Call visualization server
+                chart_config = await self.client.call_tool(
+                    tool_name="create_smart_chart",
+                    tool_args={
+                        "data": fact.numerical_data.get("values", []),
+                        "context": f"{fact.data_type}: {fact.text_content}",
+                        "title": self._generate_chart_title(fact)
+                    },
+                    server_name="viz"
+                )
+                
+                # Create module
+                modules.append({
+                    "type": "chart",
+                    "chartType": chart_config["type"],
+                    "heading": chart_config.get("title", self._generate_chart_title(fact)),
+                    "data": chart_config["data"],
+                    "options": chart_config.get("options", {})
+                })
+            except Exception as e:
+                print(f"Error creating chart for fact: {e}")
+                # Skip failed charts rather than break the whole process
         
         return modules
     
