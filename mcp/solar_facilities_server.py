@@ -720,7 +720,7 @@ def GetSolarFacilitiesInBounds(north: float, south: float, east: float, west: fl
         return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
-def GetSolarFacilitiesMultipleCountries(countries: List[str], limit: int = 200) -> Dict[str, Any]:
+def GetSolarFacilitiesMultipleCountries(countries: List[str], limit: int = 100000) -> Dict[str, Any]:
     """Get solar facilities for multiple countries - generates GeoJSON."""
     if not db:
         return {"error": "Database not available"}

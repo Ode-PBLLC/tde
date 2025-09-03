@@ -2806,7 +2806,10 @@ Format sections clearly with ## headings and use citations for all factual claim
         import re
         
         # Find all citation placeholders in narrative
-        citations_found = re.findall(r'\[CITE_(\d+)\]', narrative)
+        # This catches CITE_n in ANY format: [CITE_1], [[CITE_1], [CITE_2]], [CITE_1, CITE_2], or bare CITE_1
+        all_citations = re.findall(r'CITE_(\d+)', narrative)
+        # Remove duplicates while preserving order of first appearance
+        citations_found = list(dict.fromkeys(all_citations))
         
         # Build source key to citation number mapping with deduplication
         source_to_citation = {}
@@ -2844,10 +2847,11 @@ Format sections clearly with ## headings and use citations for all factual claim
         
         final_text = narrative
         
-        # First handle grouped citations like [CITE_2, CITE_3, CITE_5]
-        def replace_grouped(match):
-            grouped_text = match.group(0)  # e.g., "[CITE_2, CITE_3, CITE_5]"
-            citations = re.findall(r'CITE_(\d+)', grouped_text)
+        # Handle all citation formats with a single comprehensive function
+        def replace_any_citation_format(match):
+            """Replace any citation format with proper ^n^ format."""
+            full_match = match.group(0)
+            citations = re.findall(r'CITE_(\d+)', full_match)
             
             # Replace each citation with its mapped number
             replaced_citations = []
@@ -2857,14 +2861,23 @@ Format sections clearly with ## headings and use citations for all factual claim
                     replaced_citations.append(f"^{citation_map[placeholder]}^")
             
             # Return space-separated superscript citations
-            return ' '.join(replaced_citations) if replaced_citations else grouped_text
+            return ' '.join(replaced_citations) if replaced_citations else full_match
         
-        # Replace grouped citations first
-        final_text = re.sub(r'\[CITE_\d+(?:, CITE_\d+)*\]', replace_grouped, final_text)
+        # Match ALL possible citation formats:
+        # - [[CITE_1], [CITE_2]] - double brackets
+        # - [CITE_1, CITE_2, CITE_3] - grouped with commas
+        # - [CITE_1] - single brackets
+        # - CITE_1 - bare citations
+        citation_patterns = [
+            r'\[\[CITE_\d+\](?:,\s*\[CITE_\d+\])*\]',  # [[CITE_1], [CITE_2]]
+            r'\[CITE_\d+(?:,\s*CITE_\d+)*\]',           # [CITE_1, CITE_2]
+            r'\[CITE_\d+\]',                            # [CITE_1]
+            r'CITE_\d+'                                  # CITE_1 (bare)
+        ]
         
-        # Then handle any remaining individual citations [CITE_n]
-        for placeholder, citation_num in citation_map.items():
-            final_text = final_text.replace(f"[{placeholder}]", f"^{citation_num}^")
+        # Apply replacements for each pattern
+        for pattern in citation_patterns:
+            final_text = re.sub(pattern, replace_any_citation_format, final_text)
         
         return final_text
     
