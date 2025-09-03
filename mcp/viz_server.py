@@ -479,5 +479,225 @@ def create_comparison(
     except Exception as e:
         return create_smart_chart(data, f"comparison: {title}", title)
 
+
+@mcp.tool()
+def CreateComparisonTable(
+    data_points: List[Dict[str, Any]],
+    comparison_type: str,
+    entity_key: str = "name",
+    value_key: str = "value",
+    include_percentages: bool = True,
+    include_totals: bool = True,
+    include_averages: bool = False,
+    sort_by: str = "value",
+    sort_descending: bool = True,
+    columns: Optional[List[str]] = None,
+    title: Optional[str] = None,
+    additional_fields: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Create a formatted comparison table for any type of data across entities.
+    
+    This tool generates a well-formatted table module suitable for comparing
+    values across different entities (countries, companies, regions, etc.).
+    It automatically calculates percentages, totals, and averages as needed.
+    
+    Args:
+        data_points: List of dictionaries containing the data to compare.
+                    Example: [{"name": "Brazil", "value": 2273, "capacity_mw": 1500}, ...]
+        comparison_type: Type of comparison (e.g., "facilities", "capacity", "emissions")
+                        Used for generating appropriate labels and formatting
+        entity_key: Key in data_points that identifies the entity (default: "name")
+        value_key: Key in data_points that contains the main value to compare (default: "value")
+        include_percentages: Whether to include a percentage column (default: True)
+        include_totals: Whether to add a totals row at the bottom (default: True)
+        include_averages: Whether to include average values in the totals row (default: False)
+        sort_by: Field to sort by ("value", "name", or any additional field)
+        sort_descending: Sort order (True for descending, False for ascending)
+        columns: Optional custom column names. If not provided, generates automatically
+        title: Optional custom title for the table
+        additional_fields: Optional list of additional fields to include from data_points
+        
+    Returns:
+        A formatted table module with the structure:
+        {
+            "type": "table",
+            "heading": "...",
+            "columns": [...],
+            "rows": [...],
+            "metadata": {...}
+        }
+    """
+    if not data_points:
+        return {
+            "type": "table",
+            "heading": title or f"{comparison_type.title()} Comparison",
+            "columns": ["Entity", "Value"],
+            "rows": [["No data available", "-"]],
+            "metadata": {"empty": True}
+        }
+    
+    # Extract entities and values
+    entities = []
+    for point in data_points:
+        entity = {
+            "name": str(point.get(entity_key, "Unknown")),
+            "value": float(point.get(value_key, 0))
+        }
+        
+        # Add additional fields if requested
+        if additional_fields:
+            for field in additional_fields:
+                if field in point:
+                    entity[field] = point[field]
+        
+        entities.append(entity)
+    
+    # Calculate total and average
+    total_value = sum(e["value"] for e in entities)
+    avg_value = total_value / len(entities) if entities else 0
+    
+    # Sort entities
+    if sort_by == "name":
+        entities.sort(key=lambda x: x["name"], reverse=sort_descending)
+    elif sort_by == "value":
+        entities.sort(key=lambda x: x["value"], reverse=sort_descending)
+    elif additional_fields and sort_by in additional_fields:
+        entities.sort(key=lambda x: x.get(sort_by, 0), reverse=sort_descending)
+    
+    # Build columns
+    if columns:
+        column_headers = columns
+    else:
+        column_headers = ["Entity"]
+        
+        # Add main value column with appropriate label
+        if comparison_type == "facilities":
+            column_headers.append("Number of Facilities")
+        elif comparison_type == "capacity":
+            column_headers.append("Capacity (MW)")
+        elif comparison_type == "emissions":
+            column_headers.append("Emissions (MtCO2e)")
+        elif comparison_type == "water_stress":
+            column_headers.append("Water Stress Level")
+        else:
+            column_headers.append(value_key.replace("_", " ").title())
+        
+        # Add percentage column if requested
+        if include_percentages and total_value > 0:
+            column_headers.append("% of Total")
+        
+        # Add additional field columns
+        if additional_fields:
+            for field in additional_fields:
+                column_headers.append(field.replace("_", " ").title())
+    
+    # Build rows
+    rows = []
+    for entity in entities:
+        row = [entity["name"]]
+        
+        # Format main value based on type
+        if comparison_type in ["facilities", "count"]:
+            row.append(f"{int(entity['value']):,}")
+        elif comparison_type in ["capacity", "emissions"]:
+            row.append(f"{entity['value']:,.1f}")
+        else:
+            row.append(f"{entity['value']:,.2f}")
+        
+        # Add percentage if requested
+        if include_percentages and total_value > 0:
+            percentage = (entity["value"] / total_value) * 100
+            row.append(f"{percentage:.1f}%")
+        elif include_percentages:
+            row.append("-")
+        
+        # Add additional fields
+        if additional_fields:
+            for field in additional_fields:
+                value = entity.get(field, "")
+                if isinstance(value, (int, float)):
+                    if field.endswith("_count") or field.endswith("_number"):
+                        row.append(f"{int(value):,}")
+                    else:
+                        row.append(f"{value:,.1f}")
+                else:
+                    row.append(str(value))
+        
+        rows.append(row)
+    
+    # Add totals row if requested
+    if include_totals:
+        total_row = ["**Total**"]
+        
+        # Format total value
+        if comparison_type in ["facilities", "count"]:
+            total_row.append(f"**{int(total_value):,}**")
+        elif comparison_type in ["capacity", "emissions"]:
+            total_row.append(f"**{total_value:,.1f}**")
+        else:
+            total_row.append(f"**{total_value:,.2f}**")
+        
+        # Add percentage column for total
+        if include_percentages:
+            total_row.append("**100.0%**")
+        
+        # Add averages for additional fields if requested
+        if additional_fields:
+            for field in additional_fields:
+                if include_averages:
+                    values = [e.get(field, 0) for e in entities if isinstance(e.get(field), (int, float))]
+                    if values:
+                        avg = sum(values) / len(values)
+                        if field.endswith("_count") or field.endswith("_number"):
+                            total_row.append(f"*Avg: {int(avg):,}*")
+                        else:
+                            total_row.append(f"*Avg: {avg:,.1f}*")
+                    else:
+                        total_row.append("-")
+                else:
+                    total_row.append("-")
+        
+        rows.append(total_row)
+    
+    # Generate title if not provided
+    if not title:
+        if comparison_type == "facilities":
+            title = "Solar Facility Distribution Comparison"
+        elif comparison_type == "capacity":
+            title = "Capacity Comparison"
+        elif comparison_type == "emissions":
+            title = "Emissions Comparison"
+        else:
+            title = f"{comparison_type.replace('_', ' ').title()} Comparison"
+    
+    # Build metadata
+    metadata = {
+        "comparison_type": comparison_type,
+        "entity_count": len(entities),
+        "total_value": total_value,
+        "average_value": avg_value,
+        "sorted_by": sort_by,
+        "sort_order": "descending" if sort_descending else "ascending"
+    }
+    
+    # Add value ranges to metadata
+    if entities:
+        values = [e["value"] for e in entities]
+        metadata["value_range"] = {
+            "min": min(values),
+            "max": max(values),
+            "median": sorted(values)[len(values)//2]
+        }
+    
+    return {
+        "type": "table",
+        "heading": title,
+        "columns": column_headers,
+        "rows": rows,
+        "metadata": metadata
+    }
+
+
 if __name__ == "__main__":
     mcp.run()

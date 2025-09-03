@@ -1919,56 +1919,71 @@ Otherwise, call tools to gather the missing information."""
         
         # Step 1: Collect all facts
         all_facts = []
-        map_data = None  # Will store map data from solar facilities
+        map_data_list = []  # Store ALL map data, not just one
         chart_data = None  # Will store chart data
+        table_data_list = []  # Store table data
         
         for server_name, result in deep_dive_results.items():
             if result.is_relevant:
                 all_facts.extend(result.facts)
                 
-                # Extract map data from solar server facts
+                # Extract ALL map and table data from solar server facts
                 if server_name == "solar":
-                    print(f"DEBUG: Checking {len(result.facts)} solar facts for map data")
+                    print(f"DEBUG: Checking {len(result.facts)} solar facts for maps and tables")
                     for i, fact in enumerate(result.facts):
                         raw_result = fact.metadata.get("raw_result", {})
                         if raw_result and isinstance(raw_result, dict):
-                            print(f"DEBUG: Solar fact {i} ALL keys: {list(raw_result.keys())}")
+                            # Check for map data in multiple formats
                             if "geojson_url" in raw_result:
                                 print(f"DEBUG: Found geojson_url in fact {i}: {raw_result['geojson_url']}")
-                        if isinstance(raw_result, dict):
-                            # Check for map data in multiple formats
-                            # Format 1: GetSolarFacilitiesMapData returns type: "map_data_summary"
-                            if raw_result.get("type") == "map_data_summary" and raw_result.get("geojson_url"):
-                                map_data = raw_result
-                                break
-                            # Format 2: GetSolarFacilitiesMultipleCountries returns geojson_url directly
-                            elif raw_result.get("geojson_url") and raw_result.get("countries_requested"):
-                                # Convert to standard format
-                                map_data = {
-                                    "type": "map_data_summary",
-                                    "summary": {
-                                        "description": f"Solar facilities in {', '.join(raw_result.get('countries_requested', []))}",
-                                        "total_facilities": raw_result.get("total_facilities", 0),
-                                        "countries": raw_result.get("countries_requested", []),
-                                        "facilities_by_country": raw_result.get("facilities_by_country", {})
-                                    },
-                                    "geojson_url": raw_result["geojson_url"],
-                                    "geojson_filename": raw_result.get("geojson_filename")
-                                }
-                                break
-                            # Format 3: Other tools that return geojson_url
-                            elif raw_result.get("geojson_url"):
-                                # Generic format conversion
-                                map_data = {
-                                    "type": "map_data_summary", 
-                                    "summary": {
-                                        "description": "Solar facilities map",
-                                        "total_facilities": raw_result.get("total_facilities", 0)
-                                    },
-                                    "geojson_url": raw_result["geojson_url"]
-                                }
-                                print(f"DEBUG: Map data extracted successfully! map_data = {map_data.get('geojson_url')}")
-                                break
+                                
+                                # Format 1: GetSolarFacilitiesMapData returns type: "map_data_summary"
+                                if raw_result.get("type") == "map_data_summary":
+                                    map_data_list.append(raw_result)
+                                
+                                # Format 2: GetSolarFacilitiesMultipleCountries
+                                elif raw_result.get("countries_requested"):
+                                    # Check if we should create separate maps per country
+                                    countries = raw_result.get("countries_requested", [])
+                                    facilities_by_country = raw_result.get("facilities_by_country", {})
+                                    
+                                    # For now, add the combined map
+                                    map_data = {
+                                        "type": "map_data_summary",
+                                        "summary": {
+                                            "description": f"Solar facilities in {', '.join(countries)}",
+                                            "total_facilities": raw_result.get("total_facilities", 0),
+                                            "countries": countries,
+                                            "facilities_by_country": facilities_by_country
+                                        },
+                                        "geojson_url": raw_result["geojson_url"],
+                                        "geojson_filename": raw_result.get("geojson_filename")
+                                    }
+                                    map_data_list.append(map_data)
+                                    
+                                    # If we have country breakdown data, create a comparison table
+                                    if facilities_by_country:
+                                        table_data_list.append({
+                                            "type": "country_comparison",
+                                            "data": facilities_by_country,
+                                            "countries": countries
+                                        })
+                                
+                                # Format 3: Generic geojson_url
+                                else:
+                                    map_data = {
+                                        "type": "map_data_summary",
+                                        "summary": {
+                                            "description": "Solar facilities map",
+                                            "total_facilities": raw_result.get("total_facilities", 0)
+                                        },
+                                        "geojson_url": raw_result["geojson_url"]
+                                    }
+                                    map_data_list.append(map_data)
+                            
+                            # Check for capacity statistics that could become charts/tables
+                            if raw_result.get("capacity_stats") or raw_result.get("facilities_by_country"):
+                                print(f"DEBUG: Found potential table/chart data in fact {i}")
         
         if not all_facts:
             return [{
@@ -2013,14 +2028,19 @@ Otherwise, call tools to gather the missing information."""
         
         # Step 6: Use intelligent module assembly for better narrative interleaving
         # This replaces the simple formatter with context-aware module ordering
+        # Use the first map if we have multiple (for backward compatibility)
+        primary_map_data = map_data_list[0] if map_data_list else None
+        
         modules = await self._assemble_modules_intelligently(
             narrative=final_narrative,
             facts=all_facts,
             citation_map=citation_map,
             user_query=user_query,
-            map_data=map_data,
+            map_data=primary_map_data,
             chart_data=chart_data,
-            sources=sources
+            sources=sources,
+            additional_maps=map_data_list[1:] if len(map_data_list) > 1 else [],
+            table_data_list=table_data_list
         )
         
         return modules
@@ -2240,7 +2260,9 @@ Otherwise, call tools to gather the missing information."""
         user_query: str,
         map_data: Optional[Dict] = None,
         chart_data: Optional[List[Dict]] = None,
-        sources: Optional[List] = None
+        sources: Optional[List] = None,
+        additional_maps: Optional[List[Dict]] = None,
+        table_data_list: Optional[List[Dict]] = None
     ) -> List[Dict]:
         """
         Use LLM to intelligently order modules for natural narrative flow.
@@ -2269,15 +2291,36 @@ Otherwise, call tools to gather the missing information."""
         
         # Get all available visualizations
         chart_modules = await self._create_chart_modules(facts)
+        
+        # Create map modules from primary map and additional maps
         map_modules = self._create_map_modules(facts, map_data)
+        
+        # Add additional maps if provided
+        if additional_maps:
+            for extra_map in additional_maps:
+                extra_module = self._create_single_map_module(extra_map)
+                if extra_module:
+                    map_modules.append(extra_module)
+        
+        # Create table modules from facts and additional table data
         table_modules = self._create_table_modules(facts)
+        
+        # Add comparison tables from table_data_list using viz server
+        if table_data_list:
+            for table_data in table_data_list:
+                if table_data.get("type") == "country_comparison":
+                    # Call viz server to create comparison table
+                    comparison_table = await self._create_comparison_table_via_viz(table_data)
+                    if comparison_table:
+                        table_modules.append(comparison_table)
         
         print(f"DEBUG: Visualization modules created:")
         print(f"  Charts: {len(chart_modules)}")
         print(f"  Maps: {len(map_modules)}")
         print(f"  Tables: {len(table_modules)}")
         if map_modules:
-            print(f"  Map module[0]: {map_modules[0].get('heading', 'No heading')}")
+            for i, m in enumerate(map_modules):
+                print(f"  Map {i}: {m.get('heading', 'No heading')}")
         
         # If we have visualizations, use LLM to determine placement
         if chart_modules or map_modules or table_modules:
@@ -2970,6 +3013,102 @@ Format sections clearly with ## headings and use citations for all factual claim
         return {
             "center": [0, 0],
             "zoom": 2
+        }
+    
+    def _create_single_map_module(self, map_data: Dict) -> Optional[Dict]:
+        """
+        Create a single map module with proper context from map data.
+        Uses the response_formatter's _create_map_module for consistency.
+        """
+        if not map_data or not map_data.get("geojson_url"):
+            return None
+        
+        try:
+            from response_formatter import _create_map_module
+            map_module = _create_map_module(map_data)
+            
+            # The map module already has metadata with context from summary
+            return map_module
+            
+        except Exception as e:
+            print(f"Error creating single map module: {e}")
+            return None
+    
+    async def _create_comparison_table_via_viz(self, table_data: Dict) -> Optional[Dict]:
+        """
+        Create a comparison table by calling the viz server's CreateComparisonTable tool.
+        
+        Args:
+            table_data: Dictionary with 'type': 'country_comparison', 'data': facilities_by_country, 'countries': list
+        
+        Returns:
+            Table module from viz server or None
+        """
+        if table_data.get("type") != "country_comparison":
+            return None
+        
+        facilities_by_country = table_data.get("data", {})
+        countries = table_data.get("countries", [])
+        
+        if not facilities_by_country:
+            return None
+        
+        try:
+            # Transform data for viz server format
+            data_points = [
+                {"name": country, "value": count}
+                for country, count in facilities_by_country.items()
+            ]
+            
+            # Call viz server tool
+            client = await get_global_mcp_client()
+            result = await client.call_tool(
+                server="viz",
+                tool="CreateComparisonTable",
+                arguments={
+                    "data_points": data_points,
+                    "comparison_type": "facilities",
+                    "entity_key": "name",
+                    "value_key": "value",
+                    "include_percentages": True,
+                    "include_totals": True,
+                    "sort_by": "value",
+                    "sort_descending": True
+                }
+            )
+            
+            # Extract the table module from the result
+            if result and hasattr(result, 'content'):
+                for content_item in result.content:
+                    if hasattr(content_item, 'text'):
+                        # Parse the JSON response
+                        table_module = json.loads(content_item.text)
+                        return table_module
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error calling viz server for comparison table: {e}")
+            # Fallback to simple table
+            return self._create_simple_comparison_table(facilities_by_country, countries)
+    
+    def _create_simple_comparison_table(self, facilities_by_country: Dict, countries: List[str]) -> Dict:
+        """Simple fallback comparison table if viz server fails."""
+        rows = []
+        total = sum(facilities_by_country.values())
+        
+        for country in sorted(countries, key=lambda c: facilities_by_country.get(c, 0), reverse=True):
+            count = facilities_by_country.get(country, 0)
+            percentage = (count / total * 100) if total > 0 else 0
+            rows.append([country.title(), f"{count:,}", f"{percentage:.1f}%"])
+        
+        rows.append(["**Total**", f"**{total:,}**", "100.0%"])
+        
+        return {
+            "type": "table",
+            "heading": "Solar Facility Distribution by Country",
+            "columns": ["Country", "Number of Facilities", "% of Total"],
+            "rows": rows
         }
 
 
