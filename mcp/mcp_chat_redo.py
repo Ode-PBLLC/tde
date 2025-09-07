@@ -20,14 +20,62 @@ from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
+import logging
+from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 import anthropic
 from dotenv import load_dotenv
 
+# Import performance optimizer
+try:
+    from performance_optimizer import (
+        PerformanceOptimizer, QueryComplexity, 
+        ProgressiveResponseBuilder, SmartRouter
+    )
+    OPTIMIZER_AVAILABLE = True
+except ImportError:
+    OPTIMIZER_AVAILABLE = False
+    print("Warning: Performance optimizer not available")
+
 # Load environment variables
 load_dotenv()
+
+# =============================================================================
+# LOGGING CONFIGURATION FOR LLM CALLS
+# =============================================================================
+
+# Create logs directory if it doesn't exist
+LOG_DIR = Path("/mnt/o/Ode/Github/tde/logs")
+LOG_DIR.mkdir(exist_ok=True)
+
+# Configure LLM call logger
+llm_logger = logging.getLogger("llm_calls")
+llm_logger.setLevel(logging.DEBUG)
+
+# Create file handler with timestamp
+log_filename = LOG_DIR / f"llm_calls_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+file_handler = logging.FileHandler(log_filename)
+file_handler.setLevel(logging.DEBUG)
+
+# Create console handler for important logs
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Create formatter
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add handlers to logger
+llm_logger.addHandler(file_handler)
+llm_logger.addHandler(console_handler)
+
+llm_logger.info(f"LLM call logging initialized. Log file: {log_filename}")
 
 # =============================================================================
 # CONFIGURATION: MODEL SELECTION
@@ -57,14 +105,29 @@ async def call_small_model(system: str, user_prompt: str, max_tokens: int = 1000
     Returns:
         Generated text response
     """
-    response = ANTHROPIC_CLIENT.messages.create(
-        model=SMALL_MODEL,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        system=system,
-        messages=[{"role": "user", "content": user_prompt}]
-    )
-    return response.content[0].text
+    # Log the call details
+    llm_logger.debug(f"=== SMALL MODEL CALL ({SMALL_MODEL}) ===")
+    llm_logger.debug(f"System prompt: {system[:200]}..." if len(system) > 200 else f"System prompt: {system}")
+    llm_logger.debug(f"User prompt: {user_prompt[:500]}..." if len(user_prompt) > 500 else f"User prompt: {user_prompt}")
+    llm_logger.debug(f"Max tokens: {max_tokens}, Temperature: {temperature}")
+    
+    try:
+        response = ANTHROPIC_CLIENT.messages.create(
+            model=SMALL_MODEL,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=system,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+        
+        result = response.content[0].text
+        llm_logger.debug(f"Response: {result[:500]}..." if len(result) > 500 else f"Response: {result}")
+        llm_logger.info(f"Small model call completed. Input tokens: ~{len(system + user_prompt)//4}, Output tokens: ~{len(result)//4}")
+        
+        return result
+    except Exception as e:
+        llm_logger.error(f"Error in small model call: {e}")
+        raise
 
 
 async def call_large_model(system: str, user_prompt: str, max_tokens: int = 2000, temperature: float = 0) -> str:
@@ -80,14 +143,29 @@ async def call_large_model(system: str, user_prompt: str, max_tokens: int = 2000
     Returns:
         Generated text response
     """
-    response = ANTHROPIC_CLIENT.messages.create(
-        model=LARGE_MODEL,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        system=system,
-        messages=[{"role": "user", "content": user_prompt}]
-    )
-    return response.content[0].text
+    # Log the call details
+    llm_logger.debug(f"=== LARGE MODEL CALL ({LARGE_MODEL}) ===")
+    llm_logger.debug(f"System prompt: {system[:200]}..." if len(system) > 200 else f"System prompt: {system}")
+    llm_logger.debug(f"User prompt: {user_prompt[:500]}..." if len(user_prompt) > 500 else f"User prompt: {user_prompt}")
+    llm_logger.debug(f"Max tokens: {max_tokens}, Temperature: {temperature}")
+    
+    try:
+        response = ANTHROPIC_CLIENT.messages.create(
+            model=LARGE_MODEL,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=system,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+        
+        result = response.content[0].text
+        llm_logger.debug(f"Response: {result[:500]}..." if len(result) > 500 else f"Response: {result}")
+        llm_logger.info(f"Large model call completed. Input tokens: ~{len(system + user_prompt)//4}, Output tokens: ~{len(result)//4}")
+        
+        return result
+    except Exception as e:
+        llm_logger.error(f"Error in large model call: {e}")
+        raise
 
 
 async def call_model_with_tools(model: str, system: str, messages: List[Dict[str, Any]], 
@@ -105,13 +183,44 @@ async def call_model_with_tools(model: str, system: str, messages: List[Dict[str
     Returns:
         Raw Anthropic response object
     """
-    return ANTHROPIC_CLIENT.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=system,
-        messages=messages,
-        tools=tools
-    )
+    # Log the call details
+    llm_logger.debug(f"=== MODEL WITH TOOLS CALL ({model}) ===")
+    llm_logger.debug(f"System prompt: {system[:200]}..." if len(system) > 200 else f"System prompt: {system}")
+    llm_logger.debug(f"Number of messages: {len(messages)}")
+    llm_logger.debug(f"Number of tools: {len(tools)}")
+    llm_logger.debug(f"Tool names: {[t.get('name', 'unknown') for t in tools]}")
+    llm_logger.debug(f"Max tokens: {max_tokens}")
+    
+    # Log message history
+    for i, msg in enumerate(messages[-3:]):  # Log last 3 messages for context
+        llm_logger.debug(f"Message {i} ({msg.get('role', 'unknown')}): {str(msg.get('content', ''))[:300]}...")
+    
+    try:
+        response = ANTHROPIC_CLIENT.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=messages,
+            tools=tools
+        )
+        
+        # Log response details
+        llm_logger.debug(f"Response type: {type(response)}")
+        if hasattr(response, 'content'):
+            for content_block in response.content:
+                if hasattr(content_block, 'type'):
+                    llm_logger.debug(f"Content block type: {content_block.type}")
+                    if content_block.type == 'text':
+                        llm_logger.debug(f"Text content: {content_block.text[:300]}...")
+                    elif content_block.type == 'tool_use':
+                        llm_logger.debug(f"Tool use: {content_block.name} with input: {str(content_block.input)[:200]}...")
+        
+        llm_logger.info(f"Model with tools call completed ({model})")
+        
+        return response
+    except Exception as e:
+        llm_logger.error(f"Error in model with tools call: {e}")
+        raise
 
 # =============================================================================
 # PHASE 0: CORE DATA STRUCTURES
@@ -917,6 +1026,26 @@ Instructions:
             Dictionary with query, modules, and metadata
         """
         try:
+            # Log query processing start
+            llm_logger.info(f"=== QUERY PROCESSING START ===")
+            llm_logger.info(f"User query: {user_query}")
+            llm_logger.info(f"Conversation history length: {len(self.conversation_history)}")
+            if self.conversation_history:
+                llm_logger.debug("Last 3 conversation turns:")
+                for msg in self.conversation_history[-3:]:
+                    llm_logger.debug(f"  {msg.get('role', 'unknown')}: {msg.get('content', '')[:200]}...")
+            llm_logger.info(f"Cached facts count: {len(self.cached_facts)}")
+            llm_logger.info(f"Token budget remaining: {self.token_budget_remaining}")
+            
+            # Estimate query complexity for optimization
+            if OPTIMIZER_AVAILABLE:
+                complexity = await PerformanceOptimizer.estimate_complexity(user_query)
+                llm_logger.info(f"Query complexity: {complexity.value}")
+                tool_limit = PerformanceOptimizer.TOOL_LIMITS[complexity]
+            else:
+                complexity = None
+                tool_limit = 15  # Default limit
+            
             # First check if query is relevant to our domain
             is_relevant = await self._is_query_relevant(user_query)
             if not is_relevant:
@@ -1055,18 +1184,20 @@ Instructions:
                 - Collect both absolute values and intensity metrics for meaningful comparison"""
             },
             "lse": {
-                "brief": "Brazilian climate governance, state assessments, NDC implementation, institutional frameworks",
-                "detailed": "LSE Climate Policy dataset specializing in Brazilian subnational climate governance including: state-level climate assessments, NDC implementation tracking, legal/institutional frameworks, climate action plans, mitigation/adaptation strategies, governance quality indicators, policy coherence analysis, and subnational climate leadership metrics",
-                "routing_prompt": "Determine if this query needs Brazilian climate policy data, subnational governance assessments, NDC tracking, institutional analysis, or climate policy implementation metrics.",
+                "brief": "NDC commitments, climate targets, emissions reductions, Brazilian governance, policy frameworks",
+                "detailed": "Comprehensive climate policy database including: NDC targets and commitments (emissions reduction percentages, net-zero dates, renewable energy goals), NDC vs domestic policy comparison, institutional frameworks (direction setting, planning, coordination), climate policies (cross-cutting, sectoral mitigation/adaptation), Brazilian state-level governance, implementation tracking, and TPI emissions pathways",
+                "routing_prompt": "Essential for queries about: NDC commitments, climate targets, emissions reduction goals, net-zero targets, renewable energy commitments, climate policy frameworks, institutional governance, Brazilian state assessments, policy implementation status. Key terms: NDC, targets, commitments, 2030, 2035, 2050, net-zero, emissions reduction, climate neutrality, Paris Agreement.",
                 "collection_instructions": """Tool usage strategy for LSE Climate Policy:
-                - Use 'get_state_climate_assessment' for individual Brazilian state analysis
-                - Use 'get_ndc_implementation_status' for NDC tracking and progress
-                - Use 'get_governance_indicators' for institutional quality metrics
-                - For comparative analysis, collect data from multiple states
-                - Always gather both policy existence AND implementation status
-                - Include legal framework details when analyzing governance
-                - Collect mitigation AND adaptation strategy information
-                - For trends, gather historical governance scores and policy evolution"""
+                - Use 'GetNDCTargets' for specific country NDC commitments and targets
+                - Use 'GetNDCPolicyComparison' for NDC vs domestic law analysis  
+                - Use 'GetNDCImplementationStatus' for tracking progress
+                - Use 'GetTPIGraphData' for emissions pathway visualization
+                - Use 'GetInstitutionalFramework' for governance structure queries
+                - Use 'GetClimatePolicy' for specific policy details
+                - Use 'GetSubnationalGovernance' for Brazilian state-level data
+                - Always extract quantitative targets (percentages, years, MW goals)
+                - Collect both NDC commitments AND implementation status
+                - For NDC queries, prioritize GetNDCTargets as the primary tool"""
             },
             "viz": {
                 "brief": "Data visualization tools for creating charts, tables, and comparisons",
@@ -1104,6 +1235,15 @@ Instructions:
         ])
 
         
+        # Check for NDC-specific keywords
+        ndc_keywords = ['ndc', 'nationally determined contribution', 'commitment', 'target', 
+                       'emissions reduction', 'net-zero', 'net zero', 'climate neutral', 
+                       '2030', '2035', '2050', 'paris agreement', 'climate policy',
+                       'implementation', 'domestic policy']
+        
+        query_lower = user_query.lower()
+        has_ndc_keywords = any(keyword in query_lower for keyword in ndc_keywords)
+        
         prefilter_prompt = f"""Given this user query: "{user_query}"
 
         Which of these data sources might be relevant? Return ONLY the server IDs that could help answer this query.
@@ -1113,11 +1253,13 @@ Instructions:
 
         Instructions:
         - Be selective: only include servers that are clearly relevant
+        - IMPORTANT: If the query mentions NDC, commitments, targets, emissions reduction, net-zero, or years like 2030/2035/2050, ALWAYS include 'lse'
         - For general queries, include multiple relevant servers
         - For specific queries, be more targeted
         - Include 'viz' if the query asks for comparisons, tables, or charts
         - If comparing multiple entities, include 'viz' for comparison tables
         - If no servers seem relevant, return empty array []
+        {"- NOTE: This query contains NDC/climate policy keywords - consider including 'lse'" if has_ndc_keywords else ""}
 
         Return a JSON array of relevant server IDs only.
         Examples: ["kg", "gist"] or ["solar"] or ["kg", "solar", "formatter"] or []"""
@@ -1561,15 +1703,19 @@ When you have collected enough information, respond with text summarizing what y
         return source_types.get(server_name, "Database")
     
     async def _should_do_phase2_deep_dive(self, user_query: str, 
-                                          collection_results: Dict[str, PhaseResult]) -> Tuple[bool, str, List[str]]:
+                                          collection_results: Dict[str, PhaseResult],
+                                          complexity: Optional['QueryComplexity'] = None,
+                                          time_elapsed: float = 0) -> Tuple[bool, str, List[str]]:
         """
         Determine if Phase 2 deep dive is needed based on Phase 1 results.
         
-        Uses LLM to intelligently evaluate if deeper analysis would be beneficial.
+        Uses optimizer heuristics first, then falls back to LLM if needed.
         
         Args:
             user_query: Original user query
             collection_results: Results from Phase 1 collection
+            complexity: Query complexity level (if optimizer available)
+            time_elapsed: Time already spent in seconds
             
         Returns:
             Tuple of (should_continue: bool, reasoning: str, servers_to_deep_dive: List[str])
@@ -1577,15 +1723,29 @@ When you have collected enough information, respond with text summarizing what y
         # Gather all facts from Phase 1
         all_facts = []
         servers_with_facts = []
+        total_facts = 0
         
         for server_name, result in collection_results.items():
             if result.is_relevant and result.facts:
                 servers_with_facts.append(server_name)
+                total_facts += len(result.facts)
                 for fact in result.facts[:5]:  # Limit facts per server for token efficiency
                     all_facts.append(f"[{server_name}] {fact.text_content}")
         
         if not all_facts:
             return False, "No facts collected in Phase 1", []
+        
+        # Use optimizer heuristics if available
+        if OPTIMIZER_AVAILABLE and complexity:
+            should_skip, reason = PerformanceOptimizer.should_skip_phase2(
+                complexity, total_facts, time_elapsed
+            )
+            if should_skip:
+                return False, reason, []
+        
+        # Quick heuristic: Skip Phase 2 for simple queries with sufficient facts
+        if total_facts >= 10:
+            return False, "Sufficient facts already collected", []
         
         # Create evaluation prompt
         evaluation_prompt = f"""Analyze whether deeper investigation is needed to fully answer this query.
@@ -3397,9 +3557,19 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
             }
         
         # ========== PHASE 2: DEEP DIVE (if needed) ==========
+        # Calculate time elapsed
+        import time
+        start_time = time.time() if not hasattr(orchestrator, '_start_time') else orchestrator._start_time
+        time_elapsed = time.time() - start_time
+        
+        # Get query complexity if available
+        complexity = None
+        if OPTIMIZER_AVAILABLE:
+            complexity = await PerformanceOptimizer.estimate_complexity(user_query)
+        
         # Use LLM to decide if Phase 2 is needed
         should_deep_dive, reasoning, servers_for_phase2 = await orchestrator._should_do_phase2_deep_dive(
-            user_query, collection_results
+            user_query, collection_results, complexity, time_elapsed
         )
         
         if should_deep_dive:
