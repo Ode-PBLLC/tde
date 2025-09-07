@@ -46,36 +46,69 @@ load_dotenv()
 # LOGGING CONFIGURATION FOR LLM CALLS
 # =============================================================================
 
+# Determine log directory - use environment variable or create in current project
+# This allows deployment flexibility while maintaining local development paths
+log_dir_path = os.environ.get('TDE_LOG_DIR')
+if log_dir_path:
+    LOG_DIR = Path(log_dir_path)
+else:
+    # Use project-relative logs directory
+    # This works whether running from project root or mcp subdirectory
+    current_file = Path(__file__).resolve()
+    project_root = current_file.parent.parent  # Go up from mcp/ to project root
+    LOG_DIR = project_root / "logs"
+
 # Create logs directory if it doesn't exist
-LOG_DIR = Path("/mnt/o/Ode/Github/tde/logs")
-LOG_DIR.mkdir(exist_ok=True)
-
-# Configure LLM call logger
-llm_logger = logging.getLogger("llm_calls")
-llm_logger.setLevel(logging.DEBUG)
-
-# Create file handler with timestamp
-log_filename = LOG_DIR / f"llm_calls_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-file_handler = logging.FileHandler(log_filename)
-file_handler.setLevel(logging.DEBUG)
-
-# Create console handler for important logs
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
-# Create formatter
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-# Add handlers to logger
-llm_logger.addHandler(file_handler)
-llm_logger.addHandler(console_handler)
-
-llm_logger.info(f"LLM call logging initialized. Log file: {log_filename}")
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Configure LLM call logger
+    llm_logger = logging.getLogger("llm_calls")
+    llm_logger.setLevel(logging.DEBUG)
+    
+    # Create file handler with timestamp
+    log_filename = LOG_DIR / f"llm_calls_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    file_handler = logging.FileHandler(log_filename)
+    file_handler.setLevel(logging.DEBUG)
+    
+    # Create console handler for important logs
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    
+    # Add handlers to logger
+    llm_logger.addHandler(file_handler)
+    llm_logger.addHandler(console_handler)
+    
+    llm_logger.info(f"LLM call logging initialized. Log file: {log_filename}")
+    
+except Exception as e:
+    # If logging setup fails, create a minimal console-only logger
+    # This ensures the application still works even if file logging fails
+    print(f"Warning: Could not set up file logging: {e}")
+    print(f"Attempted log directory: {LOG_DIR}")
+    
+    llm_logger = logging.getLogger("llm_calls")
+    llm_logger.setLevel(logging.INFO)
+    
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    formatter = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    console_handler.setFormatter(formatter)
+    llm_logger.addHandler(console_handler)
+    
+    llm_logger.info("LLM call logging initialized (console only - file logging disabled)")
 
 # =============================================================================
 # CONFIGURATION: MODEL SELECTION
