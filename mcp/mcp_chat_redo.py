@@ -1237,12 +1237,18 @@ Instructions:
                 "detailed": "Visualization server providing smart chart generation, comparison tables, and data visualization tools. Can create Bar/Line/Pie charts, comparison tables with percentages and totals, and optimize visualization types based on data characteristics",
                 "routing_prompt": "Use when needing to create visualizations, comparison tables, or formatted data presentations. Especially useful for multi-entity comparisons.",
                 "collection_instructions": """Tool usage strategy for Viz Server:
-                - Use 'CreateComparisonTable' when comparing multiple entities (countries, companies, etc)
+                - Use 'CreateDataTable' for flexible data display with mixed types (percentages, numbers, text)
+                  * Ideal for renewable targets, NDC commitments, rates, or any percentage data
+                  * Allows explicit control over which columns to sum or average
+                - Use 'CreateComparisonTable' when you need "% of Total" calculations for counts/values
+                  * Best for facility counts, capacity comparisons, emissions by entity
                 - Use 'create_smart_chart' for automatic chart type selection
                 - Use 'create_comparison_chart' for side-by-side comparisons
-                - Always provide clear comparison_type for better formatting
-                - Include percentages for proportion analysis
-                - Use additional_fields to show multiple metrics"""
+                
+                Table Selection Guide:
+                - Data contains percentages/rates? → CreateDataTable (no meaningless totals)
+                - Need proportion analysis? → CreateComparisonTable (adds "% of Total")
+                - Mixed data types? → CreateDataTable (flexible column formatting)"""
             }
         }
     

@@ -699,5 +699,203 @@ def CreateComparisonTable(
     }
 
 
+@mcp.tool()
+def CreateDataTable(
+    data: List[Dict[str, Any]],
+    columns: List[Dict[str, str]],
+    title: str,
+    show_totals: Optional[List[str]] = None,
+    show_averages: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Create a flexible data table without comparison assumptions.
+    
+    This tool is ideal for displaying structured data where:
+    - You need explicit control over column formatting
+    - Data contains percentages or rates that shouldn't be summed
+    - You want to mix different data types in the same table
+    - You don't need "% of Total" calculations
+    
+    Args:
+        data: List of data dictionaries containing the information to display
+              Example: [{"country": "Brazil", "target": 45, "year": 2030}, ...]
+        columns: Column definitions with format hints. Each column needs:
+                 - key: The key in the data dictionary
+                 - label: The display name for the column
+                 - format: How to format the values ("text", "percentage", "rate", "number", "decimal")
+                 Example: [
+                     {"key": "country", "label": "Country", "format": "text"},
+                     {"key": "target", "label": "Renewable Target", "format": "percentage"}
+                 ]
+        title: Table title to display
+        show_totals: Optional list of column keys to sum. Only makes sense for countable values.
+                     Example: ["facilities", "capacity_mw"]
+        show_averages: Optional list of column keys to average. Useful for rates and percentages.
+                       Example: ["exposure_pct", "efficiency_rate"]
+    
+    Returns:
+        A formatted table module with the structure:
+        {
+            "type": "table",
+            "heading": "...",
+            "columns": [...],
+            "rows": [...],
+            "metadata": {...}
+        }
+        
+    Examples:
+        # Renewable energy targets (percentages - no totals)
+        CreateDataTable(
+            data=[
+                {"country": "Brazil", "target": 45, "year": 2030},
+                {"country": "India", "target": 50, "year": 2030}
+            ],
+            columns=[
+                {"key": "country", "label": "Country", "format": "text"},
+                {"key": "target", "label": "Renewable Target", "format": "percentage"},
+                {"key": "year", "label": "Target Year", "format": "number"}
+            ],
+            title="Renewable Energy Targets by 2030",
+            show_averages=["target"]
+        )
+        
+        # Facility counts (with totals)
+        CreateDataTable(
+            data=[
+                {"country": "Brazil", "facilities": 2273, "capacity": 15200},
+                {"country": "India", "facilities": 1842, "capacity": 18500}
+            ],
+            columns=[
+                {"key": "country", "label": "Country", "format": "text"},
+                {"key": "facilities", "label": "Facilities", "format": "number"},
+                {"key": "capacity", "label": "Capacity (MW)", "format": "decimal"}
+            ],
+            title="Solar Facilities by Country",
+            show_totals=["facilities", "capacity"]
+        )
+    """
+    if not data:
+        return {
+            "type": "table",
+            "heading": title,
+            "columns": [col["label"] for col in columns] if columns else ["Data"],
+            "rows": [["No data available"] + ["-"] * (len(columns) - 1 if columns else 0)],
+            "metadata": {"empty": True}
+        }
+    
+    # Build column headers
+    column_headers = [col["label"] for col in columns]
+    
+    # Build rows
+    rows = []
+    for item in data:
+        row = []
+        for col in columns:
+            key = col["key"]
+            value = item.get(key, "")
+            format_type = col.get("format", "text")
+            
+            # Format based on column format
+            if value == "" or value is None:
+                row.append("-")
+            elif format_type == "percentage":
+                if isinstance(value, (int, float)):
+                    row.append(f"{value}%")
+                else:
+                    row.append(str(value))
+            elif format_type == "rate":
+                if isinstance(value, (int, float)):
+                    row.append(f"{value:.1f}%")
+                else:
+                    row.append(str(value))
+            elif format_type == "number":
+                if isinstance(value, (int, float)):
+                    row.append(f"{int(value):,}")
+                else:
+                    row.append(str(value))
+            elif format_type == "decimal":
+                if isinstance(value, (int, float)):
+                    row.append(f"{value:,.1f}")
+                else:
+                    row.append(str(value))
+            else:  # text or default
+                row.append(str(value))
+        
+        rows.append(row)
+    
+    # Add summary row if requested
+    if show_totals or show_averages:
+        summary_row = []
+        for i, col in enumerate(columns):
+            key = col["key"]
+            
+            if i == 0:  # First column
+                summary_row.append("**Summary**")
+            elif key in (show_totals or []):
+                # Calculate total for this column
+                values = [item.get(key, 0) for item in data if isinstance(item.get(key), (int, float))]
+                if values:
+                    total = sum(values)
+                    format_type = col.get("format", "text")
+                    if format_type == "number":
+                        summary_row.append(f"**Total: {int(total):,}**")
+                    elif format_type == "decimal":
+                        summary_row.append(f"**Total: {total:,.1f}**")
+                    else:
+                        summary_row.append(f"**Total: {total}**")
+                else:
+                    summary_row.append("-")
+            elif key in (show_averages or []):
+                # Calculate average for this column
+                values = [item.get(key, 0) for item in data if isinstance(item.get(key), (int, float))]
+                if values:
+                    avg = sum(values) / len(values)
+                    format_type = col.get("format", "text")
+                    if format_type == "percentage":
+                        summary_row.append(f"*Avg: {avg:.1f}%*")
+                    elif format_type == "rate":
+                        summary_row.append(f"*Avg: {avg:.1f}%*")
+                    elif format_type == "number":
+                        summary_row.append(f"*Avg: {int(avg):,}*")
+                    elif format_type == "decimal":
+                        summary_row.append(f"*Avg: {avg:,.1f}*")
+                    else:
+                        summary_row.append(f"*Avg: {avg:.2f}*")
+                else:
+                    summary_row.append("-")
+            else:
+                summary_row.append("-")
+        
+        rows.append(summary_row)
+    
+    # Build metadata
+    metadata = {
+        "row_count": len(data),
+        "has_summary": bool(show_totals or show_averages),
+        "column_count": len(columns)
+    }
+    
+    # Add data statistics to metadata if numeric columns exist
+    for col in columns:
+        if col.get("format") in ["number", "decimal", "percentage", "rate"]:
+            key = col["key"]
+            values = [item.get(key, 0) for item in data if isinstance(item.get(key), (int, float))]
+            if values:
+                metadata[f"{key}_stats"] = {
+                    "min": min(values),
+                    "max": max(values),
+                    "avg": sum(values) / len(values),
+                    "sum": sum(values)
+                }
+    
+    return {
+        "type": "table",
+        "heading": title,
+        "columns": column_headers,
+        "rows": rows,
+        "metadata": metadata
+    }
+
+
 if __name__ == "__main__":
     mcp.run()
