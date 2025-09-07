@@ -1285,17 +1285,36 @@ Instructions:
         {server_list}
 
         Instructions:
-        - Be selective: only include servers that are clearly relevant
-        - IMPORTANT: If the query mentions NDC, commitments, targets, emissions reduction, net-zero, or years like 2030/2035/2050, ALWAYS include 'lse'
-        - For general queries, include multiple relevant servers
-        - For specific queries, be more targeted
-        - Include 'viz' if the query asks for comparisons, tables, or charts
-        - If comparing multiple entities, include 'viz' for comparison tables
-        - If no servers seem relevant, return empty array []
+        - Be selective: only include servers that DIRECTLY answer the query
+        - IMPORTANT: Always include 'viz' as it's a utility server for creating visualizations
+        - DO NOT include servers just because they mention the same country/topic
+        
+        NEGATIVE EXAMPLES - DO NOT include these servers:
+        - Query: "What are Brazil's NDC commitments?" 
+          DON'T include: solar (facility data not needed for policy question)
+          DON'T include: gist (company data not needed for national commitments)
+          
+        - Query: "Show me renewable energy trends"
+          DON'T include: gist (unless asking about company emissions)
+          DON'T include: lse (unless asking about policy targets)
+          
+        - Query: "What is the water stress in São Paulo?"
+          DON'T include: solar (facilities not relevant to water stress)
+          DON'T include: lse (policy not relevant to water data)
+          
+        POSITIVE EXAMPLES - DO include these servers:
+        - Query: "What are Brazil's NDC commitments?" → ["lse", "kg", "viz"]
+        - Query: "Map solar facilities in India" → ["solar", "viz"]
+        - Query: "Compare emissions across sectors" → ["gist", "viz"]
+        - Query: "Water stress for Brazilian companies" → ["gist", "viz"]
+        
+        SPECIAL RULES:
+        - If the query mentions NDC, commitments, targets, emissions reduction, net-zero, or years like 2030/2035/2050, include 'lse'
+        - 'viz' should ALWAYS be included for potential visualizations
         {"- NOTE: This query contains NDC/climate policy keywords - consider including 'lse'" if has_ndc_keywords else ""}
 
         Return a JSON array of relevant server IDs only.
-        Examples: ["kg", "gist"] or ["solar"] or ["kg", "solar", "formatter"] or []"""
+        Examples: ["kg", "viz"] or ["solar", "viz"] or ["lse", "kg", "viz"]"""
 
         try:
             # Use small model for speed
@@ -1433,22 +1452,33 @@ Instructions:
                 )
             
             # Create focused system prompt for Phase 1 collection
-            system_prompt = f"""You are collecting information from the {server_name} server to help answer a user query.
+            system_prompt = f"""You are collecting information from the {server_name} server to answer: {user_query}
+
+CRITICAL: Focus ONLY on facts that directly answer this specific question.
 
 Server capabilities: {config['detailed']}
 
-Your task: Actively call tools to collect specific facts, data points, and information that will help answer the user's query.
-
 {config['collection_instructions']}
 
+COLLECTION PRIORITIES:
+1. Call tools that DIRECTLY answer "{user_query}" - not just related topics
+2. When you receive numerical data, check for units and context
+3. If units are missing, note this (e.g., "value is 45 but units not specified")
+4. Prioritize complete information: value + unit + timeframe + context
+5. Focus on concrete facts: numbers with units, dates, percentages, specific names
+
+DO NOT collect:
+- Tangentially related information
+- Data about entities not mentioned in the query
+- Background context unless specifically requested
+- Infrastructure counts unless asked for
+
 Guidelines:
-- Focus on collecting concrete information: numbers, names, dates, statistics
-- Call tools that will provide the most relevant data for the query
-- Extract key facts from each tool response
-- Stop when you have gathered sufficient information (usually 2-4 tool calls)
+- Extract key facts with their complete context from each tool response
+- Stop when you have enough to answer the specific question (usually 2-4 tool calls)
 - Be efficient with your token budget
 
-When you have collected enough information, respond with text summarizing what you found instead of calling more tools."""
+When you have collected enough information to answer "{user_query}", respond with a summary instead of calling more tools."""
 
             # Initialize messages for the conversation
             messages = []
@@ -1637,18 +1667,60 @@ When you have collected enough information, respond with text summarizing what y
                     ))
                     
                 elif isinstance(result_data, dict):
-                    # Dictionary - extract key information
+                    # Dictionary - extract key information with units
                     if tool_name == "GetSolarFacilitiesMultipleCountries":
                         print(f"DEBUG: GetSolarFacilitiesMultipleCountries result_data keys: {list(result_data.keys())}")
                         print(f"DEBUG: Has geojson_url: {'geojson_url' in result_data}")
+                    
+                    # Look for common patterns to build complete facts with units
+                    unit_keys = ['unit', 'units', 'measure', 'metric', 'unit_of_measure']
+                    time_keys = ['year', 'target_year', 'by_year', 'date', 'period', 'deadline']
+                    measure_keys = ['measure', 'metric', 'indicator', 'type', 'category']
+                    value_keys = ['value', 'total', 'amount', 'capacity', 'target', 'goal']
+                    
+                    # Try to extract structured information
+                    value = None
+                    for vk in value_keys:
+                        if vk in result_data:
+                            value = result_data[vk]
+                            break
+                    
+                    unit = next((result_data.get(k) for k in unit_keys if k in result_data), '')
+                    measure = next((result_data.get(k) for k in measure_keys if k in result_data), '')
+                    timeframe = next((result_data.get(k) for k in time_keys if k in result_data), '')
+                    
+                    # Special handling for specific tool types
                     if 'data' in result_data and isinstance(result_data['data'], list):
                         count = len(result_data['data'])
                         fact_text = f"Found {count} records"
                         if tool_args:
                             args_str = ', '.join([f'{k}={v}' for k, v in tool_args.items()])
                             fact_text += f" ({args_str})"
+                    elif value is not None and (unit or measure):
+                        # Build complete fact with units
+                        if measure:
+                            fact_text = f"{measure}: {value}"
+                        else:
+                            fact_text = f"{value}"
+                        
+                        if unit:
+                            fact_text += f" {unit}"
+                        
+                        if timeframe:
+                            fact_text += f" (by {timeframe})" if 'target' in str(value).lower() or 'goal' in str(value).lower() else f" ({timeframe})"
+                        
+                        # Add context from tool args if relevant
+                        if tool_args and 'country' in tool_args:
+                            fact_text = f"{tool_args['country']}: {fact_text}"
                     elif 'total' in result_data:
-                        fact_text = f"Total: {result_data['total']}"
+                        # Enhanced total handling
+                        total = result_data['total']
+                        if unit:
+                            fact_text = f"Total: {total} {unit}"
+                        else:
+                            fact_text = f"Total: {total}"
+                        if timeframe:
+                            fact_text += f" ({timeframe})"
                     elif 'metadata' in result_data:
                         meta = result_data['metadata']
                         fact_text = f"Data: {', '.join([f'{k}={v}' for k, v in meta.items()])}"
@@ -1657,11 +1729,20 @@ When you have collected enough information, respond with text summarizing what y
                         key_values = []
                         for key, value in result_data.items():
                             if isinstance(value, (str, int, float, bool)):
-                                key_values.append(f"{key}: {value}")
+                                # Try to identify if this is a value with implicit units
+                                if any(indicator in key.lower() for indicator in ['percent', 'rate', 'ratio', 'capacity', 'mw', 'gw', 'emissions', 'co2']):
+                                    # Add context from the key name
+                                    key_values.append(f"{key}: {value}")
+                                else:
+                                    key_values.append(f"{key}: {value}")
                             elif isinstance(value, list) and len(value) > 0:
                                 key_values.append(f"{key}: {len(value)} items")
                             elif isinstance(value, dict):
-                                key_values.append(f"{key}: {len(value)} fields")
+                                # Check if nested dict has value/unit structure
+                                if 'value' in value and 'unit' in value:
+                                    key_values.append(f"{key}: {value['value']} {value['unit']}")
+                                else:
+                                    key_values.append(f"{key}: {len(value)} fields")
                         
                         if key_values:
                             # Join first few key-value pairs for the fact
@@ -2518,7 +2599,7 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         Strategy:
         1. Parse narrative into sections
         2. Gather all available visualizations
-        3. Ask LLM to determine optimal placement
+        3. Use LLM to check if visualizations directly answer the query
         4. Assemble modules in LLM-suggested order
         5. Always put citation table last
         
@@ -2571,15 +2652,48 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
             for i, m in enumerate(map_modules):
                 print(f"  Map {i}: {m.get('heading', 'No heading')}")
         
-        # If we have visualizations, use LLM to determine placement
+        # Filter visualizations for relevance before including them
         if chart_modules or map_modules or table_modules:
-            ordered_modules = await self._llm_order_modules(
-                sections=sections,
-                chart_modules=chart_modules,
-                map_modules=map_modules, 
-                table_modules=table_modules,
-                user_query=user_query
-            )
+            # Check which visualizations directly answer the query
+            relevant_charts = []
+            for chart in chart_modules:
+                if await self._is_visualization_relevant(chart, user_query, "chart"):
+                    relevant_charts.append(chart)
+                else:
+                    print(f"Filtered out irrelevant chart: {chart.get('heading', 'unnamed')}")
+            
+            relevant_maps = []
+            for map_module in map_modules:
+                if await self._is_visualization_relevant(map_module, user_query, "map"):
+                    relevant_maps.append(map_module)
+                else:
+                    print(f"Filtered out irrelevant map: {map_module.get('heading', 'unnamed')}")
+            
+            relevant_tables = []
+            for table in table_modules:
+                if await self._is_visualization_relevant(table, user_query, "table"):
+                    relevant_tables.append(table)
+                else:
+                    print(f"Filtered out irrelevant table: {table.get('heading', 'unnamed')}")
+            
+            # Use LLM to determine placement for relevant visualizations
+            if relevant_charts or relevant_maps or relevant_tables:
+                ordered_modules = await self._llm_order_modules(
+                    sections=sections,
+                    chart_modules=relevant_charts,
+                    map_modules=relevant_maps,
+                    table_modules=relevant_tables,
+                    user_query=user_query
+                )
+            else:
+                # No relevant visualizations, just use text sections
+                ordered_modules = []
+                for section in sections:
+                    ordered_modules.append({
+                        "type": "text",
+                        "heading": section["heading"],
+                        "texts": section["paragraphs"]
+                    })
         else:
             # No visualizations, just use text sections
             ordered_modules = []
@@ -2596,6 +2710,64 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
             ordered_modules.append(citation_table)
         
         return ordered_modules
+    
+    async def _is_visualization_relevant(self, viz_module: Dict, user_query: str, viz_type: str) -> bool:
+        """
+        Check if a visualization directly helps answer the user's query.
+        
+        Args:
+            viz_module: The visualization module to check
+            user_query: The original user query
+            viz_type: Type of visualization ("map", "chart", "table")
+            
+        Returns:
+            True if the visualization should be included
+        """
+        # Get description of what the visualization shows
+        viz_description = viz_module.get('heading', 'Data visualization')
+        
+        # For tables from viz server, check the data content
+        if viz_type == "table" and 'data' in viz_module:
+            # Extract what the table contains
+            if 'columns' in viz_module.get('data', {}):
+                columns = viz_module['data']['columns']
+                viz_description += f" with columns: {', '.join(columns[:3])}"
+        
+        relevance_prompt = f"""Query: {user_query}
+
+Available {viz_type}: {viz_description}
+
+Should this {viz_type} be included in the response?
+
+Decision criteria:
+- Maps: Include ONLY if the query explicitly asks about locations, geography, spatial distribution, or "where"
+- Tables: Include ONLY if the query asks to compare multiple entities, see breakdowns, or requests detailed data
+- Charts: Include ONLY if the query asks about trends, changes over time, growth, or proportions
+
+The visualization must DIRECTLY help answer the specific question, not just be related to the topic.
+
+Examples:
+- Query: "What are Brazil's NDC targets?" → DON'T include map of solar facilities
+- Query: "Where are solar facilities in Brazil?" → DO include map
+- Query: "Compare emissions across sectors" → DO include comparison table
+- Query: "What is the water stress level?" → DON'T include unrelated charts
+
+Answer YES or NO:"""
+
+        try:
+            response = await call_small_model(
+                system="You determine if visualizations directly answer queries.",
+                user_prompt=relevance_prompt,
+                max_tokens=10,
+                temperature=0
+            )
+            
+            return "yes" in response.strip().lower()
+            
+        except Exception as e:
+            print(f"Error checking visualization relevance: {e}")
+            # Default to excluding if check fails
+            return False
     
     async def _llm_order_modules(
         self,
@@ -2956,22 +3128,36 @@ Current Query: {user_query}"""
         
         prompt = f"""{context_section}
 
+CRITICAL INSTRUCTIONS - ANSWER THIS SPECIFIC QUERY: {user_query}
+
+Your FIRST SENTENCE must directly answer the above query.
+
 Available Facts:
 {chr(10).join(fact_list)}
 {display_info}
-Instructions:
-1. Create a comprehensive response using these facts
-2. Use placeholder citations like [CITE_1], [CITE_2] when referencing facts by their numbers
-3. Group related information into logical sections with ## headings
-4. Be concise but thorough
-5. Focus on answering the user's query directly
-{f'6. When discussing geographic data, reference the map naturally: "The map below shows..." or "As illustrated in the geographic distribution..."' if has_map_data else ''}
-{f'7. When presenting numerical trends or comparisons, reference charts: "The chart illustrates..." or "This trend is visualized below..."' if has_chart_data else ''}
-8. Structure your response to have clear transitions between topics
-9. Use paragraph breaks to separate distinct ideas or data points
-10. When transitioning from text to data visualization topics, use bridging phrases
 
-Format sections clearly with ## headings and use citations for all factual claims."""
+FOCUSED RESPONSE RULES:
+1. Start with a direct answer to the query in your first sentence
+2. ONLY include facts that support this direct answer
+3. Use placeholder citations [CITE_1], [CITE_2] for fact references
+4. DO NOT include:
+   - Information about other countries/companies not asked about
+   - Tangentially related data that doesn't answer the query
+   - Background context not requested
+   - Facility counts or infrastructure data unless specifically asked
+
+Example for "What are Brazil's NDC commitments related to energy?":
+GOOD START: "Brazil commits to achieving 45% renewable energy in its energy mix by 2030 and reaching net-zero emissions by 2050 [CITE_1]."
+BAD START: "Brazil has a comprehensive climate policy framework with 2,273 energy facilities..."
+
+Structure:
+1. First paragraph: Direct answer with key facts
+2. Supporting paragraphs: Only details that elaborate on the answer
+3. Use ## headings only if you have multiple distinct aspects to cover
+{f'4. Reference maps ONLY if showing requested geographic data' if has_map_data else ''}
+{f'5. Reference charts ONLY if showing requested trends/comparisons' if has_chart_data else ''}
+
+Remember: Every sentence should help answer "{user_query}" - if it doesn't, leave it out."""
         
         try:
             response = await call_large_model(
