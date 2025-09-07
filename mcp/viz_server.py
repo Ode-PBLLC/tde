@@ -705,10 +705,16 @@ def CreateDataTable(
     columns: List[Dict[str, str]],
     title: str,
     show_totals: Optional[List[str]] = None,
-    show_averages: Optional[List[str]] = None
+    show_averages: Optional[List[str]] = None,
+    value_hints: Optional[Dict[str, str]] = None
 ) -> Dict[str, Any]:
     """
     Create a flexible data table without comparison assumptions.
+    
+    IMPORTANT DATA FORMAT REQUIREMENTS:
+    - For percentage data: Pass whole numbers (45 for 45%, not 0.45)
+    - For years: Pass as integers (2030, not "2030" or 2,030)
+    - For rates: Pass as the displayed value (5.5 for 5.5%)
     
     This tool is ideal for displaying structured data where:
     - You need explicit control over column formatting
@@ -745,10 +751,11 @@ def CreateDataTable(
         
     Examples:
         # Renewable energy targets (percentages - no totals)
+        # IMPORTANT: Pass 45 for 45%, NOT 0.45!
         CreateDataTable(
             data=[
-                {"country": "Brazil", "target": 45, "year": 2030},
-                {"country": "India", "target": 50, "year": 2030}
+                {"country": "Brazil", "target": 45, "year": 2030},  # 45 means 45%
+                {"country": "India", "target": 50, "year": 2030}    # 50 means 50%
             ],
             columns=[
                 {"key": "country", "label": "Country", "format": "text"},
@@ -810,7 +817,12 @@ def CreateDataTable(
                     row.append(str(value))
             elif format_type == "number":
                 if isinstance(value, (int, float)):
-                    row.append(f"{int(value):,}")
+                    # Check if it's likely a year (4-digit number around 1900-2100)
+                    int_value = int(value)
+                    if 1900 <= int_value <= 2100:
+                        row.append(str(int_value))  # No commas for years
+                    else:
+                        row.append(f"{int_value:,}")  # Add commas for other numbers
                 else:
                     row.append(str(value))
             elif format_type == "decimal":

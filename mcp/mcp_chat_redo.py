@@ -1240,6 +1240,8 @@ Instructions:
                 - Use 'CreateDataTable' for flexible data display with mixed types (percentages, numbers, text)
                   * Ideal for renewable targets, NDC commitments, rates, or any percentage data
                   * Allows explicit control over which columns to sum or average
+                  * CRITICAL DATA FORMAT: Pass percentages as whole numbers (45 for 45%, NOT 0.45)
+                  * CRITICAL DATA FORMAT: Pass years as integers (2030, NOT "2030" or 2,030)
                 - Use 'CreateComparisonTable' when you need "% of Total" calculations for counts/values
                   * Best for facility counts, capacity comparisons, emissions by entity
                 - Use 'create_smart_chart' for automatic chart type selection
@@ -1248,7 +1250,13 @@ Instructions:
                 Table Selection Guide:
                 - Data contains percentages/rates? → CreateDataTable (no meaningless totals)
                 - Need proportion analysis? → CreateComparisonTable (adds "% of Total")
-                - Mixed data types? → CreateDataTable (flexible column formatting)"""
+                - Mixed data types? → CreateDataTable (flexible column formatting)
+                
+                DATA FORMAT REQUIREMENTS:
+                - Percentages: Always pass 45 for "45%", never 0.45
+                - Years: Always pass 2030 as integer, not "2030" string
+                - Rates: Pass as displayed (5.5 for "5.5%")
+                - Example: {"country": "Brazil", "target": 45, "year": 2030}"""
             }
         }
     

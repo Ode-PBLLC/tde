@@ -34,10 +34,11 @@ This document outlines specific issues identified during website testing on 2025
 
 ---
 
-## 🟡 NEW ISSUES DISCOVERED (September 7, 2025)
+## 🟡 REMAINING TABLE & DATA DISPLAY ISSUES (September 7, 2025)
 
-### Incorrect Percentage Values in Tables
-**Status:** ❌ NOT FIXED
+### 1. Percentage Values Stored as Decimals
+**Status:** 🔧 IN PROGRESS
+**Priority:** 🔴 CRITICAL
 
 **Problem Example:**
 ```
@@ -47,19 +48,131 @@ Should show: "Renewable Energy Target: 45%"
 
 **Root Cause:** Data is being stored as decimals (0.45) instead of percentages (45) in the data extraction phase
 
-**Implementation Lead:**
-- Check viz server's data extraction logic
-- Ensure percentages are stored as whole numbers
-- Not a display issue - data is wrong at source
+**Fix Implementation:**
+```python
+# In viz_server.py CreateDataTable
+if format_type == "percentage":
+    if isinstance(value, (int, float)) and value < 1:
+        value = value * 100  # Convert 0.45 to 45
+    row.append(f"{value}%")
+```
 
-### Year Formatting Issue
-**Status:** ❌ NOT FIXED (Minor)
+**Files to Check:**
+- `mcp/viz_server.py` - CreateDataTable function
+- Phase 1/2 fact extraction in `mcp/mcp_chat_redo.py`
+- Look for any `/100` operations
 
-**Problem:** Years display with commas ("2,030" instead of "2030")
+---
 
-**Implementation Lead:**
-- Add "year" format type to CreateDataTable
-- Or detect 4-digit numbers and skip comma formatting
+### 2. Year Formatting with Commas
+**Status:** ❌ NOT FIXED
+**Priority:** 🟡 MEDIUM
+
+**Problem Example:**
+```
+Table shows: "Target Year: 2,030"
+Should show: "Target Year: 2030"
+```
+
+**Fix Implementation:**
+```python
+# In CreateDataTable
+elif format_type == "number":
+    if isinstance(value, (int, float)) and 1900 <= value <= 2100:
+        row.append(str(int(value)))  # No commas for years
+    else:
+        row.append(f"{int(value):,}")
+```
+
+---
+
+### 3. Mixed Unit Display Without Context
+**Status:** ❌ NOT FIXED
+**Priority:** 🟡 MEDIUM
+
+**Problem:** Tables show numbers without units or context
+**Example:** "45" instead of "45% of energy mix"
+
+**Fix Implementation:**
+- Auto-add units to column headers based on format type
+- Include baseline/context in additional column
+```python
+# Enhance column headers
+if col["format"] == "percentage":
+    col["label"] = f"{col['label']} (%)"
+elif "capacity" in col["key"].lower():
+    col["label"] = f"{col['label']} (MW)"
+```
+
+---
+
+### 4. Missing Data Source Attribution & Citations
+**Status:** ❌ NOT FIXED
+**Priority:** 🟡 MEDIUM
+
+**Problem:** Tables don't indicate where data came from or link to sources
+
+**Fix Implementation:**
+```python
+# Add citation references directly to table module
+table_module = {
+    "type": "table",
+    "heading": "Renewable Energy Targets",
+    "citation_ids": [1, 2],  # Link to citation registry
+    "caption": "Percentage of total energy mix by 2030",
+    "columns": [...],
+    "rows": [...],
+    "metadata": {
+        "source": "Brazil NDC 2023 Update",
+        "data_date": "2023-11"
+    }
+}
+
+# Display as: "Table 1: Renewable Energy Targets¹²"
+# Where ¹² are clickable citations linking to source documents
+```
+
+**Additional Changes:**
+- Modify frontend to render citation superscripts on table headings
+- Ensure citations link to actual source documents in citation registry
+
+---
+
+### 5. Data Validation at Extraction
+**Status:** ❌ NOT FIXED
+**Priority:** 🟡 MEDIUM
+
+**Problem:** Bad data enters system without validation
+
+**Fix Implementation:**
+- Validate percentages during fact extraction
+- Log warnings for suspicious values
+- Auto-correct obvious errors (0.45 → 45)
+```python
+# In fact extraction
+if "percent" in fact_text and value < 1:
+    log.warning(f"Suspicious percentage: {value}")
+    value = value * 100  # Auto-correct
+```
+
+---
+
+## Implementation Timeline
+
+### Day 1 (Monday) - Critical Fixes
+- [ ] Fix percentage decimal issue (#1) - 2 hours
+- [ ] Fix year comma formatting (#2) - 1 hour
+- [ ] Test both fixes - 1 hour
+
+### Day 2 (Tuesday) - Context & Citations
+- [ ] Add unit context to columns (#3) - 2 hours
+- [ ] Add citation references to tables (#4) - 2 hours
+- [ ] Implement validation at extraction (#5) - 2 hours
+
+### Day 3 (Wednesday) - Testing & Deployment
+- [ ] Comprehensive testing of all fixes
+- [ ] Deploy to production
+- [ ] Verify on live site
 
 ---
 
