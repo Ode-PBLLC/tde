@@ -480,7 +480,11 @@ async def process_query(request: QueryRequest):
             )
         
         # Normal processing for on-topic queries
-        structured_response = full_result.get("formatted_response", {"modules": []})
+        # Check if full_result has modules directly (new format) or in formatted_response (old format)
+        if "modules" in full_result:
+            structured_response = full_result
+        else:
+            structured_response = full_result.get("formatted_response", {"modules": []})
         
         if request.include_thinking:
             thinking_process = full_result.get("ai_thought_process", "")
