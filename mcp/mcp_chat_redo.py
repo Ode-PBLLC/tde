@@ -3042,10 +3042,20 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                         raw_result = fact.metadata.get("raw_result", {})
                         if isinstance(raw_result, dict) and "geojson_url" in raw_result:
                             desc = raw_result.get("summary", {}).get("description") or "Map"
+                            meta = raw_result.get("metadata", {}) if isinstance(raw_result.get("metadata"), dict) else {}
+                            b = meta.get("bounds")
+                            c = meta.get("center")
+                            countries = meta.get("countries") or []
+                            # Fallback to a safe default to satisfy frontend match expression
+                            if not countries:
+                                countries = ["brazil"]
                             map_data = {
                                 "type": "map_data_summary",
                                 "summary": {
-                                    "description": desc
+                                    "description": desc,
+                                    "bounds": b,
+                                    "center": c,
+                                    "countries": countries
                                 },
                                 "geojson_url": raw_result["geojson_url"],
                                 "geojson_filename": raw_result.get("geojson_filename")

@@ -637,6 +637,15 @@ def GenerateCorrelationMap(
         bounds = {"north": max_lat, "south": min_lat, "east": max_lon, "west": min_lon}
         center = [(min_lon + max_lon) / 2.0, (min_lat + max_lat) / 2.0]
 
+    # Collect countries from point features for legend support
+    countries = set()
+    for f in features:
+        props = f.get('properties', {}) or {}
+        if props.get('layer') == 'solar_facility':
+            c = props.get('country')
+            if isinstance(c, str) and c.strip():
+                countries.add(c.strip())
+
     # Create GeoJSON structure
     geojson = {
         "type": "FeatureCollection",
@@ -655,7 +664,8 @@ def GenerateCorrelationMap(
                 "correlation_highlights": "Red circles 30% opacity - correlation points"
             },
             "bounds": bounds,
-            "center": center
+            "center": center,
+            "countries": sorted({str(c).lower() for c in countries})
         }
     }
     
