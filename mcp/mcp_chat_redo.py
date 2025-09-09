@@ -130,6 +130,95 @@ LARGE_MODEL = "claude-3-5-sonnet-20241022"  # Powerful for synthesis and complex
 ANTHROPIC_CLIENT = anthropic.Anthropic()
 
 # =============================================================================
+# LLM PAYLOAD SANITIZATION & LOGGING HELPERS
+# =============================================================================
+
+# Keys commonly used in large/geo payloads that should not be echoed to the LLM
+SENSITIVE_BIG_KEYS = {"features", "geometry", "geojson", "coordinates", "data", "polygons", "points"}
+
+def _truncate_string(s: str, max_len: int = 4000) -> str:
+    try:
+        return s if len(s) <= max_len else s[:max_len] + f"... [truncated {len(s)-max_len} chars]"
+    except Exception:
+        return str(s)[:max_len] + "... [truncated]"
+
+def _sanitize_obj_for_llm(obj: Any, removed_counts: Optional[Dict[str, int]] = None, max_list_len: int = 50) -> Any:
+    """Recursively sanitize an object so we never pass raw GeoJSON/heavy arrays to the LLM."""
+    from collections.abc import Mapping, Sequence
+    if removed_counts is None:
+        removed_counts = {}
+    # Dict-like
+    if isinstance(obj, Mapping):
+        out = {}
+        for k, v in obj.items():
+            kl = str(k).lower()
+            if kl in SENSITIVE_BIG_KEYS:
+                try:
+                    length = len(v) if hasattr(v, '__len__') else 1
+                except Exception:
+                    length = 1
+                removed_counts[kl] = removed_counts.get(kl, 0) + length
+                out[k] = {"_omitted_for_llm": True, "_approx_count": length}
+            else:
+                out[k] = _sanitize_obj_for_llm(v, removed_counts, max_list_len)
+        return out
+    # Strings
+    if isinstance(obj, str):
+        return _truncate_string(obj, 2000)
+    # Lists/tuples
+    if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+        if len(obj) > max_list_len:
+            head = [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj[:max_list_len]]
+            return head + [{"_omitted_for_llm": True, "_omitted_items": len(obj) - max_list_len}]
+        return [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj]
+    # Fallback
+    return obj
+
+def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
+    """Create a safe, compact string for tool_result content sent back to the LLM."""
+    removed_counts: Dict[str, int] = {}
+    try:
+        if hasattr(result, 'content') and isinstance(result.content, list) and result.content:
+            first = result.content[0]
+            if hasattr(first, 'text') and isinstance(first.text, str):
+                txt = first.text
+                try:
+                    data = json.loads(txt)
+                    sanitized = _sanitize_obj_for_llm(data, removed_counts)
+                    payload_str = json.dumps(sanitized, ensure_ascii=False)
+                except json.JSONDecodeError:
+                    payload_str = _truncate_string(txt, 4000)
+                if removed_counts:
+                    llm_logger.warning(f"Sanitized tool_result for {tool_name}; removed heavy keys: {removed_counts}")
+                llm_logger.debug(f"tool_result payload length: {len(payload_str)}")
+                return payload_str
+        # Fallback to str(result)
+        payload_str = _truncate_string(str(result), 4000)
+        llm_logger.debug(f"tool_result payload length: {len(payload_str)}")
+        return payload_str
+    except Exception as e:
+        return f"[tool_result_unavailable: {e}]"
+
+def _log_llm_messages_summary(messages: List[Dict[str, Any]], label: str):
+    try:
+        serialized = json.dumps(messages, ensure_ascii=False)
+        size_kb = len(serialized.encode('utf-8')) / 1024.0
+        llm_logger.info(f"LLM messages summary [{label}]: messages={len(messages)} size≈{size_kb:.1f}KB")
+    except Exception as e:
+        llm_logger.debug(f"Could not summarize LLM messages: {e}")
+
+def _write_llm_payload_log(label: str, payload: Dict[str, Any]):
+    """Write the exact system+messages payload we send to the LLM to a daily log file."""
+    try:
+        date_str = datetime.now().strftime('%Y%m%d')
+        log_file = LOG_DIR / f"llm_payloads_{date_str}.log"
+        entry = {"ts": datetime.now().isoformat(), "label": label, "payload": payload}
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception as e:
+        llm_logger.error(f"Failed to write LLM payload log: {e}")
+
+# =============================================================================
 # LLM HELPER FUNCTIONS
 # =============================================================================
 
@@ -153,12 +242,23 @@ async def call_small_model(system: str, user_prompt: str, max_tokens: int = 1000
     llm_logger.debug(f"Max tokens: {max_tokens}, Temperature: {temperature}")
     
     try:
+        messages_payload = [{"role": "user", "content": user_prompt}]
+        _write_llm_payload_log(
+            label=f"small_model:{SMALL_MODEL}",
+            payload={
+                "model": SMALL_MODEL,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "system": system,
+                "messages": messages_payload,
+            }
+        )
         response = ANTHROPIC_CLIENT.messages.create(
             model=SMALL_MODEL,
             max_tokens=max_tokens,
             temperature=temperature,
             system=system,
-            messages=[{"role": "user", "content": user_prompt}]
+            messages=messages_payload
         )
         
         result = response.content[0].text
@@ -191,12 +291,23 @@ async def call_large_model(system: str, user_prompt: str, max_tokens: int = 2000
     llm_logger.debug(f"Max tokens: {max_tokens}, Temperature: {temperature}")
     
     try:
+        messages_payload = [{"role": "user", "content": user_prompt}]
+        _write_llm_payload_log(
+            label=f"large_model:{LARGE_MODEL}",
+            payload={
+                "model": LARGE_MODEL,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "system": system,
+                "messages": messages_payload,
+            }
+        )
         response = ANTHROPIC_CLIENT.messages.create(
             model=LARGE_MODEL,
             max_tokens=max_tokens,
             temperature=temperature,
             system=system,
-            messages=[{"role": "user", "content": user_prompt}]
+            messages=messages_payload
         )
         
         result = response.content[0].text
@@ -237,6 +348,22 @@ async def call_model_with_tools(model: str, system: str, messages: List[Dict[str
         llm_logger.debug(f"Message {i} ({msg.get('role', 'unknown')}): {str(msg.get('content', ''))[:300]}...")
     
     try:
+        _log_llm_messages_summary(messages, f"tools={len(tools)} model={model}")
+        # Log exact messages + slim tool metadata to avoid serialization issues
+        try:
+            tools_log = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in tools]
+        except Exception:
+            tools_log = []
+        _write_llm_payload_log(
+            label=f"tools_model:{model}",
+            payload={
+                "model": model,
+                "max_tokens": max_tokens,
+                "system": system,
+                "messages": messages,
+                "tools": tools_log,
+            }
+        )
         response = ANTHROPIC_CLIENT.messages.create(
             model=model,
             max_tokens=max_tokens,
@@ -1485,7 +1612,8 @@ Instructions:
                 )
         
         # Post Phase 1: If spatial query and entities registered, compute correlation + map deterministically
-        is_spatial_query = any(keyword in user_query.lower() for keyword in [
+        ql = user_query.lower()
+        is_spatial_query = any(keyword in ql for keyword in [
             "within", "inside", "intersect", "overlap", "near", "close to",
             "proximity", "adjacent", "located in", "in deforestation",
             "in water stress", "assets within", "assets in"
@@ -1499,13 +1627,27 @@ Instructions:
                     reg_data = _json.loads(reg.content[0].text)
                 if isinstance(reg_data, dict) and reg_data.get("by_type", {}).get("solar_facility", 0) > 0 and reg_data.get("by_type", {}).get("deforestation_area", 0) > 0:
                     # Compute correlation
-                    corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "method": "within", "session_id": self.spatial_session_id}
+                    import re
+                    corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
+                    m = re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
+                    if m:
+                        try:
+                            distance_km = float(m.group(1))
+                            corr_args.update({"method": "proximity", "distance_km": distance_km})
+                        except Exception:
+                            corr_args.update({"method": "within"})
+                    else:
+                        corr_args.update({"method": "within"})
                     corr = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
                     corr_data = {}
                     if hasattr(corr, 'content') and corr.content:
                         corr_data = _json.loads(corr.content[0].text)
                     # Generate map
-                    map_res = await self.client.call_tool("GenerateCorrelationMap", {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id}, "geospatial")
+                    map_res = await self.client.call_tool(
+                        "GenerateCorrelationMap",
+                        {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                        "geospatial"
+                    )
                     map_data = {}
                     if hasattr(map_res, 'content') and map_res.content:
                         map_data = _json.loads(map_res.content[0].text)
@@ -1698,11 +1840,7 @@ When you have collected enough information to answer "{user_query}", respond wit
             if is_spatial_query:
                 try:
                     if server_name == "deforestation":
-                        bootstrap_args = {"limit": 10000}
-                        print(f"  Phase 1 - {server_name}: Bootstrap calling GetDeforestationAreas {bootstrap_args}")
-                        result = await self.client.call_tool("GetDeforestationAreas", bootstrap_args, server_name)
-                        facts.extend(self._extract_facts_from_result("GetDeforestationAreas", bootstrap_args, result, server_name))
-                        await self._auto_register_geographic_entities(server_name, "GetDeforestationAreas", result)
+                        # Static deforestation polygons are indexed globally; no per-session registration or limiting.
                         bootstrap_done = True
                     elif server_name == "solar":
                         # Prefer direct entities rather than map artifacts
@@ -1770,6 +1908,10 @@ When you have collected enough information to answer "{user_query}", respond wit
                         
                         # Make the actual tool call
                         try:
+                            # Ensure geospatial tools get the correct session_id
+                            if server_name == "geospatial" and isinstance(tool_args, dict) and "session_id" not in tool_args:
+                                tool_args = dict(tool_args)
+                                tool_args["session_id"] = self.spatial_session_id
                             result = await self.client.call_tool(tool_name, tool_args, server_name)
                             
                             # Log the actual response
@@ -1816,13 +1958,14 @@ When you have collected enough information to answer "{user_query}", respond wit
                             assistant_message_content.append(content)
                             messages.append({"role": "assistant", "content": assistant_message_content})
                             
-                            # Add tool result to conversation
+                            # Add sanitized tool result to conversation to avoid huge payloads/GeoJSON leakage
+                            safe_payload = _prepare_tool_result_for_llm(tool_name, result)
                             messages.append({
                                 "role": "user",
                                 "content": [{
                                     "type": "tool_result",
                                     "tool_use_id": content.id,
-                                    "content": result.content if hasattr(result, 'content') else str(result)
+                                    "content": safe_payload
                                 }]
                             })
                             
@@ -2487,14 +2630,27 @@ Respond with JSON:
 
         # Deterministic spatial correlation if applicable
         try:
-            is_spatial_query = any(keyword in user_query.lower() for keyword in [
+            ql = user_query.lower()
+            is_spatial_query = any(keyword in ql for keyword in [
                 "within", "inside", "intersect", "overlap", "near", "close to",
                 "proximity", "adjacent", "located in", "in deforestation",
                 "assets within", "assets in"
             ])
             if is_spatial_query and self.client.sessions.get("geospatial"):
-                # Perform point-in-polygon correlation between solar facilities and deforestation areas
-                corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "method": "within", "session_id": self.spatial_session_id}
+                # Determine correlation method and parameters from query
+                method = "within"
+                corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
+                import re
+                m = re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
+                if m:
+                    try:
+                        distance_km = float(m.group(1))
+                        method = "proximity"
+                        corr_args.update({"method": method, "distance_km": distance_km})
+                    except Exception:
+                        corr_args.update({"method": method})
+                else:
+                    corr_args.update({"method": method})
                 print(f"Phase 2 - geospatial: Deterministic FindSpatialCorrelations {corr_args}")
                 corr_result = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
                 # Package as fact for synthesis
@@ -2519,9 +2675,13 @@ Respond with JSON:
                         )
                     )
                 )
-                # Optionally generate a correlation map for visualization
+                # Generate a correlation map for visualization
                 try:
-                    map_res = await self.client.call_tool("GenerateCorrelationMap", {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id}, "geospatial")
+                    map_res = await self.client.call_tool(
+                        "GenerateCorrelationMap",
+                        {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                        "geospatial"
+                    )
                     map_data = {}
                     if hasattr(map_res, 'content') and map_res.content:
                         try:
@@ -2545,7 +2705,7 @@ Respond with JSON:
                     )
                 except Exception as e:
                     print(f"Phase 2 - geospatial map generation skipped: {e}")
-                # Skip expensive generic Phase 2 when we have the correlation answer
+                # Skip generic Phase 2 when we have the correlation answer (spatial queries)
                 phase2_results = {}
                 for server_name, original_result in scout_results.items():
                     server_phase2_facts = [
@@ -2655,9 +2815,13 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                             
                             try:
                                 # Call the tool on the appropriate server
+                                tool_args = block.input if isinstance(block.input, dict) else {}
+                                if server_name == "geospatial" and "session_id" not in tool_args:
+                                    tool_args = dict(tool_args)
+                                    tool_args["session_id"] = self.spatial_session_id
                                 result = await self.client.call_tool(
                                     tool_name=actual_tool_name,
-                                    tool_args=block.input,
+                                    tool_args=tool_args,
                                     server_name=server_name
                                 )
                                 
@@ -2961,16 +3125,22 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         # If we have a deterministic geospatial correlation result, prepend a concise answer module
         try:
             correlation_count = None
+            unique_facilities = None
             for fact in all_facts:
                 raw = fact.metadata.get("raw_result") if isinstance(fact.metadata, dict) else None
-                if isinstance(raw, dict) and "total_correlations" in raw:
+                if isinstance(raw, dict) and ("unique_facilities" in raw or "total_correlations" in raw):
+                    if "unique_facilities" in raw:
+                        unique_facilities = raw.get("unique_facilities")
                     # Prefer geospatial server results
                     if fact.server_origin == "geospatial":
                         correlation_count = raw.get("total_correlations")
+                        if "unique_facilities" in raw:
+                            unique_facilities = raw.get("unique_facilities")
                         break
                     correlation_count = correlation_count or raw.get("total_correlations")
-            if correlation_count is not None:
-                answer_text = f"Based on the spatial correlation analysis, {int(correlation_count)} solar assets overlap with deforestation areas."
+            if unique_facilities is not None or correlation_count is not None:
+                n = unique_facilities if unique_facilities is not None else correlation_count
+                answer_text = f"Based on the spatial correlation analysis, {int(n)} solar assets are within the specified deforestation proximity."
                 modules.insert(0, {"type": "text", "heading": "", "texts": [answer_text]})
         except Exception as e:
             print(f"Failed to prepend correlation answer: {e}")
@@ -3258,6 +3428,8 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         
         # Filter visualizations for relevance before including them
         if chart_modules or map_modules or table_modules:
+            # For explicit spatial queries, include maps without filtering
+            spatial_query = any(k in user_query.lower() for k in ["within", "km", "proximity", "near", "adjacent", "in deforestation"])
             # Check which visualizations directly answer the query
             relevant_charts = []
             for chart in chart_modules:
@@ -3267,11 +3439,14 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                     print(f"Filtered out irrelevant chart: {chart.get('heading', 'unnamed')}")
             
             relevant_maps = []
-            for map_module in map_modules:
-                if await self._is_visualization_relevant(map_module, user_query, "map"):
-                    relevant_maps.append(map_module)
-                else:
-                    print(f"Filtered out irrelevant map: {map_module.get('heading', 'unnamed')}")
+            if spatial_query:
+                relevant_maps = list(map_modules)
+            else:
+                for map_module in map_modules:
+                    if await self._is_visualization_relevant(map_module, user_query, "map"):
+                        relevant_maps.append(map_module)
+                    else:
+                        print(f"Filtered out irrelevant map: {map_module.get('heading', 'unnamed')}")
             
             relevant_tables = []
             for table in table_modules:
@@ -4608,4 +4783,97 @@ if __name__ == "__main__":
             await cleanup_global_client()
     
     # Run main() with proper asyncio event loop
+# =============================================================================
+# LLM PAYLOAD SANITIZATION & LOGGING HELPERS
+# =============================================================================
+
+# Keys that often contain very large payloads or raw GeoJSON
+SENSITIVE_BIG_KEYS = {
+    "features", "geometry", "geojson", "coordinates", "data", "polygons", "points"
+}
+
+def _truncate_string(s: str, max_len: int = 4000) -> str:
+    if len(s) <= max_len:
+        return s
+    return s[:max_len] + f"... [truncated {len(s)-max_len} chars]"
+
+def _sanitize_obj_for_llm(obj: Any, removed_counts: Optional[Dict[str, int]] = None, max_list_len: int = 50) -> Any:
+    """Recursively sanitize an object for safe inclusion in LLM messages.
+
+    - Removes or summarizes large/geo structures (features/geometry/geojson/coordinates/data).
+    - Truncates long arrays and strings.
+    - Tracks removed elements per key in removed_counts.
+    """
+    from collections.abc import Mapping, Sequence
+    if removed_counts is None:
+        removed_counts = {}
+
+    if isinstance(obj, Mapping):
+        out = {}
+        for k, v in obj.items():
+            kl = str(k).lower()
+            if kl in SENSITIVE_BIG_KEYS:
+                # summarize rather than include raw
+                try:
+                    length = len(v) if hasattr(v, '__len__') else 1
+                except Exception:
+                    length = 1
+                removed_counts[kl] = removed_counts.get(kl, 0) + length
+                out[k] = {"_omitted_for_llm": True, "_approx_count": length}
+            else:
+                out[k] = _sanitize_obj_for_llm(v, removed_counts, max_list_len)
+        return out
+    elif isinstance(obj, str):
+        return _truncate_string(obj, 2000)
+    elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+        # Truncate very long lists
+        if len(obj) > max_list_len:
+            head = [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj[:max_list_len]]
+            return head + [{"_omitted_for_llm": True, "_omitted_items": len(obj) - max_list_len}]
+        else:
+            return [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj]
+    else:
+        return obj
+
+def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
+    """Create a safe, compact string for the tool_result content sent back to the LLM.
+
+    Attempts to parse JSON from the first text content; removes heavy keys and truncates.
+    Logs when sanitization removed large fields to help track payload sizes.
+    """
+    payload_str = None
+    removed_counts: Dict[str, int] = {}
+    try:
+        if hasattr(result, 'content') and isinstance(result.content, list) and result.content:
+            first = result.content[0]
+            if hasattr(first, 'text') and isinstance(first.text, str):
+                txt = first.text
+                # Try JSON parse
+                try:
+                    data = json.loads(txt)
+                    sanitized = _sanitize_obj_for_llm(data, removed_counts)
+                    payload_str = json.dumps(sanitized, ensure_ascii=False)
+                except json.JSONDecodeError:
+                    # Not JSON; just truncate text
+                    payload_str = _truncate_string(txt, 4000)
+        if payload_str is None:
+            payload_str = _truncate_string(str(result), 4000)
+    except Exception as e:
+        payload_str = f"[tool_result_unavailable: {e}]"
+
+    # Log summary of what we removed to help detect GeoJSON leakage
+    if removed_counts:
+        llm_logger.warning(f"Sanitized tool_result for {tool_name}; removed heavy keys: {removed_counts}")
+    llm_logger.debug(f"tool_result payload length: {len(payload_str)}")
+    return payload_str
+
+def _log_llm_messages_summary(messages: List[Dict[str, Any]], label: str):
+    try:
+        # Rough size estimate for the messages payload
+        import math
+        serialized = json.dumps(messages, ensure_ascii=False)
+        size_kb = len(serialized.encode('utf-8')) / 1024.0
+        llm_logger.info(f"LLM messages summary [{label}]: messages={len(messages)} size≈{size_kb:.1f}KB")
+    except Exception as e:
+        llm_logger.debug(f"Could not summarize LLM messages: {e}")
     asyncio.run(main())

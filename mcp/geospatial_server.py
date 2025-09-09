@@ -29,8 +29,59 @@ except ImportError:
     GEOSPATIAL_AVAILABLE = False
     print("Warning: GeoPandas not available. Install with: pip install geopandas shapely")
 
+# Global static deforestation index (read-only, shared across sessions)
+STATIC_DEFOR = {
+    'loaded': False,
+    'geoms_3857': None,
+    'ids': None,
+    'props': None,
+    'tree': None
+}
+
 # Session-scoped storage (cleared between queries and isolated per session)
 SESSIONS: dict = {}
+
+def _load_static_deforestation_index() -> bool:
+    """Load deforestation polygons and build a global STRtree index (EPSG:3857)."""
+    if not GEOSPATIAL_AVAILABLE or STATIC_DEFOR['loaded']:
+        return STATIC_DEFOR['loaded']
+    try:
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        pq_path = os.path.join(base_dir, 'data', 'deforestation', 'deforestation.parquet')
+        gj_path = os.path.join(base_dir, 'data', 'brazil_deforestation.geojson')
+        if os.path.exists(pq_path):
+            gdf = gpd.read_parquet(pq_path)
+        elif os.path.exists(gj_path):
+            gdf = gpd.read_file(gj_path)
+        else:
+            print("[geospatial] Static deforestation data not found; static index disabled")
+            return False
+        if gdf.crs is None:
+            gdf.set_crs(epsg=4326, inplace=True)
+        gdf_3857 = gdf.to_crs('EPSG:3857')
+        ids, props, geoms = [], [], []
+        for idx, row in gdf_3857.iterrows():
+            geom = row.geometry
+            if geom is None or geom.is_empty:
+                continue
+            geoms.append(geom)
+            ids.append(f"deforest_{idx}")
+            row_props = {k: (None if (pd.isna(v) if hasattr(pd, 'isna') else False) else v) for k, v in row.items() if k != 'geometry'}
+            try:
+                props.append(json.dumps(row_props))
+            except Exception:
+                props.append(json.dumps({}))
+        if not geoms:
+            print("[geospatial] No deforestation geometries for static index")
+            return False
+        from shapely.strtree import STRtree
+        tree = STRtree(geoms)
+        STATIC_DEFOR.update({'geoms_3857': geoms, 'ids': ids, 'props': props, 'tree': tree, 'loaded': True})
+        print(f"[geospatial] Static deforestation index loaded with {len(geoms)} polygons")
+        return True
+    except Exception as e:
+        print(f"[geospatial] Failed to load static deforestation index: {e}")
+        return False
 
 def _get_session_store(session_id: str):
     """Get or create per-session storage for entities and correlations."""
@@ -150,112 +201,188 @@ def FindSpatialCorrelations(
     if entities_gdf is None or entities_gdf.empty:
         return {"error": "No entities registered"}
     
-    # Get entities by type
+    # Get entities by type (dynamic points)
     entities1 = entities_gdf[entities_gdf['entity_type'] == entity_type1].copy()
-    entities2 = entities_gdf[entities_gdf['entity_type'] == entity_type2].copy()
+    # Use static deforestation for entity_type2 when requested
+    use_static_defor = (entity_type2 == 'deforestation_area') and _load_static_deforestation_index()
+    entities2 = entities_gdf[entities_gdf['entity_type'] == entity_type2].copy() if not use_static_defor else None
     
     if entities1.empty:
         return {"error": f"No entities of type '{entity_type1}' registered"}
-    if entities2.empty:
+    if not use_static_defor and entities2.empty:
         return {"error": f"No entities of type '{entity_type2}' registered"}
     
-    print(f"Correlating {len(entities1)} {entity_type1} with {len(entities2)} {entity_type2} using method '{method}'")
+    count2 = (len(entities2) if entities2 is not None else (len(STATIC_DEFOR['geoms_3857']) if use_static_defor and STATIC_DEFOR['loaded'] else 0))
+    print(f"Correlating {len(entities1)} {entity_type1} with {count2} {entity_type2} using method '{method}'")
     
     correlations = []
     
     if method == "within":
         try:
-            # Use spatial join for efficient point-in-polygon correlation
-            left = entities1.copy()
-            right = entities2.copy()
-            left = left.set_geometry('geometry')
-            right = right.set_geometry('geometry')
-            joined = gpd.sjoin(left, right, predicate='within', how='inner', lsuffix='1', rsuffix='2')
-            for _, row in joined.iterrows():
-                try:
-                    props1 = json.loads(row['properties1'])
-                    props2 = json.loads(row['properties2'])
-                except Exception:
-                    props1 = {}
-                    props2 = {}
-                correlations.append({
-                    "entity1_id": row['entity_id1'],
-                    "entity1_type": entity_type1,
-                    "entity1_properties": props1,
-                    "entity2_id": row['entity_id2'],
-                    "entity2_type": entity_type2,
-                    "entity2_properties": props2,
-                    "relationship": "within",
-                    "confidence": 1.0
-                })
+            if use_static_defor:
+                from shapely.prepared import prep
+                prepared = [prep(g) for g in STATIC_DEFOR['geoms_3857']]
+                pts = entities1.to_crs('EPSG:3857')
+                for idx1, ent1 in pts.iterrows():
+                    p = ent1.geometry
+                    cand_idxs = STATIC_DEFOR['tree'].query(p)
+                    if not cand_idxs:
+                        continue
+                    try:
+                        props1 = json.loads(entities1.loc[idx1, 'properties'])
+                    except Exception:
+                        props1 = {}
+                    for ci in cand_idxs:
+                        try:
+                            if prepared[ci].contains(p):
+                                correlations.append({
+                                    "entity1_id": entities1.loc[idx1, 'entity_id'],
+                                    "entity1_type": entity_type1,
+                                    "entity1_properties": props1,
+                                    "entity2_id": STATIC_DEFOR['ids'][ci],
+                                    "entity2_type": 'deforestation_area',
+                                    "entity2_properties": json.loads(STATIC_DEFOR['props'][ci]) if STATIC_DEFOR['props'][ci] else {},
+                                    "relationship": "within",
+                                    "confidence": 1.0
+                                })
+                        except Exception:
+                            continue
+            else:
+                left = entities1.copy().set_geometry('geometry')
+                right = entities2.copy().set_geometry('geometry')
+                joined = gpd.sjoin(left, right, predicate='within', how='inner', lsuffix='1', rsuffix='2')
+                for _, row in joined.iterrows():
+                    try:
+                        props1 = json.loads(row['properties1'])
+                        props2 = json.loads(row['properties2'])
+                    except Exception:
+                        props1, props2 = {}, {}
+                    correlations.append({
+                        "entity1_id": row['entity_id1'],
+                        "entity1_type": entity_type1,
+                        "entity1_properties": props1,
+                        "entity2_id": row['entity_id2'],
+                        "entity2_type": entity_type2,
+                        "entity2_properties": props2,
+                        "relationship": "within",
+                        "confidence": 1.0
+                    })
         except Exception as e:
-            print(f"Error during sjoin within correlation: {e}")
-            return {"error": f"sjoin failed: {e}"}
+            print(f"Error in within correlation: {e}")
+            return {"error": f"Within correlation failed: {str(e)}"}
     
     elif method == "intersects":
-        # Check for any intersection/overlap
-        for idx1, ent1 in entities1.iterrows():
-            for idx2, ent2 in entities2.iterrows():
-                try:
-                    if ent1.geometry.intersects(ent2.geometry):
-                        props1 = json.loads(ent1['properties'])
-                        props2 = json.loads(ent2['properties'])
-                        
-                        # Calculate overlap percentage if both are polygons
-                        overlap_pct = None
-                        if ent1.geometry.geom_type == 'Polygon' and ent2.geometry.geom_type == 'Polygon':
-                            intersection = ent1.geometry.intersection(ent2.geometry)
-                            overlap_pct = (intersection.area / min(ent1.geometry.area, ent2.geometry.area)) * 100
-                        
-                        correlation = {
-                            "entity1_id": ent1['entity_id'],
-                            "entity1_type": entity_type1,
-                            "entity1_properties": props1,
-                            "entity2_id": ent2['entity_id'],
-                            "entity2_type": entity_type2,
-                            "entity2_properties": props2,
-                            "relationship": "intersects"
-                        }
-                        
-                        if overlap_pct is not None:
-                            correlation["overlap_percentage"] = round(overlap_pct, 2)
-                        
-                        correlations.append(correlation)
-                except Exception as e:
-                    print(f"Error checking intersection: {e}")
-                    continue
+        # Handle intersects for both dynamic and static polygon sources
+        try:
+            if use_static_defor:
+                pts = entities1.to_crs('EPSG:3857')
+                for idx1, ent1 in pts.iterrows():
+                    p = ent1.geometry
+                    cand_idxs = STATIC_DEFOR['tree'].query(p)
+                    if len(cand_idxs) == 0:
+                        continue
+                    try:
+                        props1 = json.loads(entities1.loc[idx1, 'properties'])
+                    except Exception:
+                        props1 = {}
+                    for ci in cand_idxs:
+                        try:
+                            poly = STATIC_DEFOR['geoms_3857'][ci]
+                            if p.intersects(poly):
+                                correlations.append({
+                                    "entity1_id": entities1.loc[idx1, 'entity_id'],
+                                    "entity1_type": entity_type1,
+                                    "entity1_properties": props1,
+                                    "entity2_id": STATIC_DEFOR['ids'][ci],
+                                    "entity2_type": 'deforestation_area',
+                                    "entity2_properties": json.loads(STATIC_DEFOR['props'][ci]) if STATIC_DEFOR['props'][ci] else {},
+                                    "relationship": "intersects"
+                                })
+                        except Exception as e:
+                            print(f"Error checking static intersects: {e}")
+                            continue
+            else:
+                for idx1, ent1 in entities1.iterrows():
+                    for idx2, ent2 in entities2.iterrows():
+                        try:
+                            if ent1.geometry.intersects(ent2.geometry):
+                                props1 = json.loads(ent1['properties'])
+                                props2 = json.loads(ent2['properties'])
+                                correlation = {
+                                    "entity1_id": ent1['entity_id'],
+                                    "entity1_type": entity_type1,
+                                    "entity1_properties": props1,
+                                    "entity2_id": ent2['entity_id'],
+                                    "entity2_type": entity_type2,
+                                    "entity2_properties": props2,
+                                    "relationship": "intersects"
+                                }
+                                correlations.append(correlation)
+                        except Exception as e:
+                            print(f"Error checking intersection: {e}")
+                            continue
+        except Exception as e:
+            print(f"Error in intersects correlation: {e}")
+            return {"error": f"Intersects correlation failed: {str(e)}"}
     
     elif method == "proximity":
-        # Find entities within specified distance
-        # Project to metric CRS for accurate distance calculation
+        # Point-first proximity using static index when available
         try:
-            # Use Web Mercator for distance calculations (not perfect but fast)
-            entities1_proj = entities1.to_crs('EPSG:3857')
-            entities2_proj = entities2.to_crs('EPSG:3857')
-            distance_m = distance_km * 1000
-            
-            for idx1, ent1 in entities1_proj.iterrows():
-                for idx2, ent2 in entities2_proj.iterrows():
-                    try:
-                        dist = ent1.geometry.distance(ent2.geometry)
-                        if dist <= distance_m:
-                            props1 = json.loads(entities1.loc[idx1, 'properties'])
-                            props2 = json.loads(entities2.loc[idx2, 'properties'])
-                            
-                            correlations.append({
-                                "entity1_id": entities1.loc[idx1, 'entity_id'],
-                                "entity1_type": entity_type1,
-                                "entity1_properties": props1,
-                                "entity2_id": entities2.loc[idx2, 'entity_id'],
-                                "entity2_type": entity_type2,
-                                "entity2_properties": props2,
-                                "relationship": "proximity",
-                                "distance_m": round(float(dist), 2),
-                                "distance_km": round(float(dist / 1000), 2)
-                            })
-                    except Exception as e:
-                        print(f"Error calculating distance: {e}")
+            distance_m = float(distance_km) * 1000.0
+        except Exception:
+            distance_m = 1000.0
+        try:
+            if use_static_defor:
+                e1 = entities1.to_crs('EPSG:3857')
+                for idx1, ent1 in e1.iterrows():
+                    pt = ent1.geometry
+                    cand_idxs = STATIC_DEFOR['tree'].query(pt.buffer(distance_m))
+                    if len(cand_idxs) == 0:
                         continue
+                    try:
+                        props1 = json.loads(entities1.loc[idx1, 'properties'])
+                    except Exception:
+                        props1 = {}
+                    for ci in cand_idxs:
+                        try:
+                            poly = STATIC_DEFOR['geoms_3857'][ci]
+                            if pt.distance(poly) <= distance_m:
+                                correlations.append({
+                                    "entity1_id": entities1.loc[idx1, 'entity_id'],
+                                    "entity1_type": entity_type1,
+                                    "entity1_properties": props1,
+                                    "entity2_id": STATIC_DEFOR['ids'][ci],
+                                    "entity2_type": 'deforestation_area',
+                                    "entity2_properties": json.loads(STATIC_DEFOR['props'][ci]) if STATIC_DEFOR['props'][ci] else {},
+                                    "relationship": "proximity",
+                                    "distance_km": float(distance_km)
+                                })
+                        except Exception:
+                            continue
+            else:
+                # Fallback: buffer+sjoin
+                e1 = entities1.to_crs('EPSG:3857')
+                e2 = entities2.to_crs('EPSG:3857')
+                e2_buf = e2.copy()
+                e2_buf['geometry'] = e2_buf.geometry.buffer(distance_m)
+                joined = gpd.sjoin(e1, e2_buf[['geometry','entity_id','properties']], predicate='within', how='inner', lsuffix='1', rsuffix='2')
+                for _, row in joined.iterrows():
+                    try:
+                        props1 = json.loads(entities1.loc[row.name, 'properties'])
+                    except Exception:
+                        props1 = {}
+                    ent2_id = row.get('entity_id2') if 'entity_id2' in row else None
+                    props2 = json.loads(row.get('properties2', '{}')) if 'properties2' in row else {}
+                    correlations.append({
+                        "entity1_id": entities1.loc[row.name, 'entity_id'] if row.name in entities1.index else row.get('entity_id1'),
+                        "entity1_type": entity_type1,
+                        "entity1_properties": props1,
+                        "entity2_id": ent2_id,
+                        "entity2_type": entity_type2,
+                        "entity2_properties": props2,
+                        "relationship": "proximity",
+                        "distance_km": float(distance_km)
+                    })
         except Exception as e:
             print(f"Error in proximity calculation: {e}")
             return {"error": f"Proximity calculation failed: {str(e)}"}
@@ -277,16 +404,27 @@ def FindSpatialCorrelations(
     
     print(f"Found {len(correlations)} correlations")
     
+    # Compute uniqueness metrics
+    try:
+        unique_facilities = len({c['entity1_id'] for c in correlations})
+        unique_polygons = len({c['entity2_id'] for c in correlations})
+    except Exception:
+        unique_facilities = len(correlations)
+        unique_polygons = 0
+
     return {
         "correlations": correlations,
-        "total_correlations": len(correlations),
+        "total_correlations": len(correlations),  # pairs count (backward-compatible)
+        "pairs_count": len(correlations),
+        "unique_facilities": unique_facilities,
+        "unique_polygons": unique_polygons,
         "method": method,
         "parameters": {
             "distance_km": distance_km if method == "proximity" else None
         },
         "entity_counts": {
             entity_type1: len(entities1),
-            entity_type2: len(entities2)
+            entity_type2: (len(entities2) if entities2 is not None else (len(STATIC_DEFOR['geoms_3857']) if use_static_defor and STATIC_DEFOR['loaded'] else 0))
         },
         "correlation_rate": round(len(correlations) / max(len(entities1), 1) * 100, 1),
         "map_generation": "Use GenerateCorrelationMap to visualize results",
@@ -401,6 +539,38 @@ def GenerateCorrelationMap(
         }
         features.append(feature)
     
+    # Add correlated deforestation polygons from static index (only correlated ones)
+    if GEOSPATIAL_AVAILABLE and STATIC_DEFOR['loaded'] and last_correlations:
+        needed = {c['entity2_id'] for c in last_correlations if c.get('entity2_type') == 'deforestation_area' and c.get('entity2_id')}
+        if needed:
+            id_to_idx = {pid: i for i, pid in enumerate(STATIC_DEFOR['ids'])}
+            for pid in needed:
+                ci = id_to_idx.get(pid)
+                if ci is None:
+                    continue
+                try:
+                    geom_3857 = STATIC_DEFOR['geoms_3857'][ci]
+                    # Reproject to EPSG:4326 for GeoJSON
+                    g = gpd.GeoSeries([geom_3857], crs='EPSG:3857').to_crs('EPSG:4326').iloc[0]
+                    feature = {
+                        "type": "Feature",
+                        "geometry": g.__geo_interface__,
+                        "properties": {
+                            "layer": "deforestation_area",
+                            "entity_id": pid,
+                            "correlated": True,
+                            "fill": "#8B4513",
+                            "fill-opacity": 0.25,
+                            "stroke": "#654321",
+                            "stroke-width": 1,
+                            "stroke-opacity": 0.8,
+                            "title": "Deforestation area (correlated)"
+                        }
+                    }
+                    features.append(feature)
+                except Exception as e:
+                    print(f"Error adding correlated polygon feature: {e}")
+
     # Add correlation highlight layers
     for corr in last_correlations:
         if corr['relationship'] == 'within':
@@ -427,6 +597,46 @@ def GenerateCorrelationMap(
                     }
                     features.append(highlight_feature)
     
+    # Compute bounds from features for better map framing
+    min_lat = 90.0
+    max_lat = -90.0
+    min_lon = 180.0
+    max_lon = -180.0
+    def _update_bounds(geom):
+        nonlocal min_lat, max_lat, min_lon, max_lon
+        try:
+            if geom and isinstance(geom, dict):
+                gtype = geom.get('type')
+                coords = geom.get('coordinates')
+                def _iter_coords(c):
+                    if isinstance(c, (list, tuple)):
+                        for e in c:
+                            yield from _iter_coords(e)
+                    else:
+                        return
+                if gtype == 'Point' and isinstance(coords, (list, tuple)) and len(coords) == 2:
+                    lon, lat = float(coords[0]), float(coords[1])
+                    min_lat = min(min_lat, lat); max_lat = max(max_lat, lat)
+                    min_lon = min(min_lon, lon); max_lon = max(max_lon, lon)
+                else:
+                    for pair in _iter_coords(coords):
+                        if isinstance(pair, (list, tuple)) and len(pair) == 2:
+                            lon, lat = pair
+                            min_lat = min(min_lat, float(lat)); max_lat = max(max_lat, float(lat))
+                            min_lon = min(min_lon, float(lon)); max_lon = max(max_lon, float(lon))
+        except Exception:
+            pass
+
+    for f in features:
+        _update_bounds(f.get('geometry'))
+    if min_lat > max_lat or min_lon > max_lon:
+        # Fallback bounds
+        bounds = {"north": 50, "south": -50, "east": 180, "west": -180}
+        center = [0, 0]
+    else:
+        bounds = {"north": max_lat, "south": min_lat, "east": max_lon, "west": min_lon}
+        center = [(min_lon + max_lon) / 2.0, (min_lat + max_lat) / 2.0]
+
     # Create GeoJSON structure
     geojson = {
         "type": "FeatureCollection",
@@ -443,7 +653,9 @@ def GenerateCorrelationMap(
                 "deforestation_with_solar": "Brown polygons 40% opacity - contains solar",
                 "deforestation_without": "Brown polygons 25% opacity - no solar",
                 "correlation_highlights": "Red circles 30% opacity - correlation points"
-            }
+            },
+            "bounds": bounds,
+            "center": center
         }
     }
     

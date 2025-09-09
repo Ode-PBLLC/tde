@@ -155,11 +155,17 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             base_url = base_url.rstrip('/')
             geojson_url = base_url + geojson_url
         
-        # Determine map bounds based on countries (fallback to Brazil center for correlation maps)
+        # Determine map bounds
+        bounds = summary.get("bounds")
+        center = summary.get("center")
         countries = summary.get("countries", [])
-        bounds, center = _calculate_map_bounds(countries)
+        if not bounds:
+            # Compute from countries; fallback to Brazil center
+            bounds, center_calc = _calculate_map_bounds(countries)
+            if not center:
+                center = center_calc if center_calc else [-51.9253, -14.2350]
         if not center:
-            center = [-51.9253, -14.2350]  # Brazil center fallback
+            center = [-51.9253, -14.2350]
         
         # Generate legend items for countries
         country_colors = {
