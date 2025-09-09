@@ -254,6 +254,44 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 10000)
         return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
+def GetFacilitiesForGeospatial(country: Optional[str] = None, limit: int = 10000) -> Dict[str, Any]:
+    """Return condensed facility entities for direct geospatial registration.
+
+    Fields: id/cluster_id, latitude, longitude, country, capacity_mw.
+    """
+    if not db:
+        return {"error": "Database not available"}
+    try:
+        if country:
+            facilities = db.get_facilities_by_country(country, limit=limit)
+        else:
+            facilities = db.search_facilities(limit=limit)
+        if not facilities:
+            return {"error": f"No facilities found{' for ' + country if country else ''}"}
+        entities = []
+        for f in facilities:
+            try:
+                entities.append({
+                    "id": f.get('cluster_id') or f.get('id'),
+                    "cluster_id": f.get('cluster_id'),
+                    "latitude": float(f['latitude']),
+                    "longitude": float(f['longitude']),
+                    "country": f.get('country'),
+                    "capacity_mw": f.get('capacity_mw')
+                })
+            except Exception:
+                continue
+        return {
+            "entity_type": "solar_facility",
+            "country_filter": country,
+            "limit": limit,
+            "entities": entities,
+            "count": len(entities)
+        }
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@mcp.tool()
 def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
     """Get facilities for GeoJSON generation - generates file and returns reference."""
     if not db:
