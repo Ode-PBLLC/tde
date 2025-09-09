@@ -178,7 +178,10 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             "australia": "#FFEB3B",
             "south africa": "#795548",
             "mexico": "#607D8B",
-            "chile": "#E91E63"
+            "chile": "#E91E63",
+            # Extended labels for correlation maps
+            "solar facilities": "#FFD700",  # gold
+            "deforestation": "#8B4513"      # brown
         }
         
         legend_items = [

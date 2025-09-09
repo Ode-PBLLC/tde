@@ -531,6 +531,11 @@ def GenerateCorrelationMap(
             properties['marker-color'] = '#808080'
             properties['marker-size'] = 'small'
         
+        # Ensure legend-related properties for points
+        if entity['entity_type'] == 'solar_facility':
+            properties['country'] = 'Solar Facilities'
+            if 'title' not in properties:
+                properties['title'] = 'Solar Facility'
         # Create feature
         feature = {
             "type": "Feature",
@@ -557,6 +562,7 @@ def GenerateCorrelationMap(
                         "geometry": g.__geo_interface__,
                         "properties": {
                             "layer": "deforestation_area",
+                            "country": "Deforestation",
                             "entity_id": pid,
                             "correlated": True,
                             "fill": "#8B4513",
@@ -564,7 +570,8 @@ def GenerateCorrelationMap(
                             "stroke": "#654321",
                             "stroke-width": 1,
                             "stroke-opacity": 0.8,
-                            "title": "Deforestation area (correlated)"
+                            "title": "Deforestation",
+                            "name": "Deforestation"
                         }
                     }
                     features.append(feature)
@@ -637,14 +644,16 @@ def GenerateCorrelationMap(
         bounds = {"north": max_lat, "south": min_lat, "east": max_lon, "west": min_lon}
         center = [(min_lon + max_lon) / 2.0, (min_lat + max_lat) / 2.0]
 
-    # Collect countries from point features for legend support
+    # Collect countries/labels from features for legend support
     countries = set()
     for f in features:
         props = f.get('properties', {}) or {}
-        if props.get('layer') == 'solar_facility':
-            c = props.get('country')
-            if isinstance(c, str) and c.strip():
-                countries.add(c.strip())
+        c = props.get('country')
+        if isinstance(c, str) and c.strip():
+            countries.add(c.strip())
+    # Ensure deforestation appears in legend if any polygons are present
+    if any((f.get('properties', {}) or {}).get('layer') == 'deforestation_area' for f in features):
+        countries.add('Deforestation')
 
     # Create GeoJSON structure
     geojson = {
