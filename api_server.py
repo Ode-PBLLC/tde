@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.append('mcp')
 # from mcp_chat import run_query_structured, run_query, run_query_streaming, get_global_client, cleanup_global_client
 from mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client
+from streaming_fix import fixed_stream_chat_query
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
@@ -189,8 +190,13 @@ async def get_geojson(filename: str):
     try:
         # First, check if the file exists in the static/maps directory
         file_path = os.path.join(os.path.dirname(__file__), "static", "maps", filename)
+        print(f"[DEBUG] GeoJSON request for: {filename}")
+        print(f"[DEBUG] Checking path: {file_path}")
+        print(f"[DEBUG] File exists: {os.path.exists(file_path)}")
+        
         if os.path.exists(file_path):
             # Serve the existing file
+            print(f"[DEBUG] Serving existing file: {file_path}")
             return FileResponse(file_path, media_type="application/geo+json")
         
         # If file doesn't exist, generate dynamically (fallback for legacy behavior)
@@ -771,8 +777,7 @@ async def get_example_response():
                     "items": [
                         {
                             "label": "Brazil",
-                            "color": "#4CAF50",
-                            "description": "Size represents capacity"
+                            "color": "#4CAF50"
                         }
                     ]
                 },
@@ -897,17 +902,28 @@ async def stream_query(request: StreamQueryRequest):
             # Track response content for session history
             response_modules = []
             
-            # Pass conversation context to stream_chat_query
-            async for event in stream_chat_query(request.query, conversation_history=context):
+            # Use fixed streaming that properly sends content
+            async for event in fixed_stream_chat_query(request.query, conversation_history=context):
                 # Capture complete event for history
                 if event.get("type") == "complete":
                     response_data = event.get("data", {})
                     if isinstance(response_data, dict):
                         response_modules = response_data.get("modules", [])
                 
-                # Format as Server-Sent Events
-                event_data = json.dumps(event, ensure_ascii=False)
-                yield f"data: {event_data}\n\n"
+                # Handle content chunks specially for compatibility
+                if event.get("type") == "content":
+                    # Send content in the format the client expects
+                    content_chunk = {
+                        "content": event.get("content", "")
+                    }
+                    yield f"data: {json.dumps(content_chunk, ensure_ascii=False)}\n\n"
+                else:
+                    # Format other events as Server-Sent Events
+                    event_data = json.dumps(event, ensure_ascii=False)
+                    yield f"data: {event_data}\n\n"
+            
+            # Send completion signal
+            yield f"data: [DONE]\n\n"
             
             # Store the query and response in session history
             session_store.append(session_id, "user", request.query)
