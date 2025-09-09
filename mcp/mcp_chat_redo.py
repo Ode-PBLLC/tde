@@ -39,6 +39,14 @@ except ImportError:
     OPTIMIZER_AVAILABLE = False
     print("Warning: Performance optimizer not available")
 
+# Import fact tracer for debugging
+try:
+    from fact_tracer import FactTracer
+    FACT_TRACER_AVAILABLE = True
+except ImportError:
+    FACT_TRACER_AVAILABLE = False
+    print("Warning: Fact tracer not available for debugging")
+
 # Load environment variables
 load_dotenv()
 
@@ -490,6 +498,11 @@ class MultiServerClient:
         self.anthropic = ANTHROPIC_CLIENT
         self.citation_registry = CitationRegistry()
         
+        # Initialize fact tracer if debugging is enabled
+        self.fact_tracer = None
+        if os.getenv('DEBUG_FACTS', '').lower() == 'true' and FACT_TRACER_AVAILABLE:
+            self.fact_tracer = None  # Will be initialized per query
+        
     async def __aenter__(self):
         """Async context manager entry."""
         return self
@@ -614,7 +627,10 @@ async def get_global_client() -> MultiServerClient:
                 await _global_client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
                 await _global_client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
                 await _global_client.connect_to_server("viz", os.path.join(mcp_dir, "viz_server.py"))
-                print("Global MCP client initialized successfully")
+                # Add new geospatial servers
+                await _global_client.connect_to_server("deforestation", os.path.join(mcp_dir, "deforestation_server.py"))
+                await _global_client.connect_to_server("geospatial", os.path.join(mcp_dir, "geospatial_server.py"))
+                print("Global MCP client initialized successfully with geospatial capabilities")
             except Exception as e:
                 print(f"Error initializing global MCP client: {e}")
                 # Clean up on failure
@@ -1070,6 +1086,17 @@ Instructions:
             llm_logger.info(f"Cached facts count: {len(self.cached_facts)}")
             llm_logger.info(f"Token budget remaining: {self.token_budget_remaining}")
             
+            # Clear geospatial index for new query
+            if self.client.sessions.get("geospatial"):
+                try:
+                    await self.client.call_tool("ClearSpatialIndex", {}, "geospatial")
+                    print("Cleared geospatial index for new query")
+                except Exception as e:
+                    print(f"Failed to clear geospatial index: {e}")
+            
+            # Reset geospatial tracking flag
+            self._geospatial_cleared = False
+            
             # Estimate query complexity for optimization
             if OPTIMIZER_AVAILABLE:
                 complexity = await PerformanceOptimizer.estimate_complexity(user_query)
@@ -1083,6 +1110,11 @@ Instructions:
             is_relevant = await self._is_query_relevant(user_query)
             if not is_relevant:
                 return self._create_redirect_response(user_query)
+            
+            # Initialize fact tracer for debugging if enabled
+            if os.getenv('DEBUG_FACTS', '').lower() == 'true' and FACT_TRACER_AVAILABLE:
+                self.client.fact_tracer = FactTracer(user_query)
+                llm_logger.info(f"Fact tracing enabled with trace_id: {self.client.fact_tracer.trace_id}")
             
             # NEW: Check if we can answer from cached context
             can_use_context, reasoning = await self._can_answer_from_context(user_query)
@@ -1119,7 +1151,8 @@ Instructions:
             
             if need_phase2:
                 print(f"Phase 2 needed: {reasoning}")
-                deep_dive_results = await self._phase2_deep_dive(user_query, collection_results)
+                # FIXED: Pass reasoning that contains follow-up queries to Phase 2
+                deep_dive_results = await self._phase2_deep_dive(user_query, collection_results, reasoning)
             else:
                 print(f"Skipping Phase 2: {reasoning}")
                 deep_dive_results = collection_results
@@ -1181,12 +1214,15 @@ Instructions:
                 "detailed": "Knowledge graph containing climate risk data, energy system information, financial climate impacts, physical risks (floods, droughts, heat), transition risks (policy, technology, market), sectoral analysis, and interconnected climate-finance relationships",
                 "routing_prompt": "Analyze if this query relates to climate risks, energy systems, financial impacts, physical or transition risks, or sector-specific climate analysis.",
                 "collection_instructions": """Tool usage strategy for Knowledge Graph:
-                - Start with 'search_passages' for broad queries about climate risks, financial impacts, or energy
-                - Use specific search terms and filters (risk_type, sector, region) to narrow results
-                - For company-specific queries, search by company name first
-                - For risk analysis, always specify the risk_type parameter (physical, transition, both)
-                - Collect multiple relevant passages to ensure comprehensive coverage
-                - Look for interconnections between climate, finance, and energy systems"""
+                - Use 'GetPassagesMentioningConcept' as your MAIN search tool - search for relevant concepts
+                - Start with the country/entity name (e.g., 'Brazil') to get country-specific passages
+                - Then search for topic concepts: 'renewable energy', 'NDC', 'biofuels', 'climate policy'
+                - Use 'GetRelatedConcepts' to find connected concepts if initial search is too narrow
+                - For energy queries, search concepts: renewable energy, biofuels, ethanol, electricity, solar, wind
+                - For NDC queries, search concepts: NDC, commitments, targets, emissions reduction
+                - When you find quantitative targets (percentages, TWh, MW), ALWAYS extract the complete context
+                - Call multiple concept searches to ensure comprehensive coverage
+                - NEVER use 'ALWAYSRUN' - it's a debug tool that returns nothing useful"""
             },
             "solar": {
                 "brief": "Solar facility database with locations, capacity, renewable infrastructure globally",
@@ -1221,25 +1257,33 @@ Instructions:
                 "detailed": "Comprehensive climate policy database including: NDC targets and commitments (emissions reduction percentages, net-zero dates, renewable energy goals), NDC vs domestic policy comparison, institutional frameworks (direction setting, planning, coordination), climate policies (cross-cutting, sectoral mitigation/adaptation), Brazilian state-level governance, implementation tracking, and TPI emissions pathways",
                 "routing_prompt": "Essential for queries about: NDC commitments, climate targets, emissions reduction goals, net-zero targets, renewable energy commitments, climate policy frameworks, institutional governance, Brazilian state assessments, policy implementation status. Key terms: NDC, targets, commitments, 2030, 2035, 2050, net-zero, emissions reduction, climate neutrality, Paris Agreement.",
                 "collection_instructions": """Tool usage strategy for LSE Climate Policy:
-                - Use 'GetNDCTargets' for specific country NDC commitments and targets
+                - Use 'GetNDCTargets' FIRST for specific country NDC commitments and targets
+                - For energy-specific NDC queries, also call 'GetPlansAndPoliciesData' to find energy sector details
                 - Use 'GetNDCPolicyComparison' for NDC vs domestic law analysis  
                 - Use 'GetNDCImplementationStatus' for tracking progress
                 - Use 'GetTPIGraphData' for emissions pathway visualization
                 - Use 'GetInstitutionalFramework' for governance structure queries
                 - Use 'GetClimatePolicy' for specific policy details
                 - Use 'GetSubnationalGovernance' for Brazilian state-level data
-                - Always extract quantitative targets (percentages, years, MW goals)
-                - Collect both NDC commitments AND implementation status
-                - For NDC queries, prioritize GetNDCTargets as the primary tool"""
+                - CRITICAL: Extract ALL quantitative targets including:
+                  * Renewable energy percentages (any % targets)
+                  * Alternative fuel targets (biofuels, hydrogen, etc.)
+                  * Capacity targets (TWh, MW, GW)
+                  * Emissions reduction percentages
+                  * Sectoral targets (transport, industry, buildings)
+                - For energy-specific queries: Look for ALL fuel types, electricity mix, capacity expansions
+                - For NDC queries, call MULTIPLE tools to ensure comprehensive coverage"""
             },
             "viz": {
                 "brief": "Data visualization tools for creating charts, tables, and comparisons",
                 "detailed": "Visualization server providing smart chart generation, comparison tables, and data visualization tools. Can create Bar/Line/Pie charts, comparison tables with percentages and totals, and optimize visualization types based on data characteristics",
                 "routing_prompt": "Use when needing to create visualizations, comparison tables, or formatted data presentations. Especially useful for multi-entity comparisons.",
                 "collection_instructions": """Tool usage strategy for Viz Server:
-                - Use 'CreateDataTable' for flexible data display with mixed types (percentages, numbers, text)
-                  * Ideal for renewable targets, NDC commitments, rates, or any percentage data
-                  * Allows explicit control over which columns to sum or average
+                CRITICAL: NEVER generate, invent, or guess data values! Only visualize data that has been explicitly provided to you from other servers.
+                
+                - If you don't have specific data, DO NOT create placeholder values
+                - Wait for actual data from kg, lse, or other servers before creating visualizations
+                - Use 'CreateDataTable' ONLY when you have real data to display
                   * CRITICAL DATA FORMAT: Pass percentages as whole numbers (45 for 45%, NOT 0.45)
                   * CRITICAL DATA FORMAT: Pass years as integers (2030, NOT "2030" or 2,030)
                 - Use 'CreateComparisonTable' when you need "% of Total" calculations for counts/values
@@ -1257,6 +1301,29 @@ Instructions:
                 - Years: Always pass 2030 as integer, not "2030" string
                 - Rates: Pass as displayed (5.5 for "5.5%")
                 - Example: {"country": "Brazil", "target": 45, "year": 2030}"""
+            },
+            "deforestation": {
+                "brief": "Brazil deforestation polygon data from processed satellite imagery",
+                "detailed": "Deforestation area polygons with hectare measurements, spatial queries, and statistics for Brazil. Derived from satellite imagery analysis showing forest loss areas.",
+                "routing_prompt": "Include when query mentions deforestation, forest loss, cleared areas, land use change, or environmental impact in Brazil. This server has actual polygon data, not just text descriptions.",
+                "collection_instructions": """Tool usage strategy for Deforestation:
+                - Use 'GetDeforestationAreas' for general deforestation data queries
+                - Use 'GetDeforestationInBounds' for specific geographic regions
+                - Use 'GetDeforestationStatistics' for summary statistics
+                - Use 'GetDeforestationWithMap' to generate visualization maps
+                - Returns polygon geometries that can be correlated with other geographic data"""
+            },
+            "geospatial": {
+                "brief": "Spatial correlation engine for geographic relationship analysis",
+                "detailed": "Correlates different geographic datasets by proximity, overlap, or containment. Does NOT store data - only analyzes relationships during query session. Receives entity registrations from other servers and performs spatial analysis.",
+                "routing_prompt": "Include when query implies spatial relationships between different data types (facilities IN/NEAR deforestation, assets close to hazards, geographic overlap analysis). This is a correlation engine, not a data source.",
+                "collection_instructions": """Tool usage strategy for Geospatial:
+                - This server is PASSIVE in Phase 1 - it receives auto-registered entities from other servers
+                - ACTIVE in Phase 2 - use for correlation and map generation
+                - Use 'FindSpatialCorrelations' to find relationships (within, intersects, proximity)
+                - Use 'GenerateCorrelationMap' to create multi-layer visualization
+                - Use 'GetRegisteredEntities' to check what data is available
+                - Use 'ClearSpatialIndex' between different queries"""
             }
         }
     
@@ -1551,6 +1618,11 @@ When you have collected enough information to answer "{user_query}", respond wit
                             )
                             facts.extend(extracted_facts)
                             
+                            # Auto-register geographic entities with geospatial server
+                            await self._auto_register_geographic_entities(
+                                server_name, tool_name, result
+                            )
+                            
                             # Add tool use to assistant message
                             assistant_message_content.append(content)
                             messages.append({"role": "assistant", "content": assistant_message_content})
@@ -1634,6 +1706,10 @@ When you have collected enough information to answer "{user_query}", respond wit
             List of Fact objects extracted from the result
         """
         facts = []
+        
+        # Log tool call if tracer is available
+        if self.client.fact_tracer:
+            self.client.fact_tracer.log_tool_call(server_name, tool_name, tool_args, result)
         
         try:
             # Parse result content
@@ -1806,7 +1882,102 @@ When you have collected enough information to answer "{user_query}", respond wit
                 preview = fact.text_content[:100] + "..." if len(fact.text_content) > 100 else fact.text_content
                 print(f"    Fact {i}: {preview}")
         
+        # Log facts extraction if tracer is available
+        if self.client.fact_tracer and facts:
+            self.client.fact_tracer.log_fact_extraction("phase1", server_name, result_data if 'result_data' in locals() else None, facts)
+        
         return facts
+    
+    async def _auto_register_geographic_entities(self, server_name: str, tool_name: str, result: Any) -> None:
+        """
+        Auto-register geographic entities with the geospatial server for correlation.
+        
+        This happens automatically during Phase 1 when servers return geographic data.
+        
+        Args:
+            server_name: Name of the server that provided the data
+            tool_name: Name of the tool that was called
+            result: Result from the tool call
+        """
+        # Check if geospatial server is available
+        if not self.client.sessions.get("geospatial"):
+            return
+        
+        try:
+            # Parse result to get data
+            result_data = None
+            if hasattr(result, 'content'):
+                if isinstance(result.content, list) and len(result.content) > 0:
+                    first_content = result.content[0]
+                    if hasattr(first_content, 'text'):
+                        try:
+                            result_data = json.loads(first_content.text)
+                        except json.JSONDecodeError:
+                            return  # Not JSON data
+            
+            if not result_data or not isinstance(result_data, dict):
+                return
+            
+            # Auto-register based on server and data type
+            registered = False
+            
+            # Solar facilities
+            if server_name == "solar" and "facilities" in result_data:
+                facilities = result_data["facilities"]
+                if facilities and isinstance(facilities, list):
+                    try:
+                        await self.client.call_tool(
+                            "RegisterEntities",
+                            {"entity_type": "solar_facility", "entities": facilities},
+                            "geospatial"
+                        )
+                        print(f"  Auto-registered {len(facilities)} solar facilities with geospatial server")
+                        registered = True
+                    except Exception as e:
+                        print(f"  Failed to register solar facilities: {e}")
+            
+            # Deforestation areas
+            elif server_name == "deforestation" and "deforestation_areas" in result_data:
+                areas = result_data["deforestation_areas"]
+                if areas and isinstance(areas, list):
+                    try:
+                        await self.client.call_tool(
+                            "RegisterEntities",
+                            {"entity_type": "deforestation_area", "entities": areas},
+                            "geospatial"
+                        )
+                        print(f"  Auto-registered {len(areas)} deforestation areas with geospatial server")
+                        registered = True
+                    except Exception as e:
+                        print(f"  Failed to register deforestation areas: {e}")
+            
+            # GIST assets with coordinates
+            elif server_name == "gist" and "assets" in result_data:
+                assets = result_data["assets"]
+                # Check if assets have lat/lon
+                if assets and isinstance(assets, list) and len(assets) > 0:
+                    # Check first asset for coordinates
+                    if all(k in assets[0] for k in ['latitude', 'longitude']):
+                        try:
+                            await self.client.call_tool(
+                                "RegisterEntities",
+                                {"entity_type": "water_stressed_asset", "entities": assets},
+                                "geospatial"
+                            )
+                            print(f"  Auto-registered {len(assets)} GIST assets with geospatial server")
+                            registered = True
+                        except Exception as e:
+                            print(f"  Failed to register GIST assets: {e}")
+            
+            # Clear geospatial index at the start of each new query (only once)
+            # This should ideally be done elsewhere, but we can check if this is the first registration
+            if registered and not hasattr(self, '_geospatial_cleared'):
+                # Mark that we've started using geospatial for this query
+                self._geospatial_cleared = True
+                
+        except Exception as e:
+            # Silent failure - auto-registration is optional enhancement
+            print(f"  Auto-registration error: {e}")
     
     def _get_source_name_for_tool(self, tool_name: str, server_name: str) -> str:
         """Get a human-readable source name for a tool."""
@@ -1857,7 +2028,10 @@ When you have collected enough information to answer "{user_query}", respond wit
             if result.is_relevant and result.facts:
                 servers_with_facts.append(server_name)
                 total_facts += len(result.facts)
-                for fact in result.facts[:5]:  # Limit facts per server for token efficiency
+                # FIXED: Preserve complete fact content, not just metadata
+                # Include all facts to properly evaluate completeness
+                for fact in result.facts:
+                    # Preserve full fact text content for proper evaluation
                     all_facts.append(f"[{server_name}] {fact.text_content}")
         
         if not all_facts:
@@ -1891,8 +2065,10 @@ Evaluate based on:
 3. Contradictions: Do facts from different servers conflict?
 4. Cross-references: Would correlating data across servers add value?
 5. Depth: Does the query warrant deeper analysis than these initial facts?
+6. Specificity: Are there specific subtopics or metrics mentioned but not detailed?
 
 Examples when Phase 2 IS needed:
+- Query asks for "commitments related to energy" but facts only show emissions targets, not energy-specific targets
 - Query asks for "correlation between X and Y" but facts don't show relationships
 - Query asks for "trends" but only got point-in-time data
 - Facts mention entities that other servers could provide more detail on
@@ -1902,13 +2078,15 @@ Examples when Phase 2 is NOT needed:
 - Simple factual questions that Phase 1 fully answered
 - Query asks for a list and we got the list
 - All relevant data has been collected
+- Specific numerical targets are already extracted with units
 
 Respond with JSON:
 {{
     "need_phase2": true/false,
     "reasoning": "one sentence explanation",
     "gaps_identified": ["specific gap 1", "specific gap 2"],
-    "servers_for_phase2": ["server1", "server2"]
+    "servers_for_phase2": ["server1", "server2"],
+    "follow_up_queries": ["specific follow-up question 1", "specific follow-up question 2"]
 }}"""
 
         try:
@@ -1950,6 +2128,12 @@ Respond with JSON:
                 need_phase2 = result.get("need_phase2", False)
                 reasoning = result.get("reasoning", "No additional analysis needed")
                 servers = result.get("servers_for_phase2", servers_with_facts)
+                # FIXED: Extract follow-up queries for targeted Phase 2 investigation
+                follow_up_queries = result.get("follow_up_queries", [])
+                # Return follow-up queries as part of the server list (temporary solution)
+                # We'll pass these to Phase 2 through the reasoning field
+                if follow_up_queries:
+                    reasoning = f"{reasoning}|||FOLLOW_UP:{json.dumps(follow_up_queries)}"
                 return need_phase2, reasoning, servers
             else:
                 # All JSON parsing failed
@@ -1960,7 +2144,8 @@ Respond with JSON:
             # On error, default to no Phase 2
             return False, "Evaluation failed, proceeding with current data", []
     
-    async def _phase2_deep_dive(self, user_query: str, scout_results: Dict[str, PhaseResult]) -> Dict[str, PhaseResult]:
+    async def _phase2_deep_dive(self, user_query: str, scout_results: Dict[str, PhaseResult], 
+                                reasoning: str = "") -> Dict[str, PhaseResult]:
         """
         Phase 2: Unified Deep Dive - All tools from all relevant servers available.
         
@@ -1970,6 +2155,7 @@ Respond with JSON:
         Args:
             user_query: Original user query
             scout_results: Results from Phase 1 scout
+            reasoning: Reasoning from Phase 2 decision, may contain follow-up queries
             
         Returns:
             Dictionary mapping server names to their enhanced results
@@ -1982,7 +2168,21 @@ Respond with JSON:
         if not relevant_servers:
             return {}
         
-        # Gather ALL tools from ALL relevant servers
+        # FIXED: Extract follow-up queries from reasoning if present
+        follow_up_queries = []
+        if "|||FOLLOW_UP:" in reasoning:
+            try:
+                follow_up_part = reasoning.split("|||FOLLOW_UP:")[1]
+                follow_up_queries = json.loads(follow_up_part)
+                print(f"Phase 2 using follow-up queries: {follow_up_queries}")
+            except:
+                print("Failed to parse follow-up queries from reasoning")
+        
+        # FIXED: Only gather tools from servers that had facts in Phase 1
+        # This reduces token usage and focuses on productive servers
+        servers_with_facts = [name for name, result in relevant_servers.items() 
+                              if result.facts]
+        
         all_tools = {}
         tool_to_server_map = {}  # Track which server each tool belongs to
         
@@ -2253,6 +2453,10 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         table_data_list = []  # Store table data for creating comparison tables
         viz_table_modules = []  # Store actual table modules from viz server
         
+        # Log start of synthesis if tracer is available
+        if self.client.fact_tracer:
+            self.client.fact_tracer.log_prompt("phase3", "synthesis_start", f"Starting synthesis with {len(deep_dive_results)} server results")
+        
         for server_name, result in deep_dive_results.items():
             if result.is_relevant:
                 all_facts.extend(result.facts)
@@ -2339,6 +2543,16 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
             for server_name, result in deep_dive_results.items():
                 if result.facts:
                     print(f"  {server_name}: {len(result.facts)} facts")
+        
+        # Log synthesis input if tracer is available
+        if self.client.fact_tracer:
+            self.client.fact_tracer.log_synthesis_input(all_facts)
+            # Log energy facts specifically
+            energy_facts = [f for f in all_facts if any(kw in f.text_content.lower() for kw in ['energy', 'renewable', 'biofuel', '18%', 'ethanol', '45%', '80%'])]
+            if energy_facts:
+                llm_logger.warning(f"🔋 {len(energy_facts)} energy facts going into synthesis:")
+                for ef in energy_facts[:5]:  # Show first 5
+                    llm_logger.warning(f"  - {ef.text_content[:150]}")
         
         # Step 2: Generate narrative with placeholder citations
         narrative_with_placeholders = await self._synthesize_narrative(user_query, all_facts)
@@ -3108,6 +3322,10 @@ Only include modules that exist above. Ensure all modules are included exactly o
         has_map_data = False
         has_chart_data = False
         
+        # Log synthesis prompt if tracer is available
+        if self.client.fact_tracer:
+            self.client.fact_tracer.log_prompt("phase3", "synthesis_facts", f"Preparing {len(facts)} facts for synthesis")
+        
         for i, fact in enumerate(facts):
             fact_list.append(f"{i+1}. {fact.text_content}")
             # Check if this fact contains map data
@@ -3160,9 +3378,16 @@ FOCUSED RESPONSE RULES:
    - Background context not requested
    - Facility counts or infrastructure data unless specifically asked
 
-Example for "What are Brazil's NDC commitments related to energy?":
-GOOD START: "Brazil commits to achieving 45% renewable energy in its energy mix by 2030 and reaching net-zero emissions by 2050 [CITE_1]."
-BAD START: "Brazil has a comprehensive climate policy framework with 2,273 energy facilities..."
+Example for NDC energy queries:
+GOOD START: "Country X commits to achieving [specific %] renewable energy by [year], with additional targets for [specific sectors/fuels] [CITE_1]."
+BAD START: "Country X has a comprehensive climate policy framework with many facilities..."
+
+For energy-related NDC queries, PRIORITIZE mentioning:
+- ALL quantitative targets with their units (percentages, TWh, MW, GW)
+- Specific fuel or technology commitments (biofuels, solar, wind, hydro, nuclear)
+- Sectoral targets (electricity, transport, industry, buildings)
+- Timeline commitments with specific years
+- Implementation status if mentioned in facts
 
 Structure:
 1. First paragraph: Direct answer with key facts
@@ -3172,6 +3397,14 @@ Structure:
 {f'5. Reference charts ONLY if showing requested trends/comparisons' if has_chart_data else ''}
 
 Remember: Every sentence should help answer "{user_query}" - if it doesn't, leave it out."""
+        
+        # Log the full synthesis prompt if tracer is available
+        if self.client.fact_tracer:
+            self.client.fact_tracer.log_prompt("phase3", "synthesis_prompt", prompt)
+            # Log specific facts
+            llm_logger.debug(f"Synthesis facts preview (first 3):")
+            for fact_text in fact_list[:3]:
+                llm_logger.debug(f"  {fact_text[:150]}")
         
         try:
             response = await call_large_model(

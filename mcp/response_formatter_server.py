@@ -1436,8 +1436,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "legend": {
                     "title": "Solar Facilities",
                     "items": [
-                        {"label": country.title(), "color": country_colors.get(country.lower(), "#9E9E9E"), 
-                         "description": "Size represents capacity"}
+                        {"label": country.title(), "color": country_colors.get(country.lower(), "#9E9E9E")}
                         for country in countries[:4]
                     ]
                 },
@@ -1509,8 +1508,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             if country in countries_in_data:
                 legend_items.append({
                     "label": country.title(),
-                    "color": color,
-                    "description": "Size represents capacity"
+                    "color": color
                 })
         
         # Get base URL for absolute URLs (same as KG embed URLs)

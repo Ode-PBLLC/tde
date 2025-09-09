@@ -176,8 +176,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
         legend_items = [
             {
                 "label": country.title(),
-                "color": country_colors.get(country.lower(), "#9E9E9E"),
-                "description": "Size represents capacity"
+                "color": country_colors.get(country.lower(), "#9E9E9E")
             }
             for country in countries[:10]  # Limit to 10 countries for legend
         ]
