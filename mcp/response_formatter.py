@@ -138,8 +138,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
     if not map_data:
         return None
     
-    # Handle map_data_summary format from solar facilities
-    if map_data.get("type") == "map_data_summary":
+    # Handle map_data_summary format (and treat any geojson_url-bearing payload as compatible)
+    if map_data.get("type") == "map_data_summary" or (map_data.get("geojson_url") and isinstance(map_data.get("geojson_url"), str)):
         summary = map_data.get("summary", {})
         geojson_url = map_data.get("geojson_url")
         
@@ -155,9 +155,11 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             base_url = base_url.rstrip('/')
             geojson_url = base_url + geojson_url
         
-        # Determine map bounds based on countries
+        # Determine map bounds based on countries (fallback to Brazil center for correlation maps)
         countries = summary.get("countries", [])
         bounds, center = _calculate_map_bounds(countries)
+        if not center:
+            center = [-51.9253, -14.2350]  # Brazil center fallback
         
         # Generate legend items for countries
         country_colors = {
@@ -191,8 +193,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "bounds": bounds
             },
             "legend": {
-                "title": "Solar Facilities",
-                "items": legend_items
+            "title": summary.get("title", "Spatial Map"),
+            "items": legend_items
             },
             "metadata": {
                 "total_facilities": summary.get("total_facilities", 0),
