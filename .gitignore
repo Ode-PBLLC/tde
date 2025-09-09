@@ -22,6 +22,7 @@ test_*.json
 *_test.txt
 streaming_response.txt
 chart_*.json
+conversation_logs.csv
 
 # IDE and editor
 .claude/

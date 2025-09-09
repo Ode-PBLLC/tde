@@ -207,8 +207,9 @@ class KGEmbedGenerator:
                 "include_passages": False
             }
             
-            print(f"📡 Fetching KG data from MCP endpoint: {endpoint}")
-            print(f"📡 Payload: {json.dumps(payload, indent=2)}")
+            # Debug logging only if verbose mode
+            # print(f"📡 Fetching KG data from MCP endpoint: {endpoint}")
+            # print(f"📡 Payload: {json.dumps(payload, indent=2)}")
             
             try:
                 async with aiohttp.ClientSession() as session:
@@ -228,7 +229,9 @@ class KGEmbedGenerator:
                             error_text = await response.text()
                             print(f"⚠️  MCP endpoint error: {error_text}")
             except Exception as e:
-                print(f"⚠️  MCP endpoint exception: {e}, falling back to regular endpoint")
+                # Silently fallback if connection error
+                if "Cannot connect to host" not in str(e):
+                    print(f"⚠️  MCP endpoint issue: falling back to regular endpoint")
         
         # Fallback to original endpoint (either no MCP data or MCP endpoint failed)
         endpoint = f"{self.kg_server_url}/api/kg/query-subgraph"
@@ -240,8 +243,9 @@ class KGEmbedGenerator:
             "include_passages": False
         }
         
-        print(f"📡 Fetching KG data from regular endpoint: {endpoint}")
-        print(f"📡 Payload: {json.dumps(payload, indent=2)}")
+        # Debug logging only if verbose
+        # print(f"📡 Fetching KG data from regular endpoint: {endpoint}")
+        # print(f"📡 Payload: {json.dumps(payload, indent=2)}")
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -262,9 +266,11 @@ class KGEmbedGenerator:
                         print(f"❌ KG server error: {error_text}")
                         return {"nodes": [], "links": [], "concepts": [], "relationships": []}
         except Exception as e:
-            print(f"❌ Error fetching KG data: {e}")
-            import traceback
-            print(f"❌ KG fetch traceback: {traceback.format_exc()}")
+            # Silently handle connection errors (KG server is optional)
+            if "Cannot connect to host" not in str(e):
+                print(f"❌ Error fetching KG data: {e}")
+                import traceback
+                print(f"❌ KG fetch traceback: {traceback.format_exc()}")
             return {"nodes": [], "links": [], "concepts": [], "relationships": []}
     
     async def generate_embed(self, query: str, mcp_response: Optional[Dict[str, Any]] = None, citation_registry: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, str]]:

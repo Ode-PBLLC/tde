@@ -52,7 +52,7 @@ Replace this query with a simpler alternative that requests less comprehensive a
 - `mcp/mcp_chat.py` - Added singleton client functions
 - `api_server.py` - Added startup/shutdown hooks
 
-**Testing**: Use `curl -X POST http://localhost:8099/query/stream` to test streaming performance
+**Testing**: Use `curl -X POST http://localhost:8098/query/stream` to test streaming performance
 
 ## Configuration Notes
 
