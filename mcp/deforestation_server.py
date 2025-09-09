@@ -382,42 +382,5 @@ def GetDeforestationWithMap(
     return result
 
 
-@mcp.tool()
-def GetSolarDeforestationOverlapCount(
-    parquet_path: Optional[str] = None,
-    threshold_column: str = "_sum",
-    threshold_value: float = 0.0
-) -> Dict[str, Any]:
-    """
-    Compute the number of solar assets that overlap deforestation areas using a pre-joined parquet.
-
-    Args:
-        parquet_path: Optional override path to the pre-joined parquet. Defaults to Brazil file.
-        threshold_column: Column indicating overlap metric (default '_sum').
-        threshold_value: Count rows where column > threshold_value.
-
-    Returns:
-        Dictionary with overlap count and basic stats.
-    """
-    try:
-        if parquet_path is None:
-            parquet_path = os.path.join(os.path.dirname(__file__), "../data/deforestation/brazilian_solar_with_deforestation_attributes.parquet")
-        if not os.path.exists(parquet_path):
-            return {"error": f"Parquet not found: {parquet_path}"}
-        import pandas as pd
-        df = pd.read_parquet(parquet_path)
-        if threshold_column not in df.columns:
-            return {"error": f"Column '{threshold_column}' not in parquet"}
-        affected = df[df[threshold_column] > threshold_value]
-        return {
-            "overlap_count": int(len(affected)),
-            "total_assets": int(len(df)),
-            "column": threshold_column,
-            "threshold_value": threshold_value,
-            "country": "Brazil"
-        }
-    except Exception as e:
-        return {"error": f"Overlap computation failed: {e}"}
-
 if __name__ == "__main__":
     mcp.run()

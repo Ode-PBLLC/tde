@@ -1703,12 +1703,6 @@ When you have collected enough information to answer "{user_query}", respond wit
                         result = await self.client.call_tool("GetDeforestationAreas", bootstrap_args, server_name)
                         facts.extend(self._extract_facts_from_result("GetDeforestationAreas", bootstrap_args, result, server_name))
                         await self._auto_register_geographic_entities(server_name, "GetDeforestationAreas", result)
-                        # Also compute overlap count from pre-joined parquet when available
-                        try:
-                            overlap_res = await self.client.call_tool("GetSolarDeforestationOverlapCount", {}, server_name)
-                            facts.extend(self._extract_facts_from_result("GetSolarDeforestationOverlapCount", {}, overlap_res, server_name))
-                        except Exception as e:
-                            print(f"  Overlap count via parquet unavailable: {e}")
                         bootstrap_done = True
                     elif server_name == "solar":
                         # Prefer direct entities rather than map artifacts
@@ -2963,7 +2957,24 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
             table_data_list=table_data_list,
             viz_table_modules=viz_table_modules
         )
-        
+
+        # If we have a deterministic geospatial correlation result, prepend a concise answer module
+        try:
+            correlation_count = None
+            for fact in all_facts:
+                raw = fact.metadata.get("raw_result") if isinstance(fact.metadata, dict) else None
+                if isinstance(raw, dict) and "total_correlations" in raw:
+                    # Prefer geospatial server results
+                    if fact.server_origin == "geospatial":
+                        correlation_count = raw.get("total_correlations")
+                        break
+                    correlation_count = correlation_count or raw.get("total_correlations")
+            if correlation_count is not None:
+                answer_text = f"Based on the spatial correlation analysis, {int(correlation_count)} solar assets overlap with deforestation areas."
+                modules.insert(0, {"type": "text", "heading": "", "texts": [answer_text]})
+        except Exception as e:
+            print(f"Failed to prepend correlation answer: {e}")
+
         return modules
     
     async def _enhance_facts_with_visualization_data(self, facts: List[Fact]):
