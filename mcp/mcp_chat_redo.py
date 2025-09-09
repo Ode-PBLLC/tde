@@ -695,13 +695,15 @@ class QueryOrchestrator:
     - Response formatter handles artifact embedding
     """
     
-    def __init__(self, client: MultiServerClient, conversation_history: Optional[List[Dict[str, str]]] = None):
+    def __init__(self, client: MultiServerClient, conversation_history: Optional[List[Dict[str, str]]] = None, spatial_session_id: Optional[str] = None):
         self.client = client
         self.citation_registry = client.citation_registry
         self.token_budget_remaining = 50000  # Conservative starting budget
         self.conversation_history = conversation_history or []
         self.cached_facts: List[Fact] = []  # Cache facts from previous responses
         self.cached_response_text: str = ""  # Cache the last response text
+        # Geospatial session ID for isolating registrations per conversation/session
+        self.spatial_session_id = spatial_session_id or "_default"
     
     def _format_conversation_history(self) -> str:
         """Format conversation history for LLM context."""
@@ -1089,7 +1091,7 @@ Instructions:
             # Clear geospatial index for new query
             if self.client.sessions.get("geospatial"):
                 try:
-                    await self.client.call_tool("ClearSpatialIndex", {}, "geospatial")
+                    await self.client.call_tool("ClearSpatialIndex", {"session_id": self.spatial_session_id}, "geospatial")
                     print("Cleared geospatial index for new query")
                 except Exception as e:
                     print(f"Failed to clear geospatial index: {e}")
@@ -1307,11 +1309,13 @@ Instructions:
                 "detailed": "Deforestation area polygons with hectare measurements, spatial queries, and statistics for Brazil. Derived from satellite imagery analysis showing forest loss areas.",
                 "routing_prompt": "Include when query mentions deforestation, forest loss, cleared areas, land use change, or environmental impact in Brazil. This server has actual polygon data, not just text descriptions.",
                 "collection_instructions": """Tool usage strategy for Deforestation:
-                - Use 'GetDeforestationAreas' for general deforestation data queries
-                - Use 'GetDeforestationInBounds' for specific geographic regions
+                IMPORTANT: Always call GetDeforestationAreas first when deforestation is mentioned in the query
+                - Use 'GetDeforestationAreas' as your primary tool for deforestation data
+                - Use 'GetDeforestationInBounds' for specific geographic regions  
                 - Use 'GetDeforestationStatistics' for summary statistics
                 - Use 'GetDeforestationWithMap' to generate visualization maps
-                - Returns polygon geometries that can be correlated with other geographic data"""
+                - These tools return polygon geometries that auto-register for spatial correlation
+                - The polygon data enables geographic overlap analysis with other datasets"""
             },
             "geospatial": {
                 "brief": "Spatial correlation engine for geographic relationship analysis",
@@ -1480,6 +1484,72 @@ Instructions:
                     reasoning="Not selected by pre-filter"
                 )
         
+        # Post Phase 1: If spatial query and entities registered, compute correlation + map deterministically
+        is_spatial_query = any(keyword in user_query.lower() for keyword in [
+            "within", "inside", "intersect", "overlap", "near", "close to",
+            "proximity", "adjacent", "located in", "in deforestation",
+            "in water stress", "assets within", "assets in"
+        ])
+        if is_spatial_query and self.client.sessions.get("geospatial"):
+            try:
+                reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
+                reg_data = {}
+                if hasattr(reg, 'content') and reg.content:
+                    import json as _json
+                    reg_data = _json.loads(reg.content[0].text)
+                if isinstance(reg_data, dict) and reg_data.get("by_type", {}).get("solar_facility", 0) > 0 and reg_data.get("by_type", {}).get("deforestation_area", 0) > 0:
+                    # Compute correlation
+                    corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "method": "within", "session_id": self.spatial_session_id}
+                    corr = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                    corr_data = {}
+                    if hasattr(corr, 'content') and corr.content:
+                        corr_data = _json.loads(corr.content[0].text)
+                    # Generate map
+                    map_res = await self.client.call_tool("GenerateCorrelationMap", {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id}, "geospatial")
+                    map_data = {}
+                    if hasattr(map_res, 'content') and map_res.content:
+                        map_data = _json.loads(map_res.content[0].text)
+                    # Append as facts to geospatial result
+                    geo_result = results.get("geospatial")
+                    if geo_result:
+                        geo_facts = list(geo_result.facts)
+                        if corr_data:
+                            geo_facts.append(Fact(
+                                text_content=f"Spatial correlation result: total_correlations={corr_data.get('total_correlations', 'unknown')}",
+                                source_key="geospatial_phase1_correlation",
+                                server_origin="geospatial",
+                                metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
+                                citation=Citation(
+                                    source_name="GEOSPATIAL",
+                                    tool_id="FindSpatialCorrelations",
+                                    server_origin="geospatial",
+                                    source_type="Database",
+                                    description="Deterministic Phase 1 correlation"
+                                )
+                            ))
+                        if map_data:
+                            geo_facts.append(Fact(
+                                text_content="Correlation map generated",
+                                source_key="geospatial_phase1_map",
+                                server_origin="geospatial",
+                                metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
+                                citation=Citation(
+                                    source_name="GEOSPATIAL",
+                                    tool_id="GenerateCorrelationMap",
+                                    server_origin="geospatial",
+                                    source_type="Database",
+                                    description="Deterministic Phase 1 correlation map"
+                                )
+                            ))
+                        results["geospatial"] = PhaseResult(
+                            is_relevant=geo_result.is_relevant,
+                            facts=geo_facts,
+                            reasoning=geo_result.reasoning,
+                            continue_processing=False
+                        )
+            except Exception as e:
+                print(f"Post-Phase1 spatial correlation skipped: {e}")
+        
         return results
     
     async def _collect_server_information(self, user_query: str, server_name: str, config: Dict[str, Any]) -> PhaseResult:
@@ -1532,6 +1602,40 @@ Instructions:
                     reasoning=f"Server {server_name} has no available tools"
                 )
             
+            # Detect if this is a spatial correlation query
+            is_spatial_query = any(keyword in user_query.lower() for keyword in [
+                "within", "inside", "intersect", "overlap", "near", "close to", 
+                "proximity", "adjacent", "located in", "in deforestation",
+                "in water stress", "assets within", "assets in"
+            ])
+            
+            # Add specific instructions for spatial queries
+            spatial_instructions = ""
+            if is_spatial_query:
+                if server_name == "solar":
+                    spatial_instructions = """
+
+SPATIAL QUERY DETECTED! You MUST:
+1. Call GetSolarFacilitiesByCountry with country='Brazil' to get solar facility locations
+2. This will provide geographic data (lat/lon) needed for spatial correlation
+3. DO NOT skip this step - the geospatial server needs this data"""
+                elif server_name == "deforestation":
+                    spatial_instructions = """
+
+SPATIAL QUERY DETECTED! You MUST:
+1. IMMEDIATELY call GetDeforestationAreas with these parameters: {"limit": 1000}
+2. This is MANDATORY - do not analyze or think, just call GetDeforestationAreas FIRST
+3. This will provide geographic boundaries needed for spatial correlation
+4. After getting the data, you can summarize what you found
+5. DO NOT skip this step - the geospatial server needs this data"""
+                elif server_name == "gist":
+                    spatial_instructions = """
+
+SPATIAL QUERY DETECTED! You MUST:
+1. Call tools that return assets with latitude/longitude coordinates
+2. This geographic data is needed for spatial correlation
+3. DO NOT skip this step - the geospatial server needs this data"""
+            
             # Create focused system prompt for Phase 1 collection
             system_prompt = f"""You are collecting information from the {server_name} server to answer: {user_query}
 
@@ -1539,7 +1643,7 @@ CRITICAL: Focus ONLY on facts that directly answer this specific question.
 
 Server capabilities: {config['detailed']}
 
-{config['collection_instructions']}
+{config['collection_instructions']}{spatial_instructions}
 
 COLLECTION PRIORITIES:
 1. Call tools that DIRECTLY answer "{user_query}" - not just related topics
@@ -1571,9 +1675,17 @@ When you have collected enough information to answer "{user_query}", respond wit
                     "content": f"Previous conversation context:\n{self._format_conversation_history()}\n\nNow, for the current query:"
                 })
             
+            # Adjust user message for spatial queries
+            if is_spatial_query and server_name == "deforestation":
+                user_message = f"Query: {user_query}\n\nSTART by calling GetDeforestationAreas to get geographic data, then collect any other relevant information."
+            elif is_spatial_query and server_name == "solar":
+                user_message = f"Query: {user_query}\n\nSTART by calling GetSolarFacilitiesByCountry with country='Brazil' to get facility locations, then collect any other relevant information."
+            else:
+                user_message = f"Query: {user_query}\n\nCollect relevant information from your available tools."
+            
             messages.append({
                 "role": "user",
-                "content": f"Query: {user_query}\n\nCollect relevant information from your available tools."
+                "content": user_message
             })
             
             # Track collected facts
@@ -1581,11 +1693,63 @@ When you have collected enough information to answer "{user_query}", respond wit
             tool_calls_made = 0
             max_tool_calls = 15  # Small scope for Phase 1
             
+            # Deterministic bootstrap for spatial queries to ensure geospatial registration
+            bootstrap_done = False
+            if is_spatial_query:
+                try:
+                    if server_name == "deforestation":
+                        bootstrap_args = {"limit": 10000}
+                        print(f"  Phase 1 - {server_name}: Bootstrap calling GetDeforestationAreas {bootstrap_args}")
+                        result = await self.client.call_tool("GetDeforestationAreas", bootstrap_args, server_name)
+                        facts.extend(self._extract_facts_from_result("GetDeforestationAreas", bootstrap_args, result, server_name))
+                        await self._auto_register_geographic_entities(server_name, "GetDeforestationAreas", result)
+                        # Also compute overlap count from pre-joined parquet when available
+                        try:
+                            overlap_res = await self.client.call_tool("GetSolarDeforestationOverlapCount", {}, server_name)
+                            facts.extend(self._extract_facts_from_result("GetSolarDeforestationOverlapCount", {}, overlap_res, server_name))
+                        except Exception as e:
+                            print(f"  Overlap count via parquet unavailable: {e}")
+                        bootstrap_done = True
+                    elif server_name == "solar":
+                        # Prefer direct entities rather than map artifacts
+                        bootstrap_args = {"country": "Brazil", "limit": 10000}
+                        print(f"  Phase 1 - {server_name}: Bootstrap calling GetFacilitiesForGeospatial {bootstrap_args}")
+                        result = await self.client.call_tool("GetFacilitiesForGeospatial", bootstrap_args, server_name)
+                        facts.extend(self._extract_facts_from_result("GetFacilitiesForGeospatial", bootstrap_args, result, server_name))
+                        # Directly register entities if present
+                        try:
+                            if hasattr(result, 'content') and result.content:
+                                import json as _json
+                                data = _json.loads(result.content[0].text)
+                                entities = data.get('entities', []) if isinstance(data, dict) else []
+                                if entities:
+                                    await self.client.call_tool(
+                                        "RegisterEntities",
+                                        {"entity_type": "solar_facility", "entities": entities, "session_id": self.spatial_session_id},
+                                        "geospatial"
+                                    )
+                                    print(f"  Registered {len(entities)} solar facilities to session {self.spatial_session_id}")
+                        except Exception as e:
+                            print(f"  Direct registration from facilities failed: {e}")
+                        bootstrap_done = True
+                except Exception as e:
+                    print(f"  Spatial bootstrap error for {server_name}: {e}")
+            
+            # If we handled spatial bootstrap for these servers, return early to avoid heavy LLM loops
+            if bootstrap_done:
+                return PhaseResult(
+                    is_relevant=True,
+                    facts=facts,
+                    reasoning=f"Bootstrap collected {len(facts)} facts for spatial correlation",
+                    continue_processing=False,
+                    token_usage=0
+                )
+            
             # Start the collection loop
             while tool_calls_made < max_tool_calls:
                 # Call LLM with tools
                 response = await call_model_with_tools(
-                    model=SMALL_MODEL,  # Use small model for efficiency
+                    model=LARGE_MODEL,  # Use Sonnet for better tool selection
                     system=system_prompt,
                     messages=messages,
                     tools=available_tools,
@@ -1607,10 +1771,41 @@ When you have collected enough information to answer "{user_query}", respond wit
                         tool_calls_made += 1
                         
                         print(f"  Phase 1 - {server_name}: Call {tool_calls_made}/{max_tool_calls} - {tool_name}")
+                        if tool_args:
+                            print(f"    Args: {json.dumps(tool_args, indent=2)}")
                         
                         # Make the actual tool call
                         try:
                             result = await self.client.call_tool(tool_name, tool_args, server_name)
+                            
+                            # Log the actual response
+                            if hasattr(result, 'content'):
+                                if isinstance(result.content, list) and len(result.content) > 0:
+                                    first_content = result.content[0]
+                                    if hasattr(first_content, 'text'):
+                                        try:
+                                            result_data = json.loads(first_content.text)
+                                            # Truncate large results for logging
+                                            if isinstance(result_data, list) and len(result_data) > 3:
+                                                print(f"    Response: List with {len(result_data)} items (showing first 3)")
+                                                print(f"    {json.dumps(result_data[:3], indent=2)[:500]}...")
+                                            elif isinstance(result_data, dict):
+                                                result_str = json.dumps(result_data, indent=2)
+                                                if len(result_str) > 500:
+                                                    print(f"    Response (truncated): {result_str[:500]}...")
+                                                else:
+                                                    print(f"    Response: {result_str}")
+                                            else:
+                                                print(f"    Response: {result_data}")
+                                        except json.JSONDecodeError:
+                                            # Not JSON, show as text
+                                            text = first_content.text
+                                            if len(text) > 500:
+                                                print(f"    Response (text, truncated): {text[:500]}...")
+                                            else:
+                                                print(f"    Response (text): {text}")
+                            else:
+                                print(f"    Response: {result}")
                             
                             # Extract facts from the tool result
                             extracted_facts = self._extract_facts_from_result(
@@ -1921,20 +2116,70 @@ When you have collected enough information to answer "{user_query}", respond wit
             # Auto-register based on server and data type
             registered = False
             
+            # Debug logging
+            print(f"  DEBUG Auto-register check: server={server_name}, tool={tool_name}, has_data={result_data is not None}")
+            if result_data and isinstance(result_data, dict):
+                print(f"  DEBUG Result keys: {list(result_data.keys())[:5]}")
+            
             # Solar facilities
-            if server_name == "solar" and "facilities" in result_data:
-                facilities = result_data["facilities"]
-                if facilities and isinstance(facilities, list):
+            if server_name == "solar":
+                # If result references a GeoJSON file, parse it and register points (prefer this path)
+                if "geojson_url" in result_data:
                     try:
-                        await self.client.call_tool(
-                            "RegisterEntities",
-                            {"entity_type": "solar_facility", "entities": facilities},
-                            "geospatial"
-                        )
-                        print(f"  Auto-registered {len(facilities)} solar facilities with geospatial server")
-                        registered = True
+                        from pathlib import Path
+                        project_root = Path(__file__).resolve().parent.parent
+                        # geojson_url like /static/maps/<filename>
+                        url_path = result_data.get("geojson_url", "")
+                        filename = url_path.split("/")[-1]
+                        geojson_path = project_root / "static" / "maps" / filename
+                        if geojson_path.exists():
+                            import json as _json
+                            with open(geojson_path, "r", encoding="utf-8") as f:
+                                gj = _json.load(f)
+                            entities = []
+                            for feat in gj.get("features", []):
+                                try:
+                                    geom = feat.get("geometry", {})
+                                    if geom.get("type") == "Point":
+                                        coords = geom.get("coordinates", [])
+                                        if len(coords) == 2:
+                                            props = feat.get("properties", {})
+                                            entities.append({
+                                                "id": props.get("cluster_id") or props.get("id") or props.get("name"),
+                                                "latitude": float(coords[1]),
+                                                "longitude": float(coords[0]),
+                                                "country": props.get("country"),
+                                                "capacity_mw": props.get("capacity_mw"),
+                                                "cluster_id": props.get("cluster_id")
+                                            })
+                                except Exception as e:
+                                    print(f"  Skipped invalid feature during GeoJSON registration: {e}")
+                            if entities:
+                                await self.client.call_tool(
+                                    "RegisterEntities",
+                                    {"entity_type": "solar_facility", "entities": entities, "session_id": self.spatial_session_id},
+                                    "geospatial"
+                                )
+                                print(f"  Auto-registered {len(entities)} solar facilities from GeoJSON with geospatial server")
+                                registered = True
+                        else:
+                            print(f"  GeoJSON path not found for registration: {geojson_path}")
                     except Exception as e:
-                        print(f"  Failed to register solar facilities: {e}")
+                        print(f"  Failed GeoJSON-based solar registration: {e}")
+                # Fallback to registering provided facilities/sample facilities
+                elif ("facilities" in result_data) or ("sample_facilities" in result_data):
+                    facilities = result_data.get("facilities") or result_data.get("sample_facilities", [])
+                    if facilities and isinstance(facilities, list):
+                        try:
+                            await self.client.call_tool(
+                                "RegisterEntities",
+                                {"entity_type": "solar_facility", "entities": facilities, "session_id": self.spatial_session_id},
+                                "geospatial"
+                            )
+                            print(f"  Auto-registered {len(facilities)} solar facilities with geospatial server")
+                            registered = True
+                        except Exception as e:
+                            print(f"  Failed to register solar facilities: {e}")
             
             # Deforestation areas
             elif server_name == "deforestation" and "deforestation_areas" in result_data:
@@ -1943,7 +2188,7 @@ When you have collected enough information to answer "{user_query}", respond wit
                     try:
                         await self.client.call_tool(
                             "RegisterEntities",
-                            {"entity_type": "deforestation_area", "entities": areas},
+                            {"entity_type": "deforestation_area", "entities": areas, "session_id": self.spatial_session_id},
                             "geospatial"
                         )
                         print(f"  Auto-registered {len(areas)} deforestation areas with geospatial server")
@@ -2019,6 +2264,28 @@ When you have collected enough information to answer "{user_query}", respond wit
         Returns:
             Tuple of (should_continue: bool, reasoning: str, servers_to_deep_dive: List[str])
         """
+        # Detect if this is a spatial correlation query
+        is_spatial_query = any(keyword in user_query.lower() for keyword in [
+            "within", "inside", "intersect", "overlap", "near", "close to", 
+            "proximity", "adjacent", "located in", "in deforestation",
+            "in water stress", "assets within", "assets in"
+        ])
+        
+        # Check if geospatial server has registered entities
+        geospatial_has_entities = False
+        if 'geospatial' in collection_results:
+            geospatial_result = collection_results['geospatial']
+            if geospatial_result.facts:
+                # Check if any facts mention registered entities
+                for fact in geospatial_result.facts:
+                    if 'registered' in fact.text_content.lower():
+                        geospatial_has_entities = True
+                        break
+        
+        # If spatial query and geospatial has entities, MUST do Phase 2 for correlation
+        if is_spatial_query and geospatial_has_entities:
+            return True, "Spatial correlation query detected with registered entities - Phase 2 needed for FindSpatialCorrelations", ["geospatial"]
+        
         # Gather all facts from Phase 1
         all_facts = []
         servers_with_facts = []
@@ -2223,6 +2490,87 @@ Respond with JSON:
         max_iterations = 10
         iteration = 0
         phase2_facts = []  # New facts from Phase 2
+
+        # Deterministic spatial correlation if applicable
+        try:
+            is_spatial_query = any(keyword in user_query.lower() for keyword in [
+                "within", "inside", "intersect", "overlap", "near", "close to",
+                "proximity", "adjacent", "located in", "in deforestation",
+                "assets within", "assets in"
+            ])
+            if is_spatial_query and self.client.sessions.get("geospatial"):
+                # Perform point-in-polygon correlation between solar facilities and deforestation areas
+                corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "method": "within", "session_id": self.spatial_session_id}
+                print(f"Phase 2 - geospatial: Deterministic FindSpatialCorrelations {corr_args}")
+                corr_result = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                # Package as fact for synthesis
+                corr_data = {}
+                if hasattr(corr_result, 'content') and corr_result.content:
+                    try:
+                        corr_data = json.loads(corr_result.content[0].text)
+                    except Exception:
+                        corr_data = {"text": str(corr_result)}
+                phase2_facts.append(
+                    Fact(
+                        text_content=f"Spatial correlation (within): total_correlations={corr_data.get('total_correlations', 'unknown')}",
+                        source_key="geospatial_within_solar_deforestation",
+                        server_origin="geospatial",
+                        metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
+                        citation=Citation(
+                            source_name="GEOSPATIAL",
+                            tool_id="FindSpatialCorrelations",
+                            server_origin="geospatial",
+                            source_type="Database",
+                            description="Point-in-polygon correlation between solar facilities and deforestation areas"
+                        )
+                    )
+                )
+                # Optionally generate a correlation map for visualization
+                try:
+                    map_res = await self.client.call_tool("GenerateCorrelationMap", {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id}, "geospatial")
+                    map_data = {}
+                    if hasattr(map_res, 'content') and map_res.content:
+                        try:
+                            map_data = json.loads(map_res.content[0].text)
+                        except Exception:
+                            map_data = {"text": str(map_res)}
+                    phase2_facts.append(
+                        Fact(
+                            text_content="Correlation map generated",
+                            source_key="geospatial_correlation_map",
+                            server_origin="geospatial",
+                            metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
+                            citation=Citation(
+                                source_name="GEOSPATIAL",
+                                tool_id="GenerateCorrelationMap",
+                                server_origin="geospatial",
+                                source_type="Database",
+                                description="Visualization of spatial correlation"
+                            )
+                        )
+                    )
+                except Exception as e:
+                    print(f"Phase 2 - geospatial map generation skipped: {e}")
+                # Skip expensive generic Phase 2 when we have the correlation answer
+                phase2_results = {}
+                for server_name, original_result in scout_results.items():
+                    server_phase2_facts = [
+                        fact for fact in phase2_facts 
+                        if fact.server_origin == server_name
+                    ]
+                    if server_phase2_facts:
+                        all_server_facts = list(original_result.facts) + server_phase2_facts
+                        phase2_results[server_name] = PhaseResult(
+                            is_relevant=original_result.is_relevant,
+                            facts=all_server_facts,
+                            reasoning=f"{original_result.reasoning} + Spatial correlation computed",
+                            continue_processing=False
+                        )
+                    else:
+                        phase2_results[server_name] = original_result
+                return phase2_results
+        except Exception as e:
+            print(f"Phase 2 deterministic correlation error: {e}")
         
         while iteration < max_iterations:
             iteration += 1
@@ -2529,6 +2877,23 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                             if raw_result.get("type") == "table":
                                 print(f"DEBUG: Found table from viz server in fact {i}")
                                 viz_table_modules.append(raw_result)
+
+                # Generic map capture from any server (e.g., geospatial correlation maps)
+                if result.facts:
+                    for i, fact in enumerate(result.facts):
+                        raw_result = fact.metadata.get("raw_result", {})
+                        if isinstance(raw_result, dict) and "geojson_url" in raw_result:
+                            desc = raw_result.get("summary", {}).get("description") or "Map"
+                            map_data = {
+                                "type": "map_data_summary",
+                                "summary": {
+                                    "description": desc
+                                },
+                                "geojson_url": raw_result["geojson_url"],
+                                "geojson_filename": raw_result.get("geojson_filename")
+                            }
+                            print(f"DEBUG: Captured generic map from {server_name} fact {i}: {map_data['geojson_url']}")
+                            map_data_list.append(map_data)
         
         if not all_facts:
             return [{
@@ -3793,7 +4158,7 @@ class ArtifactManager:
 # PHASE 4: MAIN API INTERFACE
 # =============================================================================
 
-async def process_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict:
+async def process_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None, correlation_session_id: Optional[str] = None) -> Dict:
     """
     Main entry point for processing chat queries synchronously.
     
@@ -3812,7 +4177,7 @@ async def process_chat_query(user_query: str, conversation_history: Optional[Lis
         client = await get_global_client()
         
         # Create orchestrator for this query
-        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history)
+        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history, spatial_session_id=correlation_session_id)
         
         # Process through 3-phase architecture
         response = await orchestrator.process_query(user_query)
@@ -3824,7 +4189,7 @@ async def process_chat_query(user_query: str, conversation_history: Optional[Lis
         return f"Error processing query: {str(e)}"
 
 
-async def stream_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None):
+async def stream_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None, correlation_session_id: Optional[str] = None):
     """
     Streaming version of chat query processing with thinking objects.
     
@@ -3855,7 +4220,7 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
         print("DEBUG: Got global client")
         
         # Create orchestrator for this query with conversation history
-        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history)
+        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history, spatial_session_id=correlation_session_id)
         print("DEBUG: Created orchestrator")
         
         # Check if query is off-topic

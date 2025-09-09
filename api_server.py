@@ -26,7 +26,6 @@ from pathlib import Path
 sys.path.append('mcp')
 # from mcp_chat import run_query_structured, run_query, run_query_streaming, get_global_client, cleanup_global_client
 from mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client
-from streaming_fix import fixed_stream_chat_query
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
@@ -459,7 +458,7 @@ async def process_query(request: QueryRequest):
         os.chdir(script_dir)
         
         # Pass conversation context to process_chat_query
-        full_result = await process_chat_query(request.query, conversation_history=context)
+        full_result = await process_chat_query(request.query, conversation_history=context, correlation_session_id=session_id)
         
         # Check if this is an off-topic redirect response
         if isinstance(full_result, dict) and full_result.get("metadata", {}).get("query_type") == "off_topic_redirect":
@@ -902,8 +901,8 @@ async def stream_query(request: StreamQueryRequest):
             # Track response content for session history
             response_modules = []
             
-            # Use fixed streaming that properly sends content
-            async for event in fixed_stream_chat_query(request.query, conversation_history=context):
+            # Use streaming that properly sends content
+            async for event in stream_chat_query(request.query, conversation_history=context, correlation_session_id=session_id):
                 # Capture complete event for history
                 if event.get("type") == "complete":
                     response_data = event.get("data", {})
