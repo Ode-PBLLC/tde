@@ -164,6 +164,24 @@ def RegisterEntities(entity_type: str, entities: List[Dict], session_id: str = "
             # Store entity with metadata
             properties_dict = {k: v for k, v in entity.items() 
                              if k not in ['geometry', 'latitude', 'longitude', 'id']}
+            # Normalize known fields for solar facilities at registration time
+            if entity_type == 'solar_facility':
+                # Ensure capacity_mw is numeric to avoid frontend style crashes
+                raw_cap = properties_dict.get('capacity_mw')
+                try:
+                    if raw_cap is None or (isinstance(raw_cap, str) and raw_cap.strip() == ""):
+                        properties_dict['capacity_mw'] = 0.0
+                    else:
+                        cap_num = float(raw_cap)
+                        if cap_num != cap_num or cap_num is None:  # NaN
+                            properties_dict['capacity_mw'] = 0.0
+                        else:
+                            properties_dict['capacity_mw'] = cap_num
+                except Exception:
+                    properties_dict['capacity_mw'] = 0.0
+                # Preserve original country separately if needed later for popups
+                if 'country' in properties_dict:
+                    properties_dict['facility_country'] = properties_dict.get('country')
             
             new_entities.append({
                 'entity_id': entity_id,
@@ -672,6 +690,36 @@ def GenerateCorrelationMap(
                     }
                     features.append(highlight_feature)
     
+    # Final pass: ensure robust properties for frontend styling (apply to all features)
+    for f in features:
+        try:
+            geom = f.get('geometry') or {}
+            props = f.get('properties') or {}
+            # capacity_mw must be numeric across all features to satisfy size expressions
+            raw_cap = props.get('capacity_mw')
+            cap_val = 0.0
+            if raw_cap is not None:
+                try:
+                    cap_val = float(raw_cap)
+                    if cap_val != cap_val:  # NaN
+                        cap_val = 0.0
+                except Exception:
+                    cap_val = 0.0
+            props['capacity_mw'] = cap_val
+
+            # For points, set redundant color keys and ensure legend label defaults
+            if isinstance(geom, dict) and geom.get('type') == 'Point':
+                color = props.get('marker-color') or props.get('marker_color') or props.get('color') or '#FFD700'
+                props['marker-color'] = color
+                props['marker_color'] = color
+                props['color'] = color
+                if not isinstance(props.get('country'), str) or not props.get('country').strip():
+                    props['country'] = 'Solar Facilities'
+
+            f['properties'] = props
+        except Exception:
+            continue
+
     # Compute bounds from features for better map framing
     min_lat = 90.0
     max_lat = -90.0
@@ -753,7 +801,9 @@ def GenerateCorrelationMap(
     filename = f"correlation_{correlation_type.replace(' ', '_')}_{data_hash}.geojson"
     
     # Save to static/maps/
-    static_maps_dir = os.path.join(
+    # Allow deployment to control static maps directory (must match api_server)
+    env_dir = os.environ.get("STATIC_MAPS_DIR")
+    static_maps_dir = env_dir if env_dir else os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 
         "static", "maps"
     )
@@ -777,21 +827,29 @@ def GenerateCorrelationMap(
     else:
         description = f"Spatial correlation map with {len(last_correlations)} relationships"
     
+    # Build summary for formatter/frontend legend and view state
+    summary = {
+        "description": description,
+        "total_features": len(features),
+        "total_correlations": len(last_correlations),
+        "entity_counts": entity_counts,
+        "layers": [
+            {"type": et, "count": ct, "correlated": sum(1 for c in last_correlations 
+             if c['entity1_type'] == et or c['entity2_type'] == et)}
+            for et, ct in entity_counts.items()
+        ],
+        # Provide legend and view helpers expected by the response formatter
+        "countries": geojson["metadata"].get("countries", []),
+        "bounds": geojson["metadata"].get("bounds"),
+        "center": geojson["metadata"].get("center"),
+        "title": "Spatial Map"
+    }
+
     return {
         "type": "correlation_map_multilayer",
         "geojson_url": f"/static/maps/{filename}",
         "geojson_filename": filename,
-        "summary": {
-            "description": description,
-            "total_features": len(features),
-            "total_correlations": len(last_correlations),
-            "entity_counts": entity_counts,
-            "layers": [
-                {"type": et, "count": ct, "correlated": sum(1 for c in last_correlations 
-                 if c['entity1_type'] == et or c['entity2_type'] == et)}
-                for et, ct in entity_counts.items()
-            ]
-        },
+        "summary": summary,
         "session_id": session_id
     }
 
