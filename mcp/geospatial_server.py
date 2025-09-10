@@ -519,6 +519,27 @@ def GenerateCorrelationMap(
         
         # Style based on entity type and correlation status
         if entity['entity_type'] == 'solar_facility':
+            # Ensure capacity_mw is numeric for frontend sizing expressions
+            raw_cap = properties.get('capacity_mw')
+            cap_num: float
+            cap_missing = False
+            try:
+                if raw_cap is None or (isinstance(raw_cap, str) and raw_cap.strip() == ""):
+                    cap_missing = True
+                    cap_num = 0.0
+                else:
+                    cap_num = float(raw_cap)
+                    # Handle NaN/inf
+                    if cap_num != cap_num or cap_num is None:  # NaN check
+                        cap_missing = True
+                        cap_num = 0.0
+            except Exception:
+                cap_missing = True
+                cap_num = 0.0
+            # Set numeric field used by styles and a human-readable label
+            properties['capacity_mw'] = cap_num
+            properties['capacity_label'] = "missing" if cap_missing else f"{cap_num:g} MW"
+
             # Point markers for solar facilities
             properties['marker-color'] = '#FFD700' if is_correlated else '#FFA500'  # Gold if correlated, orange if not
             properties['marker-size'] = 'medium' if is_correlated else 'small'
@@ -526,9 +547,12 @@ def GenerateCorrelationMap(
             
             # Add descriptive title
             name = properties.get('name', 'Solar Facility')
-            capacity = properties.get('capacity_mw', 'Unknown')
+            # Use the human-readable label; fall back to numeric
+            capacity = properties.get('capacity_label') or (
+                f"{properties.get('capacity_mw', 0)} MW"
+            )
             status = 'IN deforestation' if is_correlated else 'Clear area'
-            properties['title'] = f"{name} ({capacity} MW) - {status}"
+            properties['title'] = f"{name} (capacity: {capacity}) - {status}"
             
         elif entity['entity_type'] == 'deforestation_area':
             # Polygon styling for deforestation
