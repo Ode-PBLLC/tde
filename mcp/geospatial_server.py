@@ -14,6 +14,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 from fastmcp import FastMCP
 import uuid
+from pathlib import Path
 
 # Initialize FastMCP server
 mcp = FastMCP("geospatial-server")
@@ -28,6 +29,30 @@ try:
 except ImportError:
     GEOSPATIAL_AVAILABLE = False
     print("Warning: GeoPandas not available. Install with: pip install geopandas shapely")
+
+# Load style configuration for consistent legend/labels/colors
+STYLE_CONFIG = {
+    "labels": {},
+    "defaults": {
+        "point": {"color": "#4CAF50", "stroke_color": "#FFFFFF", "stroke_width": 1},
+        "polygon": {"fill": "#9E9E9E", "fill_opacity": 0.25, "stroke": "#666666", "stroke_width": 1}
+    }
+}
+
+def _load_style_config():
+    try:
+        base_dir = Path(__file__).resolve().parents[1]
+        cfg_path = base_dir / "config" / "style.json"
+        if cfg_path.exists():
+            with open(cfg_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    STYLE_CONFIG.update(data)
+                    print("[geospatial] Loaded style config")
+    except Exception as e:
+        print(f"[geospatial] Failed to load style config: {e}")
+
+_load_style_config()
 
 # Global static deforestation index (read-only, shared across sessions)
 STATIC_DEFOR = {
@@ -533,9 +558,13 @@ def GenerateCorrelationMap(
         
         # Ensure legend-related properties for points
         if entity['entity_type'] == 'solar_facility':
-            properties['country'] = 'Solar Facilities'
+            label_cfg = (STYLE_CONFIG.get('labels', {}).get('solar_facility') or {})
+            legend_label = label_cfg.get('legend_label', 'Solar Facilities')
+            point_style = label_cfg.get('point', {})
+            properties['country'] = legend_label
+            properties['marker-color'] = properties.get('marker-color') or point_style.get('color') or STYLE_CONFIG['defaults']['point']['color']
             if 'title' not in properties:
-                properties['title'] = 'Solar Facility'
+                properties['title'] = label_cfg.get('popup_title', 'Solar Facility')
         # Create feature
         feature = {
             "type": "Feature",
@@ -557,21 +586,24 @@ def GenerateCorrelationMap(
                     geom_3857 = STATIC_DEFOR['geoms_3857'][ci]
                     # Reproject to EPSG:4326 for GeoJSON
                     g = gpd.GeoSeries([geom_3857], crs='EPSG:3857').to_crs('EPSG:4326').iloc[0]
+                    label_cfg = (STYLE_CONFIG.get('labels', {}).get('deforestation_area') or {})
+                    legend_label = label_cfg.get('legend_label', 'Deforestation')
+                    poly_style = label_cfg.get('polygon', {})
                     feature = {
                         "type": "Feature",
                         "geometry": g.__geo_interface__,
                         "properties": {
                             "layer": "deforestation_area",
-                            "country": "Deforestation",
+                            "country": legend_label,
                             "entity_id": pid,
                             "correlated": True,
-                            "fill": "#8B4513",
-                            "fill-opacity": 0.25,
-                            "stroke": "#654321",
-                            "stroke-width": 1,
+                            "fill": poly_style.get('fill', STYLE_CONFIG['defaults']['polygon']['fill']),
+                            "fill-opacity": poly_style.get('fill_opacity', STYLE_CONFIG['defaults']['polygon']['fill_opacity']),
+                            "stroke": poly_style.get('stroke', STYLE_CONFIG['defaults']['polygon']['stroke']),
+                            "stroke-width": poly_style.get('stroke_width', STYLE_CONFIG['defaults']['polygon']['stroke_width']),
                             "stroke-opacity": 0.8,
-                            "title": "Deforestation",
-                            "name": "Deforestation"
+                            "title": label_cfg.get('popup_title', 'Deforestation'),
+                            "name": label_cfg.get('popup_title', 'Deforestation')
                         }
                     }
                     features.append(feature)

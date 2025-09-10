@@ -1,0 +1,37 @@
+{
+  "labels": {
+    "solar_facility": {
+      "legend_label": "Solar Facilities",
+      "point": {
+        "color": "#FFD700",
+        "stroke_color": "#FFFFFF",
+        "stroke_width": 1
+      },
+      "popup_title": "Solar Facility"
+    },
+    "deforestation_area": {
+      "legend_label": "Deforestation",
+      "polygon": {
+        "fill": "#8B4513",
+        "fill_opacity": 0.25,
+        "stroke": "#654321",
+        "stroke_width": 1
+      },
+      "popup_title": "Deforestation"
+    }
+  },
+  "defaults": {
+    "point": {
+      "color": "#4CAF50",
+      "stroke_color": "#FFFFFF",
+      "stroke_width": 1
+    },
+    "polygon": {
+      "fill": "#9E9E9E",
+      "fill_opacity": 0.25,
+      "stroke": "#666666",
+      "stroke_width": 1
+    }
+  }
+}
+
