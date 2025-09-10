@@ -541,9 +541,20 @@ def GenerateCorrelationMap(
             properties['capacity_label'] = "missing" if cap_missing else f"{cap_num:g} MW"
 
             # Point markers for solar facilities
-            properties['marker-color'] = '#FFD700' if is_correlated else '#FFA500'  # Gold if correlated, orange if not
+            desired_color = '#FFD700' if is_correlated else '#FFA500'  # Gold if correlated, orange if not
+            properties['marker-color'] = desired_color
+            properties['marker_color'] = desired_color
+            properties['color'] = desired_color
             properties['marker-size'] = 'medium' if is_correlated else 'small'
             properties['marker-symbol'] = 'circle'
+
+            # Legend label must use consistent category expected by frontend
+            label_cfg = (STYLE_CONFIG.get('labels', {}).get('solar_facility') or {})
+            legend_label = label_cfg.get('legend_label', 'Solar Facilities')
+            # Preserve original country for popup context
+            original_country = properties.get('country')
+            properties['facility_country'] = original_country
+            properties['country'] = legend_label
             
             # Add descriptive title
             name = properties.get('name', 'Solar Facility')
@@ -552,7 +563,11 @@ def GenerateCorrelationMap(
                 f"{properties.get('capacity_mw', 0)} MW"
             )
             status = 'IN deforestation' if is_correlated else 'Clear area'
-            properties['title'] = f"{name} (capacity: {capacity}) - {status}"
+            # Include original country in title for user clarity
+            if original_country and isinstance(original_country, str):
+                properties['title'] = f"{name} • {original_country} • capacity: {capacity} • {status}"
+            else:
+                properties['title'] = f"{name} • capacity: {capacity} • {status}"
             
         elif entity['entity_type'] == 'deforestation_area':
             # Polygon styling for deforestation
@@ -580,15 +595,9 @@ def GenerateCorrelationMap(
             properties['marker-color'] = '#808080'
             properties['marker-size'] = 'small'
         
-        # Ensure legend-related properties for points without overriding true country
+        # Ensure legend-related properties for points
         if entity['entity_type'] == 'solar_facility':
             label_cfg = (STYLE_CONFIG.get('labels', {}).get('solar_facility') or {})
-            point_style = label_cfg.get('point', {})
-            # Preserve original 'country' (frontend shows this in popups). Do NOT overwrite with legend label.
-            # Provide both marker-color and marker_color for broad frontend compatibility.
-            desired_color = '#FFD700' if is_correlated else (point_style.get('color') or STYLE_CONFIG['defaults']['point']['color'])
-            properties['marker-color'] = properties.get('marker-color') or desired_color
-            properties['marker_color'] = properties.get('marker_color') or properties['marker-color']
             if 'title' not in properties:
                 properties['title'] = label_cfg.get('popup_title', 'Solar Facility')
         # Create feature
@@ -620,7 +629,8 @@ def GenerateCorrelationMap(
                         "geometry": g.__geo_interface__,
                         "properties": {
                             "layer": "deforestation_area",
-                            # Do not set 'country' to avoid popups showing "Country: Deforestation" on the frontend
+                            # Set 'country' to legend label to ensure frontend legend groups correctly
+                            "country": legend_label,
                             "entity_id": pid,
                             "correlated": True,
                             "fill": poly_style.get('fill', STYLE_CONFIG['defaults']['polygon']['fill']),
@@ -732,7 +742,8 @@ def GenerateCorrelationMap(
             },
             "bounds": bounds,
             "center": center,
-            "countries": sorted({str(c).lower() for c in countries})
+            # Keep exact casing for frontend legend matching
+            "countries": sorted({str(c) for c in countries})
         }
     }
     
