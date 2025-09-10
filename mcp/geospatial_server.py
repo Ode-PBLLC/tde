@@ -580,13 +580,15 @@ def GenerateCorrelationMap(
             properties['marker-color'] = '#808080'
             properties['marker-size'] = 'small'
         
-        # Ensure legend-related properties for points
+        # Ensure legend-related properties for points without overriding true country
         if entity['entity_type'] == 'solar_facility':
             label_cfg = (STYLE_CONFIG.get('labels', {}).get('solar_facility') or {})
-            legend_label = label_cfg.get('legend_label', 'Solar Facilities')
             point_style = label_cfg.get('point', {})
-            properties['country'] = legend_label
-            properties['marker-color'] = properties.get('marker-color') or point_style.get('color') or STYLE_CONFIG['defaults']['point']['color']
+            # Preserve original 'country' (frontend shows this in popups). Do NOT overwrite with legend label.
+            # Provide both marker-color and marker_color for broad frontend compatibility.
+            desired_color = '#FFD700' if is_correlated else (point_style.get('color') or STYLE_CONFIG['defaults']['point']['color'])
+            properties['marker-color'] = properties.get('marker-color') or desired_color
+            properties['marker_color'] = properties.get('marker_color') or properties['marker-color']
             if 'title' not in properties:
                 properties['title'] = label_cfg.get('popup_title', 'Solar Facility')
         # Create feature
@@ -618,7 +620,7 @@ def GenerateCorrelationMap(
                         "geometry": g.__geo_interface__,
                         "properties": {
                             "layer": "deforestation_area",
-                            "country": legend_label,
+                            # Do not set 'country' to avoid popups showing "Country: Deforestation" on the frontend
                             "entity_id": pid,
                             "correlated": True,
                             "fill": poly_style.get('fill', STYLE_CONFIG['defaults']['polygon']['fill']),
