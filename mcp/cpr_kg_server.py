@@ -14,6 +14,10 @@ import os
 import re
 import unicodedata
 
+# Get absolute paths first (needed for .env resolution below)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+
 # Force-load .env from project root so MCP child sees keys
 try:
     _dotenv_path = os.path.join(project_root, ".env")
@@ -23,10 +27,6 @@ try:
         load_dotenv()
 except Exception as e:
     print(f"[CPR_KG] Warning: load_dotenv failed: {e}")
-
-# Get absolute paths
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(script_dir)
 
 mcp = FastMCP("climate-policy-radar-kg-server")
 concepts = pd.read_csv(os.path.join(project_root, "extras", "concepts.csv"))  # TODO: Turn the Embeddings into a list here instead of in the tool call
@@ -276,8 +276,7 @@ def GetSemanticallySimilarConcepts(concept: str) -> List[str]:
             f"{concept} Regulations"
         ]
 
-@mcp.tool()
-def SearchConceptsByText(query: str, top_k: int = 10) -> List[dict]:
+def _search_concepts_by_text_impl(query: str, top_k: int = 10) -> List[dict]:
     """Case-insensitive substring search over preferred and alternative labels.
 
     Returns a list of {label, wikibase_id} up to top_k.
@@ -310,6 +309,14 @@ def SearchConceptsByText(query: str, top_k: int = 10) -> List[dict]:
     return results
 
 @mcp.tool()
+def SearchConceptsByText(query: str, top_k: int = 10) -> List[dict]:
+    """Case-insensitive substring search over preferred and alternative labels.
+
+    Returns a list of {label, wikibase_id} up to top_k.
+    """
+    return _search_concepts_by_text_impl(query, top_k)
+
+@mcp.tool()
 def GetTopConceptsByQuery(query: str, top_k: int = 5) -> List[dict]:
     """Return top_k concepts most similar to the query using embeddings.
 
@@ -335,8 +342,8 @@ def GetTopConceptsByQuery(query: str, top_k: int = 5) -> List[dict]:
         return out
     except Exception as e:
         print(f"GetTopConceptsByQuery fallback due to error: {e}")
-        # Fallback to simple text search
-        rough = SearchConceptsByText(query, top_k=top_k)
+        # Fallback to simple text search (call internal impl, not MCP tool wrapper)
+        rough = _search_concepts_by_text_impl(query, top_k=top_k)
         # Attach dummy score
         for r in rough:
             r["score"] = 0.0
@@ -506,13 +513,8 @@ def GetAlternativeLabels(concept: str) -> List[str]:
 @mcp.tool()
 def GetDescription(concept: str) -> str:
     """Get description of given concept."""
-    filtered_concepts = concepts[concepts["preferred_label"] == concept]
-    if not filtered_concepts.empty:
-        description = filtered_concepts["description"].iloc[0]
-        # Ensure description is a string, not NaN or other types
-        if pd.notna(description):
-            return str(description)
-    return "" # Return empty string if concept or description not found
+    # Ensure description is a string, not NaN or other types
+    return _get_description_impl(concept)
 
 
 ### GRAPH TOOLS
@@ -728,13 +730,12 @@ def _first_edge_attrs(G: nx.MultiDiGraph, u, v) -> dict | None:
     return None
 
 
-@mcp.tool()
-def FindConceptPathWithEdges(
+def _find_concept_path_with_edges_impl(
     source_concept: str,
     target_concept: str,
     max_len: int = 4,
 ) -> List[List[dict]]:
-    """Find all shortest paths between concepts with edge types."""
+    """Implementation for finding all shortest paths with edge types."""
     s_id, t_id = _concept_id(source_concept), _concept_id(target_concept)
     if not s_id or not t_id:
         return []
@@ -766,13 +767,30 @@ def FindConceptPathWithEdges(
         return []
 
 @mcp.tool()
+def FindConceptPathWithEdges(
+    source_concept: str,
+    target_concept: str,
+    max_len: int = 4,
+) -> List[List[dict]]:
+    """Find all shortest paths between concepts with edge types."""
+    return _find_concept_path_with_edges_impl(source_concept, target_concept, max_len)
+
+def _get_description_impl(concept: str) -> str:
+    filtered_concepts = concepts[concepts["preferred_label"] == concept]
+    if not filtered_concepts.empty:
+        description = filtered_concepts["description"].iloc[0]
+        if pd.notna(description):
+            return str(description)
+    return ""
+
+@mcp.tool()
 def ExplainConceptRelationship(
     source_concept: str,
     target_concept: str,
     max_len: int = 4,
 ) -> str:
     """Explain relationship between two concepts."""
-    paths = FindConceptPathWithEdges(source_concept, target_concept, max_len)
+    paths = _find_concept_path_with_edges_impl(source_concept, target_concept, max_len)
     if not paths:
         return (
             f"No path of ≤ {max_len} hops was found between "
@@ -782,8 +800,8 @@ def ExplainConceptRelationship(
     segs = []
     first_path = paths[0]
     for hop in first_path:
-        src_desc = GetDescription(hop["source"]) or hop["source"]
-        tgt_desc = GetDescription(hop["target"]) or hop["target"]
+        src_desc = _get_description_impl(hop["source"]) or hop["source"]
+        tgt_desc = _get_description_impl(hop["target"]) or hop["target"]
         segs.append(
             f"{hop['source']} ({src_desc}) **{hop['edge_type']}** "
             f"{hop['target']} ({tgt_desc})"
