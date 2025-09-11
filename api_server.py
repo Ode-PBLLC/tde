@@ -506,8 +506,7 @@ async def process_query(request: QueryRequest):
         else:
             thinking_process = None
         
-        # Fetch KG data (concepts and relationships)
-        kg_data = await _fetch_kg_data(request.query)
+        # (Removed) Early KG data fetch was unused and redundant
         
         # Initialize KG variables
         kg_embed_path = None
@@ -524,12 +523,28 @@ async def process_query(request: QueryRequest):
             else:
                 print(f"⚠️  No citation registry in full_result. Keys: {list(full_result.keys())}")
             
+            # Extract KG context from full result
+            kg_context = None
+            if "kg_context" in full_result:
+                kg_context = full_result["kg_context"]
+                print(f"🌐 KG context found with {len(kg_context.get('nodes', []))} nodes and {len(kg_context.get('edges', []))} edges")
+            else:
+                print(f"⚠️  No kg_context in full_result. Using fallback method.")
+            
             print(f"🔧 Starting KG embed generation for query: {request.query}")
+            
+            # Prepare MCP response data with KG context
+            mcp_response = structured_response
+            if kg_context:
+                mcp_response = {
+                    **structured_response,
+                    "kg_context": kg_context
+                }
             
             # Generate enhanced KG embed with MCP response and citation data
             kg_embed_result = await kg_generator.generate_embed(
                 request.query, 
-                structured_response,  # Pass the structured response as MCP data
+                mcp_response,  # Pass the structured response with kg_context
                 citation_registry
             )
             

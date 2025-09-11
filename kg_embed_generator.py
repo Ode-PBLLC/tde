@@ -194,7 +194,30 @@ class KGEmbedGenerator:
     async def fetch_kg_data(self, query: str, mcp_response: Optional[Dict[str, Any]] = None, citation_registry: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Fetch KG data from the KG visualization server, optionally enhanced with MCP response data."""
         
-        # Try enhanced endpoint first if MCP response data is available
+        # Check if MCP response contains kg_context (pre-built context from conversation)
+        if mcp_response and "kg_context" in mcp_response:
+            kg_context = mcp_response["kg_context"]
+            print(f"🎯 Using pre-built KG context with {len(kg_context.get('nodes', []))} nodes and {len(kg_context.get('edges', []))} edges")
+            
+            # Format the kg_context for D3.js visualization
+            # Convert edges to links format expected by D3
+            links = []
+            for edge in kg_context.get("edges", []):
+                links.append({
+                    "source": edge["source"],
+                    "target": edge["target"],
+                    "type": edge.get("type", "RELATED_TO")
+                })
+            
+            return {
+                "nodes": kg_context.get("nodes", []),
+                "links": links,
+                "edges": kg_context.get("edges", []),  # Keep original edges too
+                "concepts": [],  # Not needed when using kg_context
+                "relationships": []  # Not needed when using kg_context
+            }
+        
+        # Try enhanced endpoint first if MCP response data is available (but no kg_context)
         if mcp_response:
             endpoint = f"{self.kg_server_url}/api/kg/query-subgraph-with-mcp"
             payload = {

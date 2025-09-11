@@ -15,7 +15,7 @@ Author: Implementation guided by new_mcp_chat_ideas.md
 import asyncio
 import os
 import json
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Dict, List, Any, Optional, Union, Tuple, Set
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from enum import Enum
@@ -601,6 +601,155 @@ class CitationRegistry:
 
 
 # =============================================================================
+# KG CONTEXT TRACKING FOR VISUALIZATION
+# =============================================================================
+
+class KGContextTracker:
+    """
+    Tracks Knowledge Graph context during query processing.
+    
+    Collects information about concepts, passages, and their relationships
+    that were actually used during the conversation. This data is used to
+    generate accurate KG visualizations that reflect the actual knowledge
+    path taken to answer the query.
+    """
+    
+    def __init__(self):
+        # Concept tracking
+        self.seed_concepts = []  # Primary concepts from query
+        self.neighbor_concepts = {}  # concept -> {"type": "parent"|"child"|"related", "via": seed_concept}
+        self.concept_wikibase_ids = {}  # concept_label -> wikibase_id
+        
+        # Passage tracking
+        self.concept_passages = {}  # concept -> list of passage data dicts
+        self.all_passages = {}  # passage_id -> passage data dict
+        
+        # Edge tracking
+        self.concept_edges = []  # List of (source_concept, target_concept, edge_type)
+        
+    def add_seed_concept(self, concept_label: str):
+        """Add a seed concept (primary concept from query)."""
+        if concept_label and concept_label not in self.seed_concepts:
+            self.seed_concepts.append(concept_label)
+            llm_logger.debug(f"KG_CONTEXT: Added seed concept '{concept_label}'")
+    
+    def add_neighbor_concept(self, concept_label: str, neighbor_type: str, via_concept: str):
+        """Add a neighbor concept discovered through graph traversal."""
+        if concept_label and concept_label not in self.neighbor_concepts:
+            self.neighbor_concepts[concept_label] = {
+                "type": neighbor_type,  # "parent", "child", or "related"
+                "via": via_concept
+            }
+            llm_logger.debug(f"KG_CONTEXT: Added {neighbor_type} concept '{concept_label}' via '{via_concept}'")
+    
+    def add_concept_edge(self, source: str, target: str, edge_type: str):
+        """Add an edge between concepts."""
+        edge = (source, target, edge_type)
+        if edge not in self.concept_edges:
+            self.concept_edges.append(edge)
+            llm_logger.debug(f"KG_CONTEXT: Added edge {source} -{edge_type}-> {target}")
+    
+    def add_passages_for_concept(self, concept: str, passages: List[Dict]):
+        """Add passages retrieved for a concept."""
+        if concept not in self.concept_passages:
+            self.concept_passages[concept] = []
+        
+        for passage in passages:
+            if isinstance(passage, dict) and "passage_id" in passage:
+                # Store in concept mapping
+                self.concept_passages[concept].append(passage)
+                # Store in global passage dict
+                pid = str(passage["passage_id"])
+                self.all_passages[pid] = passage
+                llm_logger.debug(f"KG_CONTEXT: Added passage {pid} for concept '{concept}'")
+    
+    def set_concept_wikibase_id(self, concept_label: str, wikibase_id: str):
+        """Set the wikibase ID for a concept."""
+        if concept_label and wikibase_id:
+            self.concept_wikibase_ids[concept_label] = wikibase_id
+            llm_logger.debug(f"KG_CONTEXT: Set wikibase_id {wikibase_id} for '{concept_label}'")
+    
+    def build_kg_context(self, cited_passage_ids: Set[str] = None) -> Dict[str, Any]:
+        """
+        Build the final kg_context structure for visualization.
+        
+        Args:
+            cited_passage_ids: Set of passage IDs that were actually cited in the response
+            
+        Returns:
+            Dictionary with nodes and edges for KG visualization
+        """
+        cited_passage_ids = cited_passage_ids or set()
+        nodes = []
+        edges = []
+        
+        # Add concept nodes
+        for concept in self.seed_concepts:
+            node = {
+                "id": self.concept_wikibase_ids.get(concept, f"concept_{concept}"),
+                "label": concept,
+                "type": "Concept",
+                "status": "seed",
+                "importance": 1.0
+            }
+            nodes.append(node)
+        
+        # Add neighbor concept nodes
+        for concept, info in self.neighbor_concepts.items():
+            node = {
+                "id": self.concept_wikibase_ids.get(concept, f"concept_{concept}"),
+                "label": concept,
+                "type": "Concept", 
+                "status": info["type"],  # "parent", "child", or "related"
+                "importance": 0.7
+            }
+            nodes.append(node)
+        
+        # Add passage nodes
+        for passage_id, passage_data in self.all_passages.items():
+            # Truncate text for label
+            text = passage_data.get("text", "")[:75] + "..." if len(passage_data.get("text", "")) > 75 else passage_data.get("text", "")
+            
+            node = {
+                "id": f"passage_{passage_id}",
+                "label": text,
+                "type": "Passage",
+                "doc_id": passage_data.get("doc_id"),
+                "cited": str(passage_id) in cited_passage_ids,
+                "importance": 1.0 if str(passage_id) in cited_passage_ids else 0.6,
+                "full_text": passage_data.get("text", "")
+            }
+            nodes.append(node)
+        
+        # Add concept-to-concept edges
+        for source, target, edge_type in self.concept_edges:
+            source_id = self.concept_wikibase_ids.get(source, f"concept_{source}")
+            target_id = self.concept_wikibase_ids.get(target, f"concept_{target}")
+            edges.append({
+                "source": source_id,
+                "target": target_id,
+                "type": edge_type
+            })
+        
+        # Add passage-to-concept edges (MENTIONS)
+        for concept, passages in self.concept_passages.items():
+            concept_id = self.concept_wikibase_ids.get(concept, f"concept_{concept}")
+            for passage in passages:
+                if "passage_id" in passage:
+                    edges.append({
+                        "source": f"passage_{passage['passage_id']}",
+                        "target": concept_id,
+                        "type": "MENTIONS"
+                    })
+        
+        llm_logger.info(f"KG_CONTEXT: Built context with {len(nodes)} nodes and {len(edges)} edges")
+        return {
+            "nodes": nodes,
+            "edges": edges
+        }
+
+
+# =============================================================================
 # PHASE 1: GLOBAL SINGLETON CLIENT (PERFORMANCE OPTIMIZATION)
 # =============================================================================
 
@@ -624,6 +773,7 @@ class MultiServerClient:
         # Use global Anthropic client for all LLM calls
         self.anthropic = ANTHROPIC_CLIENT
         self.citation_registry = CitationRegistry()
+        self.kg_context_tracker = KGContextTracker()  # Track KG context for visualization
         
         # Initialize fact tracer if debugging is enabled
         self.fact_tracer = None
@@ -757,7 +907,14 @@ async def get_global_client() -> MultiServerClient:
                 # Add new geospatial servers
                 await _global_client.connect_to_server("deforestation", os.path.join(mcp_dir, "deforestation_server.py"))
                 await _global_client.connect_to_server("geospatial", os.path.join(mcp_dir, "geospatial_server.py"))
-                print("Global MCP client initialized successfully with geospatial capabilities")
+                await _global_client.connect_to_server("municipalities", os.path.join(mcp_dir, "brazilian_municipalities_server.py"))
+                # Heat stress quintiles
+                try:
+                    await _global_client.connect_to_server("heat", os.path.join(mcp_dir, "heat_stress_server.py"))
+                    print("Connected to heat-stress server")
+                except Exception as e:
+                    print(f"Failed to connect heat-stress server: {e}")
+                print("Global MCP client initialized successfully with geospatial and municipality capabilities")
             except Exception as e:
                 print(f"Error initializing global MCP client: {e}")
                 # Clean up on failure
@@ -1254,6 +1411,13 @@ Instructions:
                 
                 if context_modules:
                     # Successfully answered from context
+                    # Build KG context from cached data
+                    cited_passage_ids = set()
+                    for citation_num, citation in self.client.citation_registry.citation_objects.items():
+                        if "passage_id" in citation.metadata:
+                            cited_passage_ids.add(str(citation.metadata["passage_id"]))
+                    kg_context = self.client.kg_context_tracker.build_kg_context(cited_passage_ids)
+                    
                     return {
                         "query": user_query,
                         "modules": context_modules,
@@ -1263,7 +1427,8 @@ Instructions:
                             "has_charts": any(m.get("type") == "chart" for m in context_modules),
                             "has_tables": any(m.get("type") == "table" for m in context_modules),
                             "used_cached_context": True  # Flag for monitoring
-                        }
+                        },
+                        "kg_context": kg_context
                     }
                 else:
                     print("[WARNING] Context response failed, falling back to full process")
@@ -1292,6 +1457,23 @@ Instructions:
             # Cache facts for potential follow-up queries
             self._cache_facts_from_results(deep_dive_results)
             
+            # Extract cited passage IDs from CitationRegistry
+            cited_passage_ids = set()
+            for citation_num, citation in self.client.citation_registry.citation_objects.items():
+                # Extract passage ID from citation metadata
+                if "passage_id" in citation.metadata:
+                    cited_passage_ids.add(str(citation.metadata["passage_id"]))
+                # Also check tool_id for GetPassagesMentioningConcept:XXX pattern
+                if citation.tool_id and ":" in citation.tool_id:
+                    tool_name, passage_id = citation.tool_id.rsplit(":", 1)
+                    if tool_name in ["GetPassagesMentioningConcept", "PassagesMentioningBothConcepts"]:
+                        cited_passage_ids.add(passage_id)
+            
+            llm_logger.info(f"KG_CONTEXT: Extracted {len(cited_passage_ids)} cited passage IDs")
+            
+            # Build KG context for visualization
+            kg_context = self.client.kg_context_tracker.build_kg_context(cited_passage_ids)
+            
             # Build API response
             return {
                 "query": user_query,
@@ -1302,7 +1484,8 @@ Instructions:
                     "has_charts": any(m.get("type") == "chart" for m in modules),
                     "has_tables": any(m.get("type") == "table" for m in modules),
                     "used_cached_context": False
-                }
+                },
+                "kg_context": kg_context  # Add KG context for visualization
             }
             
         except Exception as e:
@@ -1445,6 +1628,19 @@ Instructions:
                 - Use 'GetDeforestationWithMap' to generate visualization maps
                 - These tools return polygon geometries that auto-register for spatial correlation
                 - The polygon data enables geographic overlap analysis with other datasets"""
+            },
+            "municipalities": {
+                "brief": "Brazilian municipality boundaries and demographic data",
+                "detailed": "Complete administrative boundaries for all 5,570+ Brazilian municipalities with population, area, and spatial queries. Includes state capitals and enables regional analysis.",
+                "routing_prompt": "Include when query mentions Brazilian cities, municipalities, administrative regions, urban areas, population centers, or needs regional aggregation. Essential for 'which municipalities' questions.",
+                "collection_instructions": """Tool usage strategy for Municipalities:
+                - Use 'GetMunicipalitiesByFilter' for demographic/administrative queries
+                - Use 'GetMunicipalityBoundaries' for specific municipality polygons
+                - Use 'GetMunicipalitiesInBounds' for spatial region queries
+                - Use 'FindMunicipalitiesNearPoint' for proximity searches
+                - Use 'GetMunicipalityStatistics' for aggregate analysis
+                - Returns full polygon boundaries that auto-register with geospatial server
+                - Enables questions like 'which municipalities have highest deforestation'"""
             },
             "geospatial": {
                 "brief": "Spatial correlation engine for geographic relationship analysis",
@@ -1849,6 +2045,11 @@ Instructions:
                     # Deterministic traversal & context (no scoring)
                     # 1) Select seed concepts and expand neighbors
                     seeds = merged[:2]  # first two seed concepts
+                    
+                    # Track seed concepts in KG context
+                    for seed in seeds:
+                        self.client.kg_context_tracker.add_seed_concept(seed)
+                    
                     neighbor_labels = []
                     try:
                         for seed in seeds:
@@ -1873,15 +2074,25 @@ Instructions:
                                 # Parents: out edges with SUBCONCEPT_OF
                                 for n in out_list:
                                     if isinstance(n, dict) and n.get('kind') == 'Concept' and n.get('via_edge') == 'SUBCONCEPT_OF':
-                                        parents.append(n.get('label') or n.get('node_id'))
+                                        label = n.get('label') or n.get('node_id')
+                                        parents.append(label)
+                                        # Track edge: seed -> parent (SUBCONCEPT_OF)
+                                        self.client.kg_context_tracker.add_concept_edge(seed, label, "SUBCONCEPT_OF")
                                 # Children: in edges with SUBCONCEPT_OF
                                 for n in in_list:
                                     if isinstance(n, dict) and n.get('kind') == 'Concept' and n.get('via_edge') == 'SUBCONCEPT_OF':
-                                        children.append(n.get('label') or n.get('node_id'))
+                                        label = n.get('label') or n.get('node_id')
+                                        children.append(label)
+                                        # Track edge: child -> seed (SUBCONCEPT_OF)
+                                        self.client.kg_context_tracker.add_concept_edge(label, seed, "SUBCONCEPT_OF")
                                 # Related: any RELATED_TO from either side
                                 for n in out_list + in_list:
                                     if isinstance(n, dict) and n.get('kind') == 'Concept' and n.get('via_edge') == 'RELATED_TO':
-                                        relateds.append(n.get('label') or n.get('node_id'))
+                                        label = n.get('label') or n.get('node_id')
+                                        relateds.append(label)
+                                        # Track edges: bidirectional RELATED_TO
+                                        self.client.kg_context_tracker.add_concept_edge(seed, label, "RELATED_TO")
+                                        self.client.kg_context_tracker.add_concept_edge(label, seed, "RELATED_TO")
                             except Exception as e:
                                 llm_logger.warning(f"KG NEIGHBORS failed for '{seed}': {e}")
 
@@ -1892,9 +2103,16 @@ Instructions:
                             relateds = sorted([r for r in relateds if r])
                             if parents:
                                 neighbor_labels.append(parents[0])
-                            neighbor_labels.extend(children[:2])
+                                # Track as parent neighbor
+                                self.client.kg_context_tracker.add_neighbor_concept(parents[0], "parent", seed)
+                            for child in children[:2]:
+                                neighbor_labels.append(child)
+                                # Track as child neighbor
+                                self.client.kg_context_tracker.add_neighbor_concept(child, "child", seed)
                             if relateds:
                                 neighbor_labels.append(relateds[0])
+                                # Track as related neighbor
+                                self.client.kg_context_tracker.add_neighbor_concept(relateds[0], "related", seed)
                     except Exception as e:
                         llm_logger.warning(f"KG neighbor expansion error: {e}")
 
@@ -1912,12 +2130,14 @@ Instructions:
                         try:
                             pass_res = await self.client.call_tool("GetPassagesMentioningConcept", {"concept": label, "limit": 5}, server_name)
                             facts_here = self._extract_facts_from_result("GetPassagesMentioningConcept", {"concept": label, "limit": 5}, pass_res, server_name)
-                            # Log summary of passages
+                            # Log summary of passages and track in KG context
                             try:
                                 if hasattr(pass_res, 'content') and pass_res.content:
                                     import json as _json
                                     pr = _json.loads(pass_res.content[0].text)
                                     if isinstance(pr, list):
+                                        # Track passages in KG context
+                                        self.client.kg_context_tracker.add_passages_for_concept(label, pr)
                                         sample = pr[0] if pr else {}
                                         doc = sample.get('doc_id'); pid = sample.get('passage_id')
                                         llm_logger.info(f"KG PASSAGES for '{label}': {len(pr)} items; sample doc={doc} pid={pid}")
@@ -1932,6 +2152,15 @@ Instructions:
                         try:
                             pass_res = await self.client.call_tool("GetPassagesMentioningConcept", {"concept": label, "limit": 1}, server_name)
                             facts_here = self._extract_facts_from_result("GetPassagesMentioningConcept", {"concept": label, "limit": 1}, pass_res, server_name)
+                            # Track neighbor passages in KG context
+                            try:
+                                if hasattr(pass_res, 'content') and pass_res.content:
+                                    import json as _json
+                                    pr = _json.loads(pass_res.content[0].text)
+                                    if isinstance(pr, list):
+                                        self.client.kg_context_tracker.add_passages_for_concept(label, pr)
+                            except Exception:
+                                pass
                             collected_facts.extend(facts_here)
                         except Exception as e:
                             llm_logger.warning(f"KG neighbor passage fetch failed for '{label}': {e}")
@@ -1946,6 +2175,17 @@ Instructions:
                                 server_name
                             )
                             both_facts = self._extract_facts_from_result("PassagesMentioningBothConcepts", {"concept_a": "indigenous people", "concept_b": "terrestrial risk", "limit": 5}, both_res, server_name)
+                            # Track co-mention passages for both concepts
+                            try:
+                                if hasattr(both_res, 'content') and both_res.content:
+                                    import json as _json
+                                    pr = _json.loads(both_res.content[0].text)
+                                    if isinstance(pr, list):
+                                        # Add to both concepts since they're co-mentioned
+                                        self.client.kg_context_tracker.add_passages_for_concept("indigenous people", pr)
+                                        self.client.kg_context_tracker.add_passages_for_concept("terrestrial risk", pr)
+                            except Exception:
+                                pass
                             llm_logger.info(f"KG BOOTSTRAP co-mentions added: {len(both_facts)}")
                             collected_facts.extend(both_facts)
                     except Exception as e:
@@ -2111,6 +2351,28 @@ When you have collected enough information to answer "{user_query}", respond wit
                                     print(f"  Registered {len(entities)} solar facilities to session {self.spatial_session_id}")
                         except Exception as e:
                             print(f"  Direct registration from facilities failed: {e}")
+                        bootstrap_done = True
+                    elif server_name == "heat":
+                        # Register top quintile heat zones deterministically
+                        heat_args = {"quintiles": [5], "limit": 5000}
+                        print(f"  Phase 1 - heat: Bootstrap calling GetHeatQuintilesForGeospatial {heat_args}")
+                        hres = await self.client.call_tool("GetHeatQuintilesForGeospatial", heat_args, "heat")
+                        facts.extend(self._extract_facts_from_result("GetHeatQuintilesForGeospatial", heat_args, hres, "heat"))
+                        # Directly register entities if present
+                        try:
+                            if hasattr(hres, 'content') and hres.content:
+                                import json as _json
+                                data = _json.loads(hres.content[0].text)
+                                entities = data.get('entities', []) if isinstance(data, dict) else []
+                                if entities:
+                                    await self.client.call_tool(
+                                        "RegisterEntities",
+                                        {"entity_type": "heat_zone", "entities": entities, "session_id": self.spatial_session_id},
+                                        "geospatial"
+                                    )
+                                    print(f"  Registered {len(entities)} heat zones to session {self.spatial_session_id}")
+                        except Exception as e:
+                            print(f"  Direct registration from heat zones failed: {e}")
                         bootstrap_done = True
                 except Exception as e:
                     print(f"  Spatial bootstrap error for {server_name}: {e}")
@@ -2627,6 +2889,22 @@ When you have collected enough information to answer "{user_query}", respond wit
             if result_data and isinstance(result_data, dict):
                 print(f"  DEBUG Result keys: {list(result_data.keys())[:5]}")
             
+            # Generic fallback: if result provides standard entity payload, register directly
+            try:
+                if isinstance(result_data.get("entities"), list) and isinstance(result_data.get("entity_type"), str):
+                    entities = result_data.get("entities", [])
+                    etype = result_data.get("entity_type")
+                    if entities:
+                        await self.client.call_tool(
+                            "RegisterEntities",
+                            {"entity_type": etype, "entities": entities, "session_id": self.spatial_session_id},
+                            "geospatial"
+                        )
+                        print(f"  Auto-registered {len(entities)} entities of type '{etype}' with geospatial server (generic path)")
+                        registered = True
+            except Exception as e:
+                print(f"  Generic auto-registration failed: {e}")
+
             # Solar facilities
             if server_name == "solar":
                 # If result references a GeoJSON file, parse it and register points (prefer this path)
@@ -2702,6 +2980,37 @@ When you have collected enough information to answer "{user_query}", respond wit
                     except Exception as e:
                         print(f"  Failed to register deforestation areas: {e}")
             
+            # Brazilian municipalities
+            elif server_name == "municipalities" and "municipalities" in result_data:
+                munis = result_data["municipalities"]
+                if munis and isinstance(munis, list):
+                    try:
+                        await self.client.call_tool(
+                            "RegisterEntities",
+                            {"entity_type": "municipality", "entities": munis, "session_id": self.spatial_session_id},
+                            "geospatial"
+                        )
+                        print(f"  Auto-registered {len(munis)} municipalities with geospatial server")
+                        registered = True
+                    except Exception as e:
+                        print(f"  Failed to register municipalities: {e}")
+            
+            # Heat zones
+            elif server_name == "heat":
+                if result_data.get("entity_type") == "heat_zone" and isinstance(result_data.get("entities"), list):
+                    entities = result_data.get("entities", [])
+                    if entities:
+                        try:
+                            await self.client.call_tool(
+                                "RegisterEntities",
+                                {"entity_type": "heat_zone", "entities": entities, "session_id": self.spatial_session_id},
+                                "geospatial"
+                            )
+                            print(f"  Auto-registered {len(entities)} heat zones with geospatial server")
+                            registered = True
+                        except Exception as e:
+                            print(f"  Failed to register heat zones: {e}")
+
             # GIST assets with coordinates
             elif server_name == "gist" and "assets" in result_data:
                 assets = result_data["assets"]
@@ -3006,22 +3315,66 @@ Respond with JSON:
                 "assets within", "assets in"
             ])
             if is_spatial_query and self.client.sessions.get("geospatial"):
-                # Determine correlation method and parameters from query
-                method = "within"
-                corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
-                import re
-                m = re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
-                if m:
-                    try:
-                        distance_km = float(m.group(1))
-                        method = "proximity"
-                        corr_args.update({"method": method, "distance_km": distance_km})
-                    except Exception:
-                        corr_args.update({"method": method})
-                else:
-                    corr_args.update({"method": method})
-                print(f"Phase 2 - geospatial: Deterministic FindSpatialCorrelations {corr_args}")
-                corr_result = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                # Generalized selection of correlation pair from registered entities
+                try:
+                    reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
+                    reg_data = {}
+                    if hasattr(reg, 'content') and reg.content:
+                        try:
+                            reg_data = json.loads(reg.content[0].text)
+                        except Exception:
+                            reg_data = {}
+                    types = reg_data.get("entity_types", []) or list((reg_data.get("by_type") or {}).keys())
+                    geom_types = reg_data.get("geometry_types", {})
+                    # Classify
+                    point_types = [t for t in types if str(geom_types.get(t, "")).lower().startswith("point")]
+                    poly_types = [t for t in types if t not in point_types]
+                    # Choose preferred polygon type based on query hints
+                    def pick_poly():
+                        if 'deforestation' in ql and 'deforestation_area' in poly_types:
+                            return 'deforestation_area'
+                        if ('heat' in ql or 'temperature' in ql) and 'heat_zone' in poly_types:
+                            return 'heat_zone'
+                        if 'municip' in ql and 'municipality' in poly_types:
+                            return 'municipality'
+                        return poly_types[0] if poly_types else None
+                    # Choose preferred point type
+                    def pick_point():
+                        if 'solar' in ql and 'solar_facility' in point_types:
+                            return 'solar_facility'
+                        return point_types[0] if point_types else None
+                    et1 = pick_point()
+                    et2 = pick_poly()
+                    import re
+                    distance_km = None
+                    m = re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
+                    if m:
+                        try:
+                            distance_km = float(m.group(1))
+                        except Exception:
+                            distance_km = None
+                    if et1 and et2:
+                        method = 'within'
+                        corr_args = {"entity_type1": et1, "entity_type2": et2, "method": method, "session_id": self.spatial_session_id}
+                    elif len(point_types) >= 2:
+                        # Point vs point proximity
+                        et1, et2 = point_types[:2]
+                        method = 'proximity'
+                        corr_args = {"entity_type1": et1, "entity_type2": et2, "method": method, "distance_km": distance_km or 5.0, "session_id": self.spatial_session_id}
+                    elif len(poly_types) >= 2:
+                        # Polygon vs polygon intersects
+                        et1, et2 = poly_types[:2]
+                        method = 'intersects'
+                        corr_args = {"entity_type1": et1, "entity_type2": et2, "method": method, "session_id": self.spatial_session_id}
+                    else:
+                        corr_args = None
+                    if not corr_args:
+                        raise RuntimeError("No suitable entity type pairs for correlation")
+                    print(f"Phase 2 - geospatial: FindSpatialCorrelations {corr_args}")
+                    corr_result = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                except Exception as e:
+                    print(f"Phase 2 - geospatial correlation skipped: {e}")
+                    corr_result = None
                 # Package as fact for synthesis
                 corr_data = {}
                 if hasattr(corr_result, 'content') and corr_result.content:
@@ -3031,8 +3384,8 @@ Respond with JSON:
                         corr_data = {"text": str(corr_result)}
                 phase2_facts.append(
                     Fact(
-                        text_content=f"Spatial correlation (within): total_correlations={corr_data.get('total_correlations', 'unknown')}",
-                        source_key="geospatial_within_solar_deforestation",
+                        text_content=f"Spatial correlation: total_correlations={corr_data.get('total_correlations', 'unknown')}",
+                        source_key="geospatial_correlation_result",
                         server_origin="geospatial",
                         metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
                         citation=Citation(
@@ -3040,7 +3393,7 @@ Respond with JSON:
                             tool_id="FindSpatialCorrelations",
                             server_origin="geospatial",
                             source_type="Database",
-                            description="Point-in-polygon correlation between solar facilities and deforestation areas"
+                            description="Spatial correlation between registered entities"
                         )
                     )
                 )
@@ -3048,7 +3401,7 @@ Respond with JSON:
                 try:
                     map_res = await self.client.call_tool(
                         "GenerateCorrelationMap",
-                        {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                        {"correlation_type": "spatial_correlation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
                         "geospatial"
                     )
                     map_data = {}
