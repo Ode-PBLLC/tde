@@ -91,7 +91,7 @@ if GEOSPATIAL_AVAILABLE:
 def GetDeforestationAreas(
     min_area_hectares: float = 0,
     max_area_hectares: Optional[float] = None,
-    limit: int = 2500
+    limit: int = 0
 ) -> Dict[str, Any]:
     """
     Get deforestation polygons in Brazil matching criteria.
@@ -119,8 +119,10 @@ def GetDeforestationAreas(
     if max_area_hectares is not None:
         filtered = filtered[filtered['area_hectares'] <= max_area_hectares]
     
-    # Sort by area (largest first) and limit
-    filtered = filtered.sort_values('area_hectares', ascending=False).head(limit)
+    # Sort by area (largest first); if limit <= 0 treat as unbounded
+    filtered = filtered.sort_values('area_hectares', ascending=False)
+    if isinstance(limit, int) and limit > 0:
+        filtered = filtered.head(limit)
     
     # Convert to JSON-serializable format
     areas = []

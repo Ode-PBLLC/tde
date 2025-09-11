@@ -184,13 +184,22 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             "deforestation": "#8B4513"      # brown
         }
         
-        legend_items = [
-            {
-                "label": country.title(),
-                "color": country_colors.get(country.lower(), "#9E9E9E")
-            }
-            for country in countries[:10]  # Limit to 10 countries for legend
-        ]
+        # Prefer layer legend for correlation maps
+        legend_items = []
+        if countries:
+            legend_items = [
+                {
+                    "label": country.title(),
+                    "color": country_colors.get(country.lower(), "#9E9E9E")
+                }
+                for country in countries[:10]  # Limit to 10 countries for legend
+            ]
+        # If this appears to be a geospatial correlation map, show layer legend instead
+        if not legend_items and isinstance(geojson_url, str) and "correlation_" in geojson_url:
+            legend_items = [
+                {"label": "Solar Facilities", "color": "#FFD700"},
+                {"label": "Deforestation", "color": "#8B4513"}
+            ]
         
         return {
             "type": "map",
@@ -202,8 +211,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "bounds": bounds
             },
             "legend": {
-            "title": summary.get("title", "Spatial Map"),
-            "items": legend_items
+                "title": summary.get("title", "Spatial Map"),
+                "items": legend_items
             },
             "metadata": {
                 "total_facilities": summary.get("total_facilities", 0),

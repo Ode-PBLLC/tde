@@ -50,6 +50,12 @@ except ImportError:
 # Load environment variables
 load_dotenv()
 
+# Feature flags
+def _geo_llm_only() -> bool:
+    """Return True if geospatial deterministic correlation should be disabled (LLM only)."""
+    val = os.environ.get("TDE_GEO_USE_LLM_ONLY") or os.environ.get("TDE_DISABLE_DETERMINISTIC_GEO")
+    return str(val).lower() in ("1", "true", "yes")
+
 # =============================================================================
 # LOGGING CONFIGURATION FOR LLM CALLS
 # =============================================================================
@@ -364,12 +370,15 @@ async def call_model_with_tools(model: str, system: str, messages: List[Dict[str
                 "tools": tools_log,
             }
         )
+        # Important: Anthropic tool use requires the tools beta header for 2024-10 models
+        # If not set, tool calls may fail in newer SDKs.
         response = ANTHROPIC_CLIENT.messages.create(
             model=model,
             max_tokens=max_tokens,
             system=system,
             messages=messages,
-            tools=tools
+            tools=tools,
+            extra_headers={"anthropic-beta": "tools-2024-10-22"}
         )
         
         # Log response details
@@ -988,6 +997,8 @@ class QueryOrchestrator:
         self.cached_response_text: str = ""  # Cache the last response text
         # Geospatial session ID for isolating registrations per conversation/session
         self.spatial_session_id = spatial_session_id or "_default"
+        # Track if we've already generated a geospatial correlation/map this query
+        self._geo_map_generated: bool = False
     
     def _format_conversation_history(self) -> str:
         """Format conversation history for LLM context."""
@@ -1826,14 +1837,17 @@ Instructions:
             "proximity", "adjacent", "located in", "in deforestation",
             "in water stress", "assets within", "assets in"
         ])
-        if is_spatial_query and self.client.sessions.get("geospatial"):
+        if (not _geo_llm_only()) and is_spatial_query and self.client.sessions.get("geospatial"):
             try:
                 reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
                 reg_data = {}
                 if hasattr(reg, 'content') and reg.content:
                     import json as _json
                     reg_data = _json.loads(reg.content[0].text)
-                if isinstance(reg_data, dict) and reg_data.get("by_type", {}).get("solar_facility", 0) > 0 and reg_data.get("by_type", {}).get("deforestation_area", 0) > 0:
+                # If solar facilities are registered, attempt correlation.
+                # The geospatial server can use a static deforestation index even if
+                # deforestation polygons were not explicitly registered in-session.
+                if isinstance(reg_data, dict) and reg_data.get("by_type", {}).get("solar_facility", 0) > 0:
                     # Compute correlation
                     import re
                     corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
@@ -1859,44 +1873,43 @@ Instructions:
                     map_data = {}
                     if hasattr(map_res, 'content') and map_res.content:
                         map_data = _json.loads(map_res.content[0].text)
-                    # Append as facts to geospatial result
+                    # Append as facts to geospatial result (create if missing)
                     geo_result = results.get("geospatial")
-                    if geo_result:
-                        geo_facts = list(geo_result.facts)
-                        if corr_data:
-                            geo_facts.append(Fact(
-                                text_content=f"Spatial correlation result: total_correlations={corr_data.get('total_correlations', 'unknown')}",
-                                source_key="geospatial_phase1_correlation",
+                    geo_facts = list(geo_result.facts) if geo_result else []
+                    if corr_data:
+                        geo_facts.append(Fact(
+                            text_content=f"Spatial correlation result: total_correlations={corr_data.get('total_correlations', 'unknown')}",
+                            source_key="geospatial_phase1_correlation",
+                            server_origin="geospatial",
+                            metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
+                            citation=Citation(
+                                source_name="GEOSPATIAL",
+                                tool_id="FindSpatialCorrelations",
                                 server_origin="geospatial",
-                                metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
-                                citation=Citation(
-                                    source_name="GEOSPATIAL",
-                                    tool_id="FindSpatialCorrelations",
-                                    server_origin="geospatial",
-                                    source_type="Database",
-                                    description="Deterministic Phase 1 correlation"
-                                )
-                            ))
-                        if map_data:
-                            geo_facts.append(Fact(
-                                text_content="Correlation map generated",
-                                source_key="geospatial_phase1_map",
+                                source_type="Database",
+                                description="Deterministic Phase 1 correlation"
+                            )
+                        ))
+                    if map_data:
+                        geo_facts.append(Fact(
+                            text_content="Correlation map generated",
+                            source_key="geospatial_phase1_map",
+                            server_origin="geospatial",
+                            metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
+                            citation=Citation(
+                                source_name="GEOSPATIAL",
+                                tool_id="GenerateCorrelationMap",
                                 server_origin="geospatial",
-                                metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
-                                citation=Citation(
-                                    source_name="GEOSPATIAL",
-                                    tool_id="GenerateCorrelationMap",
-                                    server_origin="geospatial",
-                                    source_type="Database",
-                                    description="Deterministic Phase 1 correlation map"
-                                )
-                            ))
-                        results["geospatial"] = PhaseResult(
-                            is_relevant=geo_result.is_relevant,
-                            facts=geo_facts,
-                            reasoning=geo_result.reasoning,
-                            continue_processing=False
-                        )
+                                source_type="Database",
+                                description="Deterministic Phase 1 correlation map"
+                            )
+                        ))
+                    results["geospatial"] = PhaseResult(
+                        is_relevant=True if not geo_result else geo_result.is_relevant,
+                        facts=geo_facts,
+                        reasoning=(geo_result.reasoning if geo_result else "Deterministic geospatial correlation added"),
+                        continue_processing=False
+                    )
             except Exception as e:
                 print(f"Post-Phase1 spatial correlation skipped: {e}")
         
@@ -2328,7 +2341,86 @@ When you have collected enough information to answer "{user_query}", respond wit
             if is_spatial_query:
                 try:
                     if server_name == "deforestation":
-                        # Static deforestation polygons are indexed globally; no per-session registration or limiting.
+                        # Deterministically fetch and register deforestation areas so geospatial
+                        # correlation can run even if the static index is unavailable.
+                        # Use unbounded limit (0 = all)
+                        def_args = {"min_area_hectares": 0, "limit": 0}
+                        print(f"  Phase 1 - deforestation: Bootstrap calling GetDeforestationAreas {def_args}")
+                        dres = await self.client.call_tool("GetDeforestationAreas", def_args, "deforestation")
+                        # Directly register entities if present
+                        try:
+                            if hasattr(dres, 'content') and dres.content:
+                                import json as _json
+                                data = _json.loads(dres.content[0].text)
+                                areas = data.get('deforestation_areas', []) if isinstance(data, dict) else []
+                                if areas:
+                                    await self.client.call_tool(
+                                        "RegisterEntities",
+                                        {"entity_type": "deforestation_area", "entities": areas, "session_id": self.spatial_session_id},
+                                        "geospatial"
+                                    )
+                                    print(f"  Registered {len(areas)} deforestation areas to session {self.spatial_session_id}")
+                        except Exception as e:
+                            print(f"  Direct registration from deforestation areas failed: {e}")
+                        # If solar was registered earlier, try deterministic correlation now
+                        try:
+                            reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
+                            reg_data = {}
+                            if hasattr(reg, 'content') and reg.content:
+                                reg_data = _json.loads(reg.content[0].text)
+                            if isinstance(reg_data, dict) and reg_data.get("by_type", {}).get("solar_facility", 0) > 0:
+                                import re as _re
+                                corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
+                                m = _re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
+                                if m:
+                                    try:
+                                        distance_km = float(m.group(1))
+                                        corr_args.update({"method": "proximity", "distance_km": distance_km})
+                                    except Exception:
+                                        corr_args.update({"method": "within"})
+                                else:
+                                    corr_args.update({"method": "within"})
+                                print(f"  Phase 1 - deforestation: Deterministic correlation via geospatial {corr_args}")
+                                corr = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                                if hasattr(corr, 'content') and corr.content:
+                                    corr_data = _json.loads(corr.content[0].text)
+                                    facts.append(Fact(
+                                        text_content=f"Spatial correlation result: total_correlations={corr_data.get('total_correlations', 'unknown')}",
+                                        source_key="geospatial_phase1_correlation",
+                                        server_origin="geospatial",
+                                        metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
+                                        citation=Citation(
+                                            source_name="GEOSPATIAL",
+                                            tool_id="FindSpatialCorrelations",
+                                            server_origin="geospatial",
+                                            source_type="Database",
+                                            description="Deterministic Phase 1 correlation"
+                                        )
+                                    ))
+                                if not self._geo_map_generated:
+                                    map_res = await self.client.call_tool(
+                                        "GenerateCorrelationMap",
+                                        {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                                        "geospatial"
+                                    )
+                                    if hasattr(map_res, 'content') and map_res.content:
+                                        map_data = _json.loads(map_res.content[0].text)
+                                        facts.append(Fact(
+                                            text_content="Correlation map generated",
+                                            source_key="geospatial_phase1_map",
+                                            server_origin="geospatial",
+                                            metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
+                                            citation=Citation(
+                                                source_name="GEOSPATIAL",
+                                                tool_id="GenerateCorrelationMap",
+                                                server_origin="geospatial",
+                                                source_type="Database",
+                                                description="Deterministic Phase 1 correlation map"
+                                            )
+                                        ))
+                                        self._geo_map_generated = True
+                        except Exception as e:
+                            print(f"  Phase 1 - deforestation: Deterministic correlation skipped: {e}")
                         bootstrap_done = True
                     elif server_name == "solar":
                         # Prefer direct entities rather than map artifacts
@@ -2351,6 +2443,62 @@ When you have collected enough information to answer "{user_query}", respond wit
                                     print(f"  Registered {len(entities)} solar facilities to session {self.spatial_session_id}")
                         except Exception as e:
                             print(f"  Direct registration from facilities failed: {e}")
+                        # After registering solar, try deterministic correlation using static deforestation index
+                        try:
+                            import re as _re
+                            corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
+                            m = _re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
+                            if m:
+                                try:
+                                    distance_km = float(m.group(1))
+                                    corr_args.update({"method": "proximity", "distance_km": distance_km})
+                                except Exception:
+                                    corr_args.update({"method": "within"})
+                            else:
+                                corr_args.update({"method": "within"})
+                            print(f"  Phase 1 - solar: Deterministic correlation via geospatial {corr_args}")
+                            corr = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                            if hasattr(corr, 'content') and corr.content:
+                                import json as _json
+                                corr_data = _json.loads(corr.content[0].text)
+                                facts.append(Fact(
+                                    text_content=f"Spatial correlation result: total_correlations={corr_data.get('total_correlations', 'unknown')}",
+                                    source_key="geospatial_phase1_correlation",
+                                    server_origin="geospatial",
+                                    metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
+                                    citation=Citation(
+                                        source_name="GEOSPATIAL",
+                                        tool_id="FindSpatialCorrelations",
+                                        server_origin="geospatial",
+                                        source_type="Database",
+                                        description="Deterministic Phase 1 correlation"
+                                    )
+                                ))
+                            # Generate correlation map once per query
+                            if not self._geo_map_generated:
+                                map_res = await self.client.call_tool(
+                                    "GenerateCorrelationMap",
+                                    {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                                    "geospatial"
+                                )
+                                if hasattr(map_res, 'content') and map_res.content:
+                                    map_data = _json.loads(map_res.content[0].text)
+                                    facts.append(Fact(
+                                        text_content="Correlation map generated",
+                                        source_key="geospatial_phase1_map",
+                                        server_origin="geospatial",
+                                        metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
+                                        citation=Citation(
+                                            source_name="GEOSPATIAL",
+                                            tool_id="GenerateCorrelationMap",
+                                            server_origin="geospatial",
+                                            source_type="Database",
+                                            description="Deterministic Phase 1 correlation map"
+                                        )
+                                    ))
+                                    self._geo_map_generated = True
+                        except Exception as e:
+                            print(f"  Phase 1 - solar: Deterministic correlation skipped: {e}")
                         bootstrap_done = True
                     elif server_name == "heat":
                         # Register top quintile heat zones deterministically
@@ -3807,6 +3955,54 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                             }
                             print(f"DEBUG: Captured generic map from {server_name} fact {i}: {map_data['geojson_url']}")
                             map_data_list.append(map_data)
+
+        # Fallback (deterministic): if we have geospatial correlation facts but no map captured yet,
+        # proactively generate a correlation map so the response includes a GeoJSON.
+        try:
+            if (not _geo_llm_only()) and (not map_data_list) and (not self._geo_map_generated):
+                has_geo_corr = any(
+                    (getattr(f, 'server_origin', '') == 'geospatial') and isinstance(f.metadata, dict)
+                    and (
+                        ('raw_result' in f.metadata and isinstance(f.metadata['raw_result'], dict) and f.metadata['raw_result'].get('total_correlations') is not None)
+                        or ('tool' in f.metadata and f.metadata.get('tool') == 'FindSpatialCorrelations')
+                    )
+                    for f in all_facts
+                )
+                if has_geo_corr and self.client.sessions.get("geospatial"):
+                    map_res = await self.client.call_tool(
+                        "GenerateCorrelationMap",
+                        {"correlation_type": "spatial_correlation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                        "geospatial"
+                    )
+                    if hasattr(map_res, 'content') and map_res.content:
+                        import json as _json
+                        try:
+                            mdata = _json.loads(map_res.content[0].text)
+                            if isinstance(mdata, dict) and mdata.get('geojson_url'):
+                                map_data_list.append({
+                                    "type": "map_data_summary",
+                                    "summary": mdata.get("summary", {"description": "Spatial correlation map", "countries": ["brazil"]}),
+                                    "geojson_url": mdata.get("geojson_url"),
+                                    "geojson_filename": mdata.get("geojson_filename")
+                                })
+                                print("DEBUG: Added fallback correlation map from geospatial server in Phase 3")
+                                self._geo_map_generated = True
+                        except Exception as e:
+                            print(f"DEBUG: Failed to parse fallback map data: {e}")
+        except Exception as e:
+            print(f"DEBUG: Phase 3 map fallback skipped: {e}")
+
+        # De-duplicate maps by geojson_url while preserving order
+        if map_data_list:
+            seen_urls = set()
+            deduped = []
+            for md in map_data_list:
+                url = md.get("geojson_url")
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                deduped.append(md)
+            map_data_list = deduped
         
         if not all_facts:
             return [{
