@@ -3046,6 +3046,7 @@ When you have collected enough information to answer "{user_query}", respond wit
             "solar": "Solar Facilities Database",
             "gist": "GIST Impact Database",
             "lse": "LSE Climate Policy Database",
+            "heat": "PlanetSapling Heat Stress (Brazil 2020–2025)",
             "formatter": "Response Formatter"
         }
         return source_names.get(server_name, server_name.upper())
@@ -3057,6 +3058,7 @@ When you have collected enough information to answer "{user_query}", respond wit
             "solar": "Database",
             "gist": "Database",
             "lse": "Database",
+            "heat": "Dataset",
             "formatter": "Tool"
         }
         return source_types.get(server_name, "Database")
@@ -3315,7 +3317,7 @@ Respond with JSON:
                 "assets within", "assets in"
             ])
             if is_spatial_query and self.client.sessions.get("geospatial"):
-                # Generalized selection of correlation pair from registered entities
+                # Prefer legacy solar↔deforestation correlation when both are registered
                 try:
                     reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
                     reg_data = {}
@@ -3324,7 +3326,24 @@ Respond with JSON:
                             reg_data = json.loads(reg.content[0].text)
                         except Exception:
                             reg_data = {}
-                    types = reg_data.get("entity_types", []) or list((reg_data.get("by_type") or {}).keys())
+                    by_type = reg_data.get("by_type", {}) if isinstance(reg_data, dict) else {}
+                    if by_type.get("solar_facility", 0) and by_type.get("deforestation_area", 0):
+                        import re
+                        m = re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
+                        corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
+                        if m:
+                            try:
+                                distance_km = float(m.group(1))
+                                corr_args.update({"method": "proximity", "distance_km": distance_km})
+                            except Exception:
+                                corr_args.update({"method": "within"})
+                        else:
+                            corr_args.update({"method": "within"})
+                        print(f"Phase 2 - geospatial: FindSpatialCorrelations {corr_args}")
+                        corr_result = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                    else:
+                        # Generalized selection of correlation pair from registered entities
+                        types = reg_data.get("entity_types", []) or list((reg_data.get("by_type") or {}).keys())
                     geom_types = reg_data.get("geometry_types", {})
                     # Classify
                     point_types = [t for t in types if str(geom_types.get(t, "")).lower().startswith("point")]
@@ -3370,8 +3389,10 @@ Respond with JSON:
                         corr_args = None
                     if not corr_args:
                         raise RuntimeError("No suitable entity type pairs for correlation")
-                    print(f"Phase 2 - geospatial: FindSpatialCorrelations {corr_args}")
-                    corr_result = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
+                    # If we didn't already run the legacy pair above
+                    if 'corr_result' not in locals():
+                        print(f"Phase 2 - geospatial: FindSpatialCorrelations {corr_args}")
+                        corr_result = await self.client.call_tool("FindSpatialCorrelations", corr_args, "geospatial")
                 except Exception as e:
                     print(f"Phase 2 - geospatial correlation skipped: {e}")
                     corr_result = None
@@ -3399,9 +3420,11 @@ Respond with JSON:
                 )
                 # Generate a correlation map for visualization
                 try:
+                    # Use legacy correlation_type when solar↔deforestation is present
+                    corr_type = "solar_in_deforestation" if by_type.get("solar_facility", 0) and by_type.get("deforestation_area", 0) else "spatial_correlation"
                     map_res = await self.client.call_tool(
                         "GenerateCorrelationMap",
-                        {"correlation_type": "spatial_correlation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                        {"correlation_type": corr_type, "session_id": self.spatial_session_id, "show_uncorrelated": False},
                         "geospatial"
                     )
                     map_data = {}
