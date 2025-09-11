@@ -272,6 +272,8 @@ async def get_geojson(filename: str):
 # Mount static files for serving images, GeoJSON, and other static content
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Note: Avoid adding new middleware to keep dependencies unchanged
+
 # Enable CORS for front-end access
 app.add_middleware(
     CORSMiddleware,
@@ -291,6 +293,44 @@ class StreamQueryRequest(BaseModel):
     query: str
     conversation_id: Optional[str] = None
     reset: bool = False
+
+def _derive_kg_from_context(kg_context: Dict[str, Any]) -> Dict[str, Any]:
+    """Build concepts and relationships arrays from a kg_context structure.
+    - concepts: [{id, label}]
+    - relationships: concept-to-concept edges only with labels
+    """
+    nodes = kg_context.get("nodes", []) or []
+    edges = kg_context.get("edges", []) or []
+    # Build concept index by id
+    concepts_list = []
+    concept_labels_by_id = {}
+    concept_ids = set()
+    for n in nodes:
+        if str(n.get("type")).lower() == "concept":
+            cid = n.get("id")
+            label = n.get("label")
+            if cid:
+                concepts_list.append({"id": cid, "label": label})
+                concept_labels_by_id[cid] = label
+                concept_ids.add(cid)
+    # Build relationships for concept-to-concept edges (exclude MENTIONS)
+    rels = []
+    for e in edges:
+        src = e.get("source")
+        tgt = e.get("target")
+        etype = e.get("type", "RELATED_TO")
+        if etype == "MENTIONS":
+            continue
+        if src in concept_ids and tgt in concept_ids:
+            rels.append({
+                "source_id": src,
+                "target_id": tgt,
+                "source_label": concept_labels_by_id.get(src, src),
+                "target_label": concept_labels_by_id.get(tgt, tgt),
+                "relationship_type": etype,
+                "formatted": f"{concept_labels_by_id.get(src, src)} -> {concept_labels_by_id.get(tgt, tgt)} ({etype})"
+            })
+    return {"concepts": concepts_list, "relationships": rels}
 
 async def _fetch_kg_data(query: str) -> Dict[str, Any]:
     """
@@ -418,6 +458,8 @@ def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result
         "module_types": list(set(m.get("type", "unknown") for m in modules)),
         "kg_visualization_url": "/kg-viz",
         "kg_query_url": f"/kg-viz?query={query_text.replace(' ', '%20')}" if query_text else "/kg-viz",
+        # Compatibility: frontend may expect `kg_embed` (alias of url)
+        "kg_embed": kg_embed_info.get("url_path") if kg_embed_info else None,
         "kg_embed_url": kg_embed_info.get("url_path") if kg_embed_info else None,
         "kg_embed_path": kg_embed_info.get("relative_path") if kg_embed_info else None,
         "kg_embed_absolute_path": kg_embed_info.get("absolute_path") if kg_embed_info else None,
@@ -432,9 +474,13 @@ class QueryResponse(BaseModel):
     concepts: list = []
     relationships: list = []
     session_id: Optional[str] = None
+    # Expose KG embed at top level to match frontend expectations
+    kg_embed_url: Optional[str] = None
+    kg_embed_path: Optional[str] = None
+    kg_embed_filename: Optional[str] = None
 
 @app.post("/query", response_model=QueryResponse)
-async def process_query(request: QueryRequest):
+async def process_query(req: QueryRequest, request: Request):
     """
     Process a climate policy query and return structured JSON response with session management.
     
@@ -444,14 +490,14 @@ async def process_query(request: QueryRequest):
     - metadata: Query metadata and performance info
     - session_id: Conversation session ID for multi-turn conversations
     """
-    print(f"🔥 RECEIVED QUERY REQUEST: {request.query}")
+    print(f"🔥 RECEIVED QUERY REQUEST: {req.query}")
     
     # Handle session management
-    if request.reset and request.conversation_id:
-        session_store.reset(request.conversation_id)
+    if req.reset and req.conversation_id:
+        session_store.reset(req.conversation_id)
     
     # Get or create session ID
-    session_id = session_store.get_or_create(request.conversation_id)
+    session_id = session_store.get_or_create(req.conversation_id)
     
     # Log will happen after we get the response (so we can log response modules too)
     
@@ -468,24 +514,24 @@ async def process_query(request: QueryRequest):
         os.chdir(script_dir)
         
         # Pass conversation context to process_chat_query
-        full_result = await process_chat_query(request.query, conversation_history=context, correlation_session_id=session_id)
+        full_result = await process_chat_query(req.query, conversation_history=context, correlation_session_id=session_id)
         
         # Check if this is an off-topic redirect response
         if isinstance(full_result, dict) and full_result.get("metadata", {}).get("query_type") == "off_topic_redirect":
             # Store conversation and return immediately without KG processing
-            session_store.append(session_id, "user", request.query)
+            session_store.append(session_id, "user", req.query)
             session_store.append(session_id, "assistant", "I can help you with climate and environmental topics...")
             
             session_store.log_conversation(
                 session_id,
-                request.query,
+                req.query,
                 response_modules=full_result.get("modules", []),
                 error=None,
                 tokens_used=0
             )
             
             return QueryResponse(
-                query=request.query,
+                query=req.query,
                 modules=full_result.get("modules", []),
                 thinking_process=None,
                 metadata=full_result.get("metadata", {}),
@@ -501,7 +547,7 @@ async def process_query(request: QueryRequest):
         else:
             structured_response = full_result.get("formatted_response", {"modules": []})
         
-        if request.include_thinking:
+        if req.include_thinking:
             thinking_process = full_result.get("ai_thought_process", "")
         else:
             thinking_process = None
@@ -531,7 +577,7 @@ async def process_query(request: QueryRequest):
             else:
                 print(f"⚠️  No kg_context in full_result. Using fallback method.")
             
-            print(f"🔧 Starting KG embed generation for query: {request.query}")
+            print(f"🔧 Starting KG embed generation for query: {req.query}")
             
             # Prepare MCP response data with KG context
             mcp_response = structured_response
@@ -543,7 +589,7 @@ async def process_query(request: QueryRequest):
             
             # Generate enhanced KG embed with MCP response and citation data
             kg_embed_result = await kg_generator.generate_embed(
-                request.query, 
+                req.query, 
                 mcp_response,  # Pass the structured response with kg_context
                 citation_registry
             )
@@ -578,11 +624,13 @@ async def process_query(request: QueryRequest):
         # Create kg_embed_info dict for metadata
         kg_embed_info = None
         if kg_embed_path:
+            # Build an absolute URL using env/request base URL to avoid mixed content
+            kg_embed_url_abs = _absolute_url_for(request, kg_embed_url or "") if kg_embed_url else None
             kg_embed_info = {
                 "relative_path": kg_embed_path,
                 "absolute_path": kg_embed_absolute_path,
-                "url_path": kg_embed_url,
-                "filename": kg_embed_url.split('/')[-1] if kg_embed_url else None
+                "url_path": kg_embed_url_abs,
+                "filename": (kg_embed_url_abs.split('/')[-1] if kg_embed_url_abs else None)
             }
             print(f"📊 KG embed info created: {kg_embed_info}")
         else:
@@ -590,29 +638,42 @@ async def process_query(request: QueryRequest):
         
         # Get modules for response
         modules = structured_response.get("modules", [])
+
+        # Build concepts and relationships like cached payloads
+        if kg_context:
+            derived = _derive_kg_from_context(kg_context)
+            concepts_out = derived["concepts"]
+            relationships_out = derived["relationships"]
+        else:
+            kg_data_resp = await _fetch_kg_data(req.query)
+            concepts_out = kg_data_resp.get("concepts", [])
+            relationships_out = kg_data_resp.get("relationships", [])
         
         # Store query and response in session history
-        session_store.append(session_id, "user", request.query)
+        session_store.append(session_id, "user", req.query)
         response_summary = session_store.extract_response_summary(modules)
         session_store.append(session_id, "assistant", response_summary)
         
         # Log conversation with full details
         session_store.log_conversation(
             session_id, 
-            request.query, 
+            req.query, 
             response_modules=modules,
             error=None,
             tokens_used=None  # TODO: Extract token usage from full_result if available
         )
         
         return QueryResponse(
-            query=request.query,
+            query=req.query,
             modules=modules,
             thinking_process=thinking_process,
-            metadata=_generate_enhanced_metadata(structured_response, full_result if request.include_thinking else None, request.query, kg_embed_info),
-            concepts=kg_data["concepts"],
-            relationships=kg_data["relationships"],
-            session_id=session_id
+            metadata=_generate_enhanced_metadata(structured_response, full_result if req.include_thinking else None, req.query, kg_embed_info),
+            concepts=concepts_out,
+            relationships=relationships_out,
+            session_id=session_id,
+            kg_embed_url=(kg_embed_info.get("url_path") if kg_embed_info else None),
+            kg_embed_path=(kg_embed_info.get("relative_path") if kg_embed_info else None),
+            kg_embed_filename=(kg_embed_info.get("filename") if kg_embed_info else None)
         )
         
     except Exception as e:
@@ -623,7 +684,7 @@ async def process_query(request: QueryRequest):
         # Log error in conversation
         session_store.log_conversation(
             session_id, 
-            request.query, 
+            req.query, 
             response_modules=None,
             error=str(e),
             tokens_used=None
@@ -881,7 +942,7 @@ async def thorough_query_response(request: QueryRequest):
         raise HTTPException(status_code=500, detail=error_detail)
 
 @app.post("/query/stream")
-async def stream_query(request: StreamQueryRequest):
+async def stream_query(stream_req: StreamQueryRequest, request: Request):
     """
     Stream query processing with real-time thinking traces and session management.
     
@@ -893,14 +954,14 @@ async def stream_query(request: StreamQueryRequest):
     - complete: Final structured response
     - error: Any errors that occur
     """
-    print(f"🔥 RECEIVED STREAM REQUEST: {request.query}")
+    print(f"🔥 RECEIVED STREAM REQUEST: {stream_req.query}")
     
     # Handle session management
-    if request.reset and request.conversation_id:
-        session_store.reset(request.conversation_id)
+    if stream_req.reset and stream_req.conversation_id:
+        session_store.reset(stream_req.conversation_id)
     
     # Get or create session ID
-    session_id = session_store.get_or_create(request.conversation_id)
+    session_id = session_store.get_or_create(stream_req.conversation_id)
     
     # Get conversation history for context (limited to last N turns)
     context = session_store.get_context_for_llm(session_id)
@@ -912,7 +973,7 @@ async def stream_query(request: StreamQueryRequest):
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             # Send conversation ID as first event if it's new or different
-            if not request.conversation_id or request.conversation_id != session_id:
+            if not stream_req.conversation_id or stream_req.conversation_id != session_id:
                 session_event = {
                     "type": "conversation_id",
                     "data": {"conversation_id": session_id}
@@ -927,12 +988,55 @@ async def stream_query(request: StreamQueryRequest):
             response_modules = []
             
             # Use streaming that properly sends content
-            async for event in stream_chat_query(request.query, conversation_history=context, correlation_session_id=session_id):
+            async for event in stream_chat_query(stream_req.query, conversation_history=context, correlation_session_id=session_id):
                 # Capture complete event for history
                 if event.get("type") == "complete":
                     response_data = event.get("data", {})
                     if isinstance(response_data, dict):
                         response_modules = response_data.get("modules", [])
+                        # Augment with KG embed URL and KG arrays at top level to match frontend
+                        try:
+                            import sys as _sys, os as _os
+                            _sys.path.append(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+                            from kg_embed_generator import KGEmbedGenerator as _KG
+                            kg_gen = _KG()
+                            # Build minimal structured response for KG generator
+                            structured = {"modules": response_modules}
+                            kg_res = await kg_gen.generate_embed(stream_req.query, structured)
+                            if kg_res and isinstance(kg_res, dict):
+                                kg_rel = kg_res.get("relative_path")
+                                kg_url = kg_res.get("url_path")
+                                # Build absolute URL using helper to avoid mixed content
+                                if kg_url:
+                                    import os as __os
+                                    if kg_url.startswith('http://') or kg_url.startswith('https://'):
+                                        pass
+                                    else:
+                                        base = __os.getenv('API_BASE_URL')
+                                        if not base:
+                                            base = str(request.base_url)
+                                        kg_url = f"{base.rstrip('/')}{kg_url}"
+                                # Attach to top-level of response for frontend
+                                response_data["kg_embed_url"] = kg_url
+                                response_data["kg_embed_path"] = kg_rel
+                                response_data["kg_embed_filename"] = kg_res.get("filename")
+                                # Also include in metadata for completeness
+                                md = response_data.get("metadata") or {}
+                                md["kg_embed_url"] = kg_url
+                                md["kg_embed"] = kg_url
+                                md["kg_embed_path"] = kg_rel
+                                md["kg_embed_filename"] = kg_res.get("filename")
+                                response_data["metadata"] = md
+                        except Exception as _e:
+                            print(f"[STREAM] KG embed augmentation failed: {_e}")
+
+                        # Also include KG concepts and relationships arrays in the stream payload
+                        try:
+                            kg_arrays = await _fetch_kg_data(stream_req.query)
+                            response_data["concepts"] = kg_arrays.get("concepts", [])
+                            response_data["relationships"] = kg_arrays.get("relationships", [])
+                        except Exception as _e2:
+                            print(f"[STREAM] KG arrays augmentation failed: {_e2}")
                 
                 # Handle content chunks specially for compatibility
                 if event.get("type") == "content":
@@ -950,7 +1054,7 @@ async def stream_query(request: StreamQueryRequest):
             yield f"data: [DONE]\n\n"
             
             # Store the query and response in session history
-            session_store.append(session_id, "user", request.query)
+            session_store.append(session_id, "user", stream_req.query)
             if response_modules:
                 response_summary = session_store.extract_response_summary(response_modules)
                 session_store.append(session_id, "assistant", response_summary)
@@ -958,7 +1062,7 @@ async def stream_query(request: StreamQueryRequest):
             # Log conversation with full details
             session_store.log_conversation(
                 session_id, 
-                request.query, 
+                stream_req.query, 
                 response_modules=response_modules,
                 error=None,
                 tokens_used=None  # TODO: Extract token usage if available
@@ -972,7 +1076,7 @@ async def stream_query(request: StreamQueryRequest):
             # Log error in conversation
             session_store.log_conversation(
                 session_id, 
-                request.query, 
+                stream_req.query, 
                 response_modules=None,
                 error=str(e),
                 tokens_used=None
@@ -1040,3 +1144,15 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8098))  # Default to 8098, allow override via PORT env var
     uvicorn.run(app, host="0.0.0.0", port=port)
+def _absolute_url_for(request: Request, path: str) -> str:
+    """Build an absolute URL for a given absolute or relative path.
+    Prefers API_BASE_URL env var when set to avoid mixed content behind proxies.
+    """
+    import os
+    if path.startswith("http://") or path.startswith("https://"):
+        return path
+    base = os.getenv('API_BASE_URL')
+    if base:
+        return f"{base.rstrip('/')}{path}"
+    # Fallback to request base_url (respects ProxyHeadersMiddleware)
+    return f"{str(request.base_url).rstrip('/')}{path}"

@@ -149,8 +149,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
         # Ensure we have a complete URL for the frontend
         import os
         if geojson_url.startswith('/'):
-            # Get base URL from environment or use default
-            base_url = os.getenv('API_BASE_URL', 'http://localhost:8098')
+            # Get base URL from environment or use HTTPS default to avoid mixed content
+            base_url = os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
             # Remove trailing slash from base URL if present
             base_url = base_url.rstrip('/')
             geojson_url = base_url + geojson_url

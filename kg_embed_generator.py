@@ -20,7 +20,9 @@ class KGEmbedGenerator:
         self.kg_server_url = kg_server_url or os.getenv('KG_SERVER_URL', 'http://localhost:8100')
         self.static_dir = Path(static_dir)
         self.kg_dir = self.static_dir / "kg"
-        self.base_url = (base_url or os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')).rstrip('/')  # Remove trailing slash
+        # Base URL can still be provided, but embeds will return relative URLs by default.
+        # This avoids cross-origin issues and mismatches across environments.
+        self.base_url = (base_url or os.getenv('API_BASE_URL', '')).rstrip('/')
         
         # Ensure kg directory exists
         self.kg_dir.mkdir(exist_ok=True)
@@ -35,7 +37,7 @@ class KGEmbedGenerator:
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {{ margin: 0; padding: 10px; font-family: Arial, sans-serif; }}
-        .container {{ width: 100%; height: 500px; border: 1px solid #ddd; position: relative; }}
+        .container {{ width: 100%; height: 1000px; border: 1px solid #ddd; position: relative; }}
         .graph {{ width: 100%; height: 100%; }}
         .tooltip {{ 
             position: absolute; 
@@ -71,7 +73,7 @@ class KGEmbedGenerator:
         
         // Initialize visualization
         const width = 800;
-        const height = 500;
+        const height = 1000;
         
         const svg = d3.select("#kg-graph")
             .attr("width", "100%")
@@ -346,11 +348,15 @@ class KGEmbedGenerator:
             }, f, indent=2)
         
         # Return dict with both relative and absolute paths
+        # Always return a relative URL path so callers can construct absolute URLs
+        # appropriate to their deployment environment (e.g., via request.base_url).
+        # Keep base_url support for callers that explicitly want to build absolutes.
+        url_path_relative = f"/static/kg/{filename}"
         return {
             "relative_path": f"kg/{filename}",
             "absolute_path": str(filepath.absolute()),
             "filename": filename,
-            "url_path": f"{self.base_url}/static/kg/{filename}"
+            "url_path": url_path_relative
         }
     
     def get_embed_url(self, query: str, base_url: str = "") -> str:

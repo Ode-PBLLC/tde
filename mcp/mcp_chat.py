@@ -2835,6 +2835,8 @@ class MultiServerClient:
                                 "enhanced_tables_count": len(additional_modules),
                                 "kg_visualization_url": "/kg-viz",
                                 "kg_query_url": f"/kg-viz?query={query.replace(' ', '%20')}",
+                                # Compatibility: expose both `kg_embed` and `kg_embed_url`
+                                "kg_embed": kg_embed_url,
                                 "kg_embed_url": kg_embed_url,
                                 "kg_embed_path": kg_embed_path,
                                 "kg_embed_absolute_path": kg_embed_absolute_path,
