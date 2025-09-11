@@ -1555,7 +1555,8 @@ Instructions:
                 "collection_instructions": """Tool usage strategy for Solar Database:
                 - IMPORTANT: Call 'GetSolarFacilitiesMapData' when you need to show geographic distribution
                 - Use 'GetSolarFacilitiesByCountry' for detailed country-level facility data
-                - Use 'GetSolarCapacityByCountry' for capacity statistics across countries
+                - Use 'GetSolarCapacityByCountry' for country-level facility count stats (also returns top_10 list)
+                - Use 'GetTopNCountriesByFacilities' for queries like 'top 10 countries by asset/facility count'
                 - Use 'GetSolarConstructionTimeline' for temporal trends and growth analysis
                 - Use 'GetLargestSolarFacilities' to highlight major installations
                 - For multi-country analysis, use 'GetSolarFacilitiesMultipleCountries'
@@ -1829,14 +1830,16 @@ Instructions:
                     reasoning="Not selected by pre-filter"
                 )
         
-        # Post Phase 1: If spatial query and entities registered, compute correlation + map deterministically
+        # Post Phase 1: Run deterministic spatial correlation ONLY when explicitly requested
         ql = user_query.lower()
+        # Keep general spatial keywords but avoid triggering on broad phrases like "assets in <country>"
         is_spatial_query = any(keyword in ql for keyword in [
             "within", "inside", "intersect", "overlap", "near", "close to",
-            "proximity", "adjacent", "located in", "in deforestation",
-            "in water stress", "assets within", "assets in"
+            "proximity", "adjacent", "located in", "in deforestation", "km"
         ])
-        if (not _geo_llm_only()) and is_spatial_query and self.client.sessions.get("geospatial"):
+        # Require explicit deforestation intent to compute solar↔deforestation correlation
+        wants_deforestation = any(k in ql for k in ["deforest", "forest loss", "cleared", "amazon biome", "land use change"]) or "in deforestation" in ql
+        if (not _geo_llm_only()) and is_spatial_query and wants_deforestation and self.client.sessions.get("geospatial"):
             try:
                 reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
                 reg_data = {}
@@ -1973,6 +1976,21 @@ Instructions:
                     hints.append("For relationship/path queries, consider calling 'FindConceptPathWithEdges' with the two concept names and an appropriate max_len (e.g., 4).")
                 if ("mention both" in ql) or ("co-mention" in ql) or ("passage" in ql and " and " in ql):
                     hints.append("For co-mention passage queries, consider calling 'PassagesMentioningBothConcepts' with the two concept names and a reasonable limit (e.g., 5).")
+                if hints:
+                    query_hints = "\n\nQUERY-SPECIFIC HINTS:\n- " + "\n- ".join(hints)
+            elif server_name == "solar":
+                hints = []
+                ql2 = ql  # already lowered above
+                # Top-N by count
+                if any(k in ql2 for k in ["top 10", "top ten", "top countries", "most", "highest"]) and \
+                   any(k in ql2 for k in ["count", "counts", "asset count", "facilities", "facility count", "assets"]):
+                    hints.append("For 'top N countries by facility/asset count' queries, call 'GetTopNCountriesByFacilities' (set n appropriately).")
+                # By-country summary
+                if "by country" in ql2 or ("countries" in ql2 and "compare" in ql2):
+                    hints.append("For country-level counts, call 'GetSolarCapacityByCountry' which returns a top_10 list and totals.")
+                # Mapping intent
+                if any(k in ql2 for k in ["map", "where", "show me", "locations"]):
+                    hints.append("For maps of facilities, call 'GetSolarFacilitiesMapData' (optionally pass a country).")
                 if hints:
                     query_hints = "\n\nQUERY-SPECIFIC HINTS:\n- " + "\n- ".join(hints)
 
@@ -2340,10 +2358,11 @@ When you have collected enough information to answer "{user_query}", respond wit
             if is_spatial_query:
                 try:
                     if server_name == "deforestation":
-                        # Deterministically fetch and register deforestation areas so geospatial
+                        # Deterministically fetch a SMALL sample of deforestation areas so geospatial
                         # correlation can run even if the static index is unavailable.
-                        # Use unbounded limit (0 = all)
-                        def_args = {"min_area_hectares": 0, "limit": 0}
+                        # Important: avoid unbounded payloads that freeze the frontend.
+                        # Use a sane default cap and a small min area to reduce geometry size.
+                        def_args = {"min_area_hectares": 5, "limit": 500}
                         print(f"  Phase 1 - deforestation: Bootstrap calling GetDeforestationAreas {def_args}")
                         dres = await self.client.call_tool("GetDeforestationAreas", def_args, "deforestation")
                         # Directly register entities if present
@@ -2427,6 +2446,16 @@ When you have collected enough information to answer "{user_query}", respond wit
                         print(f"  Phase 1 - {server_name}: Bootstrap calling GetFacilitiesForGeospatial {bootstrap_args}")
                         result = await self.client.call_tool("GetFacilitiesForGeospatial", bootstrap_args, server_name)
                         facts.extend(self._extract_facts_from_result("GetFacilitiesForGeospatial", bootstrap_args, result, server_name))
+                        # If the query is to SHOW or MAP solar assets in Brazil, generate the map deterministically
+                        try:
+                            wants_map = any(k in ql for k in ["map", "show", "where", "locations", "assets", "facilities"]) and ("brazil" in ql)
+                            if wants_map:
+                                map_args = {"country": "Brazil", "limit": 10000}
+                                print(f"  Phase 1 - solar: Generating map via GetSolarFacilitiesMapData {map_args}")
+                                map_res = await self.client.call_tool("GetSolarFacilitiesMapData", map_args, server_name)
+                                facts.extend(self._extract_facts_from_result("GetSolarFacilitiesMapData", map_args, map_res, server_name))
+                        except Exception as e:
+                            print(f"  Phase 1 - solar: Map generation skipped: {e}")
                         # Directly register entities if present
                         try:
                             if hasattr(result, 'content') and result.content:
@@ -4214,7 +4243,9 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                             unique_facilities = raw.get("unique_facilities")
                         break
                     correlation_count = correlation_count or raw.get("total_correlations")
-            if unique_facilities is not None or correlation_count is not None:
+            # Only prepend a correlation sentence if the user asked about deforestation/proximity
+            ql2 = user_query.lower()
+            if (unique_facilities is not None or correlation_count is not None) and any(k in ql2 for k in ["deforest", "in deforestation", "forest loss", "near", "km", "proximity"]):
                 n = unique_facilities if unique_facilities is not None else correlation_count
                 answer_text = f"Based on the spatial correlation analysis, {int(n)} solar assets are within the specified deforestation proximity."
                 modules.insert(0, {"type": "text", "heading": "", "texts": [answer_text]})
@@ -4247,6 +4278,28 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                 fact.numerical_data = self._extract_categorical(raw)
                 fact.data_type = "comparison"
             
+            # Special-case: top countries by facility count (solar server)
+            elif isinstance(raw, dict) and (isinstance(raw.get("countries"), list) or isinstance(raw.get("top_10_countries"), list)):
+                countries_list = raw.get("countries") or raw.get("top_10_countries")
+                # Validate shape: list of dicts with country (str) and facility_count (numeric)
+                if countries_list and isinstance(countries_list[0], dict):
+                    first = countries_list[0]
+                    if (
+                        "country" in first and "facility_count" in first and
+                        isinstance(first["country"], str) and isinstance(first["facility_count"], (int, float))
+                    ):
+                        # Build a simple ranked table
+                        columns = ["Rank", "Country", "Facilities"]
+                        rows = []
+                        for idx, item in enumerate(countries_list, start=1):
+                            try:
+                                rows.append([idx, item.get("country", ""), int(item.get("facility_count", 0))])
+                            except Exception:
+                                continue
+                        if rows:
+                            fact.numerical_data = {"columns": columns, "rows": rows, "source": "solar_top_countries"}
+                            fact.data_type = "tabular"
+
             # Geographic detection (already saved in Phase 1/2)
             elif "map_url" in raw:
                 fact.map_reference = {
@@ -4505,7 +4558,11 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         # Filter visualizations for relevance before including them
         if chart_modules or map_modules or table_modules:
             # For explicit spatial queries, include maps without filtering
-            spatial_query = any(k in user_query.lower() for k in ["within", "km", "proximity", "near", "adjacent", "in deforestation"])
+            spatial_query = any(k in user_query.lower() for k in [
+                "within", "km", "proximity", "near", "adjacent", "in deforestation",
+                # Treat common location-intent phrasings as spatial too
+                "where", "map", "show me", "locations"
+            ])
             # Check which visualizations directly answer the query
             relevant_charts = []
             for chart in chart_modules:
@@ -5004,7 +5061,13 @@ Only include modules that exist above. Ensure all modules are included exactly o
         
         display_info = ""
         if display_context:
-            display_info = f"\nIMPORTANT - The following visualizations WILL be included with your response:\n" + "\n".join(f"- {item}" for item in display_context) + "\n"
+            # Provide visualization availability as an instruction, not prose to echo back
+            vis_list = ", ".join(item.replace("A ", "").replace("CHARTS ", "charts ").lower() for item in display_context)
+            display_info = (
+                "\nVISUALIZATION AVAILABILITY (instruction for you, do not echo): "
+                f"available visuals: {vis_list}. "
+                "Do NOT describe or promise visualizations in your answer; the UI renders maps/tables separately.\n"
+            )
         
         # Add conversation history if available
         context_section = ""
@@ -5040,6 +5103,9 @@ FOCUSED RESPONSE RULES:
 6. If facts DO NOT include social vulnerability (SVI/IVS) data, you MUST say that vulnerability data is not present and limit the analysis to the available layers (e.g., heat exposure and clearly-labeled proxies). Do NOT claim "vulnerability" without such data.
 7. If referencing weak renewable access without direct grid/electrification data, you MUST label it explicitly as a proxy based on low solar facility presence/density; do NOT conflate this with electrification rates or grid reliability.
 8. DO NOT include numeric totals (e.g., population impacted) unless they appear in the facts as computed values or tables.
+ 9. DO NOT add a separate "Note:" about maps or visualizations; do not promise that a map "will show" anything. Let the visuals, if included, speak for themselves in the UI.
+ 10. Avoid future tense; describe results in present tense.
+ 11. Avoid words like "comprehensive", "all facilities", or "actively tracked" unless explicitly stated in the facts. Use precise counts and dataset names instead.
 
 DO NOT include:
    - Information about other countries/companies not asked about

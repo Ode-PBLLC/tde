@@ -139,6 +139,46 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
         }
 
 @mcp.tool()
+def GetTopNCountriesByFacilities(n: int = 10) -> Dict[str, Any]:
+    """Get top N countries by number of solar facilities."""
+    if not db:
+        return {"error": "Database not available"}
+    
+    try:
+        country_stats = db.get_country_statistics()
+        
+        if not country_stats:
+            return {"error": "No country statistics available"}
+        
+        # Sort by facility count
+        country_stats.sort(key=lambda x: x['facility_count'], reverse=True)
+        
+        top_countries = country_stats[:n]
+        
+        return {
+            "top_n": n,
+            "countries": top_countries,
+            "data_available": True,
+            "note": f"Top {n} countries by number of solar facilities"
+        }
+        
+    except Exception as e:
+        return {"error": f"Database query failed: {str(e)}"}
+
+@mcp.tool()
+def GetTopNCountriesByCapacity(n: int = 10) -> Dict[str, Any]:
+    """Get top N countries by total solar capacity (capacity data not available in current schema)."""
+    if not db:
+        return {"error": "Database not available"}
+    
+    return {
+        "error": "Capacity data not available - current database schema doesn't include capacity_mw field",
+        "available_fields": ["cluster_id", "source_id", "source", "source_date", "latitude", "longitude", "country"],
+        "suggestion": "Use GetSolarFacilitiesByCountry or GetSolarFacilitiesInRadius instead",
+        "note": "Original TZ-SAM dataset doesn't include capacity information in the raw polygons file"
+    }
+
+@mcp.tool()
 def GetSolarFacilitiesByCountry(country: str, min_capacity_mw: float = 0, limit: int = 10000) -> Dict[str, Any]:
     """Get solar facilities summary for a country.
     Default limit of 10,000 allows for complete country datasets (Brazil has ~2,273 facilities)."""

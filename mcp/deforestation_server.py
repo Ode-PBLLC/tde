@@ -110,6 +110,10 @@ def GetDeforestationAreas(
     if deforestation_gdf is None or deforestation_gdf.empty:
         return {"error": "No deforestation data loaded"}
     
+    # Apply a safety cap to avoid overwhelming the transport/UI with very large payloads
+    # 0 or negative means "use default cap"; values above the cap are clamped.
+    DEFAULT_MAX = 1000
+
     # Filter by area
     filtered = deforestation_gdf.copy()
     
@@ -119,10 +123,17 @@ def GetDeforestationAreas(
     if max_area_hectares is not None:
         filtered = filtered[filtered['area_hectares'] <= max_area_hectares]
     
-    # Sort by area (largest first); if limit <= 0 treat as unbounded
+    # Sort by area (largest first); enforce sane default cap if limit not provided
     filtered = filtered.sort_values('area_hectares', ascending=False)
-    if isinstance(limit, int) and limit > 0:
-        filtered = filtered.head(limit)
+    try:
+        lim = int(limit or 0)
+    except Exception:
+        lim = 0
+    if lim <= 0:
+        lim = DEFAULT_MAX
+    elif lim > DEFAULT_MAX:
+        lim = DEFAULT_MAX
+    filtered = filtered.head(lim)
     
     # Convert to JSON-serializable format
     areas = []

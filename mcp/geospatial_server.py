@@ -139,6 +139,75 @@ def _ensure_equal_area_crs(gdf, target_crs: str = 'EPSG:5880'):
 
 
 @mcp.tool()
+def RegisterCorrelatedDeforestation(session_id: str = "_default") -> Dict[str, Any]:
+    """
+    Materialize only the deforestation polygons that are correlated in the last
+    correlation run into the session GeoDataFrame. This allows follow-on
+    operations (e.g., area overlap) to operate on a compact subset.
+
+    Returns a summary with how many polygons were registered.
+    """
+    if not GEOSPATIAL_AVAILABLE:
+        return {"error": "GeoPandas not installed"}
+    if not STATIC_DEFOR.get('loaded'):
+        if not _load_static_deforestation_index():
+            return {"error": "Static deforestation index not available"}
+
+    store = _get_session_store(session_id)
+    entities_gdf = store['entities_gdf']
+    last_correlations = store.get('last_correlations') or []
+    if not last_correlations:
+        return {"error": "No correlation results available to register from"}
+
+    # Determine which polygon IDs are needed
+    needed = [c.get('entity2_id') for c in last_correlations if c.get('entity2_type') == 'deforestation_area' and c.get('entity2_id')]
+    needed = [pid for pid in needed if isinstance(pid, str)]
+    if not needed:
+        return {"registered": 0, "note": "No correlated deforestation polygons in last results"}
+
+    # Avoid duplicates: skip if entity_id already present
+    existing_ids = set(entities_gdf['entity_id'].tolist()) if entities_gdf is not None and not entities_gdf.empty else set()
+    to_add = []
+    id_to_idx = {pid: i for i, pid in enumerate(STATIC_DEFOR['ids'])}
+    for pid in needed:
+        if pid in existing_ids:
+            continue
+        ci = id_to_idx.get(pid)
+        if ci is None:
+            continue
+        try:
+            geom_3857 = STATIC_DEFOR['geoms_3857'][ci]
+            # Reproject to EPSG:4326
+            g = gpd.GeoSeries([geom_3857], crs='EPSG:3857').to_crs('EPSG:4326').iloc[0]
+            props = {}
+            try:
+                props = json.loads(STATIC_DEFOR['props'][ci]) if STATIC_DEFOR['props'][ci] else {}
+            except Exception:
+                props = {}
+            to_add.append({
+                'entity_id': pid,
+                'entity_type': 'deforestation_area',
+                'geometry': g,
+                'properties': json.dumps(props)
+            })
+        except Exception:
+            continue
+
+    if not to_add:
+        return {"registered": 0, "note": "All correlated polygons already registered"}
+
+    new_gdf = gpd.GeoDataFrame(to_add, crs='EPSG:4326')
+    entities_gdf = pd.concat([entities_gdf, new_gdf], ignore_index=True)
+    store['entities_gdf'] = entities_gdf
+
+    return {
+        "registered": len(to_add),
+        "entity_type": "deforestation_area",
+        "session_id": session_id
+    }
+
+
+@mcp.tool()
 def RegisterEntities(entity_type: str, entities: List[Dict], session_id: str = "_default") -> Dict[str, Any]:
     """
     Register geographic entities for correlation.
@@ -494,7 +563,8 @@ def FindSpatialCorrelations(
 def GenerateCorrelationMap(
     correlation_type: str = "spatial_correlation",
     show_uncorrelated: bool = True,
-    session_id: str = "_default"
+    session_id: str = "_default",
+    deforestation_only_correlated: bool = True
 ) -> Dict[str, Any]:
     """
     Generate a multi-layer GeoJSON map showing correlation results.
@@ -537,8 +607,13 @@ def GenerateCorrelationMap(
     for idx, entity in entities_gdf.iterrows():
         is_correlated = entity['entity_id'] in correlated_pairs
         
-        if not show_uncorrelated and not is_correlated:
-            continue
+        # Always hide uncorrelated deforestation polygons unless explicitly overridden
+        if entity['entity_type'] == 'deforestation_area':
+            if deforestation_only_correlated and not is_correlated:
+                continue
+        else:
+            if not show_uncorrelated and not is_correlated:
+                continue
         
         try:
             properties = json.loads(entity['properties'])
