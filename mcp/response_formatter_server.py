@@ -381,15 +381,41 @@ def _create_numbered_citation_table(citation_registry: Optional[Dict] = None) ->
                 title = source.get("title", "")
                 doc_id = source.get("doc_id", "N/A")
                 doc_ref = f"{title} ({doc_id})" if title else doc_id
+                # Add concept label suffix when present to help disambiguate
+                concept_label = source.get("concept_label")
+                if concept_label:
+                    doc_ref = f"{doc_ref} — {concept_label}"
                 passage_id = source.get("passage_id", "N/A")
-                text_snippet = source.get("text", "")[:100] + "..." if source.get("text") else "N/A"
+                # Prefer building a rich description using span/provenance if available
+                description = None
+                labelled_text = source.get("labelled_text")
+                start_idx = source.get("start_index")
+                end_idx = source.get("end_index")
+                concept_id = source.get("concept_id")
+                labellers = source.get("labellers") or []
+                timestamps = source.get("timestamps") or []
+                latest_ts = timestamps[-1] if timestamps else None
+                if labelled_text and start_idx is not None and end_idx is not None:
+                    parts = []
+                    parts.append(f"‘{labelled_text}’")
+                    if concept_id:
+                        parts.append(f"({concept_id})")
+                    parts.append(f"start:{start_idx}–{end_idx}")
+                    if labellers:
+                        parts.append("Found by: " + ", ".join(map(str, labellers)))
+                    if latest_ts:
+                        parts.append(str(latest_ts))
+                    description = " • ".join(parts)
+                # Fallback to passage snippet
+                if not description:
+                    description = source.get("text", "")[:100] + "..." if source.get("text") else "N/A"
                 
                 rows.append([
                     str(citation_num),
                     doc_ref,
                     passage_id,
                     "Document",
-                    text_snippet
+                    description
                 ])
         else:
             # Legacy string source

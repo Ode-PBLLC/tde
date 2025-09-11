@@ -714,6 +714,24 @@ def harvest_sources(payload):
     out = []
     print(f"HARVEST_SOURCES DEBUG: Processing payload type: {type(payload)}")
     
+    def _append_with_spans(base_record: dict, item: dict):
+        """Append one or multiple source records depending on span availability."""
+        spans = item.get("spans") if isinstance(item, dict) else None
+        if isinstance(spans, list) and spans:
+            for s in spans:
+                rec = dict(base_record)
+                # Carry span details through for richer citation descriptions
+                rec["labelled_text"] = s.get("labelled_text")
+                rec["start_index"] = s.get("start_index")
+                rec["end_index"] = s.get("end_index")
+                rec["concept_id"] = s.get("concept_id")
+                rec["concept_label"] = s.get("concept_label")
+                rec["labellers"] = s.get("labellers")
+                rec["timestamps"] = s.get("timestamps")
+                out.append(rec)
+        else:
+            out.append(base_record)
+
     if isinstance(payload, list):
         for i, item in enumerate(payload):
             print(f"HARVEST_SOURCES DEBUG: Processing item {i}, type: {type(item)}")
@@ -738,7 +756,7 @@ def harvest_sources(payload):
                                         "date": passage.get("date", ""),
                                         "type": passage.get("type", "document")
                                     }
-                                    out.append(source_record)
+                                    _append_with_spans(source_record, passage)
                                     print(f"HARVEST_SOURCES DEBUG: Added source {j+1}: {source_record['doc_id']}")
                         
                         # Handle single passage dict
@@ -751,7 +769,7 @@ def harvest_sources(payload):
                                 "date": data.get("date", ""),
                                 "type": data.get("type", "document")
                             }
-                            out.append(source_record)
+                            _append_with_spans(source_record, data)
                             print(f"HARVEST_SOURCES DEBUG: Added single source: {source_record['doc_id']}")
                         
                         else:
@@ -777,7 +795,7 @@ def harvest_sources(payload):
                                                     "date": passage.get("date", ""),
                                                     "type": passage.get("type", "document")
                                                 }
-                                                out.append(source_record)
+                                                _append_with_spans(source_record, passage)
                                                 print(f"HARVEST_SOURCES DEBUG: Added nested source: {source_record['doc_id']}")
                                 # Check for any field that might contain passage-like data
                                 else:
