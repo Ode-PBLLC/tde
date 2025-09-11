@@ -370,15 +370,14 @@ async def call_model_with_tools(model: str, system: str, messages: List[Dict[str
                 "tools": tools_log,
             }
         )
-        # Important: Anthropic tool use requires the tools beta header for 2024-10 models
-        # If not set, tool calls may fail in newer SDKs.
+        # Note: Recent Anthropic SDKs no longer require or accept the tools beta header.
+        # Passing deprecated beta headers can cause 400 errors. Call without extra_headers.
         response = ANTHROPIC_CLIENT.messages.create(
             model=model,
             max_tokens=max_tokens,
             system=system,
             messages=messages,
-            tools=tools,
-            extra_headers={"anthropic-beta": "tools-2024-10-22"}
+            tools=tools
         )
         
         # Log response details
@@ -2500,6 +2499,14 @@ When you have collected enough information to answer "{user_query}", respond wit
                         except Exception as e:
                             print(f"  Phase 1 - solar: Deterministic correlation skipped: {e}")
                         bootstrap_done = True
+                    elif server_name == "municipalities":
+                        # Deterministically fetch municipalities for Brazil and register
+                        muni_args = {"limit": 6000}
+                        print(f"  Phase 1 - municipalities: Bootstrap calling GetMunicipalitiesByFilter {muni_args}")
+                        mres = await self.client.call_tool("GetMunicipalitiesByFilter", muni_args, "municipalities")
+                        facts.extend(self._extract_facts_from_result("GetMunicipalitiesByFilter", muni_args, mres, "municipalities"))
+                        # Registration handled by auto-register block when parsing results
+                        bootstrap_done = True
                     elif server_name == "heat":
                         # Register top quintile heat zones deterministically
                         heat_args = {"quintiles": [5], "limit": 5000}
@@ -3591,13 +3598,131 @@ Respond with JSON:
                                 source_name="GEOSPATIAL",
                                 tool_id="GenerateCorrelationMap",
                                 server_origin="geospatial",
-                                source_type="Database",
-                                description="Visualization of spatial correlation"
+                                source_type="Map",
+                                description="GeoJSON map for spatial correlations"
                             )
                         )
                     )
                 except Exception as e:
                     print(f"Phase 2 - geospatial map generation skipped: {e}")
+                
+                # Minimal overlay for this class of query: heat exposure x weak solar presence (proxy)
+                try:
+                    by_type = reg_data.get("by_type", {}) if isinstance(reg_data, dict) else {}
+                    if by_type.get("municipality") and by_type.get("heat_zone") and by_type.get("solar_facility"):
+                        # Compute area overlap of heat zones per municipality
+                        overlap_res = await self.client.call_tool(
+                            "ComputeAreaOverlapByEntityTypes",
+                            {"admin_entity_type": "municipality", "zone_entity_type": "heat_zone", "session_id": self.spatial_session_id},
+                            "geospatial"
+                        )
+                        overlap_data = {}
+                        if hasattr(overlap_res, 'content') and overlap_res.content:
+                            try:
+                                overlap_data = json.loads(overlap_res.content[0].text)
+                            except Exception:
+                                overlap_data = {}
+                        overlap_list = overlap_data.get("results", [])
+
+                        # Compute solar facility density per municipality (per 1000 km²)
+                        density_res = await self.client.call_tool(
+                            "ComputePointDensityByEntityTypes",
+                            {"admin_entity_type": "municipality", "point_entity_type": "solar_facility", "per_km2": 1000.0, "session_id": self.spatial_session_id},
+                            "geospatial"
+                        )
+                        density_data = {}
+                        if hasattr(density_res, 'content') and density_res.content:
+                            try:
+                                density_data = json.loads(density_res.content[0].text)
+                            except Exception:
+                                density_data = {}
+                        density_list = density_data.get("results", [])
+
+                        # Index density by admin_id
+                        by_admin_density = {}
+                        for d in density_list:
+                            aid = str(d.get("admin_id"))
+                            if not aid:
+                                continue
+                            # Find the density field name dynamically
+                            val = None
+                            for k, v in d.items():
+                                if isinstance(v, (int, float)) and str(k).startswith("points_per_"):
+                                    val = float(v)
+                                    break
+                            by_admin_density[aid] = {"density": val or 0.0}
+
+                        # Merge and compute composite score
+                        rows = []
+                        densities = [v["density"] for v in by_admin_density.values()] or [0.0]
+                        dmin, dmax = min(densities), max(densities)
+                        def norm_density(x: float) -> float:
+                            try:
+                                return 0.0 if dmax == dmin else (x - dmin) / (dmax - dmin)
+                            except Exception:
+                                return 0.0
+                        for item in overlap_list:
+                            aid = str(item.get("admin_id"))
+                            if not aid:
+                                continue
+                            props = item.get("properties", {}) or {}
+                            name = props.get("name", aid)
+                            state = props.get("state") or props.get("state_abbrev") or ""
+                            overlap_ratio = float(item.get("overlap_ratio", 0.0))
+                            dens = by_admin_density.get(aid, {}).get("density", 0.0)
+                            dn = norm_density(dens)
+                            score = overlap_ratio * (1.0 - dn)
+                            rows.append({
+                                "admin_id": aid,
+                                "municipality": name,
+                                "state": state,
+                                "heat_overlap_pct": round(overlap_ratio * 100.0, 2),
+                                "solar_per_1000km2": round(dens, 3),
+                                "composite_score": round(score, 4)
+                            })
+
+                        rows.sort(key=lambda r: r["composite_score"], reverse=True)
+                        top_n = rows[:25]
+
+                        # Emit as a tabular Fact so the renderer creates a table module
+                        columns = [
+                            "Municipality", "State", "Heat Overlap (%)", "Solar per 1000 km²", "Composite Score"
+                        ]
+                        table_rows = [
+                            [r["municipality"], r["state"], r["heat_overlap_pct"], r["solar_per_1000km2"], r["composite_score"]]
+                            for r in top_n
+                        ]
+                        phase2_facts.append(
+                            Fact(
+                                text_content="Top municipalities by heat exposure × low solar presence (proxy for weak renewable access).",
+                                source_key="heat_low_solar_top_munis",
+                                server_origin="geospatial",
+                                data_type="tabular",
+                                numerical_data={
+                                    "columns": columns,
+                                    "rows": table_rows,
+                                    "raw": top_n
+                                },
+                                citation=Citation(
+                                    source_name="Internal geospatial overlay",
+                                    tool_id="ComputeAreaOverlapByEntityTypes+ComputePointDensityByEntityTypes",
+                                    server_origin="geospatial",
+                                    source_type="Derived",
+                                    description="Area overlap of heat Q5 with municipalities and solar facility density per 1000 km²."
+                                )
+                            )
+                        )
+                        # Add a plain-text caveat fact
+                        phase2_facts.append(
+                            Fact(
+                                text_content="Note: No social vulnerability data included. 'Weak access' uses low solar presence as a proxy, not electrification or grid reliability.",
+                                source_key="proxy_disclaimer",
+                                server_origin="geospatial",
+                                citation=None
+                            )
+                        )
+                except Exception as e:
+                    print(f"Phase 2 - heat×low-solar overlay skipped or failed: {e}")
                 # Skip generic Phase 2 when we have the correlation answer (spatial queries)
                 phase2_results = {}
                 for server_name, original_result in scout_results.items():
@@ -4895,7 +5020,12 @@ Current Query: {user_query}"""
 
 CRITICAL INSTRUCTIONS - ANSWER THIS SPECIFIC QUERY: {user_query}
 
-Your FIRST SENTENCE must directly answer the above query.
+Coverage Check (MANDATORY before drafting):
+1) From the facts, infer which layers are present: has_svi (social vulnerability/IVS), has_heat (heat zones or metrics), has_solar (solar facilities), has_grid (grid/electrification). If a layer is not present in the facts, treat it as absent.
+2) If has_svi is FALSE and the user asked about vulnerability, you MUST explicitly state this absence at the start and DO NOT use the word "vulnerability" elsewhere (unless quoting the user). Instead, clearly limit analysis to available layers (e.g., heat exposure and a clearly labeled proxy for weak renewable access based on low solar facility density).
+3) If using the proxy for weak renewable access, you MUST label it as such and MUST NOT imply electrification rates or grid reliability.
+
+Your FIRST SENTENCE must directly answer the above query. If a disclaimer from the coverage check is required, include it as the first sentence, then follow immediately with the direct answer.
 
 Available Facts:
 {chr(10).join(fact_list)}
@@ -4907,7 +5037,11 @@ FOCUSED RESPONSE RULES:
 3. Use placeholder citations [CITE_1], [CITE_2] for fact references
 4. If any fact begins with "Quoted evidence:", include that quoted text verbatim in your answer where appropriate
 5. Prefer passages from national submissions when relevant (e.g., sources with 'UNFCCC.party')
-4. DO NOT include:
+6. If facts DO NOT include social vulnerability (SVI/IVS) data, you MUST say that vulnerability data is not present and limit the analysis to the available layers (e.g., heat exposure and clearly-labeled proxies). Do NOT claim "vulnerability" without such data.
+7. If referencing weak renewable access without direct grid/electrification data, you MUST label it explicitly as a proxy based on low solar facility presence/density; do NOT conflate this with electrification rates or grid reliability.
+8. DO NOT include numeric totals (e.g., population impacted) unless they appear in the facts as computed values or tables.
+
+DO NOT include:
    - Information about other countries/companies not asked about
    - Tangentially related data that doesn't answer the query
    - Background context not requested
@@ -4943,7 +5077,17 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
         
         try:
             response = await call_large_model(
-                system="You synthesize facts into clear, informative responses with proper citations.",
+                system=(
+                    "You synthesize facts into clear, informative responses with proper citations. "
+                    "STRICT GUARDRails: \n"
+                    "- Use ONLY the provided facts; never infer missing dimensions.\n"
+                    "- If a requested dimension is ABSENT in facts (e.g., social vulnerability/SVI), explicitly state it is not available and DO NOT claim it.\n"
+                    "- If using a proxy, NAME it. For weak renewable access, the ONLY acceptable proxy is 'low solar facility presence/density'; DO NOT call this 'vulnerability', 'electrification rate', or 'grid reliability'.\n"
+                    "- DO NOT produce numeric totals (e.g., population) unless the facts include a computed number or a table specifying it. Never guess or back-solve.\n"
+                    "- Each declarative claim MUST be traceable to a fact and include a [CITE_X] placeholder.\n"
+                    "- Do NOT introduce institutions (e.g., BNDES, Caixa, UNDP, GEF) unless a fact explicitly mentions them; otherwise omit.\n"
+                    "- Prefer concise, qualified statements over confident generalizations when evidence is partial."
+                ),
                 user_prompt=prompt,
                 max_tokens=2000
             )
@@ -5868,4 +6012,5 @@ def _log_llm_messages_summary(messages: List[Dict[str, Any]], label: str):
         llm_logger.info(f"LLM messages summary [{label}]: messages={len(messages)} size≈{size_kb:.1f}KB")
     except Exception as e:
         llm_logger.debug(f"Could not summarize LLM messages: {e}")
-    asyncio.run(main())
+    # Note: Running the CLI test harness is guarded above. Avoid executing anything
+    # on module import so API/server imports remain side-effect free.

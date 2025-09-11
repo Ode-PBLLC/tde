@@ -649,6 +649,21 @@ async def process_query(req: QueryRequest, request: Request):
             concepts_out = kg_data_resp.get("concepts", [])
             relationships_out = kg_data_resp.get("relationships", [])
         
+        # Extract KG data from kg_context or initialize empty
+        kg_data = {"concepts": [], "relationships": []}
+        if kg_context:
+            # Extract concepts from nodes
+            kg_data["concepts"] = [node.get("label", node.get("id", "")) for node in kg_context.get("nodes", [])]
+            # Extract relationships from edges
+            kg_data["relationships"] = [
+                {
+                    "source": edge.get("source", ""),
+                    "target": edge.get("target", ""),
+                    "type": edge.get("label", edge.get("type", "related"))
+                }
+                for edge in kg_context.get("edges", [])
+            ]
+        
         # Store query and response in session history
         session_store.append(session_id, "user", req.query)
         response_summary = session_store.extract_response_summary(modules)

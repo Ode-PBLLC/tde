@@ -32,9 +32,11 @@ except Exception:
     GEOSPATIAL_AVAILABLE = False
     print("Warning: GeoPandas/Shapely not available. Install with: pip install geopandas shapely")
 
-# Data directory with preprocessed GPKGs (from preprocess_heat_rasters.py)
+# Data directory with preprocessed files (GPKG or simplified GeoJSONs)
 BASE_DIR = Path(__file__).resolve().parent.parent
 HEAT_DIR = BASE_DIR / "data" / "heat_stress" / "preprocessed"
+HEAT_GEOJSON_DIR = HEAT_DIR / "geojsons"
+HEAT_DOC_PATH = BASE_DIR / "data" / "heat_stress" / "Brazil Datasets Info.txt"
 
 # Global, lazy-loaded index of top quintile polygons
 HEAT_INDEX = {
@@ -44,6 +46,30 @@ HEAT_INDEX = {
     "geom_list": None,         # list of shapely geometries matching index order
     "id_list": None,           # list of feature ids matching index order
 }
+
+# Basic dataset metadata derived from Brazil Datasets Info.txt (hardcoded mapping)
+HEAT_DATASET_INFO = {
+    "Heat_Index": {
+        "variable": "Heat Index (WBGT proxy)",
+        "spatial_coverage": "Brazil",
+        "temporal_coverage": "2020-01-01 to 2025-01-01",
+        "source": "ERA5-Land Daily Aggregated — ECMWF",
+        "citation": "Muñoz Sabater, J. (2019). ERA5-Land monthly averaged data from 1981 to present. Copernicus C3S. doi:10.24381/cds.68d2bb30",
+        "notes": "ERA5-Land lacks coverage over large water bodies and some coastal margins.",
+    },
+    "LST": {
+        "variable": "Land Surface Temperature (LST)",
+        "spatial_coverage": "Brazil",
+        "temporal_coverage": "2020-01-01 to 2025-01-01",
+        "source": "MOD11A1.061 — MODIS/Terra LST & Emissivity, Daily, 1 km",
+        "citation": "Wan, Z., Hook, S., & Hulley, G. (2021). MODIS/Terra LST/Emissivity Daily L3 Global 1km SIN Grid V061. NASA LP DAAC. https://doi.org/10.5067/MODIS/MOD11A1.061",
+        "notes": "Daytime LST daily means; southern-summer variants aggregate Nov–Mar seasons.",
+    }
+}
+
+def _dataset_info_for_source(source: str) -> Dict[str, Any]:
+    key = "Heat_Index" if "Heat_Index" in source else ("LST" if "LST" in source else None)
+    return HEAT_DATASET_INFO.get(key, {})
 
 
 def _explode_geoms(gdf: "gpd.GeoDataFrame") -> "gpd.GeoDataFrame":
@@ -67,6 +93,14 @@ def _explode_geoms(gdf: "gpd.GeoDataFrame") -> "gpd.GeoDataFrame":
         return gpd.GeoDataFrame(rows, crs=gdf.crs)
 
 
+def _normalize_source_name(stem: str) -> str:
+    """Derive a source name from filename stem, dropping quintile suffixes."""
+    for suf in ["_quintiles_simplified", "_quintiles"]:
+        if stem.endswith(suf):
+            return stem[: -len(suf)]
+    return stem
+
+
 def _load_top_quintiles_index() -> bool:
     """Load all top-quintile (5) polygons across available GPKGs and build an STRtree.
 
@@ -76,19 +110,30 @@ def _load_top_quintiles_index() -> bool:
         return False
     if HEAT_INDEX["loaded"]:
         return True
-    if not HEAT_DIR.exists():
-        print(f"[heat] Heat directory not found: {HEAT_DIR}")
+    # Prefer simplified GeoJSONs if available
+    search_dir = HEAT_GEOJSON_DIR if HEAT_GEOJSON_DIR.exists() else HEAT_DIR
+    if not search_dir.exists():
+        print(f"[heat] Heat directory not found: {search_dir}")
         return False
 
-    files = sorted([p for p in HEAT_DIR.glob("*_quintiles.gpkg") if p.is_file()])
+    # Accept both simplified and non-simplified geojsons
+    files = sorted([
+        *search_dir.glob("*_quintiles_simplified.geojson"),
+        *search_dir.glob("*_quintiles.geojson"),
+        *search_dir.glob("*_quintiles.gpkg")  # fallback if GeoPackage still used
+    ])
     if not files:
-        print(f"[heat] No GPKG files found in {HEAT_DIR}")
+        print(f"[heat] No heat-stress files found in {search_dir}")
         return False
 
     parts = []
     for path in files:
         try:
-            gdf = gpd.read_file(path, layer="quintiles")
+            # Read either GeoJSON or GPKG (layer name only for GPKG)
+            if str(path).lower().endswith(".gpkg"):
+                gdf = gpd.read_file(path, layer="quintiles")
+            else:
+                gdf = gpd.read_file(path)
             # Ensure CRS -> WGS84 for registration
             if gdf.crs is None:
                 gdf.set_crs(epsg=4326, inplace=True)
@@ -104,7 +149,7 @@ def _load_top_quintiles_index() -> bool:
                 continue
 
             # Add source name and stable id base
-            src = path.stem.replace("_quintiles", "")
+            src = _normalize_source_name(path.stem)
             top["source"] = src
 
             # Explode multipolygons to individual parts
@@ -136,7 +181,7 @@ def _load_top_quintiles_index() -> bool:
             "id_list": list(all_top["id"].values),
             "loaded": True,
         })
-        print(f"[heat] Top quintile index loaded: {len(all_top)} polygons from {len(files)} sources")
+        print(f"[heat] Top quintile index loaded: {len(all_top)} polygons from {len(files)} sources ({search_dir})")
         return True
     except Exception as e:
         print(f"[heat] Failed to build STRtree: {e}")
@@ -157,32 +202,54 @@ def ListHeatLayers() -> Dict[str, Any]:
     Focus on quintiles layer and presence of top quintile.
     """
     files = []
-    if HEAT_DIR.exists():
-        for p in sorted(HEAT_DIR.glob("*_quintiles.gpkg")):
+    search_dirs = [d for d in [HEAT_GEOJSON_DIR, HEAT_DIR] if d.exists()]
+    for dirp in search_dirs:
+        for p in sorted(list(dirp.glob("*_quintiles_simplified.geojson")) +
+                         list(dirp.glob("*_quintiles.geojson")) +
+                         list(dirp.glob("*_quintiles.gpkg"))):
             info = {
                 "filename": p.name,
                 "path": str(p),
-                "source": p.stem.replace("_quintiles", ""),
+                "source": _normalize_source_name(p.stem),
                 "has_quintiles": True,
                 "has_top_quintile": None,
             }
             try:
                 if GEOSPATIAL_AVAILABLE:
-                    gdf = gpd.read_file(p, layer="quintiles")
+                    if str(p).lower().endswith(".gpkg"):
+                        gdf = gpd.read_file(p, layer="quintiles")
+                    else:
+                        gdf = gpd.read_file(p)
                     info["crs"] = (gdf.crs.to_string() if gdf.crs else "None")
                     if "quintile" in gdf.columns:
                         qs = sorted([int(x) for x in gdf["quintile"].dropna().unique().tolist()])
                         info["available_quintiles"] = qs
                         info["has_top_quintile"] = (5 in qs)
                     info["feature_count"] = int(len(gdf))
+                    info["dataset_info"] = _dataset_info_for_source(info["source"]) or None
             except Exception as e:
                 info["error"] = str(e)
             files.append(info)
     return {
         "heat_layers": files,
-        "directory": str(HEAT_DIR),
+        "directories": [str(d) for d in search_dirs],
         "note": "Server optimized for top quintile (5) polygons",
     }
+
+
+@mcp.tool()
+def GetHeatDatasetInfo(source: Optional[str] = None) -> Dict[str, Any]:
+    """Return dataset metadata/citation for heat-stress layers.
+
+    Args:
+        source: Optional source hint ('Heat_Index' or 'LST' in filename).
+    """
+    if source:
+        info = _dataset_info_for_source(source)
+        if info:
+            return {"dataset": info, "matched_source": source}
+    # Return both when not specified
+    return {"datasets": HEAT_DATASET_INFO}
 
 
 def _filter_by_bbox(gdf: "gpd.GeoDataFrame", bbox_dict: Optional[Dict[str, float]]) -> "gpd.GeoDataFrame":
@@ -255,6 +322,7 @@ def GetHeatQuintilesForGeospatial(
         except Exception:
             continue
 
+    meta_info = _dataset_info_for_source(source or (gdf.iloc[0]["source"] if not gdf.empty else ""))
     return {
         "entity_type": "heat_zone",
         "quintiles": qs,
@@ -262,7 +330,11 @@ def GetHeatQuintilesForGeospatial(
         "count": len(entities),
         "source_filter": source,
         "bbox": bbox,
-        "optimized_top_quintile_only": True
+        "optimized_top_quintile_only": True,
+        "citation": meta_info,
+        "spatial_coverage": meta_info.get("spatial_coverage"),
+        "temporal_coverage": meta_info.get("temporal_coverage"),
+        "dataset_variable": meta_info.get("variable")
     }
 
 
@@ -341,11 +413,15 @@ def GetHeatQuintilesMap(
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(geojson, f)
 
+    meta_info = _dataset_info_for_source(source or (gdf.iloc[0]["source"] if not gdf.empty else ""))
     summary = {
         "description": f"Heat stress map (quintile {qs})",
         "total_features": len(features),
         "layers": [{"type": "heat_zone", "count": len(features)}],
-        "title": "Heat Stress Map"
+        "title": "Heat Stress Map",
+        "spatial_coverage": meta_info.get("spatial_coverage"),
+        "temporal_coverage": meta_info.get("temporal_coverage"),
+        "dataset_variable": meta_info.get("variable")
     }
 
     return {
@@ -353,10 +429,10 @@ def GetHeatQuintilesMap(
         "geojson_url": f"/static/maps/{filename}",
         "geojson_filename": filename,
         "summary": summary,
+        "citation": meta_info,
         "optimized_top_quintile_only": True
     }
 
 
 if __name__ == "__main__":
     mcp.run()
-

@@ -123,6 +123,21 @@ def _get_session_store(session_id: str):
     return SESSIONS[session_id]
 
 
+def _ensure_equal_area_crs(gdf, target_crs: str = 'EPSG:5880'):
+    """Project a GeoDataFrame to an equal-area CRS for area/length calculations.
+    Defaults to Brazil Polyconic (EPSG:5880) suitable for national-scale area stats."""
+    if gdf is None or getattr(gdf, 'empty', True):
+        return gdf
+    try:
+        if gdf.crs is None:
+            gdf = gdf.set_crs('EPSG:4326')
+        if gdf.crs.to_string() != target_crs:
+            return gdf.to_crs(target_crs)
+        return gdf
+    except Exception:
+        return gdf
+
+
 @mcp.tool()
 def RegisterEntities(entity_type: str, entities: List[Dict], session_id: str = "_default") -> Dict[str, Any]:
     """
@@ -601,6 +616,21 @@ def GenerateCorrelationMap(
             status = 'Contains solar' if has_solar else 'No solar'
             properties['title'] = f"Deforestation: {area:.1f} ha - {status}"
             
+        elif entity['entity_type'] == 'heat_zone':
+            # Style for heat zones (polygons), emphasize top quintile
+            q = properties.get('quintile', 5)
+            try:
+                q = int(q)
+            except Exception:
+                q = 5
+            color_map = {1: '#FFEDA0', 2: '#FEB24C', 3: '#FD8D3C', 4: '#FC4E2A', 5: '#E31A1C'}
+            properties['fill'] = color_map.get(q, '#E31A1C')
+            properties['fill-opacity'] = 0.35
+            properties['stroke'] = '#9E9E9E'
+            properties['stroke-width'] = 0.5
+            src = properties.get('source') or 'heat'
+            properties['title'] = f"Heat zone Q{q} • {src}"
+
         elif entity['entity_type'] == 'water_stressed_asset':
             # Different styling for GIST assets
             properties['marker-color'] = '#4169E1' if is_correlated else '#87CEEB'  # Royal blue if correlated
@@ -851,6 +881,354 @@ def GenerateCorrelationMap(
         "geojson_filename": filename,
         "summary": summary,
         "session_id": session_id
+    }
+
+
+@mcp.tool()
+def ComputeAreaOverlapByEntityTypes(
+    admin_entity_type: str,
+    zone_entity_type: str,
+    min_overlap_ratio: float = 0.0,
+    session_id: str = "_default"
+) -> Dict[str, Any]:
+    """
+    Compute percent area of each admin polygon overlapped by zone polygons.
+
+    Args:
+        admin_entity_type: entity type of administrative polygons (e.g., 'municipality')
+        zone_entity_type: entity type of zone polygons (e.g., 'heat_zone')
+        min_overlap_ratio: optional filter to return only admins with >= this share (0..1)
+
+    Returns:
+        List of {admin_id, total_area_km2, overlap_km2, overlap_ratio, properties}
+        Sorted by overlap_ratio descending.
+    """
+    if not GEOSPATIAL_AVAILABLE:
+        return {"error": "GeoPandas not installed"}
+
+    store = _get_session_store(session_id)
+    entities_gdf = store['entities_gdf']
+    if entities_gdf is None or entities_gdf.empty:
+        return {"error": "No entities registered"}
+
+    admins = entities_gdf[entities_gdf['entity_type'] == admin_entity_type].copy()
+    zones = entities_gdf[entities_gdf['entity_type'] == zone_entity_type].copy()
+    if admins.empty:
+        return {"error": f"No entities of type '{admin_entity_type}' registered"}
+    if zones.empty:
+        return {"error": f"No entities of type '{zone_entity_type}' registered"}
+
+    admins_eq = _ensure_equal_area_crs(admins)
+    zones_eq = _ensure_equal_area_crs(zones)
+
+    try:
+        admins_eq = admins_eq.set_geometry('geometry')
+        zones_eq = zones_eq.set_geometry('geometry')
+        cand = gpd.sjoin(admins_eq[['entity_id', 'geometry']], zones_eq[['geometry']], how='inner', predicate='intersects')
+        if cand.empty:
+            return {"results": [], "count": 0, "note": "No intersections found"}
+        zones_idxs = cand.index_right.unique().tolist()
+        zones_eq_sub = zones_eq.iloc[zones_idxs]
+
+        inter = gpd.overlay(admins_eq[['entity_id', 'geometry']], zones_eq_sub[['geometry']], how='intersection')
+        if inter.empty:
+            return {"results": [], "count": 0, "note": "No overlap after overlay"}
+        inter['overlap_area_km2'] = inter.geometry.area / 1_000_000.0
+
+        admins_eq = admins_eq.copy()
+        admins_eq['total_area_km2'] = admins_eq.geometry.area / 1_000_000.0
+
+        agg = inter.groupby('entity_id', as_index=False)['overlap_area_km2'].sum()
+        merged = admins_eq[['entity_id', 'total_area_km2']].merge(agg, on='entity_id', how='left').fillna({'overlap_area_km2': 0.0})
+        merged['overlap_ratio'] = (merged['overlap_area_km2'] / merged['total_area_km2']).clip(0, 1)
+
+        # Attach properties from original admins table
+        props = {}
+        for idx, row in admins.iterrows():
+            try:
+                props[row['entity_id']] = json.loads(row['properties']) if row.get('properties') else {}
+            except Exception:
+                props[row['entity_id']] = {}
+
+        results = []
+        for _, row in merged.iterrows():
+            if float(row['overlap_ratio']) < float(min_overlap_ratio or 0.0):
+                continue
+            results.append({
+                'admin_id': row['entity_id'],
+                'total_area_km2': float(row['total_area_km2']),
+                'overlap_km2': float(row['overlap_area_km2']),
+                'overlap_ratio': float(row['overlap_ratio']),
+                'properties': props.get(row['entity_id'], {})
+            })
+        results.sort(key=lambda x: x['overlap_ratio'], reverse=True)
+
+        store.setdefault('admin_metrics', {})['overlap_' + zone_entity_type] = results
+        return {
+            'results': results,
+            'count': len(results),
+            'metric': 'overlap_' + zone_entity_type,
+            'admin_entity_type': admin_entity_type,
+            'zone_entity_type': zone_entity_type,
+            'session_id': session_id
+        }
+    except Exception as e:
+        return {"error": f"Area overlap calculation failed: {str(e)}"}
+
+
+@mcp.tool()
+def ComputePointDensityByEntityTypes(
+    admin_entity_type: str,
+    point_entity_type: str,
+    per_km2: float = 1000.0,
+    capacity_field: str = 'capacity_mw',
+    session_id: str = "_default"
+) -> Dict[str, Any]:
+    """
+    Compute point density within admin polygons and optional capacity sums.
+
+    Args:
+        admin_entity_type: polygon entities (e.g., 'municipality')
+        point_entity_type: point entities (e.g., 'solar_facility')
+        per_km2: normalization factor (points per X km²)
+        capacity_field: if present in point properties, aggregate sum per admin
+
+    Returns:
+        List of {admin_id, area_km2, points, points_per_Xkm2, capacity_sum?, capacity_per_capita?}
+    """
+    if not GEOSPATIAL_AVAILABLE:
+        return {"error": "GeoPandas not installed"}
+
+    store = _get_session_store(session_id)
+    entities_gdf = store['entities_gdf']
+    if entities_gdf is None or entities_gdf.empty:
+        return {"error": "No entities registered"}
+
+    admins = entities_gdf[entities_gdf['entity_type'] == admin_entity_type].copy()
+    pts = entities_gdf[entities_gdf['entity_type'] == point_entity_type].copy()
+    if admins.empty:
+        return {"error": f"No entities of type '{admin_entity_type}' registered"}
+    if pts.empty:
+        return {"error": f"No entities of type '{point_entity_type}' registered"}
+
+    admins_eq = _ensure_equal_area_crs(admins)
+    pts_eq = pts
+    try:
+        if pts_eq.crs is None:
+            pts_eq = pts_eq.set_crs('EPSG:4326')
+        pts_eq = pts_eq.to_crs(admins_eq.crs)
+    except Exception:
+        pts_eq = pts
+
+    admins_eq = admins_eq.copy()
+    admins_eq['area_km2'] = admins_eq.geometry.area / 1_000_000.0
+
+    try:
+        joined = gpd.sjoin(pts_eq[['entity_id', 'properties', 'geometry']], admins_eq[['entity_id', 'geometry']], how='inner', predicate='within', lsuffix='pt', rsuffix='admin')
+    except Exception as e:
+        return {"error": f"Spatial join failed: {str(e)}"}
+
+    counts = joined.groupby('entity_id_admin').size().rename('points').reset_index()
+
+    # Capacity sum if available
+    caps = None
+    if 'properties' in joined.columns and capacity_field:
+        try:
+            def _cap_val(js):
+                try:
+                    d = json.loads(js) if isinstance(js, str) else (js or {})
+                    v = d.get(capacity_field)
+                    return float(v) if v is not None and v == v else 0.0
+                except Exception:
+                    return 0.0
+            cap_series = joined['properties'].apply(_cap_val)
+            joined = joined.assign(_cap=cap_series)
+            caps = joined.groupby('entity_id_admin')['_cap'].sum().rename('capacity_sum').reset_index()
+        except Exception:
+            caps = None
+
+    merged = admins_eq[['entity_id', 'area_km2']].merge(counts, left_on='entity_id', right_on='entity_id_admin', how='left').fillna({'points': 0})
+    if caps is not None:
+        merged = merged.merge(caps, left_on='entity_id', right_on='entity_id_admin', how='left').drop(columns=['entity_id_admin_y'], errors='ignore')
+        merged['capacity_sum'] = merged['capacity_sum'].fillna(0.0)
+    merged = merged.rename(columns={'entity_id_admin_x': 'entity_id'})
+
+    # Pull population if present in admin properties
+    admin_props = {}
+    for idx, row in admins.iterrows():
+        try:
+            admin_props[row['entity_id']] = json.loads(row['properties']) if row.get('properties') else {}
+        except Exception:
+            admin_props[row['entity_id']] = {}
+
+    results = []
+    for _, row in merged.iterrows():
+        eid = row['entity_id'] if 'entity_id' in merged.columns else row.get('entity_id_x')
+        area = float(row['area_km2']) if row.get('area_km2') is not None else 0.0
+        pts_count = int(row['points']) if row.get('points') is not None else 0
+        per_norm = (pts_count / area * float(per_km2)) if area > 0 else 0.0
+        out = {
+            'admin_id': eid,
+            'area_km2': area,
+            'points': pts_count,
+            f'points_per_{int(per_km2)}km2': float(per_norm),
+            'properties': admin_props.get(eid, {})
+        }
+        if 'capacity_sum' in merged.columns:
+            out['capacity_sum'] = float(row['capacity_sum'] or 0.0)
+            pop = admin_props.get(eid, {}).get('population')
+            try:
+                pop = float(pop) if pop is not None else None
+            except Exception:
+                pop = None
+            if pop and pop > 0:
+                out['capacity_per_100k_people'] = (out['capacity_sum'] / pop) * 100000.0
+        results.append(out)
+
+    results.sort(key=lambda x: x.get(f'points_per_{int(per_km2)}km2', 0.0))
+    metric_key = f'density_{point_entity_type}_per_{int(per_km2)}km2'
+    store.setdefault('admin_metrics', {})[metric_key] = results
+    return {
+        'results': results,
+        'count': len(results),
+        'metric': metric_key,
+        'admin_entity_type': admin_entity_type,
+        'point_entity_type': point_entity_type,
+        'session_id': session_id
+    }
+
+
+def _quantile_bins(values: List[float], k: int = 5) -> List[float]:
+    try:
+        import numpy as _np
+    except Exception:
+        # Fallback: min/max linear bins
+        if not values:
+            return []
+        mn, mx = min(values), max(values)
+        step = (mx - mn) / max(k, 1)
+        return [mn + i * step for i in range(k + 1)]
+    if not values:
+        return []
+    qs = _np.quantile(values, _np.linspace(0, 1, k + 1)).tolist()
+    for i in range(1, len(qs)):
+        if qs[i] <= qs[i-1]:
+            qs[i] = qs[i-1] + 1e-9
+    return qs
+
+
+@mcp.tool()
+def GenerateAdminChoropleth(
+    admin_entity_type: str,
+    metric_name: str,
+    metrics: Optional[List[Dict[str, Any]]] = None,
+    title: Optional[str] = None,
+    session_id: str = "_default"
+) -> Dict[str, Any]:
+    """
+    Generate a choropleth GeoJSON for admin polygons using a provided metric list.
+
+    Args:
+        admin_entity_type: entity type of admin polygons used when registering
+        metric_name: label for the metric used in properties
+        metrics: list of {admin_id, value? or overlap_ratio/points_per_Xkm2, ...}
+                 If None, tries to use cached last metrics under this name.
+        title: optional title for map metadata
+
+    Returns:
+        { type: 'map', geojson_url, summary }
+    """
+    if not GEOSPATIAL_AVAILABLE:
+        return {"error": "GeoPandas not installed"}
+    store = _get_session_store(session_id)
+    entities_gdf = store['entities_gdf']
+    if entities_gdf is None or entities_gdf.empty:
+        return {"error": "No entities registered"}
+
+    admins = entities_gdf[entities_gdf['entity_type'] == admin_entity_type].copy()
+    if admins.empty:
+        return {"error": f"No entities of type '{admin_entity_type}' registered"}
+
+    metric_cache = store.get('admin_metrics', {})
+    vals = metrics if metrics is not None else metric_cache.get(metric_name)
+    if not vals:
+        return {"error": "No metrics provided or cached"}
+
+    def _metric_value(d: Dict[str, Any]) -> Optional[float]:
+        for k in ('value', 'overlap_ratio', 'points_per_1000km2', 'points_per_500km2'):
+            v = d.get(k)
+            if v is not None:
+                return float(v)
+        for k, v in d.items():
+            if isinstance(v, (int, float)) and k not in ('area_km2', 'points'):
+                return float(v)
+        return None
+
+    value_by_id: Dict[str, float] = {}
+    for item in vals:
+        eid = item.get('admin_id') or item.get('entity_id')
+        mv = _metric_value(item)
+        if eid is not None and mv is not None:
+            value_by_id[str(eid)] = mv
+
+    features = []
+    value_list = list(value_by_id.values())
+    bins = _quantile_bins(value_list, k=5) if len(value_list) >= 5 else []
+    palette = ["#fee5d9", "#fcae91", "#fb6a4a", "#de2d26", "#a50f15"]
+
+    def _color(v: float) -> str:
+        if v is None:
+            return '#CCCCCC'
+        if not bins:
+            return palette[-1]
+        for i in range(len(bins) - 1):
+            if bins[i] <= v <= bins[i + 1]:
+                return palette[i]
+        return palette[-1]
+
+    for idx, row in admins.iterrows():
+        eid = str(row['entity_id'])
+        v = value_by_id.get(eid)
+        try:
+            props = json.loads(row.get('properties', '{}')) if row.get('properties') else {}
+        except Exception:
+            props = {}
+        feat_props = {
+            'layer': admin_entity_type,
+            metric_name: v,
+            'fill': _color(v),
+            'fill-opacity': 0.7 if v is not None else 0.2,
+            'stroke': '#666666',
+            'stroke-width': 0.5,
+            'title': f"{props.get('name', eid)} — {metric_name}: {round(v,3) if v is not None else 'n/a'}",
+            **props
+        }
+        features.append({
+            'type': 'Feature',
+            'geometry': row.geometry.__geo_interface__ if row.geometry is not None else None,
+            'properties': feat_props
+        })
+
+    geojson = {'type': 'FeatureCollection', 'features': features, 'metadata': {}}
+    project_root = Path(__file__).resolve().parents[1]
+    static_maps_dir = os.path.join(project_root, 'static', 'maps')
+    os.makedirs(static_maps_dir, exist_ok=True)
+    ident = hashlib.md5(f"{metric_name}_{len(features)}_{datetime.utcnow().isoformat()}".encode()).hexdigest()[:8]
+    filename = f"admin_choropleth_{metric_name}_{ident}.geojson"
+    out_path = os.path.join(static_maps_dir, filename)
+    with open(out_path, 'w', encoding='utf-8') as f:
+        json.dump(geojson, f)
+
+    summary = {
+        'description': f"Choropleth for {admin_entity_type} by {metric_name}",
+        'total_features': len(features),
+        'title': title or f"{admin_entity_type.title()} — {metric_name}"
+    }
+    return {
+        'type': 'map',
+        'geojson_url': f"/static/maps/{filename}",
+        'geojson_filename': filename,
+        'summary': summary
     }
 
 
