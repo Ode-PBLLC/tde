@@ -1341,7 +1341,7 @@ Instructions:
             "kg": {
                 "brief": "Climate Knowledge Graph with physical & transition risks, energy systems, financial climate impacts",
                 "detailed": "Knowledge graph containing climate risk data, energy system information, financial climate impacts, physical risks (floods, droughts, heat), transition risks (policy, technology, market), sectoral analysis, and interconnected climate-finance relationships",
-                "routing_prompt": "Analyze if this query relates to climate risks, energy systems, financial impacts, physical or transition risks, or sector-specific climate analysis.",
+                "routing_prompt": "Analyze if this query relates to climate risks, energy systems, financial impacts, physical or transition risks, sector-specific climate analysis, passages/citations, or concept relationships/paths.",
                 "collection_instructions": """Tool usage strategy for Knowledge Graph:
                 - Use 'GetPassagesMentioningConcept' as your MAIN search tool - search for relevant concepts
                 - Start with the country/entity name (e.g., 'Brazil') to get country-specific passages
@@ -1349,6 +1349,8 @@ Instructions:
                 - Use 'GetRelatedConcepts' to find connected concepts if initial search is too narrow
                 - For energy queries, search concepts: renewable energy, biofuels, ethanol, electricity, solar, wind
                 - For NDC queries, search concepts: NDC, commitments, targets, emissions reduction
+                - For relationship/path queries between concepts, call 'FindConceptPathWithEdges' with the two concept names and a reasonable max_len (e.g., 4)
+                - For passages that mention both concepts, call 'PassagesMentioningBothConcepts' with those two concept names and a reasonable limit (e.g., 5)
                 - When you find quantitative targets (percentages, TWh, MW), ALWAYS extract the complete context
                 - Call multiple concept searches to ensure comprehensive coverage
                 - NEVER use 'ALWAYSRUN' - it's a debug tool that returns nothing useful"""
@@ -1539,9 +1541,19 @@ Instructions:
             
             # Parse JSON response
             relevant_servers = json.loads(response.strip())
-            
+
             # Validate server names
             valid_servers = [s for s in relevant_servers if s in server_descriptions]
+
+            # Ensure KG is included for KG-like queries (passages, paths, relations)
+            kg_triggers = [
+                'passage', 'passages', 'mention both', 'co-mention',
+                'shortest path', 'relationship path', 'path between', 'relationship between',
+                'concept', 'concepts', 'knowledge graph', 'kg'
+            ]
+            ql = user_query.lower()
+            if any(k in ql for k in kg_triggers) and 'kg' not in valid_servers:
+                valid_servers.append('kg')
             
             print(f"Pre-filter selected servers: {valid_servers}")
             return valid_servers
@@ -1744,6 +1756,242 @@ Instructions:
                     reasoning=f"Server {server_name} has no available tools"
                 )
             
+            # Build optional query-specific hints to guide tool choice (no shortcuts)
+            query_hints = ""
+            ql = user_query.lower()
+            if server_name == "kg":
+                hints = []
+                if any(k in ql for k in ["shortest path", "relationship path", "path between", "how are", "how is", "connected to"]):
+                    hints.append("For relationship/path queries, consider calling 'FindConceptPathWithEdges' with the two concept names and an appropriate max_len (e.g., 4).")
+                if ("mention both" in ql) or ("co-mention" in ql) or ("passage" in ql and " and " in ql):
+                    hints.append("For co-mention passage queries, consider calling 'PassagesMentioningBothConcepts' with the two concept names and a reasonable limit (e.g., 5).")
+                if hints:
+                    query_hints = "\n\nQUERY-SPECIFIC HINTS:\n- " + "\n- ".join(hints)
+
+                # Deterministic KG bootstrap using semantic + exact concept retrieval from the query
+                try:
+                    # 1) High-precision: exact unigram/bigram label matches from query
+                    exact_res = await self.client.call_tool("FindConceptMatchesByNgrams", {"query": user_query, "top_k": 10}, server_name)
+                    exact_list = []
+                    if hasattr(exact_res, 'content') and exact_res.content:
+                        import json as _json
+                        data0 = _json.loads(exact_res.content[0].text)
+                        if isinstance(data0, list):
+                            exact_list = [d.get("label") for d in data0 if isinstance(d, dict) and d.get("label")]
+                    llm_logger.info(f"KG BOOTSTRAP exact ngram matches: {exact_list}")
+
+                    # 2) Local token-overlap retrieval (offline, robust)
+                    local_res = await self.client.call_tool("GetTopConceptsByQueryLocal", {"query": user_query, "top_k": 10}, server_name)
+                    local_list = []
+                    if hasattr(local_res, 'content') and local_res.content:
+                        import json as _json
+                        dataL = _json.loads(local_res.content[0].text)
+                        if isinstance(dataL, list):
+                            local_list = [d.get("label") for d in dataL if isinstance(d, dict) and d.get("label")]
+                    llm_logger.info(f"KG BOOTSTRAP local token-overlap top: {local_list}")
+
+                    # Embedding diagnostics (so we know why semantic may be empty)
+                    try:
+                        dbg_res = await self.client.call_tool("DebugEmbeddingStatus", {}, server_name)
+                        if hasattr(dbg_res, 'content') and dbg_res.content:
+                            import json as _json
+                            dbg = _json.loads(dbg_res.content[0].text)
+                            llm_logger.info(f"KG DEBUG: env_has_key={dbg.get('env_has_openai_key')} key_prefix={dbg.get('openai_key_prefix')} vectors_present={dbg.get('vectors_column_present')} dtype={dbg.get('vectors_dtype')} nulls={dbg.get('vectors_null_count')} parsed_row0={dbg.get('row0_type_after')} total_concepts={dbg.get('total_concepts')} graphml_exists={dbg.get('graphml_path_exists')}")
+                    except Exception as e:
+                        llm_logger.warning(f"KG DEBUG call failed: {e}")
+
+                    # 3) Try semantic retrieval via embeddings (may be unavailable)
+                    top_res = await self.client.call_tool("GetTopConceptsByQuery", {"query": user_query, "top_k": 5}, server_name)
+                    top_list = []
+                    if hasattr(top_res, 'content') and top_res.content:
+                        import json as _json
+                        data = _json.loads(top_res.content[0].text)
+                        if isinstance(data, list):
+                            top_list = [d.get("label") for d in data if isinstance(d, dict) and d.get("label")]
+                    llm_logger.info(f"KG BOOTSTRAP semantic top: {top_list}")
+                    # 2) Fallback to fuzzy text search when embeddings unavailable
+                    if not top_list:
+                        search_res = await self.client.call_tool("SearchConceptsByText", {"query": user_query, "top_k": 5}, server_name)
+                        if hasattr(search_res, 'content') and search_res.content:
+                            import json as _json
+                            data2 = _json.loads(search_res.content[0].text)
+                            if isinstance(data2, list):
+                                top_list = [d.get("label") for d in data2 if isinstance(d, dict) and d.get("label")]
+                        llm_logger.info(f"KG BOOTSTRAP text search top: {top_list}")
+
+                    # Merge exact matches first, then local token-overlap, then semantic/fuzzy, deduplicated
+                    merged = []
+                    seen_lbl = set()
+                    for lbl in exact_list + local_list + top_list:
+                        if lbl and lbl not in seen_lbl:
+                            merged.append(lbl)
+                            seen_lbl.add(lbl)
+                    llm_logger.info(f"KG BOOTSTRAP merged candidates: {merged}")
+
+                    # Heuristic: ensure 'terrestrial risk' is tried when deforestation is present
+                    try:
+                        if (('deforestation' in [x.lower() for x in exact_list + local_list + top_list])
+                            and ('terrestrial risk' not in [x.lower() for x in merged])):
+                            exists_tr = await self.client.call_tool("CheckConceptExists", {"concept": "terrestrial risk"}, server_name)
+                            tr_ok = False
+                            if hasattr(exists_tr, 'content') and exists_tr.content:
+                                import json as _json
+                                try:
+                                    tr_ok = bool(_json.loads(exists_tr.content[0].text))
+                                except Exception:
+                                    tr_ok = str(exists_tr.content[0].text).strip().lower() in ("true","1","yes")
+                            if tr_ok:
+                                merged.insert(0, 'terrestrial risk')
+                                llm_logger.info("KG BOOTSTRAP injected 'terrestrial risk' due to deforestation in query")
+                    except Exception as e:
+                        llm_logger.warning(f"KG BOOTSTRAP terrestrial risk injection failed: {e}")
+
+                    # Deterministic traversal & context (no scoring)
+                    # 1) Select seed concepts and expand neighbors
+                    seeds = merged[:2]  # first two seed concepts
+                    neighbor_labels = []
+                    try:
+                        for seed in seeds:
+                            # Collect parents (outgoing SUBCONCEPT_OF), children (incoming SUBCONCEPT_OF), related (RELATED_TO)
+                            parents = []
+                            children = []
+                            relateds = []
+                            try:
+                                out_res = await self.client.call_tool(
+                                    "GetConceptGraphNeighbors",
+                                    {"concept": seed, "edge_types": ["SUBCONCEPT_OF","RELATED_TO"], "direction": "out", "max_results": 10},
+                                    server_name
+                                )
+                                in_res = await self.client.call_tool(
+                                    "GetConceptGraphNeighbors",
+                                    {"concept": seed, "edge_types": ["SUBCONCEPT_OF","RELATED_TO"], "direction": "in", "max_results": 10},
+                                    server_name
+                                )
+                                import json as _json
+                                out_list = _json.loads(out_res.content[0].text) if hasattr(out_res,'content') and out_res.content else []
+                                in_list  = _json.loads(in_res.content[0].text) if hasattr(in_res,'content') and in_res.content else []
+                                # Parents: out edges with SUBCONCEPT_OF
+                                for n in out_list:
+                                    if isinstance(n, dict) and n.get('kind') == 'Concept' and n.get('via_edge') == 'SUBCONCEPT_OF':
+                                        parents.append(n.get('label') or n.get('node_id'))
+                                # Children: in edges with SUBCONCEPT_OF
+                                for n in in_list:
+                                    if isinstance(n, dict) and n.get('kind') == 'Concept' and n.get('via_edge') == 'SUBCONCEPT_OF':
+                                        children.append(n.get('label') or n.get('node_id'))
+                                # Related: any RELATED_TO from either side
+                                for n in out_list + in_list:
+                                    if isinstance(n, dict) and n.get('kind') == 'Concept' and n.get('via_edge') == 'RELATED_TO':
+                                        relateds.append(n.get('label') or n.get('node_id'))
+                            except Exception as e:
+                                llm_logger.warning(f"KG NEIGHBORS failed for '{seed}': {e}")
+
+                            # Deterministic selection: 1 parent, up to 2 children, 1 related
+                            # Sort labels alphabetically for stability
+                            parents = sorted([p for p in parents if p])
+                            children = sorted([c for c in children if c])
+                            relateds = sorted([r for r in relateds if r])
+                            if parents:
+                                neighbor_labels.append(parents[0])
+                            neighbor_labels.extend(children[:2])
+                            if relateds:
+                                neighbor_labels.append(relateds[0])
+                    except Exception as e:
+                        llm_logger.warning(f"KG neighbor expansion error: {e}")
+
+                    # Deduplicate neighbors and remove those already in merged
+                    neighbor_labels_dedup = []
+                    for lbl in neighbor_labels:
+                        if lbl and (lbl not in neighbor_labels_dedup) and (lbl not in merged):
+                            neighbor_labels_dedup.append(lbl)
+                    llm_logger.info(f"KG NEIGHBOR concepts selected: {neighbor_labels_dedup}")
+
+                    # 2) Collect evidence deterministically: first a subset of seeds, then a subset of neighbors
+                    collected_facts = []
+                    seed_for_passages = seeds + merged[2:3]  # up to 3 total seed concepts
+                    for label in seed_for_passages:
+                        try:
+                            pass_res = await self.client.call_tool("GetPassagesMentioningConcept", {"concept": label, "limit": 5}, server_name)
+                            facts_here = self._extract_facts_from_result("GetPassagesMentioningConcept", {"concept": label, "limit": 5}, pass_res, server_name)
+                            # Log summary of passages
+                            try:
+                                if hasattr(pass_res, 'content') and pass_res.content:
+                                    import json as _json
+                                    pr = _json.loads(pass_res.content[0].text)
+                                    if isinstance(pr, list):
+                                        sample = pr[0] if pr else {}
+                                        doc = sample.get('doc_id'); pid = sample.get('passage_id')
+                                        llm_logger.info(f"KG PASSAGES for '{label}': {len(pr)} items; sample doc={doc} pid={pid}")
+                            except Exception as e:
+                                llm_logger.warning(f"KG PASSAGES logging error: {e}")
+                            collected_facts.extend(facts_here)
+                        except Exception as e:
+                            print(f"KG bootstrap error for '{label}': {e}")
+
+                    # Neighbor evidence: only first 2 neighbors, one passage each
+                    for label in neighbor_labels_dedup[:2]:
+                        try:
+                            pass_res = await self.client.call_tool("GetPassagesMentioningConcept", {"concept": label, "limit": 1}, server_name)
+                            facts_here = self._extract_facts_from_result("GetPassagesMentioningConcept", {"concept": label, "limit": 1}, pass_res, server_name)
+                            collected_facts.extend(facts_here)
+                        except Exception as e:
+                            llm_logger.warning(f"KG neighbor passage fetch failed for '{label}': {e}")
+
+                    # If both indigenous and terrestrial risk are in candidates, also fetch co-mentions
+                    try:
+                        cand_lower = [c.lower() for c in merged]
+                        if ('indigenous people' in cand_lower) and ('terrestrial risk' in cand_lower):
+                            both_res = await self.client.call_tool(
+                                "PassagesMentioningBothConcepts",
+                                {"concept_a": "indigenous people", "concept_b": "terrestrial risk", "limit": 5},
+                                server_name
+                            )
+                            both_facts = self._extract_facts_from_result("PassagesMentioningBothConcepts", {"concept_a": "indigenous people", "concept_b": "terrestrial risk", "limit": 5}, both_res, server_name)
+                            llm_logger.info(f"KG BOOTSTRAP co-mentions added: {len(both_facts)}")
+                            collected_facts.extend(both_facts)
+                    except Exception as e:
+                        llm_logger.warning(f"KG BOOTSTRAP co-mentions failed: {e}")
+
+                    # Optional relationship path (justification)
+                    try:
+                        if len(seeds) >= 2:
+                            path_res = await self.client.call_tool(
+                                "FindConceptPathWithEdges",
+                                {"source_concept": seeds[0], "target_concept": seeds[1], "max_len": 4},
+                                server_name
+                            )
+                            # Convert relationship to a text-only fact for optional inclusion
+                            if hasattr(path_res, 'content') and path_res.content:
+                                import json as _json
+                                paths = _json.loads(path_res.content[0].text)
+                                if isinstance(paths, list) and paths:
+                                    explain_res = await self.client.call_tool(
+                                        "ExplainConceptRelationship",
+                                        {"source_concept": seeds[0], "target_concept": seeds[1], "max_len": 4},
+                                        server_name
+                                    )
+                                    if hasattr(explain_res, 'content') and explain_res.content:
+                                        rel_text = explain_res.content[0].text.strip()
+                                        if rel_text:
+                                            collected_facts.append(Fact(
+                                                text_content=f"Relationship: {rel_text}",
+                                                source_key=f"kg_relationship_{seeds[0]}_{seeds[1]}",
+                                                server_origin=server_name,
+                                                metadata={"tool": "ExplainConceptRelationship"}
+                                            ))
+                    except Exception as e:
+                        llm_logger.warning(f"KG relationship explanation failed: {e}")
+
+                    if collected_facts:
+                        return PhaseResult(
+                            is_relevant=True,
+                            facts=collected_facts,
+                            reasoning=f"Deterministic KG bootstrap collected {len(collected_facts)} passage facts",
+                            continue_processing=False,
+                            token_usage=0
+                        )
+                except Exception as e:
+                    print(f"KG deterministic bootstrap failed: {e}")
+            
             # Detect if this is a spatial correlation query
             is_spatial_query = any(keyword in user_query.lower() for keyword in [
                 "within", "inside", "intersect", "overlap", "near", "close to", 
@@ -1785,7 +2033,7 @@ CRITICAL: Focus ONLY on facts that directly answer this specific question.
 
 Server capabilities: {config['detailed']}
 
-{config['collection_instructions']}{spatial_instructions}
+{config['collection_instructions']}{spatial_instructions}{query_hints}
 
 COLLECTION PRIORITIES:
 1. Call tools that DIRECTLY answer "{user_query}" - not just related topics
@@ -2055,11 +2303,18 @@ When you have collected enough information to answer "{user_query}", respond wit
                         except json.JSONDecodeError:
                             # Not JSON, treat as plain text
                             result_data = first_content.text
+            # Debug logging
+            try:
+                summary_type = type(result_data).__name__
+                count = len(result_data) if isinstance(result_data, (list, dict)) else 1
+                llm_logger.info(f"FACTS EXTRACTOR: server={server_name} tool={tool_name} args={tool_args} result_type={summary_type} approx_count={count}")
+            except Exception:
+                pass
             
             # Extract facts based on tool type and result structure
             if result_data:
                 # Create citation for this tool result
-                citation = Citation(
+                base_citation = Citation(
                     source_name=self._get_source_name_for_tool(tool_name, server_name),
                     tool_id=tool_name,
                     source_type=self._get_source_type_for_server(server_name),
@@ -2070,23 +2325,137 @@ When you have collected enough information to answer "{user_query}", respond wit
                 
                 # Extract facts based on data type
                 if isinstance(result_data, list):
-                    # List of items - create summary fact
-                    fact_text = f"Found {len(result_data)} items from {tool_name}"
-                    if tool_args:
-                        args_str = ', '.join([f'{k}={v}' for k, v in tool_args.items()])
-                        fact_text += f" ({args_str})"
-                    
-                    facts.append(Fact(
-                        text_content=fact_text,
-                        source_key=f"{server_name}_{tool_name}_{hash(str(tool_args))}",
-                        server_origin=server_name,
-                        metadata={
-                            "count": len(result_data), 
-                            "tool": tool_name,
-                            "raw_result": result_data  # Preserve for Phase 3
-                        },
-                        citation=citation
-                    ))
+                    # Special handling: KG passage lists with span metadata
+                    if server_name == "kg" and result_data and isinstance(result_data[0], dict) and (
+                        "passage_id" in result_data[0] or "doc_id" in result_data[0]
+                    ):
+                        for item in result_data:
+                            if not isinstance(item, dict):
+                                continue
+                            doc_id = item.get("doc_id") or item.get("document_id") or ""
+                            passage_id = item.get("passage_id") or ""
+                            # Skip placeholder passages that provide no real evidence
+                            if isinstance(passage_id, str) and passage_id.startswith("placeholder_"):
+                                try:
+                                    llm_logger.info(f"FACTS EXTRACTOR: skipping placeholder passage id={passage_id}")
+                                except Exception:
+                                    pass
+                                continue
+                            spans = item.get("spans") if isinstance(item.get("spans"), list) else []
+                            # Build rich description using first relevant span if present
+                            desc = None
+                            concept_label = None
+                            if spans:
+                                s = spans[0]
+                                labelled_text = s.get("labelled_text")
+                                start_idx = s.get("start_index")
+                                end_idx = s.get("end_index")
+                                concept_id = s.get("concept_id")
+                                concept_label = s.get("concept_label")
+                                labellers = s.get("labellers") or []
+                                timestamps = s.get("timestamps") or []
+                                latest_ts = timestamps[-1] if timestamps else None
+                                if labelled_text is not None and start_idx is not None and end_idx is not None:
+                                    parts = []
+                                    parts.append(f"‘{labelled_text}’")
+                                    if concept_id:
+                                        parts.append(f"({concept_id})")
+                                    parts.append(f"start:{start_idx}–{end_idx}")
+                                    if labellers:
+                                        parts.append("Found by: " + ", ".join(map(str, labellers)))
+                                    if latest_ts:
+                                        parts.append(str(latest_ts))
+                                    desc = " • ".join(parts)
+                            if not desc:
+                                text_snippet = (item.get("text") or "")
+                                desc = (text_snippet[:100] + "...") if text_snippet else "Passage"
+
+                            source_name = doc_id or self._get_source_name_for_tool(tool_name, server_name)
+                            if concept_label:
+                                source_name = f"{source_name} — {concept_label}"
+
+                            citation = Citation(
+                                source_name=source_name,
+                                tool_id=f"{tool_name}:{passage_id}" if passage_id else tool_name,
+                                source_type="Document",
+                                description=desc,
+                                server_origin=server_name,
+                                metadata={"tool_args": tool_args, "doc_id": doc_id, "passage_id": passage_id}
+                            )
+
+                            # Construct a concise fact text favoring a full sentence quote around the span
+                            fact_text = None
+                            passage_text = (item.get("text") or "")
+                            if spans and spans[0].get("labelled_text") and passage_text:
+                                try:
+                                    si = int(spans[0].get("start_index", 0))
+                                    ei = int(spans[0].get("end_index", 0))
+                                    # Expand to sentence boundaries (simple heuristic)
+                                    left = passage_text.rfind('.', 0, si)
+                                    left_nl = passage_text.rfind('\n', 0, si)
+                                    if left_nl > left:
+                                        left = left_nl
+                                    right = passage_text.find('.', ei)
+                                    right_nl = passage_text.find('\n', ei)
+                                    if right == -1 or (right_nl != -1 and right_nl < right):
+                                        right = right_nl
+                                    if left == -1:
+                                        left = max(passage_text.rfind(';', 0, si), passage_text.rfind(':', 0, si))
+                                    if right == -1:
+                                        for sep in [';', ':']:
+                                            r2 = passage_text.find(sep, ei)
+                                            if r2 != -1:
+                                                right = r2
+                                                break
+                                    # Slice sentence with some padding
+                                    start = max(0, left + 1)
+                                    end = right + 1 if right != -1 else min(len(passage_text), ei + 240)
+                                    sentence = passage_text[start:end].strip()
+                                    if sentence:
+                                        fact_text = f"Quoted evidence: \"{sentence}\""
+                                except Exception:
+                                    pass
+                            # Fallbacks
+                            if not fact_text and spans and spans[0].get("labelled_text"):
+                                fact_text = f"Quoted evidence: ‘{spans[0]['labelled_text']}’"
+                            if not fact_text:
+                                t = passage_text
+                                fact_text = t[:240] + ("..." if len(t) > 240 else "")
+
+                            fact = Fact(
+                                text_content=fact_text,
+                                source_key=f"{server_name}_{tool_name}_{doc_id}_{passage_id}",
+                                server_origin=server_name,
+                                metadata={"tool": tool_name, "raw_result": item},
+                                citation=citation
+                            )
+                            facts.append(fact)
+                            # Log each fact summary line
+                            try:
+                                llm_logger.info(f"FACT: {fact.text_content} | source={citation.source_name} id={citation.tool_id}")
+                                # Log passage context length and snippet to confirm content is present
+                                pt = passage_text
+                                llm_logger.info(f"PASSAGE_CONTEXT: doc={doc_id} pid={passage_id} len={len(pt)} snippet='{pt[:180]}'")
+                            except Exception:
+                                pass
+                    else:
+                        # Generic list result - create summary fact
+                        fact_text = f"Found {len(result_data)} items from {tool_name}"
+                        if tool_args:
+                            args_str = ', '.join([f'{k}={v}' for k, v in tool_args.items()])
+                            fact_text += f" ({args_str})"
+                        
+                        facts.append(Fact(
+                            text_content=fact_text,
+                            source_key=f"{server_name}_{tool_name}_{hash(str(tool_args))}",
+                            server_origin=server_name,
+                            metadata={
+                                "count": len(result_data), 
+                                "tool": tool_name,
+                                "raw_result": result_data  # Preserve for Phase 3
+                            },
+                            citation=base_citation
+                        ))
                     
                 elif isinstance(result_data, dict):
                     # Dictionary - extract key information with units
@@ -2184,7 +2553,7 @@ When you have collected enough information to answer "{user_query}", respond wit
                             "data_keys": list(result_data.keys()),
                             "raw_result": result_data  # Preserve for Phase 3
                         },
-                        citation=citation
+                        citation=base_citation
                     ))
                     
                 elif isinstance(result_data, str):
@@ -3887,7 +4256,38 @@ Only include modules that exist above. Ensure all modules are included exactly o
         if self.client.fact_tracer:
             self.client.fact_tracer.log_prompt("phase3", "synthesis_facts", f"Preparing {len(facts)} facts for synthesis")
         
-        for i, fact in enumerate(facts):
+        # Rank and filter facts to better match the query intent
+        ql = user_query.lower()
+        def _fact_score(f: Fact) -> float:
+            score = 0.0
+            # Prefer KG evidence
+            if f.server_origin == 'kg':
+                score += 2.0
+            # Prefer quoted evidence facts
+            if isinstance(f.text_content, str) and f.text_content.startswith('Quoted evidence:'):
+                score += 2.0
+            # Prefer UNFCCC party submissions when query references national submissions
+            src = (f.citation.source_name if f.citation else '') or ''
+            if 'unfccc.party' in src.lower():
+                score += 1.0
+            # Keyword alignment
+            if 'indigenous' in ql and 'indigenous' in f.text_content.lower():
+                score += 1.0
+            if 'deforest' in ql and 'deforest' in f.text_content.lower():
+                score += 0.5
+            return score
+
+        # Drop placeholder-like generic facts (no quoted evidence and no doc id)
+        filtered = []
+        for f in facts:
+            src = (f.citation.source_name if f.citation else '') or ''
+            if src == 'guidance_doc' and not (isinstance(f.text_content, str) and f.text_content.startswith('Quoted evidence:')):
+                continue
+            filtered.append(f)
+
+        ranked = sorted(filtered or facts, key=_fact_score, reverse=True)
+
+        for i, fact in enumerate(ranked):
             fact_list.append(f"{i+1}. {fact.text_content}")
             # Check if this fact contains map data
             if 'raw_result' in fact.metadata:
@@ -3933,6 +4333,8 @@ FOCUSED RESPONSE RULES:
 1. Start with a direct answer to the query in your first sentence
 2. ONLY include facts that support this direct answer
 3. Use placeholder citations [CITE_1], [CITE_2] for fact references
+4. If any fact begins with "Quoted evidence:", include that quoted text verbatim in your answer where appropriate
+5. Prefer passages from national submissions when relevant (e.g., sources with 'UNFCCC.party')
 4. DO NOT include:
    - Information about other countries/companies not asked about
    - Tangentially related data that doesn't answer the query
@@ -4202,27 +4604,35 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
         Returns:
             Citation table module or None if no citations
         """
-        # Build reverse map: citation_number -> source_key
+        # Build reverse map: citation_number -> fact
         used_citations = {}
         
-        for placeholder, citation_num in citation_map.items():
-            # Extract fact index from placeholder
-            fact_idx = int(placeholder.split('_')[1]) - 1
-            if fact_idx < len(facts):
-                fact = facts[fact_idx]
-                used_citations[citation_num] = fact
+        if citation_map:
+            for placeholder, citation_num in citation_map.items():
+                # Extract fact index from placeholder
+                fact_idx = int(placeholder.split('_')[1]) - 1
+                if fact_idx < len(facts):
+                    fact = facts[fact_idx]
+                    used_citations[citation_num] = fact
+        else:
+            # Fallback: include all facts in order when narrative omitted placeholders
+            for idx, fact in enumerate(facts, start=1):
+                used_citations[idx] = fact
         
         # Build rows
         rows = []
         for citation_num in sorted(used_citations.keys()):
             fact = used_citations[citation_num]
             if fact.citation:
+                # Prefer full description; truncate to keep table concise
+                desc = fact.citation.description
+                desc = (desc[:120] + "...") if isinstance(desc, str) and len(desc) > 120 else desc
                 rows.append([
                     str(citation_num),
                     fact.citation.source_name,
                     fact.citation.tool_id,
                     fact.citation.source_type,
-                    fact.citation.description[:100]
+                    desc or ""
                 ])
         
         return {

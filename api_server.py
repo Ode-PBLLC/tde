@@ -24,7 +24,7 @@ from pathlib import Path
 
 # Add the mcp directory to the path
 sys.path.append('mcp')
-# from mcp_chat import run_query_structured, run_query, run_query_streaming, get_global_client, cleanup_global_client
+# Use the modern 3‑phase orchestrator (mcp_chat_redo) per active development
 from mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
@@ -187,8 +187,13 @@ async def get_geojson(filename: str):
     Serve existing GeoJSON files or generate dynamically for solar facilities.
     """
     try:
+        # Determine static maps directory (env override supported)
+        static_maps_dir = os.environ.get(
+            "STATIC_MAPS_DIR",
+            os.path.join(os.path.dirname(__file__), "static", "maps")
+        )
         # First, check if the file exists in the static/maps directory
-        file_path = os.path.join(os.path.dirname(__file__), "static", "maps", filename)
+        file_path = os.path.join(static_maps_dir, filename)
         print(f"[DEBUG] GeoJSON request for: {filename}")
         print(f"[DEBUG] Checking path: {file_path}")
         print(f"[DEBUG] File exists: {os.path.exists(file_path)}")
@@ -198,7 +203,12 @@ async def get_geojson(filename: str):
             print(f"[DEBUG] Serving existing file: {file_path}")
             return FileResponse(file_path, media_type="application/geo+json")
         
-        # If file doesn't exist, generate dynamically (fallback for legacy behavior)
+        # If file doesn't exist, handle correlation vs. legacy fallback
+        # Never silently fallback for correlation_* files to avoid confusing the frontend
+        if filename.startswith("correlation_"):
+            raise HTTPException(status_code=404, detail=f"Correlation map not found: {filename}")
+
+        # Otherwise, for legacy filenames, generate a generic facilities GeoJSON dynamically
         # Use SQLite database instead of CSV
         import sys
         sys.path.append(os.path.join(os.path.dirname(__file__), 'mcp'))
