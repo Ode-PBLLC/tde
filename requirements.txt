@@ -10,4 +10,6 @@ networkx
 plotly
 folium
 streamlit-folium
-geopandas 
+geopandas
+chromadb
+pypdf 
