@@ -515,7 +515,37 @@ def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH") -> Dict[str,
     if exsitu_df.empty:
         return {"error": "EXSITU risk data not available"}
     
-    col_name = f"COUNT_OF_ASSETS_WITH_{risk_level.upper()}_{risk_type.upper()}"
+    # Normalize common synonyms to canonical column tokens
+    def _normalize_risk_type(rt: str) -> str:
+        key = (rt or "").strip().lower().replace("-", "_").replace(" ", "_")
+        mapping = {
+            # Heat
+            "heat": "EXTREME_HEAT",
+            "heat_stress": "EXTREME_HEAT",
+            "extreme_heat": "EXTREME_HEAT",
+            # Water
+            "water_stress": "WATER_STRESS",
+            "water_variability": "WATER_VARIABILITY",
+            # Floods
+            "flood": "FLOOD_RIVERINE",
+            "riverine_flood": "FLOOD_RIVERINE",
+            "coastal_flood": "FLOOD_COASTAL",
+            # Drought
+            "drought": "DROUGHT",
+            # Temperature anomaly
+            "temperature_anomaly": "TEMPERATURE_ANOMALY",
+            # Land use changes
+            "urban_area_change": "URBAN_AREA_CHANGE",
+            "agriculture_area_change": "AGRICULTURE_AREA_CHANGE",
+            "forest_area_change": "FOREST_AREA_CHANGE",
+        }
+        # If exact canonical provided, keep it
+        if key.upper() in {"EXTREME_HEAT","WATER_STRESS","WATER_VARIABILITY","FLOOD_COASTAL","FLOOD_RIVERINE","DROUGHT","EXTREME_PRECIPITATION","TEMPERATURE_ANOMALY","URBAN_AREA_CHANGE","AGRICULTURE_AREA_CHANGE","FOREST_AREA_CHANGE"}:
+            return key.upper()
+        return mapping.get(key, rt.upper())
+
+    risk_type_norm = _normalize_risk_type(risk_type)
+    col_name = f"COUNT_OF_ASSETS_WITH_{risk_level.upper()}_{risk_type_norm}"
     
     if col_name not in exsitu_df.columns:
         available_risks = [col.split('_WITH_')[1].split('_')[1] for col in exsitu_df.columns 
@@ -527,7 +557,7 @@ def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH") -> Dict[str,
     companies_at_risk = companies_at_risk.sort_values(col_name, ascending=False)
     
     result = {
-        "risk_type": risk_type,
+        "risk_type": risk_type_norm,
         "risk_level": risk_level,
         "companies_found": len(companies_at_risk),
         "companies": []
@@ -1688,6 +1718,48 @@ def _get_scope3_breakdown_viz(filters: Dict) -> Dict[str, Any]:
 def GetGistDatasetMetadata() -> Dict[str, Any]:
     """Get GIST dataset metadata."""
     return metadata
+
+@mcp.tool()
+def DescribeServer() -> Dict[str, Any]:
+    """Describe this server, its datasets, key tools, and live metrics."""
+    m = metadata.copy()
+    tools = [
+        "GetGistCompanyWaterData",
+        "GetGistCompanyClimateRisks",
+        "GetGistCompanyEmissions",
+        "GetGistCompanies",
+        "GetGistDataDictionary",
+        "SearchGistFields",
+        "GetGistDatasetMetadata"
+    ]
+    # Derive last_updated from Excel file mtime if present
+    last_updated = None
+    try:
+        from datetime import datetime as _dt
+        if os.path.exists(GIST_FILE_PATH):
+            last_updated = _dt.fromtimestamp(os.path.getmtime(GIST_FILE_PATH)).isoformat()
+    except Exception:
+        pass
+    return {
+        "name": m.get("Name", "GIST Server"),
+        "description": m.get("Description", "GIST environmental datasets"),
+        "version": m.get("Version"),
+        "dataset": m.get("Dataset"),
+        "metrics": {
+            "total_companies": m.get("Total_Companies"),
+            "total_assets": m.get("Total_Assets"),
+            "dataset_count": len(m.get("Datasets", []))
+        },
+        "coverage": {
+            "datasets": m.get("Datasets", [])
+        },
+        "tools": tools,
+        "examples": [
+            "Water stress for company CODE",
+            "Compare Scope 1/2/3 for company CODE"
+        ],
+        "last_updated": last_updated
+    }
 
 if __name__ == "__main__":
     mcp.run()

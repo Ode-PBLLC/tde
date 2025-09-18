@@ -12,4 +12,5 @@ folium
 streamlit-folium
 geopandas
 chromadb
-pypdf 
+pypdf
+rapidfuzz

@@ -58,15 +58,34 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
     total_capacity = 0
     capacities = []
     countries = set()
+    country_counts = {}
+    # Track geographic bounds (min/max lat/lon)
+    min_lat = None
+    max_lat = None
+    min_lon = None
+    max_lon = None
     
     for facility in facilities:
         # Track statistics
-        countries.add(facility.get('country', 'Unknown'))
+        country = facility.get('country', 'Unknown')
+        countries.add(country)
+        country_counts[country] = country_counts.get(country, 0) + 1
         capacity = facility.get('capacity_mw')
         if capacity is not None and capacity > 0:
             capacities.append(capacity)
             total_capacity += capacity
         
+        # Update bounds
+        try:
+            lat = float(facility['latitude'])
+            lon = float(facility['longitude'])
+            min_lat = lat if min_lat is None else min(min_lat, lat)
+            max_lat = lat if max_lat is None else max(max_lat, lat)
+            min_lon = lon if min_lon is None else min(min_lon, lon)
+            max_lon = lon if max_lon is None else max(max_lon, lon)
+        except Exception:
+            pass
+
         # Create GeoJSON feature
         feature = {
             "type": "Feature",
@@ -96,7 +115,16 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
             "min": round(min(capacities), 1) if capacities else None,
             "max": round(max(capacities), 1) if capacities else None,
             "average": round(sum(capacities) / len(capacities), 1) if capacities else None
-        } if capacities else None
+        } if capacities else None,
+        "bounds": (
+            {
+                "north": max_lat,
+                "south": min_lat,
+                "east": max_lon,
+                "west": min_lon,
+            }
+            if None not in (min_lat, max_lat, min_lon, max_lon) else None
+        )
     }
     
     # Save GeoJSON file
@@ -115,7 +143,9 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
         # Add metadata to GeoJSON
         if extra_metadata:
             geojson["metadata"] = extra_metadata
-        geojson["metadata"] = {**geojson.get("metadata", {}), **stats}
+        # Include per-country counts to support front-end legends expecting counts
+        stats_with_counts = {**stats, "country_counts": country_counts}
+        geojson["metadata"] = {**geojson.get("metadata", {}), **stats_with_counts}
         
         with open(geojson_path, 'w') as f:
             json.dump(geojson, f)
@@ -270,6 +300,7 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 10000)
                 "capacity_range_mw": stats.get('capacity_range_mw'),
                 "countries": stats['countries'],
                 "facilities_shown_on_map": stats['total_facilities'],
+                "bounds": stats.get('bounds'),
                 "global_context": {
                     "total_facilities_global": total_facilities_global,
                     "countries_with_data": countries_global[:10]
@@ -284,7 +315,8 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 10000)
                 "data_source": "TZ-SAM Q1 2025 (SQLite Database)",
                 "geojson_available": True,
                 "query_time_optimized": True,
-                "note": "Full facility data saved to GeoJSON file"
+                "note": "Full facility data saved to GeoJSON file",
+                "bounds": stats.get('bounds')
             }
         }
         print(f"DEBUG GetSolarFacilitiesMapData returning keys: {list(result.keys())}, NO full_data present")
@@ -610,8 +642,15 @@ def SearchSolarFacilitiesByCapacity(min_capacity_mw: float, max_capacity_mw: flo
 # Maps are now generated purely client-side
 
 @mcp.tool()
-def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") -> Dict[str, Any]:
-    """Get data for visualization. Types: by_country, source_timeline."""
+def GetSolarCapacityVisualizationData(
+    visualization_type: str = "by_country",
+    metric: str = "facility_count",
+    top_n: int = 20
+) -> Dict[str, Any]:
+    """Get data for visualization. Types: by_country, source_timeline.
+
+    For by_country, supports metric "facility_count" (default) or "total_capacity_mw" and optional top_n limit.
+    """
     if not db:
         return {"error": "Database not available"}
     
@@ -619,14 +658,19 @@ def GetSolarCapacityVisualizationData(visualization_type: str = "by_country") ->
         if visualization_type == "by_country":
             # Country-level statistics
             country_stats = db.get_country_statistics()
-            
+            # Validate metric
+            y_key = metric if metric in ["facility_count", "total_capacity_mw"] else "facility_count"
+            # Sort and limit
+            data_sorted = sorted(country_stats, key=lambda d: (d.get(y_key) or 0), reverse=True)
+            data_limited = data_sorted[:max(1, int(top_n))]
+            title_metric = "Facility Count" if y_key == "facility_count" else "Total Capacity (MW)"
             return {
                 "visualization_type": "by_country",
-                "data": country_stats[:20],  # Top 20 countries
+                "data": data_limited,
                 "chart_config": {
                     "x_axis": "country",
-                    "y_axis": "facility_count", 
-                    "title": "Solar Facilities by Country",
+                    "y_axis": y_key, 
+                    "title": f"Solar by Country — {title_metric}",
                     "chart_type": "bar"
                 }
             }
@@ -910,6 +954,54 @@ def GetSolarDatasetMetadata() -> Dict[str, Any]:
         return {"error": "Database not available"}
     
     return metadata
+
+@mcp.tool()
+def DescribeServer() -> Dict[str, Any]:
+    """Describe this server, its dataset, key tools, and live metrics."""
+    if not db:
+        return {"error": "Database not available"}
+    m = metadata.copy()
+    tools = [
+        "GetSolarFacilitiesByCountry",
+        "GetSolarCapacityByCountry",
+        "GetSolarFacilitiesMapData",
+        "GetSolarConstructionTimeline",
+        "GetSolarFacilitiesInBounds",
+        "GetSolarFacilitiesMultipleCountries",
+        "FindSolarFacilitiesCountries",
+        "GetSolarDatasetMetadata"
+    ]
+    # Derive last_updated from database file mtime if present
+    last_updated = None
+    try:
+        db_path = m.get("database_path")
+        if db_path and os.path.exists(db_path):
+            import datetime as _dt
+            last_updated = _dt.datetime.fromtimestamp(os.path.getmtime(db_path)).isoformat()
+    except Exception:
+        pass
+    return {
+        "name": m.get("Name", "Solar Facilities Server"),
+        "description": m.get("Description", "Global solar facility data"),
+        "version": m.get("Version"),
+        "dataset": m.get("Dataset"),
+        "metrics": {
+            "total_facilities": m.get("total_facilities"),
+            "total_countries": m.get("total_countries"),
+            "total_capacity_mw": m.get("total_capacity")
+        },
+        "coverage": {
+            "countries": m.get("countries", [])
+        },
+        "tools": tools,
+        "examples": [
+            "Map solar facilities in India",
+            "Top countries by solar facility count",
+            "Show construction timeline for Brazil"
+        ],
+        "source": m.get("data_source", "TZ-SAM Q1 2025"),
+        "last_updated": last_updated
+    }
 
 if __name__ == "__main__":
     mcp.run()

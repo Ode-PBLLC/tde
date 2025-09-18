@@ -287,6 +287,26 @@ def build_chart_options(chart_type: str, title: str) -> Dict[str, Any]:
     return base_options
 
 @mcp.tool()
+def DescribeServer() -> Dict[str, Any]:
+    """Describe the visualization server and its tools."""
+    return {
+        "name": "Visualization Server",
+        "description": "Generates charts and tables; never invents data, only formats provided inputs.",
+        "version": "1.0",
+        "dataset": None,
+        "metrics": {},
+        "tools": [
+            "create_smart_chart",
+            "create_comparison_chart",
+            "CreateDataTable"
+        ],
+        "examples": [
+            "Create a bar chart comparing emissions by sector",
+            "Render a data table of NDC targets"
+        ]
+    }
+
+@mcp.tool()
 def create_smart_chart(
     data: List[Dict], 
     context: str, 

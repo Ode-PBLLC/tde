@@ -63,6 +63,15 @@ STATIC_DEFOR = {
     'tree': None
 }
 
+# Global static heat-zone index (top quintile) — read-only, shared across sessions
+STATIC_HEAT = {
+    'loaded': False,
+    'geoms_wgs84': None,   # store in EPSG:4326; we'll project as needed
+    'ids': None,
+    'props': None,
+    'tree': None
+}
+
 # Session-scoped storage (cleared between queries and isolated per session)
 SESSIONS: dict = {}
 
@@ -106,6 +115,66 @@ def _load_static_deforestation_index() -> bool:
         return True
     except Exception as e:
         print(f"[geospatial] Failed to load static deforestation index: {e}")
+        return False
+
+def _load_static_heat_index() -> bool:
+    """Load heat-stress top quintile polygons as a static global index.
+
+    Reads from data/heat_stress/preprocessed/geojsons (preferred) or the preprocessed dir,
+    concatenates all files with a 'quintile' column == 5, builds an STRtree in WGS84.
+    """
+    if not GEOSPATIAL_AVAILABLE or STATIC_HEAT['loaded']:
+        return STATIC_HEAT['loaded']
+    try:
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        heat_dir = os.path.join(base_dir, 'data', 'heat_stress', 'preprocessed')
+        geojson_dir = os.path.join(heat_dir, 'geojsons')
+        search_dir = geojson_dir if os.path.exists(geojson_dir) else heat_dir
+        if not os.path.exists(search_dir):
+            print(f"[geospatial] Static heat dir not found: {search_dir}")
+            return False
+        # Collect files
+        import glob
+        files = sorted(glob.glob(os.path.join(search_dir, '*_quintiles_simplified.geojson'))) + \
+                sorted(glob.glob(os.path.join(search_dir, '*_quintiles.geojson'))) + \
+                sorted(glob.glob(os.path.join(search_dir, '*_quintiles.gpkg')))
+        if not files:
+            print(f"[geospatial] No heat-stress quintiles files found under {search_dir}")
+            return False
+        parts = []
+        for f in files:
+            try:
+                if f.lower().endswith('.gpkg'):
+                    gdf = gpd.read_file(f, layer='quintiles')
+                else:
+                    gdf = gpd.read_file(f)
+                if gdf.crs is None:
+                    gdf.set_crs(epsg=4326, inplace=True)
+                elif gdf.crs.to_string() != 'EPSG:4326':
+                    gdf = gdf.to_crs('EPSG:4326')
+                if 'quintile' not in gdf.columns:
+                    continue
+                top = gdf[gdf['quintile'] == 5].copy()
+                if top.empty:
+                    continue
+                # Keep only geometry to reduce memory; optional id/source props
+                parts.append(top[['geometry']].copy())
+            except Exception as e:
+                print(f"[geospatial] Failed to read heat file {os.path.basename(f)}: {e}")
+                continue
+        if not parts:
+            print("[geospatial] No heat polygons loaded for static index")
+            return False
+        all_top = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs='EPSG:4326')
+        all_top = all_top[~all_top.geometry.is_empty]
+        geoms = list(all_top.geometry.values)
+        from shapely.strtree import STRtree
+        tree = STRtree(geoms)
+        STATIC_HEAT.update({'geoms_wgs84': geoms, 'ids': [f'heat_{i}' for i in range(len(geoms))], 'props': [{}]*len(geoms), 'tree': tree, 'loaded': True})
+        print(f"[geospatial] Static heat index loaded with {len(geoms)} polygons from {len(files)} files")
+        return True
+    except Exception as e:
+        print(f"[geospatial] Failed to load static heat index: {e}")
         return False
 
 def _get_session_store(session_id: str):
@@ -658,11 +727,11 @@ def GenerateCorrelationMap(
 
             # Legend label must use consistent category expected by frontend
             label_cfg = (STYLE_CONFIG.get('labels', {}).get('solar_facility') or {})
-            legend_label = label_cfg.get('legend_label', 'Solar Facilities')
             # Preserve original country for popup context
             original_country = properties.get('country')
             properties['facility_country'] = original_country
-            properties['country'] = legend_label
+            # For correlation maps, categorize all solar points under a single legend label
+            properties['country'] = 'Solar Assets'
             
             # Add descriptive title
             name = properties.get('name', 'Solar Facility')
@@ -670,7 +739,8 @@ def GenerateCorrelationMap(
             capacity = properties.get('capacity_label') or (
                 f"{properties.get('capacity_mw', 0)} MW"
             )
-            status = 'IN deforestation' if is_correlated else 'Clear area'
+            # Use a general status label so it applies to any correlated zone type
+            status = 'Correlated' if is_correlated else 'Not correlated'
             # Include original country in title for user clarity
             if original_country and isinstance(original_country, str):
                 properties['title'] = f"{name} • {original_country} • capacity: {capacity} • {status}"
@@ -745,15 +815,14 @@ def GenerateCorrelationMap(
                     # Reproject to EPSG:4326 for GeoJSON
                     g = gpd.GeoSeries([geom_3857], crs='EPSG:3857').to_crs('EPSG:4326').iloc[0]
                     label_cfg = (STYLE_CONFIG.get('labels', {}).get('deforestation_area') or {})
-                    legend_label = label_cfg.get('legend_label', 'Deforestation')
                     poly_style = label_cfg.get('polygon', {})
                     feature = {
                         "type": "Feature",
                         "geometry": g.__geo_interface__,
                         "properties": {
                             "layer": "deforestation_area",
-                            # Set 'country' to legend label to ensure frontend legend groups correctly
-                            "country": legend_label,
+                            # Set 'country' to legend label used by frontend
+                            "country": 'Deforestation Areas',
                             "entity_id": pid,
                             "correlated": True,
                             "fill": poly_style.get('fill', STYLE_CONFIG['defaults']['polygon']['fill']),
@@ -769,31 +838,7 @@ def GenerateCorrelationMap(
                 except Exception as e:
                     print(f"Error adding correlated polygon feature: {e}")
 
-    # Add correlation highlight layers
-    for corr in last_correlations:
-        if corr['relationship'] == 'within':
-            # Create a highlight for point-in-polygon correlations
-            entity1 = entities_gdf[entities_gdf['entity_id'] == corr['entity1_id']]
-            if not entity1.empty:
-                entity1 = entity1.iloc[0]
-                if entity1.geometry.geom_type == 'Point':
-                    # Create highlight circle around the point
-                    highlight_geom = entity1.geometry.buffer(0.003)  # ~300m radius
-                    
-                    highlight_feature = {
-                        "type": "Feature",
-                        "geometry": highlight_geom.__geo_interface__ if hasattr(highlight_geom, '__geo_interface__') else {"type": "Polygon", "coordinates": []},
-                        "properties": {
-                            "layer": "correlation_highlight",
-                            "fill": "#FF0000",
-                            "fill-opacity": 0.3,
-                            "stroke": "#FF0000",
-                            "stroke-width": 3,
-                            "stroke-opacity": 0.7,
-                            "title": f"Correlation: {corr['entity1_type']} within {corr['entity2_type']}"
-                        }
-                    }
-                    features.append(highlight_feature)
+    # Note: Skip adding highlight features to avoid interfering with legend-based styling
     
     # Final pass: ensure robust properties for frontend styling (apply to all features)
     for f in features:
@@ -819,7 +864,11 @@ def GenerateCorrelationMap(
                 props['marker_color'] = color
                 props['color'] = color
                 if not isinstance(props.get('country'), str) or not props.get('country').strip():
-                    props['country'] = 'Solar Facilities'
+                    props['country'] = 'Solar Assets'
+            else:
+                # For polygons, ensure a non-null category label to satisfy frontend match expression
+                if not isinstance(props.get('country'), str) or not props.get('country').strip():
+                    props['country'] = 'Deforestation Areas'
 
             f['properties'] = props
         except Exception:
@@ -865,13 +914,16 @@ def GenerateCorrelationMap(
         bounds = {"north": max_lat, "south": min_lat, "east": max_lon, "west": min_lon}
         center = [(min_lon + max_lon) / 2.0, (min_lat + max_lat) / 2.0]
 
-    # Collect countries/labels from features for legend support
+    # Collect countries/labels and counts from features for legend support
     countries = set()
+    country_counts = {}
     for f in features:
         props = f.get('properties', {}) or {}
         c = props.get('country')
         if isinstance(c, str) and c.strip():
-            countries.add(c.strip())
+            label = c.strip()
+            countries.add(label)
+            country_counts[label] = country_counts.get(label, 0) + 1
     # Ensure deforestation appears in legend if any polygons are present
     if any((f.get('properties', {}) or {}).get('layer') == 'deforestation_area' for f in features):
         countries.add('Deforestation')
@@ -896,7 +948,9 @@ def GenerateCorrelationMap(
             "bounds": bounds,
             "center": center,
             # Keep exact casing for frontend legend matching
-            "countries": sorted({str(c) for c in countries})
+            "countries": sorted({str(c) for c in countries}),
+            # Provide counts for legend labels to avoid '(undefined)' rendering on frontend
+            "country_counts": country_counts
         }
     }
     
@@ -947,7 +1001,13 @@ def GenerateCorrelationMap(
         "countries": geojson["metadata"].get("countries", []),
         "bounds": geojson["metadata"].get("bounds"),
         "center": geojson["metadata"].get("center"),
-        "title": "Spatial Map"
+        "title": "Correlation Map",
+        # Explicit correlation role and legend for downstream renderers
+        "map_role": "correlation",
+        "legend_layers": [
+            {"label": "Solar Assets", "color": "#FFD700"},
+            {"label": "Deforestation Areas", "color": "#8B4513"}
+        ]
     }
 
     return {
@@ -955,29 +1015,58 @@ def GenerateCorrelationMap(
         "geojson_url": f"/static/maps/{filename}",
         "geojson_filename": filename,
         "summary": summary,
+        "is_correlation_map": True,
         "session_id": session_id
     }
 
-
 @mcp.tool()
-def ComputeAreaOverlapByEntityTypes(
+def DescribeServer() -> Dict[str, Any]:
+    """Describe the geospatial correlation server capabilities and live status."""
+    try:
+        sessions = len(SESSIONS)
+        # Count entities registered across sessions (approximate)
+        entity_counts = {}
+        for s in SESSIONS.values():
+            gdf = s.get('entities_gdf')
+            if gdf is not None and not gdf.empty:
+                for et, ct in gdf['entity_type'].value_counts().to_dict().items():
+                    entity_counts[et] = entity_counts.get(et, 0) + int(ct)
+        tools = [
+            "RegisterEntity",
+            "GetRegisteredEntities",
+            "FindSpatialCorrelations",
+            "GenerateCorrelationMap",
+            "ComputeAreaOverlapByEntityTypes",
+            "RegisterCorrelatedDeforestation",
+            "ClearSpatialIndex"
+        ]
+        return {
+            "name": "Geospatial Correlation Server",
+            "description": "Correlation engine for spatial relationships (within, overlap, proximity).",
+            "version": "1.0",
+            "dataset": None,
+            "metrics": {
+                "active_sessions": sessions,
+                "registered_entities": entity_counts
+            },
+            "tools": tools,
+            "examples": [
+                "Find solar facilities within deforested areas",
+                "Compute area overlap of heat zones by municipality"
+            ],
+            "last_updated": None
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def _compute_area_overlap_impl(
     admin_entity_type: str,
     zone_entity_type: str,
     min_overlap_ratio: float = 0.0,
-    session_id: str = "_default"
+    session_id: str = "_default",
 ) -> Dict[str, Any]:
-    """
-    Compute percent area of each admin polygon overlapped by zone polygons.
-
-    Args:
-        admin_entity_type: entity type of administrative polygons (e.g., 'municipality')
-        zone_entity_type: entity type of zone polygons (e.g., 'heat_zone')
-        min_overlap_ratio: optional filter to return only admins with >= this share (0..1)
-
-    Returns:
-        List of {admin_id, total_area_km2, overlap_km2, overlap_ratio, properties}
-        Sorted by overlap_ratio descending.
-    """
+    """Internal implementation for computing area overlap; callable from tools and server internals."""
     if not GEOSPATIAL_AVAILABLE:
         return {"error": "GeoPandas not installed"}
 
@@ -990,11 +1079,117 @@ def ComputeAreaOverlapByEntityTypes(
     zones = entities_gdf[entities_gdf['entity_type'] == zone_entity_type].copy()
     if admins.empty:
         return {"error": f"No entities of type '{admin_entity_type}' registered"}
+
+    # Support static indexes for certain zone types when not registered
+    use_static_heat = False
+    if zone_entity_type == 'heat_zone':
+        # Always use the static heat index for complete coverage (avoid session limits)
+        if _load_static_heat_index():
+            try:
+                zones = gpd.GeoDataFrame({'geometry': STATIC_HEAT['geoms_wgs84']}, crs='EPSG:4326')
+                use_static_heat = True
+            except Exception as e:
+                return {"error": f"Failed to build heat zones from static index: {e}"}
+
+    if zones.empty and zone_entity_type == 'deforestation_area':
+        # Use static deforestation index if available
+        if _load_static_deforestation_index():
+            try:
+                # STATIC_DEFOR geoms are stored in EPSG:3857; reproject to WGS84
+                g = gpd.GeoSeries(STATIC_DEFOR['geoms_3857'], crs='EPSG:3857').to_crs('EPSG:4326')
+                zones = gpd.GeoDataFrame({'geometry': g.values}, crs='EPSG:4326')
+            except Exception as e:
+                return {"error": f"Failed to build deforestation zones from static index: {e}"}
+
     if zones.empty:
         return {"error": f"No entities of type '{zone_entity_type}' registered"}
 
     admins_eq = _ensure_equal_area_crs(admins)
     zones_eq = _ensure_equal_area_crs(zones)
+
+    # Fast path for heat_zone using static STRtree to avoid building giant GeoDataFrames and sjoins
+    if zone_entity_type == 'heat_zone' and STATIC_HEAT.get('loaded'):
+        try:
+            # Prepare equal-area projection for area computation
+            admins_eq = _ensure_equal_area_crs(admins)
+            # We'll query STATIC_HEAT tree in WGS84, so keep a WGS84 view of admins
+            admins_wgs = admins.to_crs('EPSG:4326') if (admins.crs and admins.crs.to_string() != 'EPSG:4326') else admins.copy()
+
+            from shapely.ops import unary_union
+            results = []
+            # Iterate per-admin and use STRtree to pull only candidate heat polygons
+            for idx, row in admins_wgs.iterrows():
+                try:
+                    admin_geom_wgs = row.geometry
+                    if admin_geom_wgs is None or admin_geom_wgs.is_empty:
+                        continue
+                    # Candidate heat geoms via spatial index
+                    cand_geoms = STATIC_HEAT['tree'].query(admin_geom_wgs)
+                    if not cand_geoms:
+                        overlap_area_km2 = 0.0
+                    else:
+                        # Intersect and union to avoid double-counting overlaps between heat polygons
+                        inter_parts = []
+                        for g in cand_geoms:
+                            try:
+                                if g is None or g.is_empty:
+                                    continue
+                                inter = admin_geom_wgs.intersection(g)
+                                if inter is None or inter.is_empty:
+                                    continue
+                                inter_parts.append(inter)
+                            except Exception:
+                                continue
+                        if not inter_parts:
+                            overlap_area_km2 = 0.0
+                        else:
+                            inter_union = unary_union(inter_parts)
+                            # Project intersection to equal-area CRS for area calc
+                            inter_eq = gpd.GeoSeries([inter_union], crs='EPSG:4326').to_crs('EPSG:5880').iloc[0]
+                            overlap_area_km2 = float(inter_eq.area) / 1_000_000.0
+
+                    # Total area from admins_eq (aligned by index)
+                    total_area_km2 = float(admins_eq.loc[idx, 'geometry'].area) / 1_000_000.0 if not admins_eq.loc[idx, 'geometry'].is_empty else 0.0
+                    ratio = 0.0 if total_area_km2 <= 0 else max(0.0, min(1.0, overlap_area_km2 / total_area_km2))
+
+                    # Attach properties from original admins table
+                    try:
+                        props = json.loads(admins.loc[idx].get('properties')) if admins.loc[idx].get('properties') else {}
+                    except Exception:
+                        props = {}
+                    results.append({
+                        'admin_id': admins.loc[idx, 'entity_id'],
+                        'total_area_km2': total_area_km2,
+                        'overlap_km2': overlap_area_km2,
+                        'overlap_ratio': ratio,
+                        'properties': props
+                    })
+                except Exception:
+                    continue
+
+            # Filter and sort (exclude zero overlaps by default)
+            out = []
+            thr = float(min_overlap_ratio or 0.0)
+            if thr <= 0.0:
+                thr = 1e-12
+            for r in results:
+                if float(r['overlap_ratio']) >= thr:
+                    out.append(r)
+            out.sort(key=lambda x: (x.get('overlap_ratio', 0.0), x.get('overlap_km2', 0.0)), reverse=True)
+
+            store.setdefault('admin_metrics', {})['overlap_' + zone_entity_type] = out
+            return {
+                'results': out,
+                'count': len(out),
+                'metric': 'overlap_' + zone_entity_type,
+                'admin_entity_type': admin_entity_type,
+                'zone_entity_type': zone_entity_type,
+                'used_static_zone_index': True,
+                'session_id': session_id
+            }
+        except Exception as e:
+            # Fall back to generic path below
+            print(f"[geospatial] Static heat overlap fast-path failed: {e}")
 
     try:
         admins_eq = admins_eq.set_geometry('geometry')
@@ -1036,8 +1231,9 @@ def ComputeAreaOverlapByEntityTypes(
                 'overlap_ratio': float(row['overlap_ratio']),
                 'properties': props.get(row['entity_id'], {})
             })
-        results.sort(key=lambda x: x['overlap_ratio'], reverse=True)
+        results.sort(key=lambda x: (x.get('overlap_ratio', 0.0), x.get('overlap_km2', 0.0)), reverse=True)
 
+        # Cache metric for potential choropleth generation later
         store.setdefault('admin_metrics', {})['overlap_' + zone_entity_type] = results
         return {
             'results': results,
@@ -1045,10 +1241,29 @@ def ComputeAreaOverlapByEntityTypes(
             'metric': 'overlap_' + zone_entity_type,
             'admin_entity_type': admin_entity_type,
             'zone_entity_type': zone_entity_type,
+            'used_static_zone_index': use_static_heat,
             'session_id': session_id
         }
     except Exception as e:
         return {"error": f"Area overlap calculation failed: {str(e)}"}
+
+
+@mcp.tool()
+def ComputeAreaOverlapByEntityTypes(
+    admin_entity_type: str,
+    zone_entity_type: str,
+    min_overlap_ratio: float = 0.0,
+    session_id: str = "_default"
+) -> Dict[str, Any]:
+    """
+    Tool wrapper that delegates to the internal implementation.
+    """
+    return _compute_area_overlap_impl(
+        admin_entity_type=admin_entity_type,
+        zone_entity_type=zone_entity_type,
+        min_overlap_ratio=min_overlap_ratio,
+        session_id=session_id,
+    )
 
 
 @mcp.tool()
@@ -1192,27 +1407,14 @@ def _quantile_bins(values: List[float], k: int = 5) -> List[float]:
     return qs
 
 
-@mcp.tool()
-def GenerateAdminChoropleth(
+def _generate_admin_choropleth_impl(
     admin_entity_type: str,
     metric_name: str,
     metrics: Optional[List[Dict[str, Any]]] = None,
     title: Optional[str] = None,
     session_id: str = "_default"
 ) -> Dict[str, Any]:
-    """
-    Generate a choropleth GeoJSON for admin polygons using a provided metric list.
-
-    Args:
-        admin_entity_type: entity type of admin polygons used when registering
-        metric_name: label for the metric used in properties
-        metrics: list of {admin_id, value? or overlap_ratio/points_per_Xkm2, ...}
-                 If None, tries to use cached last metrics under this name.
-        title: optional title for map metadata
-
-    Returns:
-        { type: 'map', geojson_url, summary }
-    """
+    """Internal implementation used by tool and server-internal callers."""
     if not GEOSPATIAL_AVAILABLE:
         return {"error": "GeoPandas not installed"}
     store = _get_session_store(session_id)
@@ -1305,6 +1507,120 @@ def GenerateAdminChoropleth(
         'geojson_filename': filename,
         'summary': summary
     }
+
+
+@mcp.tool()
+def GenerateAdminChoropleth(
+    admin_entity_type: str,
+    metric_name: str,
+    metrics: Optional[List[Dict[str, Any]]] = None,
+    title: Optional[str] = None,
+    session_id: str = "_default"
+) -> Dict[str, Any]:
+    """Tool wrapper delegating to internal choropleth implementation."""
+    return _generate_admin_choropleth_impl(
+        admin_entity_type=admin_entity_type,
+        metric_name=metric_name,
+        metrics=metrics,
+        title=title,
+        session_id=session_id,
+    )
+
+
+@mcp.tool()
+def GenerateMunicipalityOverlapTable(
+    zone_entity_type: str,
+    sort_by: str = 'percentage',
+    top_n: int = 25,
+    min_overlap_ratio: float = 0.0,
+    session_id: str = "_default"
+) -> Dict[str, Any]:
+    """
+    Generate a ready-to-render table module ranking municipalities by overlap with a zone layer.
+
+    Args:
+        zone_entity_type: polygon entity type to overlap with ('heat_zone', 'deforestation_area', etc.)
+        sort_by: 'percentage' (default) or 'area'
+        top_n: number of rows to include
+        min_overlap_ratio: optional threshold to filter results (0..1)
+        session_id: geospatial session id
+
+    Returns:
+        { type: 'table', heading, columns, rows }
+    """
+    # Compute overlaps using the internal implementation (avoid calling tool wrapper directly)
+    res = _compute_area_overlap_impl(
+        admin_entity_type='municipality',
+        zone_entity_type=zone_entity_type,
+        min_overlap_ratio=min_overlap_ratio,
+        session_id=session_id
+    )
+    if res.get('error'):
+        return res
+    results = res.get('results') or []
+    if not results:
+        return {
+            'type': 'table',
+            'heading': f"Top municipalities by {zone_entity_type.replace('_',' ')} exposure",
+            'columns': ["Municipality", "State", "Overlap (%)", "Overlap (km²)", "Total Area (km²)"],
+            'rows': []
+        }
+
+    def key_percentage(x: Dict[str, Any]):
+        return (float(x.get('overlap_ratio', 0.0)), float(x.get('overlap_km2', 0.0)))
+
+    def key_area(x: Dict[str, Any]):
+        return (float(x.get('overlap_km2', 0.0)), float(x.get('overlap_ratio', 0.0)))
+
+    if (sort_by or '').lower().startswith('area'):
+        results.sort(key=key_area, reverse=True)
+    else:
+        results.sort(key=key_percentage, reverse=True)
+
+    # Build table rows
+    columns = ["Municipality", "State", "Overlap (%)", "Overlap (km²)", "Total Area (km²)"]
+    rows = []
+    for item in results[: max(1, int(top_n))]:
+        props = item.get('properties') or {}
+        name = props.get('name') or props.get('muni_name') or item.get('admin_id')
+        state = props.get('state') or props.get('state_abbrev') or ''
+        overlap_pct = round(float(item.get('overlap_ratio', 0.0)) * 100.0, 2)
+        overlap_km2 = round(float(item.get('overlap_km2', 0.0)), 3)
+        total_km2 = round(float(item.get('total_area_km2', 0.0)), 3)
+        rows.append([name, state, overlap_pct, overlap_km2, total_km2])
+
+    heading = f"Top municipalities by {zone_entity_type.replace('_',' ')} exposure"
+    out = {
+        'type': 'table',
+        'heading': heading,
+        'columns': columns,
+        'rows': rows,
+        'metadata': {
+            'zone_entity_type': zone_entity_type,
+            'sort_by': sort_by,
+            'top_n': top_n,
+            'used_static_zone_index': res.get('used_static_zone_index', False)
+        }
+    }
+
+    # NOTE: For now, we do NOT generate polygons for municipality + heat.
+    # Only return the ranking table to keep UI simple and avoid polygon rendering.
+    if zone_entity_type != 'heat_zone':
+        # For other zone types, include a choropleth map
+        try:
+            choro = _generate_admin_choropleth_impl(
+                admin_entity_type='municipality',
+                metric_name=f'overlap_{zone_entity_type}',
+                metrics=results,
+                title=heading,
+                session_id=session_id,
+            )
+            if isinstance(choro, dict) and choro.get('geojson_url'):
+                out['geojson_url'] = choro['geojson_url']
+        except Exception as e:
+            print(f"[geospatial] Overlap table: choropleth generation failed: {e}")
+
+    return out
 
 
 @mcp.tool()

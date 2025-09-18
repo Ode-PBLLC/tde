@@ -184,13 +184,185 @@ def load_municipality_data():
 # Load data on startup
 data_loaded = load_municipality_data()
 
+def _municipalities_dataset_metadata_impl() -> Dict[str, Any]:
+    """Internal helper to compute municipalities metadata."""
+    if not GEOSPATIAL_AVAILABLE:
+        return {"error": "GeoPandas not installed"}
+    if municipalities_gdf is None or municipalities_gdf.empty:
+        return {"error": "Municipality geometries not loaded"}
+    total = int(len(municipalities_gdf))
+    states = int(municipalities_gdf['state'].nunique() if 'state' in municipalities_gdf.columns else 0)
+    total_pop = int(municipalities_gdf['population'].sum() if 'population' in municipalities_gdf.columns else 0)
+    total_area = float(municipalities_gdf['area_km2'].sum() if 'area_km2' in municipalities_gdf.columns else 0.0)
+    src = "simplified_geojson" if SIMPLIFIED_GEOJSON_PATH.exists() else ("shapefile" if SHAPEFILE_PATH.exists() else "unknown")
+    return {
+        "Name": "Brazilian Municipalities",
+        "Description": "Administrative boundaries and demographics for Brazil's municipalities",
+        "Version": "2024",
+        "geometry_source": src,
+        "total_municipalities": total,
+        "states": states,
+        "total_population": total_pop,
+        "total_area_km2": total_area
+    }
+
+@mcp.tool()
+def GetMunicipalitiesDatasetMetadata() -> Dict[str, Any]:
+    """Return dynamic metadata for Brazilian municipalities dataset."""
+    try:
+        return _municipalities_dataset_metadata_impl()
+    except Exception as e:
+        return {"error": str(e)}
+
+@mcp.tool()
+def DescribeServer() -> Dict[str, Any]:
+    """Describe municipalities dataset, tools, and live stats."""
+    try:
+        meta = _municipalities_dataset_metadata_impl()
+        tools = [
+            "GetMunicipalitiesByFilter",
+            "GetMunicipalityBoundaries",
+            "GetMunicipalitiesInBounds",
+            "FindMunicipalitiesNearPoint",
+            "GetMunicipalityStatistics",
+            "GetTopBrazilianCitiesByPopulation",
+            "GetPopulationByState",
+            "GetMunicipalitiesDatasetMetadata"
+        ]
+        # Derive last_updated from data files
+        last_updated = None
+        try:
+            from datetime import datetime as _dt
+            paths = []
+            for p in [SIMPLIFIED_GEOJSON_PATH, SHAPEFILE_PATH, CSV_PATH]:
+                try:
+                    if p and os.path.exists(p):
+                        paths.append(str(p))
+                except Exception:
+                    pass
+            if paths:
+                last_updated = _dt.fromtimestamp(max(os.path.getmtime(p) for p in paths)).isoformat()
+        except Exception:
+            pass
+        return {
+            "name": "Brazilian Municipalities Server",
+            "description": "Administrative boundaries and demographics for Brazil",
+            "version": meta.get("Version", "2024") if isinstance(meta, dict) else "2024",
+            "dataset": "IBGE/GeoJSON municipal boundaries + CSV demographics",
+            "metrics": {
+                "total_municipalities": meta.get("total_municipalities") if isinstance(meta, dict) else None,
+                "states": meta.get("states") if isinstance(meta, dict) else None,
+                "total_population": meta.get("total_population") if isinstance(meta, dict) else None
+            },
+            "coverage": {
+                "geometry_source": meta.get("geometry_source") if isinstance(meta, dict) else None
+            },
+            "tools": tools,
+            "examples": [
+                "Which municipalities intersect recent deforestation?",
+                "Top 20 cities by population"
+            ],
+            "last_updated": last_updated
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@mcp.tool()
+def GetTopBrazilianCitiesByPopulation(top_n: int = 10) -> Dict[str, Any]:
+    """Return a chart spec for top N Brazilian cities by population (from CSV)."""
+    try:
+        import pandas as pd  # noqa
+    except Exception:
+        return {"error": "pandas not available"}
+    global csv_data
+    if csv_data is None or csv_data.empty:
+        return {"error": "CSV data not loaded"}
+    df = csv_data.copy()
+    if 'population' not in df.columns or 'city' not in df.columns:
+        return {"error": "CSV missing required columns 'city' and 'population'"}
+    # Clean
+    df['population'] = pd.to_numeric(df['population'], errors='coerce').fillna(0)
+    df = df.sort_values('population', ascending=False).head(max(1, int(top_n)))
+    data = [{"city": r['city'], "population": int(r['population'])} for _, r in df.iterrows()]
+    return {
+        "visualization_type": "comparison",
+        "data": data,
+        "chart_config": {
+            "x_axis": "city",
+            "y_axis": "population",
+            "title": f"Top {max(1, int(top_n))} Brazilian Cities by Population",
+            "chart_type": "bar"
+        }
+    }
+
+@mcp.tool()
+def GetPopulationByState() -> Dict[str, Any]:
+    """Return a chart spec for total population by Brazilian state."""
+    try:
+        import pandas as pd  # noqa
+    except Exception:
+        return {"error": "pandas not available"}
+    global municipalities_gdf, csv_data
+    # Prefer merged GeoDataFrame with state attribute; fallback to CSV
+    if municipalities_gdf is not None and not municipalities_gdf.empty and 'state' in municipalities_gdf.columns and 'population' in municipalities_gdf.columns:
+        df = municipalities_gdf[['state', 'population']].copy()
+        df['population'] = pd.to_numeric(df['population'], errors='coerce').fillna(0)
+        agg = df.groupby('state', dropna=False)['population'].sum().reset_index()
+    elif csv_data is not None and not csv_data.empty and 'admin_name' in csv_data.columns and 'population' in csv_data.columns:
+        df = csv_data[['admin_name', 'population']].copy()
+        df['population'] = pd.to_numeric(df['population'], errors='coerce').fillna(0)
+        agg = df.groupby('admin_name', dropna=False)['population'].sum().reset_index().rename(columns={'admin_name': 'state'})
+    else:
+        return {"error": "No state/population columns available"}
+    agg = agg.sort_values('population', ascending=False)
+    data = [{"state": str(r['state']), "population": int(r['population'])} for _, r in agg.iterrows()]
+    return {
+        "visualization_type": "comparison",
+        "data": data,
+        "chart_config": {
+            "x_axis": "state",
+            "y_axis": "population",
+            "title": "Total Population by Brazilian State",
+            "chart_type": "bar"
+        }
+    }
+
+@mcp.tool()
+def GetMunicipalityAreaHistogram(bins: int = 10) -> Dict[str, Any]:
+    """Return a histogram-like bar chart of municipality areas (km²)."""
+    try:
+        import pandas as pd  # noqa
+        import numpy as np  # noqa
+    except Exception:
+        return {"error": "pandas/numpy not available"}
+    global municipalities_gdf
+    if municipalities_gdf is None or municipalities_gdf.empty or 'area_km2' not in municipalities_gdf.columns:
+        return {"error": "Municipality areas not available"}
+    s = pd.to_numeric(municipalities_gdf['area_km2'], errors='coerce').dropna()
+    if s.empty:
+        return {"error": "No area data"}
+    bins = max(2, int(bins))
+    counts, edges = np.histogram(s.values, bins=bins)
+    labels = [f"{edges[i]:.0f}-{edges[i+1]:.0f}" for i in range(len(edges)-1)]
+    data = [{"bin": labels[i], "count": int(counts[i])} for i in range(len(counts))]
+    return {
+        "visualization_type": "comparison",
+        "data": data,
+        "chart_config": {
+            "x_axis": "bin",
+            "y_axis": "count",
+            "title": "Distribution of Municipality Areas (km²)",
+            "chart_type": "bar"
+        }
+    }
+
 @mcp.tool()
 def GetMunicipalitiesByFilter(
     state: Optional[str] = None,
     min_population: Optional[int] = None,
     max_population: Optional[int] = None,
     capital_only: bool = False,
-    limit: int = 100
+    limit: int = 6000
 ) -> Dict[str, Any]:
     """
     Get Brazilian municipalities matching filter criteria.
@@ -362,7 +534,7 @@ def GetMunicipalitiesInBounds(
     east: float,
     west: float,
     min_area_km2: Optional[float] = None,
-    limit: int = 500
+    limit: int = 6000
 ) -> Dict[str, Any]:
     """
     Get municipalities within a geographic bounding box.

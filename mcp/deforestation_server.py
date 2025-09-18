@@ -397,3 +397,50 @@ def GetDeforestationWithMap(
 
 if __name__ == "__main__":
     mcp.run()
+
+@mcp.tool()
+def DescribeServer() -> Dict[str, Any]:
+    """Describe deforestation dataset, tools, and live stats."""
+    try:
+        if not GEOSPATIAL_AVAILABLE:
+            return {"error": "GeoPandas not installed"}
+        total = int(len(deforestation_gdf)) if deforestation_gdf is not None else 0
+        total_area_km2 = 0.0
+        if deforestation_gdf is not None and not deforestation_gdf.empty and 'area_hectares' in deforestation_gdf.columns:
+            total_area_km2 = float(deforestation_gdf['area_hectares'].sum() / 100.0)
+        tools = [
+            "GetDeforestationAreas",
+            "GetDeforestationInBounds",
+            "GetDeforestationStatistics",
+            "GetDeforestationWithMap"
+        ]
+        # Derive last_updated from source file timestamps
+        last_updated = None
+        try:
+            from datetime import datetime as _dt
+            paths = [p for p in [PARQUET_PATH, GEOJSON_PATH] if os.path.exists(p)]
+            if paths:
+                last_updated = _dt.fromtimestamp(max(os.path.getmtime(p) for p in paths)).isoformat()
+        except Exception:
+            pass
+        return {
+            "name": "Deforestation Server",
+            "description": "Brazil deforestation polygons from processed satellite imagery",
+            "version": "1.0",
+            "dataset": "Brazil deforestation polygons",
+            "metrics": {
+                "total_polygons": total,
+                "total_area_km2": total_area_km2
+            },
+            "coverage": {
+                "country": "Brazil"
+            },
+            "tools": tools,
+            "examples": [
+                "Get deforestation areas over 10 hectares",
+                "Intersect solar with deforestation in a region"
+            ],
+            "last_updated": last_updated
+        }
+    except Exception as e:
+        return {"error": str(e)}

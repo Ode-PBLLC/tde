@@ -18,14 +18,22 @@ import aiohttp
 from kg_embed_generator import KGEmbedGenerator
 import secrets
 from typing import List, Tuple
+from utils.language import detect_portuguese
 from datetime import timedelta
 import csv
 from pathlib import Path
 
 # Add the mcp directory to the path
 sys.path.append('mcp')
-# Use the modern 3‑phase orchestrator (mcp_chat_redo) per active development
-from mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client
+# Allow switching orchestrators via env var ORCHESTRATOR={redo|plan}
+# Default stays on the modern 3‑phase orchestrator (mcp_chat_redo)
+_orch = os.getenv("ORCHESTRATOR", "redo").lower()
+if _orch in ("plan", "plan_execute", "plan-execute"):
+    from mcp_chat_plan_execute import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
+    print("Using mcp_chat_plan_execute orchestrator")
+else:
+    from mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
+    print("Using mcp_chat_redo orchestrator")
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
 
@@ -288,11 +296,15 @@ class QueryRequest(BaseModel):
     include_thinking: bool = False
     conversation_id: Optional[str] = None
     reset: bool = False  # allow client to explicitly reset this conversation
+    language: Optional[str] = None  # Optional: 'pt' or 'en'; 'auto' if unset
 
 class StreamQueryRequest(BaseModel):
     query: str
     conversation_id: Optional[str] = None
     reset: bool = False
+    language: Optional[str] = None
+
+_detect_portuguese = detect_portuguese
 
 def _derive_kg_from_context(kg_context: Dict[str, Any]) -> Dict[str, Any]:
     """Build concepts and relationships arrays from a kg_context structure.
@@ -514,7 +526,27 @@ async def process_query(req: QueryRequest, request: Request):
         os.chdir(script_dir)
         
         # Pass conversation context to process_chat_query
-        full_result = await process_chat_query(req.query, conversation_history=context, correlation_session_id=session_id)
+        # Determine target language: explicit or auto-detect
+        target_lang = None
+        lang_pref = (req.language or "").lower().strip()
+        if lang_pref in ("pt", "pt-br", "pt-pt", "portuguese", "português"):
+            target_lang = "pt"
+        elif lang_pref in ("en", "english"):
+            target_lang = None
+        else:
+            # Auto-detect Portuguese based on query text
+            try:
+                if _detect_portuguese(req.query):
+                    target_lang = "pt"
+            except Exception:
+                target_lang = None
+
+        full_result = await process_chat_query(
+            req.query,
+            conversation_history=context,
+            correlation_session_id=session_id,
+            target_language=target_lang,
+        )
         
         # Check if this is an off-topic redirect response
         if isinstance(full_result, dict) and full_result.get("metadata", {}).get("query_type") == "off_topic_redirect":
@@ -529,10 +561,19 @@ async def process_query(req: QueryRequest, request: Request):
                 error=None,
                 tokens_used=0
             )
-            
+            # Apply translation to modules if needed
+            modules = full_result.get("modules", [])
+            try:
+                if target_lang == "pt" and modules:
+                    sys.path.append('mcp')
+                    from translation import translate_modules as _translate_modules
+                    modules = await _translate_modules(modules, target_lang)
+            except Exception:
+                pass
+
             return QueryResponse(
                 query=req.query,
-                modules=full_result.get("modules", []),
+                modules=modules,
                 thinking_process=None,
                 metadata=full_result.get("metadata", {}),
                 concepts=[],
@@ -1003,7 +1044,26 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
             response_modules = []
             
             # Use streaming that properly sends content
-            async for event in stream_chat_query(stream_req.query, conversation_history=context, correlation_session_id=session_id):
+            # Determine target language for stream
+            target_lang = None
+            lang_pref = (stream_req.language or "").lower().strip()
+            if lang_pref in ("pt", "pt-br", "pt-pt", "portuguese", "português"):
+                target_lang = "pt"
+            elif lang_pref in ("en", "english"):
+                target_lang = None
+            else:
+                try:
+                    if _detect_portuguese(stream_req.query):
+                        target_lang = "pt"
+                except Exception:
+                    target_lang = None
+
+            async for event in stream_chat_query(
+                stream_req.query,
+                conversation_history=context,
+                correlation_session_id=session_id,
+                target_language=target_lang,
+            ):
                 # Capture complete event for history
                 if event.get("type") == "complete":
                     response_data = event.get("data", {})
@@ -1065,8 +1125,8 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                     event_data = json.dumps(event, ensure_ascii=False)
                     yield f"data: {event_data}\n\n"
             
-            # Send completion signal
-            yield f"data: [DONE]\n\n"
+            # Send completion signal as JSON (frontend expects JSON per event)
+            yield "data: " + json.dumps({"type": "done"}) + "\n\n"
             
             # Store the query and response in session history
             session_store.append(session_id, "user", stream_req.query)

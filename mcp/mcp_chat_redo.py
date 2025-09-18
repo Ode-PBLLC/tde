@@ -987,7 +987,7 @@ class QueryOrchestrator:
     - Response formatter handles artifact embedding
     """
     
-    def __init__(self, client: MultiServerClient, conversation_history: Optional[List[Dict[str, str]]] = None, spatial_session_id: Optional[str] = None):
+    def __init__(self, client: MultiServerClient, conversation_history: Optional[List[Dict[str, str]]] = None, spatial_session_id: Optional[str] = None, target_language: Optional[str] = None):
         self.client = client
         self.citation_registry = client.citation_registry
         self.token_budget_remaining = 50000  # Conservative starting budget
@@ -998,6 +998,55 @@ class QueryOrchestrator:
         self.spatial_session_id = spatial_session_id or "_default"
         # Track if we've already generated a geospatial correlation/map this query
         self._geo_map_generated: bool = False
+        # Per-query guards/deduplication
+        self._tool_calls_done: set = set()
+        self._admin_zone_bootstrapped: bool = False
+        # Target language preference (e.g., 'pt' for Portuguese)
+        self.target_language = (target_language or "").lower() or None
+
+    # --- Generic intent detectors (admin/zone/ranking) ---
+    def _detect_admin_intent(self, query: str) -> Optional[str]:
+        """Detect if the query asks about administrative units we support.
+        Currently returns 'municipality' when municipalities/cities/towns are mentioned.
+        """
+        ql = (query or "").lower()
+        admin_terms = ["municip", "municipal", "city", "cities", "town", "towns"]
+        if any(t in ql for t in admin_terms):
+            return "municipality"
+        return None
+
+    def _detect_zone_intent(self, query: str) -> Optional[str]:
+        """Detect if the query implies a polygonal 'zone' layer we can register.
+        Returns an entity_type like 'heat_zone' or 'deforestation_area' when detected.
+        Minimal mapping to keep generality; extend as new layers are added.
+        """
+        ql = (query or "").lower()
+        # Heat stress keywords → top-quintile heat zones
+        if any(k in ql for k in ["heat", "temperature", "wbgt", "land surface temperature", "lst"]):
+            return "heat_zone"
+        # Deforestation (already supported as polygons)
+        if "deforest" in ql:
+            return "deforestation_area"
+        return None
+
+    def _has_ranking_intent(self, query: str) -> bool:
+        """Detect ranking/comparison phrasing that implies 'most/highest/top' answers."""
+        ql = (query or "").lower()
+        return any(k in ql for k in ["which", "most", "highest", "top", "worst", "rank", "ranking"])
+
+    def _tool_call_key(self, server: str, tool: str, args: Any) -> str:
+        try:
+            payload = json.dumps(args or {}, sort_keys=True, ensure_ascii=False)
+        except Exception:
+            payload = str(args)
+        return f"{server}::{tool}::{payload}"
+
+    def _mark_tool_called(self, server: str, tool: str, args: Any) -> bool:
+        key = self._tool_call_key(server, tool, args)
+        if key in self._tool_calls_done:
+            return False
+        self._tool_calls_done.add(key)
+        return True
     
     def _format_conversation_history(self) -> str:
         """Format conversation history for LLM context."""
@@ -1021,6 +1070,9 @@ class QueryOrchestrator:
         Returns:
             True if relevant, False if off-topic
         """
+        # Allow meta/capability/help queries up front so onboarding isn't blocked
+        if self._is_meta_query(user_query):
+            return True
         # If there's conversation history, include it in the relevance check
         if self.conversation_history and len(self.conversation_history) > 0:
             # Build context summary from recent messages
@@ -1048,6 +1100,12 @@ Our domain includes:
 - Physical climate risks (floods, droughts, heat stress)
 - GHG emissions and carbon footprint
 - Environmental justice and climate adaptation
+
+Additionally, ALWAYS treat as relevant any meta questions about the assistant/app itself, including:
+- What you can do or talk about (capabilities, topics, features, examples)
+- What data/sources/datasets you have
+- How to use the app or how it works
+- Who/what the assistant is
 
 IMPORTANT: If the query refers to or follows up on ANYTHING from the conversation context above,
 it is IMMEDIATELY RELEVANT (answer YES), even if it doesn't explicitly mention climate/environment terms.
@@ -1082,6 +1140,12 @@ Our domain includes:
 - Physical climate risks (floods, droughts, heat stress)
 - GHG emissions and carbon footprint
 - Environmental justice and climate adaptation
+
+ALSO IN-SCOPE: Meta questions about the assistant/app itself, including:
+- What we can do or talk about (capabilities, topics, features, examples)
+- What data/sources/datasets we have
+- How to use the app or how it works
+- Who/what the assistant is
 
 The query: "{user_query}"
 
@@ -1120,6 +1184,187 @@ Answer (YES/NO):"""
             # If relevance check fails, default to processing the query
             print(f"⚠️ Relevance check failed: {e}. Defaulting to processing query.")
             return True
+
+    def _is_meta_query(self, user_query: str) -> bool:
+        """Detects capability/help/identity queries that should be answered directly."""
+        q = (user_query or "").strip().lower()
+        triggers = [
+            # Capabilities / help / onboarding
+            "what can you do", "what can you talk about", "what topics", "what do you cover",
+            "what data do you have", "what datasets", "what data sources", "what sources",
+            "capabilities", "features", "how to use", "how should i ask", "examples",
+            "sample queries", "help", "commands", "how does this work", "how do you work",
+            # Identity / about
+            "who are you", "what are you", "what is this app", "what is this",
+            # Safety / privacy / limits
+            "privacy", "terms", "limitations", "limit", "scope of the app"
+        ]
+        return any(t in q for t in triggers)
+
+    async def _create_capabilities_response(self, user_query: str) -> Dict:
+        """Build a dynamic capabilities + datasets overview from live server metadata."""
+        # Helper: normalize MCP tool result -> dict
+        def _as_dict(tool_result) -> Dict[str, Any]:
+            try:
+                if hasattr(tool_result, 'content') and tool_result.content:
+                    import json as _json
+                    return _json.loads(tool_result.content[0].text)
+                if isinstance(tool_result, dict):
+                    return tool_result
+            except Exception:
+                pass
+            return {}
+
+        # Issue metadata calls concurrently where available
+        calls = []
+        # Prefer DescribeServer() if available; fall back to metadata/stat tools
+        for name, server in [("kg", "kg"), ("solar", "solar"), ("gist", "gist"), ("lse", "lse"), ("deforestation", "deforestation"), ("municipalities", "municipalities"), ("heat", "heat"), ("geospatial", "geospatial"), ("viz", "viz")]:
+            try:
+                calls.append((name, self.client.call_tool("DescribeServer", {}, server)))
+            except Exception:
+                # Fallbacks by server
+                try:
+                    if name == "kg":
+                        calls.append((name, self.client.call_tool("GetKGDatasetMetadata", {}, server)))
+                    elif name == "solar":
+                        calls.append((name, self.client.call_tool("GetSolarDatasetMetadata", {}, server)))
+                    elif name == "gist":
+                        calls.append((name, self.client.call_tool("GetGistDatasetMetadata", {}, server)))
+                    elif name == "lse":
+                        calls.append((name, self.client.call_tool("GetLSEDatasetMetadata", {}, server)))
+                    elif name == "deforestation":
+                        calls.append((name, self.client.call_tool("GetDeforestationStatistics", {}, server)))
+                    elif name == "municipalities":
+                        calls.append((name, self.client.call_tool("GetMunicipalitiesDatasetMetadata", {}, server)))
+                    elif name == "heat":
+                        calls.append((name, self.client.call_tool("ListHeatLayers", {}, server)))
+                except Exception:
+                    pass
+
+        results: Dict[str, Dict[str, Any]] = {}
+        if calls:
+            pairs = await asyncio.gather(*[c for _, c in calls], return_exceptions=True)
+            for (name, _), res in zip(calls, pairs):
+                if isinstance(res, Exception):
+                    continue
+                results[name] = _as_dict(res)
+
+        # Build dataset rows using dynamic metadata; fall back to configured descriptions
+        server_cfg = self._get_server_descriptions()
+        rows = []
+        def add_row(display_name: str, summary: str, metrics: str):
+            rows.append([display_name, summary, metrics])
+
+        # Build rows per server using DescribeServer format when available
+        def describe_to_metrics(name_key: str, r: Dict[str, Any]) -> str:
+            # Prefer a compact metrics summary
+            m = r.get("metrics", {}) if isinstance(r, dict) else {}
+            updated = r.get("last_updated") if isinstance(r, dict) else None
+            upd_str = f"; updated {updated[:10]}" if isinstance(updated, str) and len(updated) >= 10 else ""
+            if name_key == "kg":
+                concepts = m.get('concepts', m.get('concept_count', 0))
+                passages = m.get('passages', m.get('passage_count', 0))
+                nodes = m.get('graph_nodes', 0)
+                edges = m.get('graph_edges', 0)
+                note = " (not loaded)" if all(int(x or 0) == 0 for x in [concepts, passages, nodes, edges]) else ""
+                return f"{concepts} concepts; {passages} passages; nodes {nodes}, edges {edges}{upd_str}{note}"
+            if name_key == "solar":
+                cap = m.get('total_capacity_mw')
+                cap_str = f"; {float(cap):.0f} MW" if cap is not None else ""
+                return f"{m.get('total_facilities', 0)} facilities{cap_str}; {m.get('total_countries', len(r.get('coverage', {}).get('countries', [])))} countries{upd_str}"
+            if name_key == "gist":
+                return f"{m.get('total_companies', 0)} companies; {m.get('total_assets', 0)} assets; {m.get('dataset_count', 0)} datasets{upd_str}"
+            if name_key == "lse":
+                return f"{m.get('total_files', 0)} files; {m.get('total_sheets', 0)} sheets; modules {m.get('modules', 0)}{upd_str}"
+            if name_key == "deforestation":
+                polys = m.get('total_polygons', r.get('total_polygons', 0))
+                area = float(m.get('total_area_km2', r.get('total_area_km2', 0)) or 0)
+                note = " (not loaded)" if int(polys or 0) == 0 else ""
+                return f"{polys} polygons; {area:.0f} km²{upd_str}{note}"
+            if name_key == "municipalities":
+                pop = m.get('total_population')
+                pop_str = f"; pop {pop:,}" if isinstance(pop, int) else ""
+                area = m.get('total_area_km2')
+                area_str = f"; area {float(area):.0f} km²" if area is not None else ""
+                return f"{m.get('total_municipalities', 0)} municipalities{pop_str}{area_str}{upd_str}"
+            if name_key == "heat":
+                layers = m.get('layer_count', len(r.get('heat_layers', [])))
+                note = " (not loaded)" if int(layers or 0) == 0 else ""
+                return f"{layers} layers{upd_str}{note}"
+            return ""
+
+        friendly_names = {
+            "kg": "Knowledge Graph",
+            "solar": "Solar Facilities",
+            "gist": "Corporate Environmental Metrics (GIST)",
+            "lse": "Climate Policy (LSE)",
+            "deforestation": "Deforestation (Brazil)",
+            "municipalities": "Brazilian Municipalities",
+            "heat": "Heat Stress Layers",
+            "geospatial": "Geospatial Correlation",
+            "viz": "Visualization"
+        }
+        # Show datasets only (exclude engines like geospatial/viz)
+        included_keys = set()
+        for key in ["kg", "solar", "gist", "lse", "deforestation", "municipalities", "heat"]:
+            if key in results:
+                r = results[key]
+                brief = server_cfg.get(key, {}).get("brief", key)
+                desc = r.get("description") if isinstance(r, dict) else None
+                summary = desc or brief
+                display_name = r.get("name") if isinstance(r, dict) and r.get("name") else friendly_names.get(key, key)
+                rows.append([display_name, summary, describe_to_metrics(key, r)])
+                included_keys.add(key)
+
+        # Fallbacks for any missing entries (datasets only; exclude engines like geospatial/viz)
+        # Do not add fallback rows with "metadata unavailable" — show only live datasets
+
+        overview_text = (
+            "This workspace exposes live datasets: a climate policy knowledge graph, corporate environmental metrics (GIST), "
+            "global solar facilities (TZ-SAM), Brazilian deforestation polygons, Brazilian municipalities and demographics, and heat-stress zones. "
+            "You can view maps, generate tables and run spatial correlations (e.g., facilities within 1 km of heat zones)."
+        )
+
+        modules = [
+            {
+                "type": "text",
+                "heading": "About This Project",
+                "texts": [overview_text]
+            },
+            {
+                "type": "table",
+                "heading": "Datasets (Live)",
+                "columns": ["Dataset", "What it provides", "Key metrics"],
+                "rows": rows
+            }
+        ]
+
+        # Add a concise "Try these" queries section grouped by dataset
+        # Curate examples we know are robust in this build
+        try_queries = [
+            "Solar Facilities (TZ-SAM):\n• Show solar facilities in Brazil\n• Top 10 countries by number of solar facilities (table)\n• Show the largest solar facilities in Brazil (map)",
+            "Spatial Correlation (Datasets):\n• Which solar assets are within 1 km of heat stress?\n• Which solar assets are within 1 km of deforestation?",
+            "Heat Stress (Brazil):\n• Map top-quintile heat zones in Brazil",
+            "Corporate Environmental Metrics (GIST):\n• Companies in Brazil with high water stress exposure (table)",
+            "Brazilian Municipalities:\n• Show municipalities in Brazil (table)"
+        ]
+        modules.append({
+            "type": "text",
+            "heading": "Try These Queries",
+            "texts": ["\n\n".join(try_queries)]
+        })
+
+        return {
+            "query": user_query,
+            "modules": modules,
+            "metadata": {
+                "query_type": "capabilities_overview",
+                "modules_count": len(modules),
+                "has_maps": False,
+                "has_charts": False,
+                "has_tables": True
+            }
+        }
     
     def _create_redirect_response(self, user_query: str) -> Dict:
         """
@@ -1406,6 +1651,10 @@ Instructions:
             is_relevant = await self._is_query_relevant(user_query)
             if not is_relevant:
                 return self._create_redirect_response(user_query)
+
+            # If this is a meta/capability/identity query, return a capabilities overview
+            if self._is_meta_query(user_query):
+                return await self._create_capabilities_response(user_query)
             
             # Initialize fact tracer for debugging if enabled
             if os.getenv('DEBUG_FACTS', '').lower() == 'true' and FACT_TRACER_AVAILABLE:
@@ -1534,19 +1783,38 @@ Instructions:
             "kg": {
                 "brief": "Climate Knowledge Graph with physical & transition risks, energy systems, financial climate impacts",
                 "detailed": "Knowledge graph containing climate risk data, energy system information, financial climate impacts, physical risks (floods, droughts, heat), transition risks (policy, technology, market), sectoral analysis, and interconnected climate-finance relationships",
-                "routing_prompt": "Analyze if this query relates to climate risks, energy systems, financial impacts, physical or transition risks, sector-specific climate analysis, passages/citations, or concept relationships/paths.",
-                "collection_instructions": """Tool usage strategy for Knowledge Graph:
-                - Use 'GetPassagesMentioningConcept' as your MAIN search tool - search for relevant concepts
-                - Start with the country/entity name (e.g., 'Brazil') to get country-specific passages
-                - Then search for topic concepts: 'renewable energy', 'NDC', 'biofuels', 'climate policy'
-                - Use 'GetRelatedConcepts' to find connected concepts if initial search is too narrow
-                - For energy queries, search concepts: renewable energy, biofuels, ethanol, electricity, solar, wind
-                - For NDC queries, search concepts: NDC, commitments, targets, emissions reduction
-                - For relationship/path queries between concepts, call 'FindConceptPathWithEdges' with the two concept names and a reasonable max_len (e.g., 4)
-                - For passages that mention both concepts, call 'PassagesMentioningBothConcepts' with those two concept names and a reasonable limit (e.g., 5)
-                - When you find quantitative targets (percentages, TWh, MW), ALWAYS extract the complete context
-                - Call multiple concept searches to ensure comprehensive coverage
-                - NEVER use 'ALWAYSRUN' - it's a debug tool that returns nothing useful"""
+                "routing_prompt": "Analyze if this query relates to policies, passages/citations, concept relationships/paths, or sector-specific climate analysis. Prefer KG for policy answers.",
+                "collection_instructions": """Knowledge Graph expected workflow (concepts → neighbors → passages):
+                
+                1) Resolve concepts from the query (do NOT assume 'Brazil' as a concept; CPR KG is Brazil-scoped):
+                   - Use concept finders to identify seed concepts from the query text:
+                     • FindConceptMatchesByNgrams (exact label n-grams)
+                     • GetTopConceptsByQueryLocal (token overlap)
+                     • GetTopConceptsByQuery (semantic; only if embeddings available)
+                     • SearchConceptsFuzzy (RapidFuzz over preferred + alternative labels)
+                   - Deduplicate and keep top seeds most relevant to the query intent (e.g., 'solar energy', 'solar photovoltaic' for solar policy).
+                
+                2) Expand nearby KG context:
+                   - Use GetConceptGraphNeighbors on each seed (direction='both') to collect parent/child/related concepts.
+                   - Keep edge types (SUBCONCEPT_OF, HAS_SUBCONCEPT, RELATED_TO) to show structure.
+                   - Optionally use FindConceptPathWithEdges for short paths between key concepts.
+                
+                3) Surface passages with citations:
+                   - Use GetPassagesMentioningConcept for each seed (and select neighbor concepts when useful).
+                   - If no MENTIONS spans are found for a concept, fallback to KG-side text search against labelled_passages for the concept's preferred + alternative labels (including Portuguese terms where relevant: 'energia solar', 'fotovoltaica', 'geração distribuída', 'compensação de energia', 'PROINFA', 'ANEEL/REN 482', 'leilões').
+                   - Return real passages with passage_id/doc_id; avoid placeholders whenever possible.
+                
+                4) Assemble answer (KG-first):
+                   - Lead with a concise summary.
+                   - Provide 3–6 bullet points grounded in KG passages (with superscript citations).
+                   - Optionally add a compact 'KG Evidence' table (Passage ID, Concept, Snippet).
+                   - It is acceptable to include a supplemental asset count (e.g., solar facilities) at the end, but policy answers must prioritize KG evidence.
+                
+                Notes:
+                - Do not include geospatial correlation or facility mapping unless the user asks for spatial relationships.
+                - When extracting targets/figures, capture complete context and units.
+                - NEVER use 'ALWAYSRUN' - it's a debug tool that returns nothing useful.
+                - Prefer the composite KG policy-discovery tool when available: 'DiscoverPolicyContextForQuery'."""
             },
             "solar": {
                 "brief": "Solar facility database with locations, capacity, renewable infrastructure globally",
@@ -1761,6 +2029,17 @@ Instructions:
             ql = user_query.lower()
             if any(k in ql for k in kg_triggers) and 'kg' not in valid_servers:
                 valid_servers.append('kg')
+            # Ensure LSE is included for policy-oriented queries
+            if any(k in ql for k in ['policy', 'policies']) and 'lse' not in valid_servers:
+                valid_servers.append('lse')
+            
+            # Policy-first override: for policy queries, prioritize datasets (KG/LSE) and keep viz for tables
+            if any(k in ql for k in ['policy', 'policies']):
+                desired = ['kg', 'lse']
+                # Always include viz as a utility if present
+                if 'viz' in server_descriptions:
+                    desired.append('viz')
+                valid_servers = [s for s in desired if s in server_descriptions]
             
             print(f"Pre-filter selected servers: {valid_servers}")
             return valid_servers
@@ -1830,16 +2109,14 @@ Instructions:
                     reasoning="Not selected by pre-filter"
                 )
         
-        # Post Phase 1: Run deterministic spatial correlation ONLY when explicitly requested
+        # Post Phase 1: Run deterministic spatial correlation ONLY on explicit spatial relation intent
         ql = user_query.lower()
-        # Keep general spatial keywords but avoid triggering on broad phrases like "assets in <country>"
+        # Detect spatial relation intent using deterministic language (not tied to specific layers)
         is_spatial_query = any(keyword in ql for keyword in [
             "within", "inside", "intersect", "overlap", "near", "close to",
-            "proximity", "adjacent", "located in", "in deforestation", "km"
+            "proximity", "adjacent", "located in", "around", "km"
         ])
-        # Require explicit deforestation intent to compute solar↔deforestation correlation
-        wants_deforestation = any(k in ql for k in ["deforest", "forest loss", "cleared", "amazon biome", "land use change"]) or "in deforestation" in ql
-        if (not _geo_llm_only()) and is_spatial_query and wants_deforestation and self.client.sessions.get("geospatial"):
+        if (not _geo_llm_only()) and is_spatial_query and self.client.sessions.get("geospatial"):
             try:
                 reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
                 reg_data = {}
@@ -1847,12 +2124,29 @@ Instructions:
                     import json as _json
                     reg_data = _json.loads(reg.content[0].text)
                 # If solar facilities are registered, attempt correlation.
-                # The geospatial server can use a static deforestation index even if
-                # deforestation polygons were not explicitly registered in-session.
                 if isinstance(reg_data, dict) and reg_data.get("by_type", {}).get("solar_facility", 0) > 0:
-                    # Compute correlation
                     import re
-                    corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
+                    # Choose the polygon zone based on query intent (heat or deforestation)
+                    zone_choice = self._detect_zone_intent(user_query) or "deforestation_area"
+                    # If heat zones are requested but not yet registered, try to bootstrap them
+                    try:
+                        by_type = reg_data.get("by_type", {}) if isinstance(reg_data, dict) else {}
+                        if zone_choice == "heat_zone" and by_type.get("heat_zone", 0) == 0:
+                            heat_args = {"quintiles": [5], "limit": 5000}
+                            hres = await self.client.call_tool("GetHeatQuintilesForGeospatial", heat_args, "heat")
+                            if hasattr(hres, 'content') and hres.content:
+                                data = _json.loads(hres.content[0].text)
+                                entities = data.get('entities', []) if isinstance(data, dict) else []
+                                if entities:
+                                    await self.client.call_tool(
+                                        "RegisterEntities",
+                                        {"entity_type": "heat_zone", "entities": entities, "session_id": self.spatial_session_id},
+                                        "geospatial"
+                                    )
+                    except Exception:
+                        pass
+                    # Compute correlation (default to within unless distance like '1 km' is present)
+                    corr_args = {"entity_type1": "solar_facility", "entity_type2": zone_choice, "session_id": self.spatial_session_id}
                     m = re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
                     if m:
                         try:
@@ -1866,10 +2160,10 @@ Instructions:
                     corr_data = {}
                     if hasattr(corr, 'content') and corr.content:
                         corr_data = _json.loads(corr.content[0].text)
-                    # Generate map
+                    # Generate map (generic correlation type label)
                     map_res = await self.client.call_tool(
                         "GenerateCorrelationMap",
-                        {"correlation_type": "solar_in_deforestation", "session_id": self.spatial_session_id, "show_uncorrelated": False},
+                        {"correlation_type": f"solar_vs_{zone_choice}", "session_id": self.spatial_session_id, "show_uncorrelated": False},
                         "geospatial"
                     )
                     map_data = {}
@@ -2054,6 +2348,22 @@ Instructions:
                             seen_lbl.add(lbl)
                     llm_logger.info(f"KG BOOTSTRAP merged candidates: {merged}")
 
+                    # Augment candidates via server-side fuzzy search (no client heuristics)
+                    try:
+                        fuzzy_res = await self.client.call_tool("SearchConceptsFuzzy", {"query": user_query, "top_k": 10, "min_score": 70}, server_name)
+                        if hasattr(fuzzy_res, 'content') and fuzzy_res.content:
+                            import json as _json
+                            fz = _json.loads(fuzzy_res.content[0].text)
+                            if isinstance(fz, list):
+                                for d in fz:
+                                    lbl = d.get("label")
+                                    if lbl and lbl not in seen_lbl:
+                                        merged.append(lbl)
+                                        seen_lbl.add(lbl)
+                            llm_logger.info(f"KG BOOTSTRAP fuzzy added: {len(fz) if isinstance(fz,list) else 0}")
+                    except Exception as e:
+                        llm_logger.warning(f"KG fuzzy search failed: {e}")
+
                     # Heuristic: ensure 'terrestrial risk' is tried when deforestation is present
                     try:
                         if (('deforestation' in [x.lower() for x in exact_list + local_list + top_list])
@@ -2221,6 +2531,8 @@ Instructions:
                     except Exception as e:
                         llm_logger.warning(f"KG BOOTSTRAP co-mentions failed: {e}")
 
+                    # No client-side co-mention injection; rely on KG tools for relevant passages
+
                     # Optional relationship path (justification)
                     try:
                         if len(seeds) >= 2:
@@ -2262,16 +2574,26 @@ Instructions:
                 except Exception as e:
                     print(f"KG deterministic bootstrap failed: {e}")
             
-            # Detect if this is a spatial correlation query
-            is_spatial_query = any(keyword in user_query.lower() for keyword in [
-                "within", "inside", "intersect", "overlap", "near", "close to", 
-                "proximity", "adjacent", "located in", "in deforestation",
-                "in water stress", "assets within", "assets in"
+            # Detect intents
+            q_lower = user_query.lower()
+            # Correlation intent = explicit spatial relation language
+            correlation_intent = any(kw in q_lower for kw in [
+                "within", "inside", "intersect", "overlap", "near", "close to",
+                "proximity", "adjacent", "around", "km", "meter", "metre", "m "
             ])
+            # Map intent = wants a map/locations but without correlation operators
+            map_intent = (any(kw in q_lower for kw in [
+                "map", "show", "where", "locations", "visualize", "plot"
+            ]) and not correlation_intent)
+            # Keep a legacy flag for any spatial-like phrasing (do not use to trigger correlation)
+            is_spatial_query = correlation_intent
+
+            # Policy intent (keep KG/LSE focus)
+            policy_intent = any(k in q_lower for k in ["policy", "policies"]) and server_name == "kg"
             
             # Add specific instructions for spatial queries
             spatial_instructions = ""
-            if is_spatial_query:
+            if correlation_intent:
                 if server_name == "solar":
                     spatial_instructions = """
 
@@ -2336,10 +2658,26 @@ When you have collected enough information to answer "{user_query}", respond wit
                 })
             
             # Adjust user message for spatial queries
-            if is_spatial_query and server_name == "deforestation":
-                user_message = f"Query: {user_query}\n\nSTART by calling GetDeforestationAreas to get geographic data, then collect any other relevant information."
-            elif is_spatial_query and server_name == "solar":
-                user_message = f"Query: {user_query}\n\nSTART by calling GetSolarFacilitiesByCountry with country='Brazil' to get facility locations, then collect any other relevant information."
+            if correlation_intent and server_name == "deforestation":
+                # Avoid streaming large polygon payloads. We rely on the geospatial
+                # server's static deforestation index for correlation and will only
+                # show correlated polygons in maps.
+                user_message = (
+                    f"Query: {user_query}\n\n"
+                    "Do NOT call GetDeforestationAreas unless explicitly asked for sample polygons. "
+                    "Use lightweight stats if needed. Geospatial correlation will use the static deforestation index, "
+                    "and maps will include only correlated polygons."
+                )
+            elif map_intent and server_name == "solar":
+                user_message = (
+                    f"Query: {user_query}\n\n"
+                    "START by calling GetSolarFacilitiesMapData (use country='Brazil' when applicable) to generate the facilities map."
+                )
+            elif correlation_intent and server_name == "solar":
+                user_message = (
+                    f"Query: {user_query}\n\n"
+                    "START by calling GetSolarFacilitiesByCountry with country='Brazil' to get facility locations, then proceed with spatial correlation if relevant."
+                )
             else:
                 user_message = f"Query: {user_query}\n\nCollect relevant information from your available tools."
             
@@ -2353,11 +2691,50 @@ When you have collected enough information to answer "{user_query}", respond wit
             tool_calls_made = 0
             max_tool_calls = 15  # Small scope for Phase 1
             
-            # Deterministic bootstrap for spatial queries to ensure geospatial registration
+            # Policy-first KG discovery path: use server-side discovery tool
+            if policy_intent:
+                try:
+                    disc = await self.client.call_tool("DiscoverPolicyContextForQuery", {"query": user_query, "top_concepts": 3, "neighbor_limit": 10, "passage_limit": 25}, server_name)
+                    facts.extend(self._extract_facts_from_result("DiscoverPolicyContextForQuery", {"query": user_query}, disc, server_name))
+                    # Pull recent KG semantic debug lines and forward to orchestrator logs for visibility
+                    try:
+                        semlog = await self.client.call_tool("GetSemanticDebugLog", {"limit": 80}, server_name)
+                        if hasattr(semlog, 'content') and semlog.content:
+                            import json as _json
+                            data = _json.loads(semlog.content[0].text)
+                            if isinstance(data, dict):
+                                lines = data.get("lines") or []
+                                for ln in lines:
+                                    try:
+                                        llm_logger.info(f"[KG_SEM] {ln}")
+                                    except Exception:
+                                        pass
+                    except Exception:
+                        pass
+                    return PhaseResult(
+                        is_relevant=True,
+                        facts=facts,
+                        reasoning="KG policy context discovered via server-side tool",
+                        continue_processing=False
+                    )
+                except Exception as e:
+                    print(f"KG policy discovery failed: {e}")
+
+            # Deterministic bootstrap for correlation queries to ensure geospatial registration
             bootstrap_done = False
-            if is_spatial_query:
+            if correlation_intent:
                 try:
                     if server_name == "deforestation":
+                        # Skip fetching/streaming deforestation polygons. Correlation will
+                        # use the geospatial server's static deforestation index, and maps
+                        # include only correlated polygons. This avoids large payloads that hang.
+                        print("  Phase 1 - deforestation: Skipping polygon bootstrap; using static deforestation index")
+                        return PhaseResult(
+                            is_relevant=True,
+                            facts=facts,
+                            reasoning="Skipped polygon bootstrap; using static deforestation index",
+                            continue_processing=True
+                        )
                         # Deterministically fetch a SMALL sample of deforestation areas so geospatial
                         # correlation can run even if the static index is unavailable.
                         # Important: avoid unbounded payloads that freeze the frontend.
@@ -2471,8 +2848,10 @@ When you have collected enough information to answer "{user_query}", respond wit
                                     print(f"  Registered {len(entities)} solar facilities to session {self.spatial_session_id}")
                         except Exception as e:
                             print(f"  Direct registration from facilities failed: {e}")
-                        # After registering solar, try deterministic correlation using static deforestation index
+                        # After registering solar, if correlation-intent, try deterministic correlation using static deforestation index
                         try:
+                            if not correlation_intent:
+                                raise Exception("Correlation intent not detected; skip deterministic correlation")
                             import re as _re
                             corr_args = {"entity_type1": "solar_facility", "entity_type2": "deforestation_area", "session_id": self.spatial_session_id}
                             m = _re.search(r"(\d+(?:\.\d+)?)\s*km", ql)
@@ -2529,39 +2908,98 @@ When you have collected enough information to answer "{user_query}", respond wit
                             print(f"  Phase 1 - solar: Deterministic correlation skipped: {e}")
                         bootstrap_done = True
                     elif server_name == "municipalities":
-                        # Deterministically fetch municipalities for Brazil and register
+                        # Deterministically fetch municipalities and register (skip fact extraction)
                         muni_args = {"limit": 6000}
-                        print(f"  Phase 1 - municipalities: Bootstrap calling GetMunicipalitiesByFilter {muni_args}")
-                        mres = await self.client.call_tool("GetMunicipalitiesByFilter", muni_args, "municipalities")
-                        facts.extend(self._extract_facts_from_result("GetMunicipalitiesByFilter", muni_args, mres, "municipalities"))
-                        # Registration handled by auto-register block when parsing results
+                        if self._mark_tool_called("municipalities", "GetMunicipalitiesByFilter", muni_args):
+                            print(f"  Phase 1 - municipalities: Bootstrap calling GetMunicipalitiesByFilter {muni_args}")
+                            mres = await self.client.call_tool("GetMunicipalitiesByFilter", muni_args, "municipalities")
+                            try:
+                                if hasattr(mres, 'content') and mres.content:
+                                    import json as _json
+                                    mdata = _json.loads(mres.content[0].text)
+                                    munis = mdata.get("municipalities", []) if isinstance(mdata, dict) else []
+                                    if munis:
+                                        await self.client.call_tool(
+                                            "RegisterEntities",
+                                            {"entity_type": "municipality", "entities": munis, "session_id": self.spatial_session_id},
+                                            "geospatial"
+                                        )
+                            except Exception as e:
+                                print(f"  Phase 1 - municipalities: registration failed: {e}")
                         bootstrap_done = True
                     elif server_name == "heat":
-                        # Register top quintile heat zones deterministically
+                        # Register top quintile heat zones deterministically (skip fact extraction)
                         heat_args = {"quintiles": [5], "limit": 5000}
-                        print(f"  Phase 1 - heat: Bootstrap calling GetHeatQuintilesForGeospatial {heat_args}")
-                        hres = await self.client.call_tool("GetHeatQuintilesForGeospatial", heat_args, "heat")
-                        facts.extend(self._extract_facts_from_result("GetHeatQuintilesForGeospatial", heat_args, hres, "heat"))
-                        # Directly register entities if present
-                        try:
-                            if hasattr(hres, 'content') and hres.content:
-                                import json as _json
-                                data = _json.loads(hres.content[0].text)
-                                entities = data.get('entities', []) if isinstance(data, dict) else []
-                                if entities:
-                                    await self.client.call_tool(
-                                        "RegisterEntities",
-                                        {"entity_type": "heat_zone", "entities": entities, "session_id": self.spatial_session_id},
-                                        "geospatial"
-                                    )
-                                    print(f"  Registered {len(entities)} heat zones to session {self.spatial_session_id}")
-                        except Exception as e:
-                            print(f"  Direct registration from heat zones failed: {e}")
+                        if self._mark_tool_called("heat", "GetHeatQuintilesForGeospatial", heat_args):
+                            print(f"  Phase 1 - heat: Bootstrap calling GetHeatQuintilesForGeospatial {heat_args}")
+                            hres = await self.client.call_tool("GetHeatQuintilesForGeospatial", heat_args, "heat")
+                            try:
+                                if hasattr(hres, 'content') and hres.content:
+                                    import json as _json
+                                    data = _json.loads(hres.content[0].text)
+                                    entities = data.get('entities', []) if isinstance(data, dict) else []
+                                    if entities:
+                                        await self.client.call_tool(
+                                            "RegisterEntities",
+                                            {"entity_type": "heat_zone", "entities": entities, "session_id": self.spatial_session_id},
+                                            "geospatial"
+                                        )
+                                        print(f"  Registered {len(entities)} heat zones to session {self.spatial_session_id}")
+                            except Exception as e:
+                                print(f"  Direct registration from heat zones failed: {e}")
                         bootstrap_done = True
                 except Exception as e:
                     print(f"  Spatial bootstrap error for {server_name}: {e}")
             
             # If we handled spatial bootstrap for these servers, return early to avoid heavy LLM loops
+            # Enhancement: When the query implies admin-vs-zone ranking, ensure both sides are bootstrapped once.
+            if not bootstrap_done:
+                try:
+                    admin_type = self._detect_admin_intent(user_query)
+                    zone_type = self._detect_zone_intent(user_query)
+                    if admin_type == "municipality" and zone_type and self._has_ranking_intent(user_query):
+                        # Bootstrap municipalities
+                        try:
+                            muni_args = {"limit": 6000}
+                            print(f"  Phase 1 - forced bootstrap: municipalities {muni_args}")
+                            mres = await self.client.call_tool("GetMunicipalitiesByFilter", muni_args, "municipalities")
+                            facts.extend(self._extract_facts_from_result("GetMunicipalitiesByFilter", muni_args, mres, "municipalities"))
+                            if hasattr(mres, 'content') and mres.content:
+                                import json as _json
+                                mdata = _json.loads(mres.content[0].text)
+                                munis = mdata.get("municipalities", []) if isinstance(mdata, dict) else []
+                                if munis:
+                                    await self.client.call_tool(
+                                        "RegisterEntities",
+                                        {"entity_type": "municipality", "entities": munis, "session_id": self.spatial_session_id},
+                                        "geospatial"
+                                    )
+                        except Exception as e:
+                            print(f"  Phase 1 - forced bootstrap municipalities failed: {e}")
+                        # Bootstrap zone layer (heat zones currently)
+                        if zone_type == "heat_zone":
+                            try:
+                                heat_args = {"quintiles": [5], "limit": 5000}
+                                print(f"  Phase 1 - forced bootstrap: heat {heat_args}")
+                                hres = await self.client.call_tool("GetHeatQuintilesForGeospatial", heat_args, "heat")
+                                facts.extend(self._extract_facts_from_result("GetHeatQuintilesForGeospatial", heat_args, hres, "heat"))
+                                if hasattr(hres, 'content') and hres.content:
+                                    import json as _json
+                                    hdata = _json.loads(hres.content[0].text)
+                                    entities = hdata.get('entities', []) if isinstance(hdata, dict) else []
+                                    if entities:
+                                        await self.client.call_tool(
+                                            "RegisterEntities",
+                                            {"entity_type": "heat_zone", "entities": entities, "session_id": self.spatial_session_id},
+                                            "geospatial"
+                                        )
+                                        print(f"  Registered {len(entities)} heat zones (forced bootstrap)")
+                                bootstrap_done = True
+                            except Exception as e:
+                                print(f"  Phase 1 - forced bootstrap heat failed: {e}")
+                except Exception as e:
+                    print(f"  Phase 1 - admin/zone bootstrap check failed: {e}")
+
             if bootstrap_done:
                 return PhaseResult(
                     is_relevant=True,
@@ -2596,10 +3034,25 @@ When you have collected enough information to answer "{user_query}", respond wit
                         tool_args = content.input
                         tool_calls_made += 1
                         
+                        # De-duplicate repeated tool calls in Phase 1
+                        if not self._mark_tool_called(server_name, tool_name, tool_args):
+                            print(f"  Phase 1 - {server_name}: Skipping duplicate tool call {tool_name}")
+                            # Still append a minimal tool_result to satisfy the tool-use turn
+                            messages.append({"role": "assistant", "content": assistant_message_content})
+                            messages.append({
+                                "role": "user",
+                                "content": [{
+                                    "type": "tool_result",
+                                    "tool_use_id": content.id,
+                                    "content": "[duplicate_tool_call_skipped]"
+                                }]
+                            })
+                            continue
+
                         print(f"  Phase 1 - {server_name}: Call {tool_calls_made}/{max_tool_calls} - {tool_name}")
                         if tool_args:
                             print(f"    Args: {json.dumps(tool_args, indent=2)}")
-                        
+
                         # Make the actual tool call
                         try:
                             # Ensure geospatial tools get the correct session_id
@@ -2769,6 +3222,67 @@ When you have collected enough information to answer "{user_query}", respond wit
                     metadata={"tool_args": tool_args}
                 )
                 
+                # Special handling: KG policy discovery tool returns passages list
+                if server_name == "kg" and tool_name == "DiscoverPolicyContextForQuery" and isinstance(result_data, dict) and isinstance(result_data.get("passages"), list):
+                    passages = result_data.get("passages", [])
+                    for p in passages[:25]:
+                        txt = (p.get("text") or "")
+                        pid = p.get("passage_id")
+                        doc_id = p.get("doc_id")
+                        match_type = (p.get("match_type") or "").lower()
+                        matched_terms = p.get("matched_terms") if isinstance(p.get("matched_terms"), list) else []
+                        # Derive tool_id and description based on provenance
+                        if match_type == "text":
+                            passage_tool_id = "KGTextSearchFallback"
+                            desc_terms = ", ".join(matched_terms[:3]) if matched_terms else "text match"
+                            passage_desc = f"Passage {pid} text match ({desc_terms})"
+                        else:
+                            passage_tool_id = "GetPassagesMentioningConcept"
+                            # Try to extract concept labels from spans, if present
+                            labels = []
+                            try:
+                                spans = p.get("spans") if isinstance(p.get("spans"), list) else []
+                                for s in spans or []:
+                                    lab = s.get("concept_label") or s.get("label")
+                                    if lab and lab not in labels:
+                                        labels.append(lab)
+                            except Exception:
+                                labels = []
+                            label_str = ", ".join(labels[:3]) if labels else "concept"
+                            passage_desc = f"Passage {pid} mentioning {label_str}"
+
+                        specific_citation = Citation(
+                            source_name=self._get_source_name_for_tool(passage_tool_id, server_name),
+                            tool_id=passage_tool_id,
+                            source_type=self._get_source_type_for_server(server_name),
+                            description=passage_desc,
+                            server_origin=server_name,
+                            metadata={
+                                "tool_args": tool_args,
+                                "passage_id": pid,
+                                "doc_id": doc_id,
+                                "match_type": match_type,
+                                "matched_terms": matched_terms
+                            }
+                        )
+
+                        facts.append(Fact(
+                            text_content=txt[:400] + ("…" if len(txt) > 400 else ""),
+                            source_key=f"kg_passage_{pid}",
+                            server_origin=server_name,
+                            metadata={"tool": passage_tool_id, "raw_result": p},
+                            citation=specific_citation
+                        ))
+                    # Also include a compact summary fact
+                    facts.append(Fact(
+                        text_content=f"KG policy context: {len(passages)} passages; {len(result_data.get('concepts', []))} concepts; {len(result_data.get('neighbors', []))} links.",
+                        source_key="kg_policy_context_summary",
+                        server_origin=server_name,
+                        metadata={"tool": tool_name, "raw_result": result_data},
+                        citation=base_citation
+                    ))
+                    return facts
+
                 # Extract facts based on data type
                 if isinstance(result_data, list):
                     # Special handling: KG passage lists with span metadata
@@ -2904,6 +3418,40 @@ When you have collected enough information to answer "{user_query}", respond wit
                         ))
                     
                 elif isinstance(result_data, dict):
+                    # If a tool returned a ready-to-render table module, convert to a tabular fact
+                    try:
+                        if result_data.get('type') == 'table' and result_data.get('columns') and result_data.get('rows'):
+                            heading = result_data.get('heading') or 'Table'
+                            facts.append(Fact(
+                                text_content=heading,
+                                source_key=f"{server_name}_{tool_name}_table_{hash(json.dumps(result_data.get('columns')))}",
+                                server_origin=server_name,
+                                metadata={"tool": tool_name, "raw_result": result_data},
+                                citation=base_citation,
+                                numerical_data={
+                                    "columns": result_data.get('columns'),
+                                    "rows": result_data.get('rows')
+                                },
+                                data_type="tabular"
+                            ))
+                    except Exception:
+                        pass
+
+                    # If a tool included a choropleth URL, add a map fact so the frontend renders it
+                    try:
+                        if isinstance(result_data.get('geojson_url'), str) and result_data.get('geojson_url'):
+                            mfact = Fact(
+                                text_content=result_data.get('heading') or 'Map',
+                                source_key=f"{server_name}_{tool_name}_map_{hash(result_data.get('geojson_url'))}",
+                                server_origin=server_name,
+                                metadata={"tool": tool_name, "raw_result": result_data},
+                                citation=base_citation
+                            )
+                            mfact.map_reference = {"url": result_data.get('geojson_url')}
+                            mfact.data_type = "geographic"
+                            facts.append(mfact)
+                    except Exception:
+                        pass
                     # Dictionary - extract key information with units
                     if tool_name == "GetSolarFacilitiesMultipleCountries":
                         print(f"DEBUG: GetSolarFacilitiesMultipleCountries result_data keys: {list(result_data.keys())}")
@@ -3227,7 +3775,8 @@ When you have collected enough information to answer "{user_query}", respond wit
         """Get a human-readable source name for a tool."""
         source_names = {
             "kg": "CPR Knowledge Graph",
-            "solar": "Solar Facilities Database",
+            # Use dataset name expected by users/UI
+            "solar": "TransitionZero Solar Asset Mapper (TZ-SAM), Q1 2025",
             "gist": "GIST Impact Database",
             "lse": "LSE Climate Policy Database",
             "heat": "PlanetSapling Heat Stress (Brazil 2020–2025)",
@@ -3239,7 +3788,8 @@ When you have collected enough information to answer "{user_query}", respond wit
         """Get the source type for a server."""
         source_types = {
             "kg": "Knowledge Graph",
-            "solar": "Database",
+            # Treat solar facilities as a dataset for clearer citations
+            "solar": "Dataset",
             "gist": "Database",
             "lse": "Database",
             "heat": "Dataset",
@@ -3265,11 +3815,10 @@ When you have collected enough information to answer "{user_query}", respond wit
         Returns:
             Tuple of (should_continue: bool, reasoning: str, servers_to_deep_dive: List[str])
         """
-        # Detect if this is a spatial correlation query
+        # Detect if this is a spatial correlation query (relation operators only)
         is_spatial_query = any(keyword in user_query.lower() for keyword in [
             "within", "inside", "intersect", "overlap", "near", "close to", 
-            "proximity", "adjacent", "located in", "in deforestation",
-            "in water stress", "assets within", "assets in"
+            "proximity", "adjacent", "around", "km"
         ])
         
         # Check if geospatial server has registered entities
@@ -3286,6 +3835,16 @@ When you have collected enough information to answer "{user_query}", respond wit
         # If spatial query and geospatial has entities, MUST do Phase 2 for correlation
         if is_spatial_query and geospatial_has_entities:
             return True, "Spatial correlation query detected with registered entities - Phase 2 needed for FindSpatialCorrelations", ["geospatial"]
+
+        # Force Phase 2 for admin–zone ranking questions (e.g., municipalities + heat/deforestation)
+        try:
+            admin_type = self._detect_admin_intent(user_query)
+            zone_type = self._detect_zone_intent(user_query)
+            has_rank_intent = self._has_ranking_intent(user_query)
+            if admin_type == "municipality" and (zone_type or has_rank_intent):
+                return True, "Admin–zone ranking intent detected (municipalities vs zone) - Phase 2 needed for overlap computation", ["geospatial"]
+        except Exception:
+            pass
         
         # Gather all facts from Phase 1
         all_facts = []
@@ -3314,6 +3873,7 @@ When you have collected enough information to answer "{user_query}", respond wit
                 return False, reason, []
         
         # Quick heuristic: Skip Phase 2 for simple queries with sufficient facts
+        # Note: Do not skip if admin–zone intent was detected above.
         if total_facts >= 10:
             return False, "Sufficient facts already collected", []
         
@@ -3492,15 +4052,20 @@ Respond with JSON:
         iteration = 0
         phase2_facts = []  # New facts from Phase 2
 
-        # Deterministic spatial correlation if applicable
+        # Deterministic spatial correlation if applicable (relation operators only)
         try:
             ql = user_query.lower()
             is_spatial_query = any(keyword in ql for keyword in [
                 "within", "inside", "intersect", "overlap", "near", "close to",
-                "proximity", "adjacent", "located in", "in deforestation",
-                "assets within", "assets in"
+                "proximity", "adjacent", "around", "km"
             ])
-            if is_spatial_query and self.client.sessions.get("geospatial"):
+            # Detect generalized admin vs zone ranking intent (no spatial operator needed)
+            admin_type = self._detect_admin_intent(user_query)
+            zone_type = self._detect_zone_intent(user_query)
+            has_rank_intent = self._has_ranking_intent(user_query)
+            admin_zone_ranking = bool(admin_type and zone_type and has_rank_intent)
+
+            if (is_spatial_query or admin_zone_ranking) and self.client.sessions.get("geospatial"):
                 # Prefer legacy solar↔deforestation correlation when both are registered
                 try:
                     reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
@@ -3752,6 +4317,136 @@ Respond with JSON:
                         )
                 except Exception as e:
                     print(f"Phase 2 - heat×low-solar overlay skipped or failed: {e}")
+                # Generic admin vs. zone overlap ranking (heat, deforestation, or any polygon layer)
+                try:
+                    # Refresh registration status after any map generation
+                    reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
+                    reg_data = {}
+                    if hasattr(reg, 'content') and reg.content:
+                        try:
+                            reg_data = json.loads(reg.content[0].text)
+                        except Exception:
+                            reg_data = {}
+
+                    # If admin-zone intent detected, ensure entities are registered deterministically
+                    if admin_zone_ranking and not self._admin_zone_bootstrapped:
+                        # Ensure municipalities are registered
+                        if not (isinstance(reg_data, dict) and (reg_data.get("by_type", {}) or {}).get("municipality")):
+                            try:
+                                muni_res = await self.client.call_tool("GetMunicipalitiesByFilter", {"limit": 6000}, "municipalities")
+                                muni_data = {}
+                                if hasattr(muni_res, 'content') and muni_res.content:
+                                    muni_data = json.loads(muni_res.content[0].text)
+                                munis = muni_data.get("municipalities", []) if isinstance(muni_data, dict) else []
+                                if munis:
+                                    await self.client.call_tool(
+                                        "RegisterEntities",
+                                        {"entity_type": "municipality", "entities": munis, "session_id": self.spatial_session_id},
+                                        "geospatial"
+                                    )
+                            except Exception as e:
+                                print(f"Admin intent: failed to register municipalities: {e}")
+
+                        # Ensure the detected zone layer is registered (when we can determine it from query)
+                        if zone_type == "heat_zone" and not ((reg_data.get("by_type", {}) if isinstance(reg_data, dict) else {}).get("heat_zone")):
+                            try:
+                                heat_res = await self.client.call_tool("GetHeatQuintilesForGeospatial", {"quintiles": [5], "limit": 5000}, "heat")
+                                heat_data = {}
+                                if hasattr(heat_res, 'content') and heat_res.content:
+                                    heat_data = json.loads(heat_res.content[0].text)
+                                entities = heat_data.get("entities", []) if isinstance(heat_data, dict) else []
+                                if entities:
+                                    await self.client.call_tool(
+                                        "RegisterEntities",
+                                        {"entity_type": "heat_zone", "entities": entities, "session_id": self.spatial_session_id},
+                                        "geospatial"
+                                    )
+                            except Exception as e:
+                                print(f"Admin intent: failed to register heat zones: {e}")
+
+                        self._admin_zone_bootstrapped = True
+                        # Re-query registration summary after potential registrations
+                        reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
+                        if hasattr(reg, 'content') and reg.content:
+                            try:
+                                reg_data = json.loads(reg.content[0].text)
+                            except Exception:
+                                reg_data = {}
+
+                    # Presence-based trigger: if municipalities and any other polygon entity type are registered,
+                    # compute overlaps without keyword-specific mapping.
+                    by_type = reg_data.get("by_type", {}) if isinstance(reg_data, dict) else {}
+                    geom_types = reg_data.get("geometry_types", {}) if isinstance(reg_data, dict) else {}
+                    types = list(by_type.keys())
+                    point_types = [t for t in types if str(geom_types.get(t, "")).lower().startswith("point")]
+                    poly_types = [t for t in types if t not in point_types]
+                    zone_choice = None
+                    if 'municipality' in poly_types:
+                        # Prefer heat_zone when present; else any other polygon layer
+                        for cand in ["heat_zone"] + [t for t in poly_types if t != 'municipality']:
+                            if cand in poly_types and cand != 'municipality':
+                                zone_choice = cand
+                                break
+                    # Fallback: if query clearly indicates a zone type (e.g., heat_zone) but it's not registered,
+                    # still attempt overlap using servers with static indexes (ComputeAreaOverlap handles this for heat).
+                    if not zone_choice and zone_type in ("heat_zone",):
+                        zone_choice = zone_type
+                    if by_type.get('municipality') and zone_choice:
+                        # Generate a ready-to-render table via geospatial tool to ensure deterministic output
+                        table_res = await self.client.call_tool(
+                            "GenerateMunicipalityOverlapTable",
+                            {"zone_entity_type": zone_choice, "sort_by": "percentage", "top_n": 25, "session_id": self.spatial_session_id},
+                            "geospatial"
+                        )
+                        if hasattr(table_res, 'content') and table_res.content:
+                            try:
+                                tbl = json.loads(table_res.content[0].text)
+                            except Exception:
+                                tbl = {}
+                            # Convert table result into a tabular Fact via extractor path by reusing the result
+                            try:
+                                facts_from_table = self._extract_facts_from_result("GenerateMunicipalityOverlapTable", {"zone_entity_type": zone_choice}, table_res, "geospatial")
+                                for f in facts_from_table:
+                                    phase2_facts.append(f)
+                            except Exception as e:
+                                print(f"Failed to extract table fact: {e}")
+
+                        # Optional: generate a choropleth map for quick visual context
+                        # Skip choropleth generation for municipality + heat requests (table-only)
+                        if zone_choice != 'heat_zone':
+                            try:
+                                choro = await self.client.call_tool(
+                                    "GenerateAdminChoropleth",
+                                    {"admin_entity_type": "municipality", "metric_name": f"overlap_{zone_choice}", "metrics": overlap_list, "title": "Municipality Overlap"},
+                                    "geospatial"
+                                )
+                                choro_data = {}
+                                if hasattr(choro, 'content') and choro.content:
+                                    choro_data = json.loads(choro.content[0].text)
+                                geojson_url = choro_data.get("geojson_url")
+                                if isinstance(geojson_url, str) and geojson_url:
+                                    fact = Fact(
+                                        text_content="Admin choropleth generated",
+                                        source_key=f"admin_choropleth_{zone_choice}",
+                                        server_origin="geospatial",
+                                        metadata={"tool": "GenerateAdminChoropleth", "raw_result": choro_data},
+                                        citation=Citation(
+                                            source_name="GEOSPATIAL",
+                                            tool_id="GenerateAdminChoropleth",
+                                            server_origin="geospatial",
+                                            source_type="Map",
+                                            description="Choropleth GeoJSON for admin metric"
+                                        )
+                                    )
+                                    # Enable map module rendering in synthesis
+                                    fact.map_reference = {"url": geojson_url}
+                                    fact.data_type = "geographic"
+                                    phase2_facts.append(fact)
+                            except Exception as e:
+                                print(f"Choropleth generation skipped: {e}")
+                except Exception as e:
+                    print(f"Phase 2 - generic admin-zone overlap skipped or failed: {e}")
+
                 # Skip generic Phase 2 when we have the correlation answer (spatial queries)
                 phase2_results = {}
                 for server_name, original_result in scout_results.items():
@@ -3998,7 +4693,15 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         """
         # Import direct formatter
         from response_formatter import format_response_as_modules
+        # Lazy import translation utility
+        try:
+            from translation import translate_modules as _translate_modules
+        except Exception:
+            _translate_modules = None
         
+        # Prefer a single correlation map over base maps for spatial queries
+        PREFER_CORRELATION_MAP = True
+
         # Step 1: Collect all facts
         all_facts = []
         map_data_list = []  # Store ALL map data, not just one
@@ -4026,7 +4729,9 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                                 
                                 # Format 1: GetSolarFacilitiesMapData returns type: "map_data_summary"
                                 if raw_result.get("type") == "map_data_summary":
-                                    map_data_list.append(raw_result)
+                                    md = dict(raw_result)
+                                    md["is_correlation_map"] = False
+                                    map_data_list.append(md)
                                 
                                 # Format 2: GetSolarFacilitiesMultipleCountries
                                 elif raw_result.get("countries_requested"):
@@ -4046,6 +4751,7 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                                         "geojson_url": raw_result["geojson_url"],
                                         "geojson_filename": raw_result.get("geojson_filename")
                                     }
+                                    map_data["is_correlation_map"] = False
                                     map_data_list.append(map_data)
                                     
                                     # If we have country breakdown data, create a comparison table
@@ -4066,6 +4772,7 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                                         },
                                         "geojson_url": raw_result["geojson_url"]
                                     }
+                                    map_data["is_correlation_map"] = False
                                     map_data_list.append(map_data)
                             
                             # Check for capacity statistics that could become charts/tables
@@ -4096,24 +4803,41 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                             # Fallback to a safe default to satisfy frontend match expression
                             if not countries:
                                 countries = ["brazil"]
+                            is_corr = (server_name == "geospatial") or (isinstance(desc, str) and ("correlation" in desc.lower()))
+                            summary_dict = {
+                                "description": desc,
+                                "bounds": b,
+                                "center": c,
+                                "countries": countries
+                            }
+                            if is_corr:
+                                summary_dict.update({
+                                    "map_role": "correlation",
+                                    "legend_layers": [
+                                        {"label": "Solar Assets", "color": "#FFD700"},
+                                        {"label": "Deforestation Areas", "color": "#8B4513"}
+                                    ]
+                                })
                             map_data = {
                                 "type": "map_data_summary",
-                                "summary": {
-                                    "description": desc,
-                                    "bounds": b,
-                                    "center": c,
-                                    "countries": countries
-                                },
+                                "summary": summary_dict,
                                 "geojson_url": raw_result["geojson_url"],
-                                "geojson_filename": raw_result.get("geojson_filename")
+                                "geojson_filename": raw_result.get("geojson_filename"),
+                                "is_correlation_map": bool(is_corr)
                             }
                             print(f"DEBUG: Captured generic map from {server_name} fact {i}: {map_data['geojson_url']}")
                             map_data_list.append(map_data)
 
-        # Fallback (deterministic): if we have geospatial correlation facts but no map captured yet,
-        # proactively generate a correlation map so the response includes a GeoJSON.
+        # Fallback (deterministic): only for explicit correlation intent. If we have geospatial
+        # correlation facts but no map captured yet, proactively generate a correlation map.
         try:
-            if (not _geo_llm_only()) and (not map_data_list) and (not self._geo_map_generated):
+            corr_intent = any(kw in user_query.lower() for kw in [
+                "within", "inside", "intersect", "overlap", "near", "close to",
+                "proximity", "adjacent", "around", "km"
+            ])
+            # Determine if a correlation map is already present in what we've captured so far
+            map_has_corr = any(isinstance(md, dict) and md.get("is_correlation_map") for md in map_data_list)
+            if (not _geo_llm_only()) and corr_intent and (not map_has_corr) and (not self._geo_map_generated):
                 has_geo_corr = any(
                     (getattr(f, 'server_origin', '') == 'geospatial') and isinstance(f.metadata, dict)
                     and (
@@ -4133,11 +4857,19 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                         try:
                             mdata = _json.loads(map_res.content[0].text)
                             if isinstance(mdata, dict) and mdata.get('geojson_url'):
+                                # Ensure correlation tagging and legend for formatter
+                                summary = mdata.get("summary") or {"description": "Spatial correlation map"}
+                                summary.setdefault("map_role", "correlation")
+                                summary.setdefault("legend_layers", [
+                                    {"label": "Solar Assets", "color": "#FFD700"},
+                                    {"label": "Deforestation Areas", "color": "#8B4513"}
+                                ])
                                 map_data_list.append({
                                     "type": "map_data_summary",
-                                    "summary": mdata.get("summary", {"description": "Spatial correlation map", "countries": ["brazil"]}),
+                                    "summary": summary,
                                     "geojson_url": mdata.get("geojson_url"),
-                                    "geojson_filename": mdata.get("geojson_filename")
+                                    "geojson_filename": mdata.get("geojson_filename"),
+                                    "is_correlation_map": True
                                 })
                                 print("DEBUG: Added fallback correlation map from geospatial server in Phase 3")
                                 self._geo_map_generated = True
@@ -4157,6 +4889,13 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                 seen_urls.add(url)
                 deduped.append(md)
             map_data_list = deduped
+
+        # If preferred, keep only correlation maps when available
+        if PREFER_CORRELATION_MAP and any(isinstance(md, dict) and md.get("is_correlation_map") for md in map_data_list):
+            map_data_list = [md for md in map_data_list if md.get("is_correlation_map")]
+            # Keep only the first correlation map to avoid multiple similar layers
+            if len(map_data_list) > 1:
+                map_data_list = map_data_list[:1]
         
         if not all_facts:
             return [{
@@ -4231,6 +4970,8 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         try:
             correlation_count = None
             unique_facilities = None
+            zone_label = None
+            distance_km = None
             for fact in all_facts:
                 raw = fact.metadata.get("raw_result") if isinstance(fact.metadata, dict) else None
                 if isinstance(raw, dict) and ("unique_facilities" in raw or "total_correlations" in raw):
@@ -4239,19 +4980,45 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                     # Prefer geospatial server results
                     if fact.server_origin == "geospatial":
                         correlation_count = raw.get("total_correlations")
+                        # Infer zone label and any distance parameter for a tailored summary
+                        try:
+                            if isinstance(raw.get("correlations"), list) and raw["correlations"]:
+                                et2 = raw["correlations"][0].get("entity2_type")
+                                if et2 == "deforestation_area":
+                                    zone_label = "deforestation areas"
+                                elif et2 == "heat_zone":
+                                    zone_label = "heat stress zones"
+                            params = raw.get("parameters") or {}
+                            dk = params.get("distance_km")
+                            if dk:
+                                distance_km = float(dk)
+                        except Exception:
+                            pass
                         if "unique_facilities" in raw:
                             unique_facilities = raw.get("unique_facilities")
                         break
                     correlation_count = correlation_count or raw.get("total_correlations")
             # Only prepend a correlation sentence if the user asked about deforestation/proximity
             ql2 = user_query.lower()
-            if (unique_facilities is not None or correlation_count is not None) and any(k in ql2 for k in ["deforest", "in deforestation", "forest loss", "near", "km", "proximity"]):
+            if (unique_facilities is not None or correlation_count is not None) and any(k in ql2 for k in ["deforest", "in deforestation", "forest loss", "near", "km", "proximity", "heat", "temperature"]):
                 n = unique_facilities if unique_facilities is not None else correlation_count
-                answer_text = f"Based on the spatial correlation analysis, {int(n)} solar assets are within the specified deforestation proximity."
+                # Compose a general but precise summary
+                if distance_km and zone_label:
+                    answer_text = f"Based on the spatial correlation analysis, {int(n)} solar assets are within {distance_km:g} km of {zone_label}."
+                elif zone_label:
+                    answer_text = f"Based on the spatial correlation analysis, {int(n)} solar assets are within the specified proximity to {zone_label}."
+                else:
+                    answer_text = f"Based on the spatial correlation analysis, {int(n)} solar assets are within the specified proximity."
                 modules.insert(0, {"type": "text", "heading": "", "texts": [answer_text]})
         except Exception as e:
             print(f"Failed to prepend correlation answer: {e}")
 
+        # Apply translation if requested
+        if self.target_language and self.target_language.startswith("pt") and _translate_modules:
+            try:
+                modules = await _translate_modules(modules, self.target_language)
+            except Exception:
+                pass
         return modules
     
     async def _enhance_facts_with_visualization_data(self, facts: List[Fact]):
@@ -4301,9 +5068,9 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                             fact.data_type = "tabular"
 
             # Geographic detection (already saved in Phase 1/2)
-            elif "map_url" in raw:
+            elif "map_url" in raw or "geojson_url" in raw:
                 fact.map_reference = {
-                    "url": raw["map_url"],
+                    "url": raw.get("map_url") or raw.get("geojson_url"),
                     "bounds": raw.get("bounds"),
                     "summary": raw.get("summary")
                 }
@@ -4526,6 +5293,16 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         
         # Create map modules from primary map and additional maps
         map_modules = self._create_map_modules(facts, map_data)
+
+        # Deduplicate maps by URL/filename, preserving order (prefer primary first)
+        deduped = []
+        seen_keys = set()
+        for m in map_modules:
+            key = m.get("geojson_url") or m.get("filename") or id(m)
+            if key and key not in seen_keys:
+                deduped.append(m)
+                seen_keys.add(key)
+        map_modules = deduped
         
         # Add additional maps if provided
         if additional_maps:
@@ -4557,36 +5334,77 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         
         # Filter visualizations for relevance before including them
         if chart_modules or map_modules or table_modules:
+            # Force include admin–zone tables (overlap rankings) to avoid LLM gating drop
+            force_tables = False
+            try:
+                at = self._detect_admin_intent(user_query)
+                zt = self._detect_zone_intent(user_query)
+                if at == 'municipality' and (zt or any(k in user_query.lower() for k in ['heat', 'deforest', 'overlap'])):
+                    force_tables = True
+            except Exception:
+                pass
             # For explicit spatial queries, include maps without filtering
             spatial_query = any(k in user_query.lower() for k in [
                 "within", "km", "proximity", "near", "adjacent", "in deforestation",
                 # Treat common location-intent phrasings as spatial too
                 "where", "map", "show me", "locations"
             ])
-            # Check which visualizations directly answer the query
-            relevant_charts = []
-            for chart in chart_modules:
-                if await self._is_visualization_relevant(chart, user_query, "chart"):
-                    relevant_charts.append(chart)
-                else:
-                    print(f"Filtered out irrelevant chart: {chart.get('heading', 'unnamed')}")
+            # Detect admin+zone intent to constrain maps (e.g., municipalities x heat)
+            try:
+                at = self._detect_admin_intent(user_query)
+            except Exception:
+                at = None
+            try:
+                zt = self._detect_zone_intent(user_query)
+            except Exception:
+                zt = None
+            is_muni_heat = (at == 'municipality') and (zt == 'heat_zone' or ('heat' in user_query.lower()))
+            allow_multiple_maps = any(k in user_query.lower() for k in [
+                "layers", "multiple maps", "two maps", "compare maps", "overlay", "overlays"
+            ])
+            # Charts: deterministic inclusion (no LLM gating)
+            # If query suggests comparisons/tables/charts, include all charts; else include first per provider (we often lack provider tags, so include first only)
+            compare_query = any(k in user_query.lower() for k in ["compare", "versus", "table", "chart", "top", "highest"])
+            relevant_charts = list(chart_modules if compare_query else chart_modules[:1])
             
             relevant_maps = []
-            if spatial_query:
-                relevant_maps = list(map_modules)
-            else:
-                for map_module in map_modules:
-                    if await self._is_visualization_relevant(map_module, user_query, "map"):
-                        relevant_maps.append(map_module)
-                    else:
-                        print(f"Filtered out irrelevant map: {map_module.get('heading', 'unnamed')}")
+            # Always run relevance filter; if spatial query and nothing passes, fall back to first map
+            for map_module in map_modules:
+                if await self._is_visualization_relevant(map_module, user_query, "map"):
+                    relevant_maps.append(map_module)
+                else:
+                    print(f"Filtered out irrelevant map: {map_module.get('heading', 'unnamed')}")
+
+            # For municipality heat intent, only allow geospatial choropleth/heat maps; never fall back to solar maps
+            if is_muni_heat:
+                def _is_heat_admin_map(m: dict) -> bool:
+                    url = (m.get('geojson_url') or '')
+                    if not isinstance(url, str):
+                        return False
+                    url_l = url.lower()
+                    if 'solar_facilities' in url_l:
+                        return False
+                    return ('admin_choropleth_' in url_l) or ('overlap_heat' in url_l) or ('heat_zone' in url_l)
+                relevant_maps = [m for m in relevant_maps if _is_heat_admin_map(m)]
+            
+            # Generic spatial fallback only when not the muni-heat constrained case
+            if spatial_query and not is_muni_heat and not relevant_maps and map_modules:
+                # Ensure at least one map for spatial queries
+                relevant_maps = [map_modules[0]]
+
+            # Cap number of maps unless explicitly requested
+            if not allow_multiple_maps and len(relevant_maps) > 1:
+                relevant_maps = relevant_maps[:1]
             
             relevant_tables = []
-            for table in table_modules:
-                if await self._is_visualization_relevant(table, user_query, "table"):
-                    relevant_tables.append(table)
-                else:
-                    print(f"Filtered out irrelevant table: {table.get('heading', 'unnamed')}")
+            if force_tables:
+                relevant_tables = list(table_modules)
+            else:
+                for table in table_modules:
+                    if await self._is_visualization_relevant(table, user_query, "table"):
+                        relevant_tables.append(table)
+                    else:
+                        print(f"Filtered out irrelevant table: {table.get('heading', 'unnamed')}")
             
             # Use LLM to determine placement for relevant visualizations
             if relevant_charts or relevant_maps or relevant_tables:
@@ -5254,44 +6072,66 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
     
     async def _create_chart_modules(self, facts: List[Fact]) -> List[Dict]:
         """
-        Create Chart.js modules from numerical facts.
+        Create Chart.js modules deterministically from tool-provided specs or numerical facts.
         
-        Args:
-            facts: All facts, filtered for those with numerical_data
-            
-        Returns:
-            List of chart modules
+        Preferred path: tools return a lightweight visualization spec that
+        response_formatter converts into a chart module. We avoid LLM/viz
+        heuristics for predictability.
         """
-        modules = []
-        
-        # Group related numerical facts
-        numerical_facts = [f for f in facts if f.numerical_data and f.data_type in ['time_series', 'comparison']]
-        
-        for fact in numerical_facts:
+        modules: List[Dict] = []
+
+        # 1) Preferred: collect tool-provided visualization specs
+        from response_formatter import _create_chart_module as _rf_create_chart_module
+        seen_specs: set = set()
+        for fact in facts:
             try:
-                # Call visualization server
-                chart_config = await self.client.call_tool(
-                    tool_name="create_smart_chart",
-                    tool_args={
-                        "data": fact.numerical_data.get("values", []),
-                        "context": f"{fact.data_type}: {fact.text_content}",
-                        "title": self._generate_chart_title(fact)
-                    },
-                    server_name="viz"
-                )
-                
-                # Create module
-                modules.append({
-                    "type": "chart",
-                    "chartType": chart_config["type"],
-                    "heading": chart_config.get("title", self._generate_chart_title(fact)),
-                    "data": chart_config["data"],
-                    "options": chart_config.get("options", {})
-                })
+                raw = fact.metadata.get("raw_result") if isinstance(fact.metadata, dict) else None
+                if isinstance(raw, dict) and raw.get("visualization_type") and isinstance(raw.get("data"), list):
+                    # Build a lightweight signature to avoid duplicate charts
+                    try:
+                        viz_type = str(raw.get("visualization_type"))
+                        cfg = raw.get("chart_config", {}) or {}
+                        x_key = str(cfg.get("x_axis", ""))
+                        y_key = str(cfg.get("y_axis", ""))
+                        title = str(cfg.get("title", ""))
+                        n = len(raw.get("data", []))
+                        sig = f"{viz_type}|x:{x_key}|y:{y_key}|n:{n}|t:{title}"
+                    except Exception:
+                        sig = str(raw.get("visualization_type"))
+                    if sig in seen_specs:
+                        continue
+                    mod = _rf_create_chart_module(raw)
+                    if mod:
+                        seen_specs.add(sig)
+                        modules.append(mod)
             except Exception as e:
-                print(f"Error creating chart for fact: {e}")
-                # Skip failed charts rather than break the whole process
-        
+                print(f"Chart spec conversion failed: {e}")
+
+        # 2) Fallback: build charts from structured numerical facts (time_series/comparison)
+        #    Use viz server only when no explicit spec was provided
+        if not modules:
+            numerical_facts = [f for f in facts if f.numerical_data and f.data_type in ['time_series', 'comparison']]
+            for fact in numerical_facts:
+                try:
+                    chart_config = await self.client.call_tool(
+                        tool_name="create_smart_chart",
+                        tool_args={
+                            "data": fact.numerical_data.get("values", []) or fact.numerical_data,
+                            "context": f"{fact.data_type}: {fact.text_content}",
+                            "title": self._generate_chart_title(fact)
+                        },
+                        server_name="viz"
+                    )
+                    modules.append({
+                        "type": "chart",
+                        "chartType": chart_config["type"],
+                        "heading": chart_config.get("title", self._generate_chart_title(fact)),
+                        "data": chart_config["data"],
+                        "options": chart_config.get("options", {})
+                    })
+                except Exception as e:
+                    print(f"Error creating chart for fact: {e}")
+
         return modules
     
     def _create_map_modules(self, facts: List[Fact], map_data: Optional[Dict] = None) -> List[Dict]:
@@ -5319,30 +6159,37 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
             except Exception as e:
                 print(f"Error creating map from solar data: {e}")
         
-        # Also check facts for additional maps
+        # Also check facts for additional maps (always reference by URL; do not inline GeoJSON)
         for fact in facts:
             if fact.map_reference and fact.data_type == "geographic":
                 try:
-                    # Load the pre-saved GeoJSON
-                    file_path = fact.map_reference["url"].replace("/static/", "static/")
-                    
-                    # Check if file exists
-                    if os.path.exists(file_path):
-                        with open(file_path, 'r') as f:
-                            geojson = json.load(f)
-                        
-                        modules.append({
-                            "type": "map",
-                            "mapType": "geojson",
-                            "heading": self._extract_map_title(fact.text_content),
-                            "geojson": geojson,
-                            "viewState": self._calculate_map_view_state(fact.map_reference)
-                        })
-                    else:
-                        print(f"Map file not found: {file_path}")
-                        
+                    from response_formatter import _create_map_module
+                    url = fact.map_reference.get("url")
+                    if isinstance(url, str) and url:
+                        # If URL is a correlation map, tag accordingly so the formatter renders a layer legend
+                        is_corr_url = url.lower().startswith('/static/maps/correlation_') if isinstance(url, str) else False
+                        summary = {
+                            "description": self._extract_map_title(fact.text_content)
+                        }
+                        if is_corr_url:
+                            summary.update({
+                                "map_role": "correlation",
+                                "legend_layers": [
+                                    {"label": "Solar Assets", "color": "#FFD700"},
+                                    {"label": "Deforestation Areas", "color": "#8B4513"}
+                                ]
+                            })
+                        map_data = {
+                            "type": "map_data_summary",
+                            "summary": summary,
+                            "geojson_url": url,
+                            "is_correlation_map": bool(is_corr_url)
+                        }
+                        map_module = _create_map_module(map_data)
+                        if map_module:
+                            modules.append(map_module)
                 except Exception as e:
-                    print(f"Error loading map: {e}")
+                    print(f"Error creating URL-based map from fact: {e}")
         
         return modules
     
@@ -5546,7 +6393,7 @@ class ArtifactManager:
 # PHASE 4: MAIN API INTERFACE
 # =============================================================================
 
-async def process_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None, correlation_session_id: Optional[str] = None) -> Dict:
+async def process_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None, correlation_session_id: Optional[str] = None, target_language: Optional[str] = None) -> Dict:
     """
     Main entry point for processing chat queries synchronously.
     
@@ -5565,7 +6412,12 @@ async def process_chat_query(user_query: str, conversation_history: Optional[Lis
         client = await get_global_client()
         
         # Create orchestrator for this query
-        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history, spatial_session_id=correlation_session_id)
+        orchestrator = QueryOrchestrator(
+            client,
+            conversation_history=conversation_history,
+            spatial_session_id=correlation_session_id,
+            target_language=target_language
+        )
         
         # Process through 3-phase architecture
         response = await orchestrator.process_query(user_query)
@@ -5577,7 +6429,7 @@ async def process_chat_query(user_query: str, conversation_history: Optional[Lis
         return f"Error processing query: {str(e)}"
 
 
-async def stream_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None, correlation_session_id: Optional[str] = None):
+async def stream_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None, correlation_session_id: Optional[str] = None, target_language: Optional[str] = None):
     """
     Streaming version of chat query processing with thinking objects.
     
@@ -5608,7 +6460,12 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
         print("DEBUG: Got global client")
         
         # Create orchestrator for this query with conversation history
-        orchestrator = QueryOrchestrator(client, conversation_history=conversation_history, spatial_session_id=correlation_session_id)
+        orchestrator = QueryOrchestrator(
+            client,
+            conversation_history=conversation_history,
+            spatial_session_id=correlation_session_id,
+            target_language=target_language,
+        )
         print("DEBUG: Created orchestrator")
         
         # Check if query is off-topic
@@ -5628,6 +6485,22 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
             yield {
                 "type": "complete",
                 "data": redirect_response
+            }
+            return
+        
+        # Meta/capability queries: return dynamic datasets overview early
+        if orchestrator._is_meta_query(user_query):
+            yield {
+                "type": "thinking",
+                "data": {
+                    "message": "📚 Compiling live datasets and tools overview...",
+                    "category": "data_discovery"
+                }
+            }
+            overview = await orchestrator._create_capabilities_response(user_query)
+            yield {
+                "type": "complete",
+                "data": overview
             }
             return
         
@@ -5663,7 +6536,11 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
                 "solar": "Solar Facilities",
                 "gist": "Environmental Impact",
                 "lse": "Climate Policy",
-                "formatter": "Visualization"
+                "viz": "Visualization",
+                "geospatial": "Geospatial Correlation",
+                "deforestation": "Deforestation",
+                "municipalities": "Municipalities",
+                "heat": "Heat Stress"
             }
             friendly_names = [server_names.get(s, s) for s in relevant_servers]
             yield {

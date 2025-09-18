@@ -37,7 +37,7 @@ class KGEmbedGenerator:
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {{ margin: 0; padding: 10px; font-family: Arial, sans-serif; }}
-        .container {{ width: 100%; height: 1000px; border: 1px solid #ddd; position: relative; }}
+        .container {{ width: 100%; height: 1200px; border: 1px solid #ddd; position: relative; }}
         .graph {{ width: 100%; height: 100%; }}
         .tooltip {{ 
             position: absolute; 
@@ -57,7 +57,15 @@ class KGEmbedGenerator:
         }}
         .node {{ cursor: pointer; }}
         .link {{ stroke: #999; stroke-opacity: 0.6; stroke-width: 1.5px; }}
-        .node-label {{ font-size: 10px; fill: #333; text-anchor: middle; }}
+        .node-label {{
+            font-size: 10px;
+            fill: #333;
+            text-anchor: middle;
+            pointer-events: none;
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 3px;
+        }}
     </style>
 </head>
 <body>
@@ -71,9 +79,9 @@ class KGEmbedGenerator:
         // Embedded KG data
         const kgData = {kg_data_json};
         
-        // Initialize visualization
-        const width = 800;
-        const height = 1000;
+        // Drawing area
+        const width = 1000;   // increased for breathing room
+        const height = 1200;  // increased for breathing room
         
         const svg = d3.select("#kg-graph")
             .attr("width", "100%")
@@ -82,18 +90,18 @@ class KGEmbedGenerator:
             
         const g = svg.append("g");
         
-        // Add zoom behavior
-        const zoom = d3.zoom()
-            .scaleExtent([0.3, 3])
-            .on("zoom", (event) => {{
-                g.attr("transform", event.transform);
-            }});
-        svg.call(zoom);
-        
-        // Process data
+        // Data
         const nodes = kgData.nodes || [];
         const links = kgData.links || [];
-        
+
+        // Small initial jitter so nodes don't stack at same start pos
+        nodes.forEach(n => {{
+            if (n.x == null || n.y == null) {{
+                n.x = (width / 2) + (Math.random() - 0.5) * 50;
+                n.y = (height / 2) + (Math.random() - 0.5) * 50;
+            }}
+        }});
+
         // Color mapping
         const nodeColors = {{
             'Concept': '#1f77b4',
@@ -102,13 +110,21 @@ class KGEmbedGenerator:
             'Document': '#d62728',
             'Unknown': '#7f7f7f'
         }};
-        
-        // Create simulation
-        const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(d => d.id).distance(60))
-            .force("charge", d3.forceManyBody().strength(-200))
-            .force("center", d3.forceCenter(width / 2, height / 2));
-        
+
+        // Reusable node radius (kept in sync with circle r)
+        function nodeRadius(d) {{
+            return Math.max(5, Math.min(15, (d.importance || 1) * 8));
+        }}
+
+        // Build degree map for smarter link distances
+        const degree = {{}};
+        links.forEach(l => {{
+            const sid = (typeof l.source === 'object') ? l.source.id : l.source;
+            const tid = (typeof l.target === 'object') ? l.target.id : l.target;
+            degree[sid] = (degree[sid] || 0) + 1;
+            degree[tid] = (degree[tid] || 0) + 1;
+        }});
+
         // Create links
         const link = g.append("g")
             .selectAll("line")
@@ -122,34 +138,77 @@ class KGEmbedGenerator:
             .data(nodes)
             .enter().append("circle")
             .attr("class", "node")
-            .attr("r", d => Math.max(5, Math.min(15, (d.importance || 1) * 8)))
+            .attr("r", d => nodeRadius(d))
             .attr("fill", d => nodeColors[d.type] || nodeColors['Unknown'])
             .call(d3.drag()
                 .on("start", dragstarted)
                 .on("drag", dragged)
                 .on("end", dragended));
         
-        // Add labels
+        // Add labels (dy uses node radius to keep text just above the circle)
         const label = g.append("g")
             .selectAll("text")
             .data(nodes)
             .enter().append("text")
             .attr("class", "node-label")
-            .attr("dy", -18)
+            .attr("dy", d => -(nodeRadius(d) + 3))
             .text(d => d.label || d.id);
+
+        // Zoom (we call svg.call(zoom) AFTER label exists so we can toggle it)
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", (event) => {{
+                g.attr("transform", event.transform);
+                const k = event.transform.k;
+                // Hide labels when zoomed far out; show as we zoom in
+                label.style("display", k < 0.6 ? "none" : null);
+                // Optional: scale label font a bit with zoom for readability
+                const baseFont = 10;
+                label.attr("font-size", `${{Math.max(8, Math.min(16, baseFont * Math.sqrt(k)))}}px`);
+            }});
         
+        // Physics simulation with collision + stronger repulsion + degree-aware link distance
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links)
+                .id(d => d.id)
+                .distance(d => {{
+                    const sid = d.source.id || d.source, tid = d.target.id || d.target;
+                    const sdeg = degree[sid] || 0, tdeg = degree[tid] || 0;
+                    return 70 + 12 * Math.max(sdeg, tdeg);
+                }})
+                .strength(0.7)
+                )
+
+            // Make charge depend on degree: isolates repel less, hubs repel more
+            .force("charge", d3.forceManyBody().strength(d => (degree[d.id] || 0) === 0 ? -120 : -400))
+            .force("collide", d3.forceCollide().radius(d => nodeRadius(d) + 6).iterations(2))
+            .force("x", d3.forceX(width / 2).strength(0.03))   // gentle pull to center
+            .force("y", d3.forceY(height / 2).strength(0.03))  // gentle pull to center
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .velocityDecay(0.35)
+            .alpha(1)
+            .alphaDecay(0.02);
+
+        const isolateRadius = Math.min(width, height) * 0.38;
+            simulation.force("isolateRadial", d3.forceRadial(
+            isolateRadius,
+            width / 2,
+            height / 2
+            ).strength(d => (degree[d.id] || 0) === 0 ? 0.08 : 0));
+
+
         // Tooltip
-        const tooltip = d3.select("#tooltip");
+        //const tooltip = d3.select("#tooltip");
         
-        node.on("mouseover", function(event, d) {{
-            tooltip.transition().duration(200).style("opacity", .9);
-            tooltip.html(`<strong>${{d.label || d.id}}</strong><br/>Type: ${{d.type}}<br/>Importance: ${{d.importance || 'N/A'}}`)
-                .style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 28) + "px");
-        }})
-        .on("mouseout", function(d) {{
-            tooltip.transition().duration(500).style("opacity", 0);
-        }});
+        //node.on("mouseover", function(event, d) {{
+        //   tooltip.transition().duration(200).style("opacity", .9);
+        //  tooltip.html(`<strong>${{d.label || d.id}}</strong><br/>Type: ${{d.type}}<br/>Importance: ${{d.importance || 'N/A'}}`)
+        //        .style("left", (event.pageX + 10) + "px")
+        //        .style("top", (event.pageY - 28) + "px");
+        //}})
+        //.on("mouseout", function() {{
+        //    tooltip.transition().duration(500).style("opacity", 0);
+        //}});
         
         // Update positions on simulation tick
         simulation.on("tick", () => {{
@@ -165,7 +224,8 @@ class KGEmbedGenerator:
             
             label
                 .attr("x", d => d.x)
-                .attr("y", d => d.y);
+                .attr("y", d => d.y)
+                .attr("dy", d => -(nodeRadius(d) + 3)); // keep label above node as it moves
         }});
         
         // Drag functions
@@ -185,9 +245,13 @@ class KGEmbedGenerator:
             d.fx = null;
             d.fy = null;
         }}
+
+        // Enable zoom after elements (esp. labels) exist
+        svg.call(zoom);
     </script>
 </body>
 </html>"""
+
 
     def _generate_query_hash(self, query: str) -> str:
         """Generate a short hash for the query to use as filename."""

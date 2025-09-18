@@ -1244,6 +1244,56 @@ def GetLSEDatasetMetadata() -> Dict[str, Any]:
     """Get LSE dataset metadata."""
     return metadata
 
+@mcp.tool()
+def DescribeServer() -> Dict[str, Any]:
+    """Describe this server, its modules, key tools, and live metrics."""
+    m = metadata.copy()
+    tools = [
+        "SearchBrazilPolicyContent",
+        "GetModuleOverviewViz",
+        "GetGovernanceStatusViz",
+        "GetTPIGraphData",
+        "GetLSEDatasetMetadata"
+    ]
+    # Derive last_updated from Excel files directory
+    last_updated = None
+    try:
+        from datetime import datetime as _dt
+        if os.path.exists(LSE_DATA_PATH):
+            mtimes = []
+            for f in os.listdir(LSE_DATA_PATH):
+                if f.endswith('.xlsx'):
+                    fp = os.path.join(LSE_DATA_PATH, f)
+                    try:
+                        mtimes.append(os.path.getmtime(fp))
+                    except Exception:
+                        pass
+            if mtimes:
+                last_updated = _dt.fromtimestamp(max(mtimes)).isoformat()
+    except Exception:
+        pass
+    return {
+        "name": m.get("Name", "LSE Climate Policy Server"),
+        "description": m.get("Description", "Brazilian climate policy & governance data"),
+        "version": m.get("Version"),
+        "dataset": m.get("Dataset"),
+        "metrics": {
+            "total_files": m.get("Total_Files"),
+            "total_sheets": m.get("Total_Sheets"),
+            "modules": len(m.get("Modules", [])),
+            "brazilian_states": m.get("Brazilian_States")
+        },
+        "coverage": {
+            "modules": m.get("Modules", [])
+        },
+        "tools": tools,
+        "examples": [
+            "What are Brazil's NDC commitments?",
+            "Show governance implementation status"
+        ],
+        "last_updated": last_updated
+    }
+
 # Clean up the exploration script
 if os.path.exists("/Users/mason/Documents/GitHub/tde/explore_lse.py"):
     os.remove("/Users/mason/Documents/GitHub/tde/explore_lse.py")

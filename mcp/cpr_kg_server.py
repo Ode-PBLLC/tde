@@ -8,7 +8,9 @@ from fastmcp import FastMCP
 from dotenv import load_dotenv
 from functools import lru_cache
 import json
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict, Any
+from collections import deque
+from datetime import datetime
 import networkx as nx
 import os
 import re
@@ -74,7 +76,7 @@ def _resolve_concept_id_fuzzy(query: str) -> tuple[str | None, str | None]:
 
     Strategy:
     - Try exact/normalized match via _concept_id
-    - Fallback: substring over normalized preferred and alternative labels
+    - Fallback: fuzzy match over preferred and alternative labels
     Returns (cid, preferred_label) or (None, None)
     """
     cid = _concept_id(query)
@@ -83,30 +85,44 @@ def _resolve_concept_id_fuzzy(query: str) -> tuple[str | None, str | None]:
     qn = " ".join(_tokens(query))
     if not qn:
         return None, None
-    # Iterate for substring match
-    for _, row in concepts.iterrows():
-        wid = str(row.get("wikibase_id", "")).strip()
-        pref = row.get("preferred_label", "")
-        pref_n = " ".join(_tokens(pref))
-        if qn and (qn == pref_n or qn in pref_n):
-            return wid, pref
-        alts = row.get("alternative_labels", [])
-        try:
-            if isinstance(alts, str):
-                alts = ast.literal_eval(alts)
-        except Exception:
-            alts = []
-        for a in alts or []:
-            a_n = " ".join(_tokens(a))
-            if qn and (qn == a_n or qn in a_n):
-                return wid, pref
-        # Extra fallback: raw string contains
-        try:
-            raw_alts = str(row.get("alternative_labels", "")).lower()
-            if qn and qn in raw_alts:
-                return wid, pref
-        except Exception:
-            pass
+    # Fuzzy match via RapidFuzz (preferred + alternatives)
+    try:
+        from rapidfuzz import process, fuzz
+        # Build candidate list as (display_label, wid)
+        candidates: List[Tuple[str, str]] = []
+        for _, row in concepts.iterrows():
+            wid = str(row.get("wikibase_id", "")).strip()
+            pref = str(row.get("preferred_label", ""))
+            if wid and pref:
+                candidates.append((pref, wid))
+            # Parse alternative labels
+            alts = row.get("alternative_labels", [])
+            try:
+                if isinstance(alts, str):
+                    alts = ast.literal_eval(alts)
+            except Exception:
+                alts = []
+            for a in alts or []:
+                if a:
+                    candidates.append((str(a), wid))
+        if not candidates:
+            return None, None
+        # Use token_set_ratio for robustness to word order and partials
+        labels = [c[0] for c in candidates]
+        matches = process.extract(
+            query,
+            labels,
+            scorer=fuzz.token_set_ratio,
+            limit=1
+        )
+        if matches:
+            best_label, score, idx = matches[0]
+            # Require a reasonable threshold to avoid spurious matches
+            if score >= 70:
+                best_wid = candidates[idx][1]
+                return best_wid, _concept_label(best_wid)
+    except Exception as e:
+        print(f"[CPR_KG] RapidFuzz fuzzy resolution failed: {e}")
     return None, None
 
 def _concept_label(cid: str) -> str:
@@ -200,6 +216,59 @@ def _ngrams(tokens: list[str], n: int) -> list[str]:
 # Build normalized label maps after helpers are defined
 _build_normalized_label_maps()
 
+# Lightweight semantic debug buffer (also printed to stdout)
+SEM_LOG: deque[str] = deque(maxlen=500)
+
+def _sem_dbg(msg: str):
+    """Lightweight semantic debug logger (prefix + timestamp). Controlled by env var.
+
+    Set TDE_KG_SEMANTIC_DEBUG=1|true to enable verbose logs (default ON).
+    """
+    try:
+        if str(os.getenv("TDE_KG_SEMANTIC_DEBUG", "1")).lower() in ("1", "true", "yes"):
+            ts = datetime.utcnow().strftime("%H:%M:%S")
+            line = f"[CPR_KG][SEM][{ts}] {msg}"
+            SEM_LOG.append(line)
+            print(line)
+    except Exception:
+        pass
+
+def _search_passages_textual(terms: List[str], limit: int = 5) -> List[Dict[str, Any]]:
+    """Fallback text search over labelled_passages when MENTIONS spans are absent.
+
+    Args:
+        terms: list of query strings to OR-match (case-insensitive)
+        limit: max number of passages to return
+
+    Returns:
+        List of passage dicts with {passage_id, doc_id, text, match_type, matched_terms}
+    """
+    if not terms:
+        return []
+    terms_norm = [str(t).strip().lower() for t in terms if t and str(t).strip()]
+    out: List[Dict[str, Any]] = []
+    seen: set = set()
+    for rec in passages:
+        txt = (rec.get("text") or "").lower()
+        if not txt:
+            continue
+        matched = [t for t in terms_norm if t and t in txt]
+        if not matched:
+            continue
+        pid = (rec.get("metadata", {}) or {}).get("passage_id") or rec.get("passage_id")
+        if not pid or pid in seen:
+            continue
+        seen.add(pid)
+        out.append({
+            "passage_id": pid,
+            "doc_id": (rec.get("metadata", {}) or {}).get("doc_id") or rec.get("doc_id"),
+            "text": rec.get("text"),
+            "match_type": "text",
+            "matched_terms": matched
+        })
+        if len(out) >= limit:
+            break
+    return out
 
 metadata = {"Name": "Climate Policy Radar", 
             "Description": "A knowledge graph for climate policy",
@@ -207,6 +276,40 @@ metadata = {"Name": "Climate Policy Radar",
             "Author": "Climate Policy Radar Team",
             "URL": "https://climatepolicyradar.org"
             }
+
+def _get_kg_dataset_metadata_impl() -> dict:
+    """Internal helper to compute KG metadata without invoking MCP tool wrappers."""
+    try:
+        g = KG()
+        node_count = int(g.number_of_nodes())
+        edge_count = int(g.number_of_edges())
+    except Exception:
+        node_count = 0
+        edge_count = 0
+    # Count passages and concepts
+    try:
+        concept_count = int(len(concepts)) if concepts is not None else 0
+    except Exception:
+        concept_count = 0
+    try:
+        passage_count = int(len(passages)) if 'passages' in globals() and passages is not None else 0
+    except Exception:
+        passage_count = 0
+    return {
+        "Name": "Climate Policy Radar KG",
+        "Description": metadata.get("Description", "Climate policy knowledge graph"),
+        "Version": metadata.get("Version", "unknown"),
+        "URL": metadata.get("URL"),
+        "concept_count": concept_count,
+        "passage_count": passage_count,
+        "graph_nodes": node_count,
+        "graph_edges": edge_count
+    }
+
+@mcp.tool()
+def GetKGDatasetMetadata() -> dict:
+    """Return dynamic metadata/stats about the Knowledge Graph and passages."""
+    return _get_kg_dataset_metadata_impl()
 
 class DatasetMetadata(BaseModel):
     name: str
@@ -317,37 +420,44 @@ def SearchConceptsByText(query: str, top_k: int = 10) -> List[dict]:
     return _search_concepts_by_text_impl(query, top_k)
 
 @mcp.tool()
+def GetSemanticDebugLog(limit: int = 100) -> Dict[str, Any]:
+    """Return recent semantic debug lines from the KG server.
+
+    Args:
+      limit: maximum number of lines (newest last)
+    """
+    try:
+        lim = max(0, min(int(limit), len(SEM_LOG)))
+    except Exception:
+        lim = min(100, len(SEM_LOG))
+    lines = list(SEM_LOG)[-lim:] if lim else []
+    return {
+        "enabled": str(os.getenv("TDE_KG_SEMANTIC_DEBUG", "1")).lower() in ("1","true","yes"),
+        "count": len(lines),
+        "lines": lines
+    }
+
+@mcp.tool()
 def GetTopConceptsByQuery(query: str, top_k: int = 5) -> List[dict]:
     """Return top_k concepts most similar to the query using embeddings.
 
     Falls back to substring search if embeddings are unavailable.
     Output items: {label, wikibase_id, score}
     """
+    _sem_dbg(f"GetTopConceptsByQuery called: top_k={top_k}")
     try:
-        print("TRYING GetTopConceptsByQuery with embeddings")
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=30.0, max_retries=2)
-        q_emb = client.embeddings.create(input=query, model="text-embedding-3-small").data[0].embedding
-        _ensure_concept_vectors_loaded()
-        emb_matrix = np.vstack(concepts["vector_embedding"].to_numpy())
-        sims = cosine_similarity([q_emb], emb_matrix)[0]
-        idx = sims.argsort()[-top_k:][::-1]
-        out = []
-        for i in idx:
-            row = concepts.iloc[i]
-            out.append({
-                "label": row["preferred_label"],
-                "wikibase_id": row["wikibase_id"],
-                "score": float(sims[i])
-            })
-        return out
+        out = _get_top_concepts_by_query_impl(query, top_k)
+        if out:
+            _sem_dbg(f"Semantic returned {len(out)} results; skipping fallback")
+            return out
     except Exception as e:
-        print(f"GetTopConceptsByQuery fallback due to error: {e}")
-        # Fallback to simple text search (call internal impl, not MCP tool wrapper)
-        rough = _search_concepts_by_text_impl(query, top_k=top_k)
-        # Attach dummy score
-        for r in rough:
-            r["score"] = 0.0
-        return rough
+        _sem_dbg(f"GetTopConceptsByQuery internal impl error: {e}")
+    # Fallback to simple text search (call internal impl)
+    _sem_dbg("Semantic returned 0 results; falling back to text search")
+    rough = _search_concepts_by_text_impl(query, top_k=top_k)
+    for r in rough:
+        r["score"] = 0.0
+    return rough
 
 @mcp.tool()
 def DebugEmbeddingStatus() -> dict:
@@ -382,6 +492,144 @@ def DebugEmbeddingStatus() -> dict:
     except Exception as e:
         status["error"] = str(e)
     return status
+
+# =============================
+# Internal helper implementations for concept retrieval
+# =============================
+
+def _get_top_concepts_by_query_local_impl(query: str, top_k: int = 5) -> List[dict]:
+    """Local, offline concept retrieval by token overlap.
+
+    Scores each concept by Jaccard overlap between query tokens and tokens in
+    preferred_label and alternative_labels. Returns top_k with score.
+    """
+    q_tokens = set(_tokens(query))
+    if not q_tokens:
+        return []
+    scored: List[Tuple[float, str, str]] = []  # (score, label, wid)
+    for _, row in concepts.iterrows():
+        wid = str(row.get("wikibase_id", "")).strip()
+        label = str(row.get("preferred_label", ""))
+        label_tokens = set(_tokens(label))
+        # union tokens from alternatives
+        alts = row.get("alternative_labels", [])
+        try:
+            if isinstance(alts, str):
+                alts = ast.literal_eval(alts)
+        except Exception:
+            alts = []
+        alt_tokens = set()
+        for a in alts or []:
+            alt_tokens.update(_tokens(a))
+        all_tokens = label_tokens.union(alt_tokens)
+        if not all_tokens:
+            continue
+        inter_tokens = q_tokens.intersection(all_tokens)
+        inter = len(inter_tokens)
+        union = len(q_tokens.union(all_tokens))
+        score = inter / union if union else 0.0
+        if score > 0:
+            scored.append((score, label, wid))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    out: List[dict] = []
+    for score, label, wid in scored[:top_k]:
+        out.append({"label": label, "wikibase_id": wid, "score": float(score)})
+    return out
+
+def _search_concepts_fuzzy_impl(query: str, top_k: int = 10, min_score: int = 70) -> List[dict]:
+    """Fuzzy concept search over preferred and alternative labels using RapidFuzz."""
+    try:
+        from rapidfuzz import process, fuzz
+    except Exception:
+        # RapidFuzz not available
+        return []
+    q = (query or "").strip()
+    if not q:
+        return []
+    label_to_meta: List[Tuple[str, str, str]] = []  # (label, wid, source)
+    for _, row in concepts.iterrows():
+        wid = str(row.get("wikibase_id", "")).strip()
+        pref = str(row.get("preferred_label", ""))
+        if wid and pref:
+            label_to_meta.append((pref, wid, "preferred"))
+        alts = row.get("alternative_labels", [])
+        try:
+            if isinstance(alts, str):
+                alts = ast.literal_eval(alts)
+        except Exception:
+            alts = []
+        for a in alts or []:
+            if a:
+                label_to_meta.append((str(a), wid, "alternative"))
+    if not label_to_meta:
+        return []
+    labels = [t[0] for t in label_to_meta]
+    matches = process.extract(
+        q,
+        labels,
+        scorer=fuzz.token_set_ratio,
+        limit=top_k
+    )
+    out: List[dict] = []
+    for label, score, idx in matches:
+        if score < min_score:
+            continue
+        wid = label_to_meta[idx][1]
+        source = label_to_meta[idx][2]
+        out.append({
+            "label": _concept_label(wid),
+            "wikibase_id": wid,
+            "score": int(score),
+            "match_source": source
+        })
+    # Deduplicate by wid, keep highest score
+    dedup: Dict[str, dict] = {}
+    for r in out:
+        wid = r["wikibase_id"]
+        if wid not in dedup or r["score"] > dedup[wid]["score"]:
+            dedup[wid] = r
+    return list(dedup.values())[:top_k]
+
+def _get_top_concepts_by_query_impl(query: str, top_k: int = 5) -> List[dict]:
+    """Semantic retrieval using OpenAI embeddings; returns [] if embedding fails.
+
+    Emits debug logs when TDE_KG_SEMANTIC_DEBUG=1|true.
+    """
+    try:
+        _sem_dbg("Starting semantic retrieval with OpenAI embeddings")
+        has_key = bool(os.getenv("OPENAI_API_KEY"))
+        _sem_dbg(f"env_has_openai_key={has_key}")
+        vec_present = "vector_embedding" in concepts.columns
+        _sem_dbg(f"vectors_column_present={vec_present}; total_concepts={len(concepts)}")
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=30.0, max_retries=2)
+        _sem_dbg(f"Embedding query text len={len(query)}")
+        q_resp = client.embeddings.create(input=query, model="text-embedding-3-small")
+        q_emb = q_resp.data[0].embedding
+        _ensure_concept_vectors_loaded()
+        emb_col = concepts["vector_embedding"].to_numpy()
+        emb_matrix = np.vstack(emb_col)
+        _sem_dbg(f"emb_matrix shape={emb_matrix.shape}")
+        sims = cosine_similarity([q_emb], emb_matrix)[0]
+        idx = sims.argsort()[-top_k:][::-1]
+        out: List[dict] = []
+        for i in idx:
+            row = concepts.iloc[i]
+            out.append({
+                "label": row["preferred_label"],
+                "wikibase_id": row["wikibase_id"],
+                "score": float(sims[i])
+            })
+        try:
+            tops = [f"{concepts.iloc[i]['preferred_label']}={float(sims[i]):.4f}" for i in idx]
+            _sem_dbg("top_labels_scores=" + ", ".join(tops))
+        except Exception:
+            pass
+        return out
+    except Exception as e:
+        import traceback
+        _sem_dbg(f"Semantic retrieval failed: {e}")
+        _sem_dbg(traceback.format_exc())
+        return []
 
 @mcp.tool()
 def GetTopConceptsByQueryLocal(query: str, top_k: int = 5) -> List[dict]:
@@ -435,15 +683,114 @@ def GetTopConceptsByQueryLocal(query: str, top_k: int = 5) -> List[dict]:
     return out
 
 @mcp.tool()
-def FindConceptMatchesByNgrams(query: str, top_k: int = 10) -> List[dict]:
-    """Find exact label matches by 1-gram or 2-gram against preferred/alternative labels.
+def SearchConceptsFuzzy(query: str, top_k: int = 10, min_score: int = 70) -> List[dict]:
+    """Fuzzy concept search over preferred and alternative labels using RapidFuzz.
 
-    - Normalizes query and labels (lowercase, strip accents, remove punctuation)
-    - Generates unigrams and bigrams from query
-    - Returns concepts where preferred_label or any alternative_label equals a unigram (length=1) or bigram (length=2)
-      exactly under normalization.
-    Output: [{label, wikibase_id, match_type: 'unigram'|'bigram', source: 'preferred'|'alternative'}]
+    Returns: list of {label, wikibase_id, score, match_source}
     """
+    try:
+        from rapidfuzz import process, fuzz
+    except Exception:
+        # RapidFuzz not available
+        return []
+    q = (query or "").strip()
+    if not q:
+        return []
+    # Build candidate mapping from label -> (wid, source)
+    label_to_meta: List[Tuple[str, str, str]] = []  # (label, wid, source)
+    for _, row in concepts.iterrows():
+        wid = str(row.get("wikibase_id", "")).strip()
+        pref = str(row.get("preferred_label", ""))
+        if wid and pref:
+            label_to_meta.append((pref, wid, "preferred"))
+        alts = row.get("alternative_labels", [])
+        try:
+            if isinstance(alts, str):
+                alts = ast.literal_eval(alts)
+        except Exception:
+            alts = []
+        for a in alts or []:
+            if a:
+                label_to_meta.append((str(a), wid, "alternative"))
+    if not label_to_meta:
+        return []
+    labels = [t[0] for t in label_to_meta]
+    matches = process.extract(
+        q,
+        labels,
+        scorer=fuzz.token_set_ratio,
+        limit=top_k
+    )
+    out = []
+    for label, score, idx in matches:
+        if score < min_score:
+            continue
+        wid = label_to_meta[idx][1]
+        source = label_to_meta[idx][2]
+        out.append({
+            "label": _concept_label(wid),
+            "wikibase_id": wid,
+            "score": int(score),
+            "match_source": source
+        })
+    # Deduplicate by wid, keep highest score
+    dedup = {}
+    for r in out:
+        wid = r["wikibase_id"]
+        if wid not in dedup or r["score"] > dedup[wid]["score"]:
+            dedup[wid] = r
+    return list(dedup.values())[:top_k]
+
+@mcp.tool()
+def DescribeServer() -> dict:
+    """Describe the Knowledge Graph server and live stats."""
+    kg_meta = _get_kg_dataset_metadata_impl()
+    # Derive last_updated from KG and passages files
+    last_updated = None
+    try:
+        from datetime import datetime as _dt
+        paths = []
+        if os.path.exists(GRAPHML_PATH):
+            paths.append(GRAPHML_PATH)
+        lp = os.path.join(project_root, "extras", "labelled_passages.jsonl")
+        if os.path.exists(lp):
+            paths.append(lp)
+        if paths:
+            last_updated = _dt.fromtimestamp(max(os.path.getmtime(p) for p in paths)).isoformat()
+    except Exception:
+        pass
+    return {
+        "name": "Climate Policy Radar KG Server",
+        "description": kg_meta.get("Description", "Climate policy knowledge graph"),
+        "version": kg_meta.get("Version"),
+        "dataset": "GraphML knowledge graph + labelled passages",
+        "metrics": {
+            "concepts": kg_meta.get("concept_count"),
+            "passages": kg_meta.get("passage_count"),
+            "graph_nodes": kg_meta.get("graph_nodes"),
+            "graph_edges": kg_meta.get("graph_edges")
+        },
+        "tools": [
+            "GetPassagesMentioningConcept",
+            "PassagesMentioningBothConcepts",
+            "FindConceptPathWithEdges",
+            "ExplainConceptRelationship",
+            "SearchConceptsByText",
+            "GetTopConceptsByQuery",
+            "GetTopConceptsByQueryLocal",
+            "SearchConceptsFuzzy",
+            "DiscoverPolicyContextForQuery",
+            "GetKGDatasetMetadata"
+        ],
+        "examples": [
+            "Passages mentioning 'renewable energy'",
+            "Path between 'biofuels' and 'transportation'"
+        ],
+        "last_updated": last_updated
+    }
+
+def _find_concept_matches_by_ngrams_impl(query: str, top_k: int = 10) -> List[dict]:
+    """Implementation for exact unigram/bigram label matches."""
     toks = _tokens(query)
     if not toks:
         return []
@@ -484,6 +831,11 @@ def FindConceptMatchesByNgrams(query: str, top_k: int = 10) -> List[dict]:
     return out
 
 @mcp.tool()
+def FindConceptMatchesByNgrams(query: str, top_k: int = 10) -> List[dict]:
+    """Find exact label matches by 1-gram or 2-gram against preferred/alternative labels."""
+    return _find_concept_matches_by_ngrams_impl(query, top_k)
+
+@mcp.tool()
 def GetRelatedConcepts(concept: str) -> List[str]:
     """Get related concepts for given concept."""
     return concepts[concepts["preferred_label"] == concept]["related_concepts"].tolist()
@@ -519,9 +871,8 @@ def GetDescription(concept: str) -> str:
 
 ### GRAPH TOOLS
 
-@mcp.tool()
-def GetPassagesMentioningConcept(concept: str, limit: int = 2) -> List[dict]:
-    """Return passages mentioning the concept."""
+def _get_passages_mentioning_concept_impl(concept: str, limit: int = 2) -> List[dict]:
+    """Implementation: return passages mentioning the concept by MENTIONS edges; fallback to text search."""
     cid = _concept_id(concept)
     resolved_label = None
     if not cid:
@@ -573,15 +924,44 @@ def GetPassagesMentioningConcept(concept: str, limit: int = 2) -> List[dict]:
             pass
         out.append(record)
     
-    # If no passages found, provide placeholder content
+    # If no passages found via MENTIONS spans, fallback to text search across passages
     if not out:
-        out = [{
-            "passage_id": f"placeholder_{concept.replace(' ', '_').lower()}", 
-            "doc_id": "guidance_doc",
-            "text": f"The concept '{concept}' is referenced in climate policy research but specific document passages are not immediately available from the knowledge graph. This may indicate the concept is either too specific or requires broader search terms."
-        }]
+        # Build term list from preferred label and alt labels
+        terms: List[str] = []
+        try:
+            lbl = _concept_label(cid)
+            if lbl:
+                terms.append(lbl)
+        except Exception:
+            pass
+        try:
+            row = concepts[concepts["wikibase_id"] == cid]
+            if not row.empty:
+                alt_cell = row.iloc[0].get("alternative_labels")
+                if isinstance(alt_cell, str) and alt_cell.strip():
+                    import ast as _ast
+                    alts = _ast.literal_eval(alt_cell)
+                    for a in alts or []:
+                        if isinstance(a, str):
+                            terms.append(a)
+        except Exception:
+            pass
+        text_hits = _search_passages_textual(terms or [concept], limit=limit)
+        if text_hits:
+            out = text_hits
+        else:
+            out = [{
+                "passage_id": f"placeholder_{concept.replace(' ', '_').lower()}", 
+                "doc_id": "guidance_doc",
+                "text": f"The concept '{concept}' is referenced in climate policy research. No direct passages were found; try broader or alternative labels."
+            }]
     
     return out
+
+@mcp.tool()
+def GetPassagesMentioningConcept(concept: str, limit: int = 2) -> List[dict]:
+    """Return passages mentioning the concept (with fallback)."""
+    return _get_passages_mentioning_concept_impl(concept, limit)
 
 @mcp.tool()
 def ALWAYSRUN(query: str) -> str:
@@ -774,6 +1154,95 @@ def FindConceptPathWithEdges(
 ) -> List[List[dict]]:
     """Find all shortest paths between concepts with edge types."""
     return _find_concept_path_with_edges_impl(source_concept, target_concept, max_len)
+
+def _concept_candidates_from_query(query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    """Server-side concept candidate discovery combining exact, local, semantic, and fuzzy."""
+    merged: List[Dict[str, Any]] = []
+    seen = set()
+    for d in _find_concept_matches_by_ngrams_impl(query, top_k=top_k):
+        lbl = d.get("label")
+        if lbl and lbl not in seen:
+            merged.append({"label": lbl}); seen.add(lbl)
+    for d in _get_top_concepts_by_query_local_impl(query, top_k=top_k):
+        lbl = d.get("label")
+        if lbl and lbl not in seen:
+            merged.append({"label": lbl}); seen.add(lbl)
+    try:
+        for d in _get_top_concepts_by_query_impl(query, top_k=5):
+            lbl = d.get("label")
+            if lbl and lbl not in seen:
+                merged.append({"label": lbl}); seen.add(lbl)
+    except Exception:
+        pass
+    for d in _search_concepts_fuzzy_impl(query, top_k=top_k):
+        lbl = d.get("label")
+        if lbl and lbl not in seen:
+            merged.append({"label": lbl}); seen.add(lbl)
+    return merged[:top_k]
+
+@mcp.tool()
+def DiscoverPolicyContextForQuery(query: str, top_concepts: int = 3, neighbor_limit: int = 10, passage_limit: int = 8) -> Dict[str, Any]:
+    """Resolve policy-relevant concepts from the query, expand neighbors, and surface passages."""
+    # Concepts
+    cands = _concept_candidates_from_query(query, top_k=10)
+    def _score(lbl: str) -> int:
+        l = (lbl or "").lower()
+        s = 0
+        for t in ("solar", "photovolta", "pv", "energia solar", "policy", "regulation", "incentive", "renewable"):
+            if t in l:
+                s += 1
+        return s
+    seeds = [c["label"] for c in cands if c.get("label")]
+    seeds = sorted(seeds, key=_score, reverse=True)[:max(1, top_concepts)]
+    concepts_out = []
+    for lbl in seeds:
+        cid = _concept_id(lbl) or _resolve_concept_id_fuzzy(lbl)[0]
+        if cid:
+            concepts_out.append({"label": _concept_label(cid), "wikibase_id": cid})
+    # Neighbors
+    neighbors_out = []
+    try:
+        G = KG()
+        for c in concepts_out:
+            cid = c["wikibase_id"]
+            cnt = 0
+            for _, v, d in G.out_edges(cid, data=True):
+                neighbors_out.append({
+                    "source_label": _concept_label(cid),
+                    "target_label": _concept_label(v),
+                    "edge_type": d.get("type")
+                })
+                cnt += 1
+                if cnt >= neighbor_limit:
+                    break
+            cnt2 = 0
+            for u, _, d in G.in_edges(cid, data=True):
+                neighbors_out.append({
+                    "source_label": _concept_label(u),
+                    "target_label": _concept_label(cid),
+                    "edge_type": d.get("type")
+                })
+                cnt2 += 1
+                if cnt2 >= neighbor_limit:
+                    break
+    except Exception:
+        neighbors_out = []
+    # Passages
+    passages_out: List[Dict[str, Any]] = []
+    for c in concepts_out:
+        lbl = c["label"]
+        hits = _get_passages_mentioning_concept_impl(lbl, limit=passage_limit)
+        passages_out.extend(hits)
+        if len(passages_out) >= passage_limit:
+            break
+    if not passages_out:
+        passages_out = _search_passages_textual(["solar", "photovolta", "energia solar", "PROINFA", "auction", "ANEEL"], limit=passage_limit)
+    return {
+        "concepts": concepts_out,
+        "neighbors": neighbors_out,
+        "passages": passages_out,
+        "notes": "Span-based passages prioritized; fell back to text hits when spans missing."
+    }
 
 def _get_description_impl(concept: str) -> str:
     filtered_concepts = concepts[concepts["preferred_label"] == concept]

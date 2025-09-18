@@ -238,6 +238,84 @@ def ListHeatLayers() -> Dict[str, Any]:
 
 
 @mcp.tool()
+def GetHeatQuintileCounts() -> Dict[str, Any]:
+    """Return a chart spec for counts by heat-stress quintile (1..5)."""
+    if not GEOSPATIAL_AVAILABLE:
+        return {"error": "GeoPandas not installed"}
+    search_dir = HEAT_GEOJSON_DIR if HEAT_GEOJSON_DIR.exists() else HEAT_DIR
+    files = sorted(list(search_dir.glob("*_quintiles_simplified.geojson")) + list(search_dir.glob("*_quintiles.geojson")))
+    if not files:
+        return {"error": f"No heat-stress quintiles files found under {search_dir}"}
+    try:
+        gdf = gpd.read_file(files[0])
+    except Exception as e:
+        return {"error": f"Failed to read {files[0]}: {e}"}
+    if 'quintile' not in gdf.columns:
+        return {"error": "Dataset missing 'quintile' column"}
+    vc = gdf['quintile'].value_counts().sort_index()
+    data = [{"quintile": int(k), "count": int(v)} for k, v in vc.items()]
+    return {
+        "visualization_type": "comparison",
+        "data": data,
+        "chart_config": {
+            "x_axis": "quintile",
+            "y_axis": "count",
+            "title": "Heat-Stress Features by Quintile",
+            "chart_type": "bar"
+        },
+        "source_file": str(files[0])
+    }
+
+
+@mcp.tool()
+def GetHeatAreaByQuintileChart() -> Dict[str, Any]:
+    """Return a pie (or bar) chart spec of total area (km²) by heat-stress quintile.
+
+    Computes polygon areas in an equal-area projection (EPSG:5880 – Brazil Polyconic)
+    and aggregates by the 'quintile' column.
+    """
+    if not GEOSPATIAL_AVAILABLE:
+        return {"error": "GeoPandas not installed"}
+    search_dir = HEAT_GEOJSON_DIR if HEAT_GEOJSON_DIR.exists() else HEAT_DIR
+    files = sorted(list(search_dir.glob("*_quintiles_simplified.geojson")) + list(search_dir.glob("*_quintiles.geojson")))
+    if not files:
+        return {"error": f"No heat-stress quintiles files found under {search_dir}"}
+    f = files[0]
+    try:
+        gdf = gpd.read_file(f)
+    except Exception as e:
+        return {"error": f"Failed to read {f}: {e}"}
+    if 'quintile' not in gdf.columns:
+        return {"error": "Dataset missing 'quintile' column"}
+
+    # Ensure CRS and compute area in km^2 using equal-area projection for Brazil
+    try:
+        gdf_proj = gdf.to_crs('EPSG:5880') if (gdf.crs is not None) else gdf.set_crs('EPSG:4326').to_crs('EPSG:5880')
+    except Exception:
+        # Fallback: use EPSG:3857 with note (less accurate)
+        try:
+            gdf_proj = gdf.to_crs('EPSG:3857') if (gdf.crs is not None) else gdf.set_crs('EPSG:4326').to_crs('EPSG:3857')
+        except Exception as e:
+            return {"error": f"Failed to project dataset for area calculation: {e}"}
+
+    gdf_proj = gdf_proj[~gdf_proj.geometry.is_empty]
+    gdf_proj['area_km2'] = gdf_proj.geometry.area / 1_000_000.0
+    area_by_q = gdf_proj.groupby('quintile', dropna=False)['area_km2'].sum().sort_index()
+    data = [{"quintile": int(q), "area_km2": float(a)} for q, a in area_by_q.items()]
+
+    return {
+        "visualization_type": "comparison",
+        "data": data,
+        "chart_config": {
+            "x_axis": "quintile",
+            "y_axis": "area_km2",
+            "title": "Heat-Stress Area by Quintile (km²)",
+            "chart_type": "pie"  # Frontend will render a pie from the standard chart module
+        },
+        "source_file": str(f)
+    }
+
+@mcp.tool()
 def GetHeatDatasetInfo(source: Optional[str] = None) -> Dict[str, Any]:
     """Return dataset metadata/citation for heat-stress layers.
 
@@ -250,6 +328,80 @@ def GetHeatDatasetInfo(source: Optional[str] = None) -> Dict[str, Any]:
             return {"dataset": info, "matched_source": source}
     # Return both when not specified
     return {"datasets": HEAT_DATASET_INFO}
+
+@mcp.tool()
+def DescribeServer() -> Dict[str, Any]:
+    """Describe heat-stress layers, tools, and live availability."""
+    try:
+        # Count available heat layer files without invoking MCP tool wrappers
+        search_dirs = [d for d in [HEAT_GEOJSON_DIR, HEAT_DIR] if d.exists()]
+        count = 0
+        for dirp in search_dirs:
+            count += len(list(dirp.glob("*_quintiles_simplified.geojson")))
+            count += len(list(dirp.glob("*_quintiles.geojson")))
+            count += len(list(dirp.glob("*_quintiles.gpkg")))
+        # Derive last_updated from available files
+        last_updated = None
+        try:
+            from datetime import datetime as _dt
+            mtimes = []
+            for dirp in search_dirs:
+                for p in dirp.glob("*.geojson"):
+                    try:
+                        mtimes.append(p.stat().st_mtime)
+                    except Exception:
+                        pass
+                for p in dirp.glob("*.gpkg"):
+                    try:
+                        mtimes.append(p.stat().st_mtime)
+                    except Exception:
+                        pass
+            if mtimes:
+                last_updated = _dt.fromtimestamp(max(mtimes)).isoformat()
+        except Exception:
+            pass
+
+        # Build a richer description from Brazil Datasets Info.txt (if present)
+        description = "Preprocessed heat-stress quintile layers for Brazil (top-quintile optimized) derived from: " \
+            + "ERA5-Land Heat Index (WBGT proxy) and MODIS/Terra Land Surface Temperature (LST). " \
+            + "Aggregations include multi-year daily means for 2020–2025 and southern-summer (Nov–Mar) seasonal means. " \
+            + "Units in °C; CRS EPSG:4326."
+        try:
+            if HEAT_DOC_PATH.exists():
+                # Extract a few salient bullets from the doc to enrich the description
+                txt = HEAT_DOC_PATH.read_text(encoding="utf-8", errors="ignore")
+                bullets = []
+                for key in ["Variable:", "Temporal Coverage:", "Temporal Aggregation:", "Source:", "Notes:"]:
+                    # take the first two occurrences across both datasets
+                    parts = [line.strip("\r\n ") for line in txt.splitlines() if key in line]
+                    for p in parts[:2]:
+                        # compact line
+                        bullets.append(p.replace("?", "").strip())
+                if bullets:
+                    description += " " + " ".join(bullets[:4])
+        except Exception:
+            pass
+        return {
+            "name": "Heat Stress Server",
+            "description": description,
+            "version": "1.0",
+            "dataset": "Heat index and land surface temperature derived layers",
+            "metrics": {"layer_count": count},
+            "tools": [
+                "ListHeatLayers",
+                "GetHeatQuintileCounts",
+                "GetHeatAreaByQuintileChart",
+                "GetHeatDatasetInfo",
+                "GetHeatQuintilesForGeospatial"
+            ],
+            "examples": [
+                "List available heat-stress layers",
+                "Register top quintile heat zones for correlation"
+            ],
+            "last_updated": last_updated
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def _filter_by_bbox(gdf: "gpd.GeoDataFrame", bbox_dict: Optional[Dict[str, float]]) -> "gpd.GeoDataFrame":

@@ -1367,6 +1367,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             print(f"FORMATTER DEBUG: Using pre-generated GeoJSON: {geojson_url}")
         else:
             print("FORMATTER DEBUG: No GeoJSON URL provided by orchestrator")
+            # Without a GeoJSON URL we cannot render a map; drop this module
+            return None
             
         facilities = []  # No need for facility data, GeoJSON file exists
         metadata = {
@@ -1419,7 +1421,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 base_url = os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
                 final_geojson_url = f"{base_url}/static/maps/{filename}"
             
-            # Calculate bounds based on countries
+            # Calculate bounds based on provided precise bounds or country presets
+            provided_bounds = summary.get("bounds") or map_data.get("metadata", {}).get("bounds")
             country_bounds = {
                 "brazil": {"lat": [-33.75, 5.27], "lon": [-73.98, -34.73]},
                 "india": {"lat": [8.08, 35.50], "lon": [68.18, 97.40]},
@@ -1427,27 +1430,39 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "south_africa": {"lat": [-34.83, -22.13], "lon": [16.45, 32.89]}
             }
             
-            # Calculate overall bounds
-            all_lats = []
-            all_lons = []
-            for country in countries:
-                country_key = country.lower().replace(" ", "_")
-                if country_key in country_bounds:
-                    bounds = country_bounds[country_key]
-                    all_lats.extend(bounds["lat"])
-                    all_lons.extend(bounds["lon"])
-            
-            if all_lats and all_lons:
-                bounds = {
-                    "north": max(all_lats),
-                    "south": min(all_lats),
-                    "east": max(all_lons),
-                    "west": min(all_lons)
-                }
-                center = [(bounds["west"] + bounds["east"]) / 2, (bounds["north"] + bounds["south"]) / 2]
+            bounds = None
+            center = None
+            # Prefer precise bounds provided by the server
+            if isinstance(provided_bounds, dict) and all(k in provided_bounds for k in ["north", "south", "east", "west"]):
+                bounds = provided_bounds
+                center = [
+                    (bounds["west"] + bounds["east"]) / 2,
+                    (bounds["north"] + bounds["south"]) / 2
+                ]
             else:
-                bounds = {"north": 50, "south": -50, "east": 180, "west": -180}
-                center = [0, 0]
+                # Calculate overall bounds from country presets
+                all_lats = []
+                all_lons = []
+                for country in countries:
+                    country_key = country.lower().replace(" ", "_")
+                    if country_key in country_bounds:
+                        cb = country_bounds[country_key]
+                        all_lats.extend(cb["lat"])
+                        all_lons.extend(cb["lon"])
+                if all_lats and all_lons:
+                    bounds = {
+                        "north": max(all_lats),
+                        "south": min(all_lats),
+                        "east": max(all_lons),
+                        "west": min(all_lons)
+                    }
+                    center = [
+                        (bounds["west"] + bounds["east"]) / 2,
+                        (bounds["north"] + bounds["south"]) / 2
+                    ]
+                else:
+                    bounds = {"north": 50, "south": -50, "east": 180, "west": -180}
+                    center = [0, 0]
             
             return {
                 "type": "map",
@@ -1456,7 +1471,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "filename": filename,
                 "viewState": {
                     "center": center,
-                    "zoom": 6,
+                    "zoom": 5,
                     "bounds": bounds
                 },
                 "legend": {

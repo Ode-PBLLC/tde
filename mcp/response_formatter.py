@@ -142,6 +142,25 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
     if map_data.get("type") == "map_data_summary" or (map_data.get("geojson_url") and isinstance(map_data.get("geojson_url"), str)):
         summary = map_data.get("summary", {})
         geojson_url = map_data.get("geojson_url")
+        filename_hint = map_data.get("geojson_filename")
+        # Strict correlation detection: explicit flag or correlation_* filename/URL only
+        is_correlation_map = bool(map_data.get("is_correlation_map") is True)
+        if not is_correlation_map:
+            try:
+                url_l = geojson_url.lower() if isinstance(geojson_url, str) else ""
+                fn_l = filename_hint.lower() if isinstance(filename_hint, str) else ""
+            except Exception:
+                url_l, fn_l = "", ""
+            if url_l.startswith("/static/maps/correlation_") or fn_l.startswith("correlation_"):
+                is_correlation_map = True
+        # Safety: force non-correlation for plain solar files
+        try:
+            url_l = geojson_url.lower() if isinstance(geojson_url, str) else ""
+            fn_l = filename_hint.lower() if isinstance(filename_hint, str) else ""
+        except Exception:
+            url_l, fn_l = "", ""
+        if ('solar_facilities_' in url_l) or ('solar_facilities_' in fn_l):
+            is_correlation_map = False
         
         if not geojson_url:
             return None
@@ -167,7 +186,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
         if not center:
             center = [-51.9253, -14.2350]
         
-        # Generate legend items for countries
+        # Generate legend items for countries or layers
         country_colors = {
             "brazil": "#4CAF50",
             "india": "#2196F3", 
@@ -184,22 +203,23 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             "deforestation": "#8B4513"      # brown
         }
         
-        # Prefer layer legend for correlation maps
         legend_items = []
-        if countries:
+        if is_correlation_map:
+            # Force a layer-based legend regardless of countries list
             legend_items = [
-                {
-                    "label": country.title(),
-                    "color": country_colors.get(country.lower(), "#9E9E9E")
-                }
-                for country in countries[:10]  # Limit to 10 countries for legend
+                {"label": "Solar Assets", "color": "#FFD700"},
+                {"label": "Deforestation Areas", "color": "#8B4513"}
             ]
-        # If this appears to be a geospatial correlation map, show layer legend instead
-        if not legend_items and isinstance(geojson_url, str) and "correlation_" in geojson_url:
-            legend_items = [
-                {"label": "Solar Facilities", "color": "#FFD700"},
-                {"label": "Deforestation", "color": "#8B4513"}
-            ]
+        else:
+            if countries:
+                legend_items = [
+                    {
+                        "label": country.title(),
+                        "color": country_colors.get(country.lower(), "#9E9E9E")
+                    }
+                    for country in countries[:10]
+                ]
+            # No heuristic fallback to correlation here to avoid misclassification
         
         return {
             "type": "map",
@@ -211,7 +231,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "bounds": bounds
             },
             "legend": {
-                "title": summary.get("title", "Spatial Map"),
+                "title": ("Correlation Map" if is_correlation_map else summary.get("title", "Spatial Map")),
                 "items": legend_items
             },
             "metadata": {
@@ -323,27 +343,105 @@ def _create_chart_module(data: Any) -> Optional[Dict]:
         viz_type = data["visualization_type"]
         chart_data = data.get("data", [])
         config = data.get("chart_config", {})
-        
-        if viz_type == "by_country" and chart_data:
+
+        # Helper getters
+        x_key = (config.get("x_axis") or "country") if isinstance(config, dict) else "country"
+        y_key = (config.get("y_axis") or "facility_count") if isinstance(config, dict) else "facility_count"
+        title = (config.get("title") or "Chart") if isinstance(config, dict) else "Chart"
+        chart_type = (config.get("chart_type") or "bar") if isinstance(config, dict) else "bar"
+        color_key = config.get("color") if isinstance(config, dict) else None
+
+        if not chart_data:
+            return None
+
+        # by_country: generic bar using x/y keys
+        if viz_type == "by_country":
+            labels = [str(d.get(x_key, "")) for d in chart_data]
+            values = [d.get(y_key, 0) or 0 for d in chart_data]
             return {
                 "type": "chart",
-                "chartType": "bar",
+                "chartType": chart_type,
                 "data": {
-                    "labels": [d["country"] for d in chart_data[:10]],  # Top 10
+                    "labels": labels,
                     "datasets": [{
-                        "label": "Facility Count",
-                        "data": [d.get("facility_count", 0) for d in chart_data[:10]],
+                        "label": y_key.replace("_", " ").title(),
+                        "data": values,
                         "backgroundColor": "#4CAF50"
                     }]
                 },
                 "options": {
                     "responsive": True,
-                    "plugins": {
-                        "title": {
-                            "display": True,
-                            "text": config.get("title", "Solar Facilities by Country")
-                        }
-                    }
+                    "plugins": {"title": {"display": True, "text": title}}
+                }
+            }
+
+        # time_series: line; optional color series
+        if viz_type == "time_series":
+            # Build series by color_key or single series
+            if color_key:
+                # Group by series key, x is year
+                series = {}
+                years_set = set()
+                for d in chart_data:
+                    series_key = str(d.get(color_key, "Unknown"))
+                    year = d.get(x_key)
+                    val = d.get(y_key, 0) or 0
+                    if year is None:
+                        continue
+                    years_set.add(int(year))
+                    series.setdefault(series_key, {}).update({int(year): val})
+                years = sorted(years_set)
+                datasets = []
+                palette = ["#2196F3", "#FF9800", "#9C27B0", "#4CAF50", "#F44336", "#009688"]
+                for idx, (name, points) in enumerate(series.items()):
+                    data_vals = [points.get(y, 0) for y in years]
+                    datasets.append({
+                        "label": name,
+                        "data": data_vals,
+                        "borderColor": palette[idx % len(palette)],
+                        "tension": 0.1,
+                        "fill": False
+                    })
+                return {
+                    "type": "chart",
+                    "chartType": "line",
+                    "data": {"labels": years, "datasets": datasets},
+                    "options": {"responsive": True, "plugins": {"title": {"display": True, "text": title}}}
+                }
+            else:
+                # Single series
+                pairs = [(d.get(x_key), d.get(y_key, 0) or 0) for d in chart_data if d.get(x_key) is not None]
+                pairs = sorted(((int(x), y) for x, y in pairs), key=lambda t: t[0])
+                years = [p[0] for p in pairs]
+                values = [p[1] for p in pairs]
+                return {
+                    "type": "chart",
+                    "chartType": "line",
+                    "data": {
+                        "labels": years,
+                        "datasets": [{"label": y_key.replace("_", " ").title(), "data": values, "borderColor": "#2196F3", "tension": 0.1, "fill": False}]
+                    },
+                    "options": {"responsive": True, "plugins": {"title": {"display": True, "text": title}}}
+                }
+
+        # comparison: generic bar using x/y keys
+        if viz_type == "comparison":
+            labels = [str(d.get(x_key, "")) for d in chart_data]
+            values = [d.get(y_key, 0) or 0 for d in chart_data]
+            return {
+                "type": "chart",
+                "chartType": chart_type,
+                "data": {
+                    "labels": labels,
+                    "datasets": [{
+                        "label": y_key.replace("_", " ").title(),
+                        "data": values,
+                        "backgroundColor": "#FF9800"
+                    }]
+                },
+                "options": {
+                    "responsive": True,
+                    "plugins": {"title": {"display": True, "text": title}}
                 }
             }
     
