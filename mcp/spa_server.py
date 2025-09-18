@@ -117,11 +117,11 @@ def AmazonAssessmentAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Di
     except Exception as e:
         return {"answer": f"LLM error: {e}", "citations": hits}
 
-    citations = [
-        {"file": h["file"], "page": h["page"], "preview": h["text"][:180], "similarity": h["similarity"]}
+    citations_snippets = [
+        {"file": h["file"], "page": h["page"], "text": h["text"], "similarity": h["similarity"]}
         for h in hits
     ]
-    return {"answer": answer, "citations": citations}
+    return {"answer": answer, "citations_snippets": citations_snippets}
 
 if __name__ == "__main__":
     print("SPA MCP server ready (using existing index).")
