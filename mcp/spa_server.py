@@ -25,7 +25,7 @@ INDEX_DIR  = Path("data/spa_index")
 COLLECTION = "spa_pdfs"
 TOP_K      = 6
 
-mcp = FastMCP("spa_server")
+mcp = FastMCP("spa-server")
 oai = OpenAI(api_key=OPENAI_API_KEY)
 
 def _col():
