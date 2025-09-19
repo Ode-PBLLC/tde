@@ -62,58 +62,79 @@ def _embed_query(text: str) -> List[float]:
     emb = oai.embeddings.create(model="text-embedding-3-small", input=[text])
     return emb.data[0].embedding
 
-def _search(query: str, k: int) -> List[Dict[str,Any]]:
+def _build_snippet_list(docs, metas, dists) -> List[Dict[str, Any]]:
+    snippets: List[Dict[str, Any]] = []
+    for idx, (txt, md, dist) in enumerate(zip(docs, metas, dists)):
+        sim = 1.0 - float(dist) if dist is not None else 0.0
+        file_path = md.get("file")
+        doc_id = Path(file_path).stem if file_path else f"doc_{idx}"
+        preview = (txt or "")[:240]
+        snippets.append(
+            {
+                "doc_id": doc_id,
+                "file": file_path,
+                "page": md.get("page"),
+                "text": txt,
+                "preview": preview,
+                "similarity": round(sim, 4),
+                "chunk_id": f"{doc_id}::chunk_{idx}",
+            }
+        )
+    return snippets
+
+
+def _search(query: str, k: int) -> List[Dict[str, Any]]:
     col = _col()
     qvec = _embed_query(query)
-    res = col.query(query_embeddings=[qvec], n_results=k, include=["documents","metadatas","distances"])
-    docs  = res.get("documents", [[]])[0]
+    res = col.query(
+        query_embeddings=[qvec],
+        n_results=k,
+        include=["documents", "metadatas", "distances"],
+    )
+    docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
-    out = []
-    for txt, md, dist in zip(docs, metas, dists):
-        sim = 1.0 - float(dist) if dist is not None else 0.0
-        out.append({"text": txt, "file": md.get("file"), "page": md.get("page"), "similarity": round(sim, 4)})
-    return out
+    return _build_snippet_list(docs, metas, dists)
 
 
-def _searchWMO(query: str, k: int) -> List[Dict[str,Any]]:
+def _searchWMO(query: str, k: int) -> List[Dict[str, Any]]:
     col = _colWMO()
     qvec = _embed_query(query)
-    res = col.query(query_embeddings=[qvec], n_results=k, include=["documents","metadatas","distances"])
-    docs  = res.get("documents", [[]])[0]
+    res = col.query(
+        query_embeddings=[qvec],
+        n_results=k,
+        include=["documents", "metadatas", "distances"],
+    )
+    docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
-    out = []
-    for txt, md, dist in zip(docs, metas, dists):
-        sim = 1.0 - float(dist) if dist is not None else 0.0
-        out.append({"text": txt, "file": md.get("file"), "page": md.get("page"), "similarity": round(sim, 4)})
-    return out
+    return _build_snippet_list(docs, metas, dists)
 
-def _searchIPCCCh11(query: str, k: int) -> List[Dict[str,Any]]:
+def _searchIPCCCh11(query: str, k: int) -> List[Dict[str, Any]]:
     col = _colIPCCCh11()
     qvec = _embed_query(query)
-    res = col.query(query_embeddings=[qvec], n_results=k, include=["documents","metadatas","distances"])
-    docs  = res.get("documents", [[]])[0]
+    res = col.query(
+        query_embeddings=[qvec],
+        n_results=k,
+        include=["documents", "metadatas", "distances"],
+    )
+    docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
-    out = []
-    for txt, md, dist in zip(docs, metas, dists):
-        sim = 1.0 - float(dist) if dist is not None else 0.0
-        out.append({"text": txt, "file": md.get("file"), "page": md.get("page"), "similarity": round(sim, 4)})
-    return out
+    return _build_snippet_list(docs, metas, dists)
 
-def _searchIPCCCh12(query: str, k: int) -> List[Dict[str,Any]]:
+def _searchIPCCCh12(query: str, k: int) -> List[Dict[str, Any]]:
     col = _colIPCCCh12()
     qvec = _embed_query(query)
-    res = col.query(query_embeddings=[qvec], n_results=k, include=["documents","metadatas","distances"])
-    docs  = res.get("documents", [[]])[0]
+    res = col.query(
+        query_embeddings=[qvec],
+        n_results=k,
+        include=["documents", "metadatas", "distances"],
+    )
+    docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
-    out = []
-    for txt, md, dist in zip(docs, metas, dists):
-        sim = 1.0 - float(dist) if dist is not None else 0.0
-        out.append({"text": txt, "file": md.get("file"), "page": md.get("page"), "similarity": round(sim, 4)})
-    return out
+    return _build_snippet_list(docs, metas, dists)
 
 # @mcp.tool()
 # def WMOReportListDocs(limit: int = 50) -> List[Dict[str,Any]]:
@@ -134,21 +155,27 @@ def WMOIPCCReportSearch(query: str, k: int = TOP_K) -> List[Dict[str,Any]]:
     """
     return _search(query, k)
 
+def _format_context(snippets: List[Dict[str, Any]]) -> str:
+    parts = []
+    for snippet in snippets:
+        file_name = Path(snippet["file"]).name if snippet.get("file") else snippet["doc_id"]
+        page = snippet.get("page")
+        location = f" p.{page}" if page is not None else ""
+        parts.append(f"[{file_name}{location}] {snippet['text'][:300]}")
+    return "\n\n".join(parts)
+
+
 @mcp.tool()
-def WMOReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict[str,Any]:
+def WMOReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict[str, Any]:
     """
     Gets context from the WMO reports focused on state of climate in Latin America and the Caribbean (2024),
-    using retrieved snippets. Returns model answer + citations and snippets.
+    using retrieved snippets. Returns model answer + passages for citations.
     """
     hits = _search(query, k)
     if not hits:
-        return {"answer": "No relevant snippets found in the WMO Report index.", "citations": []}
+        return {"answer": "No relevant snippets found in the WMO Report index.", "passages": []}
 
-    def cite(h):
-        from pathlib import Path
-        return f"[{Path(h['file']).name} p.{h['page']}] {h['text'][:300]}"
-
-    context = "\n\n".join(cite(h) for h in hits)
+    context = _format_context(hits)
 
     system_prompt = ("""
         You are responding as a subject-matter expert drawing on the WMO *State of the Climate in Latin America and the Caribbean 2024* report.
@@ -185,30 +212,22 @@ def WMOReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict[str,
         )
         answer = resp.choices[0].message.content.strip()
     except Exception as e:
-        return {"answer": f"LLM error: {e}", "citations": hits}
+        return {"answer": f"LLM error: {e}", "passages": hits}
 
-    citations_snippets = [
-        {"file": h["file"], "page": h["page"], "text": h["text"], "similarity": h["similarity"]}
-        for h in hits
-    ]
-    return {"answer": answer, "citations_snippets": citations_snippets}
+    return {"answer": answer, "passages": hits, "metadata": {"model": CHAT_MODEL, "top_k": k}}
 
 
 @mcp.tool()
-def IPCCCh11ReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict[str,Any]:
+def IPCCCh11ReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict[str, Any]:
     """
     Gets context from the IPCC report focused on the global state of Weather and Climate Extreme Events in a Changing Climate,
     using retrieved snippets. Returns model answer + citations and snippets.
     """
     hits = _searchIPCCCh11(query, k)
     if not hits:
-        return {"answer": "No relevant snippets found in the WMO Report index.", "citations": []}
+        return {"answer": "No relevant snippets found in the WMO Report index.", "passages": []}
 
-    def cite(h):
-        from pathlib import Path
-        return f"[{Path(h['file']).name} p.{h['page']}] {h['text'][:300]}"
-
-    context = "\n\n".join(cite(h) for h in hits)
+    context = _format_context(hits)
 
     system_prompt = ("""
         You are responding as a subject-matter expert drawing on the IPCC report *Weather and Climate Extreme Events in a Changing Climate*.  
@@ -246,30 +265,22 @@ def IPCCCh11ReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict
         )
         answer = resp.choices[0].message.content.strip()
     except Exception as e:
-        return {"answer": f"LLM error: {e}", "citations": hits}
+        return {"answer": f"LLM error: {e}", "passages": hits}
 
-    citations_snippets = [
-        {"file": h["file"], "page": h["page"], "text": h["text"], "similarity": h["similarity"]}
-        for h in hits
-    ]
-    return {"answer": answer, "citations_snippets": citations_snippets}
+    return {"answer": answer, "passages": hits, "metadata": {"model": CHAT_MODEL, "top_k": k}}
 
 
 @mcp.tool()
-def IPCCCh12ReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict[str,Any]:
+def IPCCCh12ReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict[str, Any]:
     """
     Gets context from the IPCC reports focused on state of climate in Central and South America,
     using retrieved snippets. Returns model answer + citations and snippets.
     """
     hits = _searchIPCCCh12(query, k)
     if not hits:
-        return {"answer": "No relevant snippets found in the WMO Report index.", "citations": []}
+        return {"answer": "No relevant snippets found in the WMO Report index.", "passages": []}
 
-    def cite(h):
-        from pathlib import Path
-        return f"[{Path(h['file']).name} p.{h['page']}] {h['text'][:300]}"
-
-    context = "\n\n".join(cite(h) for h in hits)
+    context = _format_context(hits)
 
     system_prompt = ("""
         You are responding as a subject-matter expert drawing on the IPCC report *Central and South America*.  
@@ -307,13 +318,9 @@ def IPCCCh12ReportAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Dict
         )
         answer = resp.choices[0].message.content.strip()
     except Exception as e:
-        return {"answer": f"LLM error: {e}", "citations": hits}
+        return {"answer": f"LLM error: {e}", "passages": hits}
 
-    citations_snippets = [
-        {"file": h["file"], "page": h["page"], "text": h["text"], "similarity": h["similarity"]}
-        for h in hits
-    ]
-    return {"answer": answer, "citations_snippets": citations_snippets}
+    return {"answer": answer, "passages": hits, "metadata": {"model": CHAT_MODEL, "top_k": k}}
 
 # Use this if you want a combined database, but allowing for separate databases based on logic attaching citations to tools
 # @mcp.tool()

@@ -190,10 +190,12 @@ def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
                 txt = first.text
                 try:
                     data = json.loads(txt)
-                    sanitized = _sanitize_obj_for_llm(data, removed_counts)
-                    payload_str = json.dumps(sanitized, ensure_ascii=False)
+                    # DISABLED SANITIZATION - pass through data directly
+                    # sanitized = _sanitize_obj_for_llm(data, removed_counts)
+                    # payload_str = json.dumps(sanitized, ensure_ascii=False)
+                    payload_str = json.dumps(data, ensure_ascii=False)
                 except json.JSONDecodeError:
-                    payload_str = _truncate_string(txt, 4000)
+                    payload_str = _truncate_string(txt, 10000)  # Increased limit
                 if removed_counts:
                     llm_logger.warning(f"Sanitized tool_result for {tool_name}; removed heavy keys: {removed_counts}")
                 llm_logger.debug(f"tool_result payload length: {len(payload_str)}")
@@ -913,17 +915,19 @@ async def get_global_client() -> MultiServerClient:
                 await _global_client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
                 await _global_client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
                 await _global_client.connect_to_server("viz", os.path.join(mcp_dir, "viz_server.py"))
-                
+
                 # Add geospatial servers
                 await _global_client.connect_to_server("deforestation", os.path.join(mcp_dir, "deforestation_server.py"))
                 await _global_client.connect_to_server("geospatial", os.path.join(mcp_dir, "geospatial_server.py"))
                 await _global_client.connect_to_server("municipalities", os.path.join(mcp_dir, "brazilian_admin_server.py"))
                 await _global_client.connect_to_server("heat", os.path.join(mcp_dir, "heat_stress_server.py"))
-                
+
                 await _global_client.connect_to_server("meta", os.path.join(mcp_dir, "meta_server.py"))
 
                 # Add RAG Servers
-                await _global_client.connect_to_server("spa-server", os.path.join(mcp_dir, "spa_server.py"))
+                await _global_client.connect_to_server("spa", os.path.join(mcp_dir, "spa_server.py"))
+                await _global_client.connect_to_server("wmo_cli", os.path.join(mcp_dir, "wmo_cli_server.py"))
+                await _global_client.connect_to_server("mb_deforest", os.path.join(mcp_dir, "mb_deforest_server.py"))
 
 
                 print("Global MCP client initialized successfully with geospatial and municipality capabilities")
@@ -1240,7 +1244,20 @@ class QueryOrchestrator:
         # Issue metadata calls concurrently where available
         calls = []
         # Prefer DescribeServer() if available; fall back to metadata/stat tools
-        for name, server in [("cpr", "cpr"), ("solar", "solar"), ("gist", "gist"), ("lse", "lse"), ("deforestation", "deforestation"), ("municipalities", "municipalities"), ("heat", "heat"), ("geospatial", "geospatial"), ("viz", "viz")]:
+        for name, server in [
+            ("cpr", "cpr"),
+            ("solar", "solar"),
+            ("gist", "gist"),
+            ("lse", "lse"),
+            ("deforestation", "deforestation"),
+            ("municipalities", "municipalities"),
+            ("heat", "heat"),
+            ("geospatial", "geospatial"),
+            ("viz", "viz"),
+            ("spa", "spa"),
+            ("wmo_cli", "wmo_cli"),
+            ("mb_deforest", "mb_deforest"),
+        ]:
             try:
                 calls.append((name, self.client.call_tool("DescribeServer", {}, server)))
             except Exception:
@@ -1324,11 +1341,14 @@ class QueryOrchestrator:
             "admins": "Brazilian Administrative Boundaries",
             "heat": "Heat Stress Layers",
             "geospatial": "Geospatial Correlation",
-            "viz": "Visualization"
+            "viz": "Visualization",
+            "spa": "Science Panel for the Amazon",
+            "wmo_cli": "WMO / IPCC Reports",
+            "mb_deforest": "MapBiomas Deforestation"
         }
         # Show datasets only (exclude engines like geospatial/viz)
         included_keys = set()
-        for key in ["cpr", "solar", "gist", "lse", "deforestation", "admins", "heat"]:
+        for key in ["cpr", "solar", "gist", "lse", "deforestation", "admins", "heat", "spa", "wmo_cli", "mb_deforest"]:
             if key in results:
                 r = results[key]
                 brief = server_cfg.get(key, {}).get("brief", key)
@@ -1893,7 +1913,7 @@ Instructions:
                 CRITICAL: NEVER generate, invent, or guess data values! Only visualize data that has been explicitly provided to you from other servers.
                 
                 - If you don't have specific data, DO NOT create placeholder values
-                - Wait for actual data from kg, lse, or other servers before creating visualizations
+                - Wait for actual data
                 - Use 'CreateDataTable' ONLY when you have real data to display
                   * CRITICAL DATA FORMAT: Pass percentages as whole numbers (45 for 45%, NOT 0.45)
                   * CRITICAL DATA FORMAT: Pass years as integers (2030, NOT "2030" or 2,030)
@@ -1924,6 +1944,25 @@ Instructions:
                 - Use 'GetDeforestationWithMap' to generate visualization maps
                 - These tools return polygon geometries that auto-register for spatial correlation
                 - The polygon data enables geographic overlap analysis with other datasets"""
+            },
+            "wmo_cli": {
+                "brief": "WMO/IPCC climate assessment passages (heat, drought, extremes, adaptation)",
+                "detailed": "Semantic retrieval over the WMO State of the Climate in Latin America and Caribbean 2024 report plus IPCC AR6 Chapter 11 and 12 documents. Returns text snippets with page-level citations for climate extremes, attribution, and region-specific adaptation insights.",
+                "collection_instructions": """Tool usage strategy for WMO/IPCC passages:
+                - Start with 'WMOIPCCReportSearch' when scoping relevant excerpts
+                - Use 'WMOReportAsk' for WMO-LAC 2024 insight synthesis
+                - Use 'IPCCCh11ReportAsk' for extreme events framing and attribution
+                - Use 'IPCCCh12ReportAsk' for Central/South America adaptation & impacts
+                - Always extract key sentences with page numbers for citations; avoid paraphrasing without evidence"""
+            },
+            "mb_deforest": {
+                "brief": "MapBiomas Annual Deforestation Report passages",
+                "detailed": "Retrieves passages from the MapBiomas Annual Deforestation (RAD) 2024 report highlighting land-use change, biome trends, and enforcement narratives.",
+                "collection_instructions": """Tool usage strategy for MapBiomas passages:
+                - Use 'MBReportSearch' to gather context snippets for a topic or biome
+                - Use 'MBReportAsk' when a synthesized answer referencing MapBiomas evidence is required
+                - Each passage includes file & page metadata; collect 2–4 relevant excerpts for solid citations
+                - Prioritize quantitative figures (hectares, %, enforcement totals) and note the timeframe"""
             },
             "admin": {
                 "brief": "Brazilian administrative boundaries",
@@ -3348,6 +3387,62 @@ Instructions:
                     return facts
 
                 # Extract facts based on data type
+                rag_passages_servers = {"spa", "wmo_cli", "mb_deforest"}
+                if server_name in rag_passages_servers and isinstance(result_data.get("passages"), list):
+                    passages = result_data.get("passages", [])
+                    for idx, snippet in enumerate(passages):
+                        if not isinstance(snippet, dict):
+                            continue
+                        doc_id = snippet.get("doc_id") or snippet.get("file") or f"{server_name}_doc_{idx}"
+                        file_path = snippet.get("file") or ""
+                        file_name = Path(file_path).name if file_path else doc_id
+                        page = snippet.get("page")
+                        chunk_id = snippet.get("chunk_id") or f"{doc_id}::chunk_{idx}"
+                        text = snippet.get("text") or snippet.get("preview") or ""
+                        preview = snippet.get("preview") or text[:160]
+                        desc = preview[:120] + ("..." if len(preview) > 120 else "")
+                        if page is not None:
+                            desc = f"{desc} (p.{page})"
+
+                        citation = Citation(
+                            source_name=file_name,
+                            tool_id=f"{tool_name}:{chunk_id}",
+                            source_type=self._get_source_type_for_server(server_name),
+                            description=desc,
+                            server_origin=server_name,
+                            source_url=self._resolve_source_url(server_name, tool_name),
+                            metadata={
+                                "tool_args": tool_args,
+                                "doc_id": doc_id,
+                                "page": page,
+                                "chunk_id": chunk_id,
+                            }
+                        )
+
+                        fact_text = text[:240] + ("..." if len(text) > 240 else "") if text else desc
+
+                        facts.append(Fact(
+                            text_content=fact_text,
+                            source_key=f"{server_name}_{chunk_id}",
+                            server_origin=server_name,
+                            metadata={"tool": tool_name, "raw_result": snippet},
+                            citation=citation
+                        ))
+
+                    # Add a summary fact referencing the first passage when available
+                    if passages:
+                        first_chunk = passages[0] if isinstance(passages[0], dict) else {}
+                        first_file = first_chunk.get("file") or first_chunk.get("doc_id") or server_name.upper()
+                        summary_citation = facts[0].citation if facts else base_citation
+                        facts.append(Fact(
+                            text_content=f"Retrieved {len(passages)} evidence snippets from {Path(first_file).name if isinstance(first_file, str) else first_file}",
+                            source_key=f"{server_name}_{tool_name}_summary",
+                            server_origin=server_name,
+                            metadata={"tool": tool_name, "raw_result": passages},
+                            citation=summary_citation
+                        ))
+                    return facts
+
                 if isinstance(result_data, list):
                     # Special handling: KG passage lists with span metadata
                     if server_name == "cpr"and result_data and isinstance(result_data[0], dict) and (
@@ -3844,10 +3939,13 @@ Instructions:
             "gist": "GIST Impact Database",
             "lse": "LSE Climate Policy Database",
             "heat": "PlanetSapling Heat Stress (Brazil 2020–2025)",
-            "formatter": "Response Formatter"
+            "formatter": "Response Formatter",
+            "spa": "Science Panel for the Amazon Reports",
+            "wmo_cli": "WMO & IPCC Climate Assessments",
+            "mb_deforest": "MapBiomas Annual Deforestation Report (2024)"
         }
         return source_names.get(server_name, server_name.upper())
-    
+
     def _get_source_type_for_server(self, server_name: str) -> str:
         """Get the source type for a server."""
         source_types = {
@@ -3857,7 +3955,10 @@ Instructions:
             "gist": "Database",
             "lse": "Database",
             "heat": "Dataset",
-            "formatter": "Tool"
+            "formatter": "Tool",
+            "spa": "Report",
+            "wmo_cli": "Report",
+            "mb_deforest": "Report"
         }
         return source_types.get(server_name, "Database")
 
@@ -6140,11 +6241,11 @@ GOOD START: "Country X commits to achieving [specific %] renewable energy by [ye
 BAD START: "Country X has a comprehensive climate policy framework with many facilities..."
 
 For energy-related NDC queries, PRIORITIZE mentioning:
-- ALL quantitative targets with their units (percentages, TWh, MW, GW)
-- Specific fuel or technology commitments (biofuels, solar, wind, hydro, nuclear)
-- Sectoral targets (electricity, transport, industry, buildings)
-- Timeline commitments with specific years
-- Implementation status if mentioned in facts
+-- ALL quantitative targets with their units (percentages, TWh, MW, GW)
+-- Specific fuel or technology commitments (biofuels, solar, wind, hydro, nuclear)
+-- Sectoral targets (electricity, transport, industry, buildings)
+-- Timeline commitments with specific years
+-- Implementation status if mentioned in facts
 
 Structure:
 1. First paragraph: Direct answer with key facts
@@ -6169,15 +6270,17 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
                     "You synthesize facts into clear, informative responses with proper citations. "
                     "STRICT GUARDRails: \n"
                     "- Use ONLY the provided facts; never infer missing dimensions.\n"
-                    "- If a requested dimension is ABSENT in facts (e.g., social vulnerability/SVI), explicitly state it is not available and DO NOT claim it.\n"
+                    "- If a REQUESTED dimension is ABSENT in facts (e.g., social vulnerability/SVI), explicitly state it is not available and DO NOT claim it.\n"
                     "- If using a proxy, NAME it. For weak renewable access, the ONLY acceptable proxy is 'low solar facility presence/density'; DO NOT call this 'vulnerability', 'electrification rate', or 'grid reliability'.\n"
                     "- DO NOT produce numeric totals (e.g., population) unless the facts include a computed number or a table specifying it. Never guess or back-solve.\n"
                     "- Each declarative claim MUST be traceable to a fact and include a [CITE_X] placeholder.\n"
                     "- Do NOT introduce institutions (e.g., BNDES, Caixa, UNDP, GEF) unless a fact explicitly mentions them; otherwise omit.\n"
                     "- Prefer concise, qualified statements over confident generalizations when evidence is partial."
+                    "- Your tone should flow nicely from one sentence to the next, but avoid overly complex language or jargon. Aim for clarity and accessibility."
+                    "- Don't just "
                 ),
                 user_prompt=prompt,
-                max_tokens=2000
+                max_tokens=8192
             )
             return response
         except Exception as e:
@@ -6274,6 +6377,38 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
         
         return final_text
     
+    @staticmethod
+    def _normalize_chart_payload(numerical_data: Any, data_type: Optional[str]) -> Optional[List[Any]]:
+        """Normalize numerical data into a list payload suitable for create_smart_chart."""
+        if not numerical_data:
+            return None
+
+        if isinstance(numerical_data, list):
+            return numerical_data if numerical_data else None
+
+        if not isinstance(numerical_data, dict):
+            return None
+
+        values = numerical_data.get("values")
+        if isinstance(values, list) and values:
+            if data_type == "comparison":
+                categories = numerical_data.get("categories")
+                if isinstance(categories, list) and categories:
+                    paired = [
+                        {"category": category, "value": value}
+                        for category, value in zip(categories, values)
+                        if category is not None and value is not None
+                    ]
+                    if paired:
+                        return paired
+            return values
+
+        data_items = numerical_data.get("data")
+        if isinstance(data_items, list) and data_items:
+            return data_items
+
+        return None
+
     async def _create_chart_modules(self, facts: List[Fact]) -> List[Dict]:
         """
         Create Chart.js modules deterministically from tool-provided specs or numerical facts.
@@ -6317,15 +6452,28 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
             numerical_facts = [f for f in facts if f.numerical_data and f.data_type in ['time_series', 'comparison']]
             for fact in numerical_facts:
                 try:
-                    chart_config = await self.client.call_tool(
+                    chart_payload = self._normalize_chart_payload(fact.numerical_data, fact.data_type)
+                    if not chart_payload:
+                        continue
+
+                    chart_result = await self.client.call_tool(
                         tool_name="create_smart_chart",
                         tool_args={
-                            "data": fact.numerical_data.get("values", []) or fact.numerical_data,
+                            "data": chart_payload,
                             "context": f"{fact.data_type}: {fact.text_content}",
                             "title": self._generate_chart_title(fact)
                         },
                         server_name="viz"
                     )
+
+                    # Extract data from MCP result
+                    chart_config = {}
+                    if hasattr(chart_result, 'content') and chart_result.content:
+                        import json as _json
+                        chart_config = _json.loads(chart_result.content[0].text)
+                    elif isinstance(chart_result, dict):
+                        chart_config = chart_result
+
                     modules.append({
                         "type": "chart",
                         "chartType": chart_config["type"],
@@ -7073,52 +7221,52 @@ if __name__ == "__main__":
 # =============================================================================
 
 # Keys that often contain very large payloads or raw GeoJSON
-SENSITIVE_BIG_KEYS = {
-    "features", "geometry", "geojson", "coordinates", "data", "polygons", "points"
-}
+# SENSITIVE_BIG_KEYS = {
+#     "features", "geometry", "geojson", "coordinates", "data", "polygons", "points"
+# }
 
 def _truncate_string(s: str, max_len: int = 4000) -> str:
     if len(s) <= max_len:
         return s
     return s[:max_len] + f"... [truncated {len(s)-max_len} chars]"
 
-def _sanitize_obj_for_llm(obj: Any, removed_counts: Optional[Dict[str, int]] = None, max_list_len: int = 50) -> Any:
-    """Recursively sanitize an object for safe inclusion in LLM messages.
+# def _sanitize_obj_for_llm(obj: Any, removed_counts: Optional[Dict[str, int]] = None, max_list_len: int = 50) -> Any:
+#     """Recursively sanitize an object for safe inclusion in LLM messages.
 
-    - Removes or summarizes large/geo structures (features/geometry/geojson/coordinates/data).
-    - Truncates long arrays and strings.
-    - Tracks removed elements per key in removed_counts.
-    """
-    from collections.abc import Mapping, Sequence
-    if removed_counts is None:
-        removed_counts = {}
+#     - Removes or summarizes large/geo structures (features/geometry/geojson/coordinates/data).
+#     - Truncates long arrays and strings.
+#     - Tracks removed elements per key in removed_counts.
+#     """
+#     from collections.abc import Mapping, Sequence
+#     if removed_counts is None:
+#         removed_counts = {}
 
-    if isinstance(obj, Mapping):
-        out = {}
-        for k, v in obj.items():
-            kl = str(k).lower()
-            if kl in SENSITIVE_BIG_KEYS:
-                # summarize rather than include raw
-                try:
-                    length = len(v) if hasattr(v, '__len__') else 1
-                except Exception:
-                    length = 1
-                removed_counts[kl] = removed_counts.get(kl, 0) + length
-                out[k] = {"_omitted_for_llm": True, "_approx_count": length}
-            else:
-                out[k] = _sanitize_obj_for_llm(v, removed_counts, max_list_len)
-        return out
-    elif isinstance(obj, str):
-        return _truncate_string(obj, 2000)
-    elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
-        # Truncate very long lists
-        if len(obj) > max_list_len:
-            head = [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj[:max_list_len]]
-            return head + [{"_omitted_for_llm": True, "_omitted_items": len(obj) - max_list_len}]
-        else:
-            return [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj]
-    else:
-        return obj
+#     if isinstance(obj, Mapping):
+#         out = {}
+#         for k, v in obj.items():
+#             kl = str(k).lower()
+#             if kl in SENSITIVE_BIG_KEYS:
+#                 # summarize rather than include raw
+#                 try:
+#                     length = len(v) if hasattr(v, '__len__') else 1
+#                 except Exception:
+#                     length = 1
+#                 removed_counts[kl] = removed_counts.get(kl, 0) + length
+#                 out[k] = {"_omitted_for_llm": True, "_approx_count": length}
+#             else:
+#                 out[k] = _sanitize_obj_for_llm(v, removed_counts, max_list_len)
+#         return out
+#     elif isinstance(obj, str):
+#         return _truncate_string(obj, 2000)
+#     elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+#         # Truncate very long lists
+#         if len(obj) > max_list_len:
+#             head = [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj[:max_list_len]]
+#             return head + [{"_omitted_for_llm": True, "_omitted_items": len(obj) - max_list_len}]
+#         else:
+#             return [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj]
+#     else:
+#         return obj
 
 def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
     """Create a safe, compact string for the tool_result content sent back to the LLM.
@@ -7136,11 +7284,13 @@ def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
                 # Try JSON parse
                 try:
                     data = json.loads(txt)
-                    sanitized = _sanitize_obj_for_llm(data, removed_counts)
-                    payload_str = json.dumps(sanitized, ensure_ascii=False)
+                    # DISABLED SANITIZATION - pass through data directly
+                    # sanitized = _sanitize_obj_for_llm(data, removed_counts)
+                    # payload_str = json.dumps(sanitized, ensure_ascii=False)
+                    payload_str = json.dumps(data, ensure_ascii=False)
                 except json.JSONDecodeError:
                     # Not JSON; just truncate text
-                    payload_str = _truncate_string(txt, 4000)
+                    payload_str = _truncate_string(txt, 10000)  # Increased limit
         if payload_str is None:
             payload_str = _truncate_string(str(result), 4000)
     except Exception as e:

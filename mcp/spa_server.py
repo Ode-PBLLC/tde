@@ -38,17 +38,34 @@ def _embed_query(text: str) -> List[float]:
     emb = oai.embeddings.create(model="text-embedding-3-small", input=[text])
     return emb.data[0].embedding
 
-def _search(query: str, k: int) -> List[Dict[str,Any]]:
+def _search(query: str, k: int) -> List[Dict[str, Any]]:
     col = _col()
     qvec = _embed_query(query)
-    res = col.query(query_embeddings=[qvec], n_results=k, include=["documents","metadatas","distances"])
-    docs  = res.get("documents", [[]])[0]
+    res = col.query(
+        query_embeddings=[qvec],
+        n_results=k,
+        include=["documents", "metadatas", "distances"],
+    )
+    docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
     out = []
-    for txt, md, dist in zip(docs, metas, dists):
+    for idx, (txt, md, dist) in enumerate(zip(docs, metas, dists)):
         sim = 1.0 - float(dist) if dist is not None else 0.0
-        out.append({"text": txt, "file": md.get("file"), "page": md.get("page"), "similarity": round(sim, 4)})
+        file_path = md.get("file")
+        doc_id = Path(file_path).stem if file_path else f"doc_{idx}"
+        preview = (txt or "")[:240]
+        out.append(
+            {
+                "doc_id": doc_id,
+                "file": file_path,
+                "page": md.get("page"),
+                "text": txt,
+                "preview": preview,
+                "similarity": round(sim, 4),
+                "chunk_id": f"{doc_id}::chunk_{idx}",
+            }
+        )
     return out
 
 # --- tool: list (renamed) ---
@@ -66,9 +83,9 @@ def AmazonAssessmentListDocs(limit: int = 50) -> List[Dict[str,Any]]:
 
 # --- tool: search (renamed) ---
 @mcp.tool()
-def AmazonAssessmentSearch(query: str, k: int = TOP_K) -> List[Dict[str,Any]]:
+def AmazonAssessmentSearch(query: str, k: int = TOP_K) -> List[Dict[str, Any]]:
     """
-    Vector search over the SPA (Amazon Assessment) index. Returns top-k chunks with file/page/similarity.
+    Vector search over the SPA (Amazon Assessment) index. Returns top-k chunks with document metadata.
     """
     return _search(query, k)
 
@@ -81,13 +98,15 @@ def AmazonAssessmentAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Di
     """
     hits = _search(query, k)
     if not hits:
-        return {"answer": "No relevant snippets found in the Amazon Assessment index.", "citations": []}
+        return {"answer": "No relevant snippets found in the Amazon Assessment index.", "passages": []}
 
-    def cite(h):
-        from pathlib import Path
-        return f"[{Path(h['file']).name} p.{h['page']}] {h['text'][:300]}"
+    def cite(snippet):
+        file_name = Path(snippet["file"]).name if snippet.get("file") else snippet["doc_id"]
+        page = snippet.get("page")
+        location = f" p.{page}" if page is not None else ""
+        return f"[{file_name}{location}] {snippet['text'][:300]}"
 
-    context = "\n\n".join(cite(h) for h in hits)
+    context = "\n\n".join(cite(snippet) for snippet in hits)
 
     system_prompt = (
         "You are responding as a subject-matter expert of the Science Panel for the Amazon (SPA). "
@@ -115,13 +134,13 @@ def AmazonAssessmentAsk(query: str, k: int = TOP_K, max_tokens: int = 800) -> Di
         )
         answer = resp.choices[0].message.content.strip()
     except Exception as e:
-        return {"answer": f"LLM error: {e}", "citations": hits}
+        return {"answer": f"LLM error: {e}", "passages": hits}
 
-    citations_snippets = [
-        {"file": h["file"], "page": h["page"], "text": h["text"], "similarity": h["similarity"]}
-        for h in hits
-    ]
-    return {"answer": answer, "citations_snippets": citations_snippets}
+    return {
+        "answer": answer,
+        "passages": hits,
+        "metadata": {"model": CHAT_MODEL, "top_k": k},
+    }
 
 if __name__ == "__main__":
     print("SPA MCP server ready (using existing index).")
