@@ -427,6 +427,7 @@ class Citation:
     source_type: str  # e.g., "Database"
     description: str  # e.g., "Company water risk data"
     server_origin: str  # Which MCP server provided this
+    source_url: str = ""  # Public URL to the dataset/provider page (for dataset/database sources)
     metadata: Dict[str, Any] = field(default_factory=dict)  # Additional context
     
     def to_table_row(self, citation_number: int) -> List[str]:
@@ -436,7 +437,8 @@ class Citation:
             self.source_name,
             self.tool_id,
             self.source_type,
-            self.description
+            self.description,
+            self.source_url or ""
         ]
 
 
@@ -603,7 +605,7 @@ class CitationRegistry:
         return {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
             "rows": rows
         }
 
@@ -906,22 +908,24 @@ async def get_global_client() -> MultiServerClient:
             mcp_dir = os.path.join(project_root, "mcp")
             
             try:
-                # Connect to all MCP servers (formatter removed - now using direct functions)
-                await _global_client.connect_to_server("kg", os.path.join(mcp_dir, "cpr_kg_server.py"))
+                await _global_client.connect_to_server("cpr", os.path.join(mcp_dir, "cpr_kg_server.py"))
                 await _global_client.connect_to_server("solar", os.path.join(mcp_dir, "solar_facilities_server.py"))
                 await _global_client.connect_to_server("gist", os.path.join(mcp_dir, "gist_server.py"))
                 await _global_client.connect_to_server("lse", os.path.join(mcp_dir, "lse_server.py"))
                 await _global_client.connect_to_server("viz", os.path.join(mcp_dir, "viz_server.py"))
-                # Add new geospatial servers
+                
+                # Add geospatial servers
                 await _global_client.connect_to_server("deforestation", os.path.join(mcp_dir, "deforestation_server.py"))
                 await _global_client.connect_to_server("geospatial", os.path.join(mcp_dir, "geospatial_server.py"))
-                await _global_client.connect_to_server("municipalities", os.path.join(mcp_dir, "brazilian_municipalities_server.py"))
-                # Heat stress quintiles
-                try:
-                    await _global_client.connect_to_server("heat", os.path.join(mcp_dir, "heat_stress_server.py"))
-                    print("Connected to heat-stress server")
-                except Exception as e:
-                    print(f"Failed to connect heat-stress server: {e}")
+                await _global_client.connect_to_server("municipalities", os.path.join(mcp_dir, "brazilian_admin_server.py"))
+                await _global_client.connect_to_server("heat", os.path.join(mcp_dir, "heat_stress_server.py"))
+                
+                await _global_client.connect_to_server("meta", os.path.join(mcp_dir, "meta_server.py"))
+
+                # Add RAG Servers
+                await _global_client.connect_to_server("spa-server", os.path.join(mcp_dir, "spa_server.py"))
+
+
                 print("Global MCP client initialized successfully with geospatial and municipality capabilities")
             except Exception as e:
                 print(f"Error initializing global MCP client: {e}")
@@ -1070,8 +1074,11 @@ class QueryOrchestrator:
         Returns:
             True if relevant, False if off-topic
         """
+        print("Checking query relevance...")
         # Allow meta/capability/help queries up front so onboarding isn't blocked
-        if self._is_meta_query(user_query):
+        if await self._is_meta_query(user_query):
+            # Log query and result
+            print(f"✅ Meta/capability query detected, treating as relevant: {user_query[:100]}...")
             return True
         # If there's conversation history, include it in the relevance check
         if self.conversation_history and len(self.conversation_history) > 0:
@@ -1085,86 +1092,88 @@ class QueryOrchestrator:
             
             relevance_prompt = f"""Determine if this query is relevant given the conversation context.
 
-CONVERSATION CONTEXT:
-{recent_context}
+            CONVERSATION CONTEXT:
+            {recent_context}
 
-CURRENT QUERY: "{user_query}"
+            CURRENT QUERY: "{user_query}"
 
-Our domain includes:
-- Climate change, impacts, and policies
-- Environmental data and sustainability
-- Energy systems, renewable energy, solar facilities
-- Corporate environmental performance and ESG
-- Water resources, biodiversity, and ecosystems
-- Environmental regulations, NDCs, and climate governance
-- Physical climate risks (floods, droughts, heat stress)
-- GHG emissions and carbon footprint
-- Environmental justice and climate adaptation
+            Our domains includes:
+            - Climate change, impacts, and policies
+            - Environmental data and sustainability
+            - Energy systems, renewable energy, solar facilities
+            - Corporate environmental performance and ESG
+            - Water resources, biodiversity, and ecosystems
+            - Environmental regulations, NDCs, and climate governance
+            - Physical climate risks (floods, droughts, heat stress)
+            - GHG emissions and carbon footprint
+            - Environmental justice and climate adaptation
 
-Additionally, ALWAYS treat as relevant any meta questions about the assistant/app itself, including:
-- What you can do or talk about (capabilities, topics, features, examples)
-- What data/sources/datasets you have
-- How to use the app or how it works
-- Who/what the assistant is
+            Additionally, ALWAYS treat as relevant any meta questions about the assistant/app itself, including:
+            - What you can do or talk about (capabilities, topics, features, examples)
+            - What data/sources/datasets you have
+            - How to use the app or how it works
+            - Who/what the assistant is
 
-IMPORTANT: If the query refers to or follows up on ANYTHING from the conversation context above,
-it is IMMEDIATELY RELEVANT (answer YES), even if it doesn't explicitly mention climate/environment terms.
+            IMPORTANT: If the query refers to or follows up on ANYTHING from the conversation context above,
+            it is IMMEDIATELY RELEVANT (answer YES), even if it doesn't explicitly mention climate/environment terms.
 
-Examples of relevant follow-ups:
-- "What about the totals?" (referring to previous data)
-- "Tell me more about that" (referring to previous topic)
-- "How does that compare?" (referring to previous information)
-- "Summarize what you just said" (referring to previous response)
-- "Remind me about X" (where X was discussed earlier)
+            Examples of relevant follow-ups:
+            - "What about the totals?" (referring to previous data)
+            - "Tell me more about that" (referring to previous topic)
+            - "How does that compare?" (referring to previous information)
+            - "Summarize what you just said" (referring to previous response)
+            - "Remind me about X" (where X was discussed earlier)
 
-Answer YES if:
-1. The query is about climate/environment topics, OR
-2. The query refers to information from the conversation context
+            Answer YES if:
+            1. The query is about climate/environment topics, OR
+            2. The query refers to information from the conversation context
 
-Answer NO only if:
-- It's completely unrelated to both our domain AND the conversation context
-- It's asking about personal preferences, entertainment, or other clearly off-topic subjects
+            Answer NO only if:
+            - It's completely unrelated to both our domain AND the conversation context
+            - It's asking about personal preferences, entertainment, or other clearly off-topic subjects
 
-Answer (YES/NO):"""
+            Answer (YES/NO):"""
         else:
             # No conversation history - use standard relevance check
             relevance_prompt = f"""Determine if this query is related to our domain of expertise.
 
-Our domain includes:
-- Climate change, impacts, and policies
-- Environmental data and sustainability
-- Energy systems, renewable energy, solar facilities
-- Corporate environmental performance and ESG
-- Water resources, biodiversity, and ecosystems
-- Environmental regulations, NDCs, and climate governance
-- Physical climate risks (floods, droughts, heat stress)
-- GHG emissions and carbon footprint
-- Environmental justice and climate adaptation
+            Our domain includes:
+            - Climate change, impacts, and policies
+            - Environmental data and sustainability
+            - Energy systems, renewable energy, solar facilities
+            - Corporate environmental performance and ESG
+            - Water resources, biodiversity, and ecosystems
+            - Environmental regulations, NDCs, and climate governance
+            - Physical climate risks (floods, droughts, heat stress)
+            - GHG emissions and carbon footprint
+            - Environmental justice and climate adaptation
 
-ALSO IN-SCOPE: Meta questions about the assistant/app itself, including:
-- What we can do or talk about (capabilities, topics, features, examples)
-- What data/sources/datasets we have
-- How to use the app or how it works
-- Who/what the assistant is
+            ALSO IN-SCOPE: Meta questions about the assistant/app itself, including:
+            - What we can do or talk about (capabilities, topics, features, examples)
+            - What data/sources/datasets we have
+            - How to use the app or how it works
+            - Who/what the assistant is
 
-The query: "{user_query}"
+            The query: "{user_query}"
 
-Answer with just YES if the query is related to our domain, or NO if it's about:
-- Personal preferences or opinions unrelated to environment
-- General knowledge, trivia, or entertainment
-- Programming, math, or technical topics unrelated to climate
-- Medical, legal, or financial advice unrelated to climate
-- Other topics clearly outside environmental/climate scope
+            Answer with just YES if the query is related to our domain, or NO if it's about:
+            - Personal preferences or opinions unrelated to environment
+            - General knowledge, trivia, or entertainment
+            - Programming, math, or technical topics unrelated to climate
+            - Medical, legal, or financial advice unrelated to climate
+            - Other topics clearly outside environmental/climate scope
 
-Answer (YES/NO):"""
+            Answer (YES/NO):"""
         
         try:
-            response = await call_small_model(
+            response = await call_large_model(
                 system="You are a query classifier. Respond with only YES or NO.",
                 user_prompt=relevance_prompt,
                 max_tokens=10,
                 temperature=0
             )
+
+            print("Relevance check response:", response)
             
             # Check response
             response_lower = response.strip().lower()
@@ -1185,21 +1194,34 @@ Answer (YES/NO):"""
             print(f"⚠️ Relevance check failed: {e}. Defaulting to processing query.")
             return True
 
-    def _is_meta_query(self, user_query: str) -> bool:
-        """Detects capability/help/identity queries that should be answered directly."""
-        q = (user_query or "").strip().lower()
-        triggers = [
-            # Capabilities / help / onboarding
-            "what can you do", "what can you talk about", "what topics", "what do you cover",
-            "what data do you have", "what datasets", "what data sources", "what sources",
-            "capabilities", "features", "how to use", "how should i ask", "examples",
-            "sample queries", "help", "commands", "how does this work", "how do you work",
-            # Identity / about
-            "who are you", "what are you", "what is this app", "what is this",
-            # Safety / privacy / limits
-            "privacy", "terms", "limitations", "limit", "scope of the app"
-        ]
-        return any(t in q for t in triggers)
+    async def _is_meta_query(self, user_query: str) -> bool:
+        """
+        Uses the small model to check if the user query is about the project/app itself
+        (capabilities, help, identity, datasets, etc).
+        """
+        prompt = f"""Is the following query asking about the assistant's capabilities, features, datasets, data sources, how to use the app, or about the assistant/app itself (identity, privacy, limitations, etc)? 
+
+            Query: "{user_query}"
+
+            Answer YES if the query is about what the assistant/app can do, its features, datasets, sources, how to use it, or about the assistant/app itself. 
+            Answer NO if the query is about any substantive climate/environmental topic or data.
+
+            Respond with only YES or NO."""
+        try:
+            response = await call_small_model(
+                system="You classify queries as meta/capability/identity or not. Reply YES or NO.",
+                user_prompt=prompt,
+                max_tokens=10,
+                temperature=0
+            )
+            return "yes" in response.strip().lower()
+        except Exception as e:
+            print(f"Meta query check failed: {e}")
+            # Fallback to old heuristic if LLM fails
+            q = (user_query or "").strip().lower()
+            triggers = ["what can you do", "your capabilities", "what data", "what datasets", "how to use", "how do i", "who are you", "what is this", "help"
+            ]
+            return any(t in q for t in triggers)
 
     async def _create_capabilities_response(self, user_query: str) -> Dict:
         """Build a dynamic capabilities + datasets overview from live server metadata."""
@@ -1218,13 +1240,13 @@ Answer (YES/NO):"""
         # Issue metadata calls concurrently where available
         calls = []
         # Prefer DescribeServer() if available; fall back to metadata/stat tools
-        for name, server in [("kg", "kg"), ("solar", "solar"), ("gist", "gist"), ("lse", "lse"), ("deforestation", "deforestation"), ("municipalities", "municipalities"), ("heat", "heat"), ("geospatial", "geospatial"), ("viz", "viz")]:
+        for name, server in [("cpr", "cpr"), ("solar", "solar"), ("gist", "gist"), ("lse", "lse"), ("deforestation", "deforestation"), ("municipalities", "municipalities"), ("heat", "heat"), ("geospatial", "geospatial"), ("viz", "viz")]:
             try:
                 calls.append((name, self.client.call_tool("DescribeServer", {}, server)))
             except Exception:
                 # Fallbacks by server
                 try:
-                    if name == "kg":
+                    if name == "cpr":
                         calls.append((name, self.client.call_tool("GetKGDatasetMetadata", {}, server)))
                     elif name == "solar":
                         calls.append((name, self.client.call_tool("GetSolarDatasetMetadata", {}, server)))
@@ -1261,7 +1283,7 @@ Answer (YES/NO):"""
             m = r.get("metrics", {}) if isinstance(r, dict) else {}
             updated = r.get("last_updated") if isinstance(r, dict) else None
             upd_str = f"; updated {updated[:10]}" if isinstance(updated, str) and len(updated) >= 10 else ""
-            if name_key == "kg":
+            if name_key == "cpr":
                 concepts = m.get('concepts', m.get('concept_count', 0))
                 passages = m.get('passages', m.get('passage_count', 0))
                 nodes = m.get('graph_nodes', 0)
@@ -1294,19 +1316,19 @@ Answer (YES/NO):"""
             return ""
 
         friendly_names = {
-            "kg": "Knowledge Graph",
+            "cpr": "Knowledge Graph",
             "solar": "Solar Facilities",
             "gist": "Corporate Environmental Metrics (GIST)",
-            "lse": "Climate Policy (LSE)",
+            "lse": "LSE (and Friends) Governance Data",
             "deforestation": "Deforestation (Brazil)",
-            "municipalities": "Brazilian Municipalities",
+            "admins": "Brazilian Administrative Boundaries",
             "heat": "Heat Stress Layers",
             "geospatial": "Geospatial Correlation",
             "viz": "Visualization"
         }
         # Show datasets only (exclude engines like geospatial/viz)
         included_keys = set()
-        for key in ["kg", "solar", "gist", "lse", "deforestation", "municipalities", "heat"]:
+        for key in ["cpr", "solar", "gist", "lse", "deforestation", "admins", "heat"]:
             if key in results:
                 r = results[key]
                 brief = server_cfg.get(key, {}).get("brief", key)
@@ -1379,22 +1401,24 @@ Answer (YES/NO):"""
         redirect_module = {
             "type": "text",
             "heading": "Let me help you with climate and environmental topics",
-            "content": """I'm specialized in climate policy, environmental data, and sustainability topics. I can help you with questions about:
+            "content": """
+            
+            Unfortunately I can't help you with that, but I can assist with many climate and environmental topics. I can help you with questions about:
 
-• **Climate Policy**: National climate strategies, NDCs, carbon pricing, adaptation plans
-• **Renewable Energy**: Solar facilities, wind power, renewable capacity by country/region
-• **Corporate Sustainability**: Company environmental impacts, water stress, GHG emissions
-• **Physical Climate Risks**: Floods, droughts, heat exposure, extreme weather impacts
-• **Environmental Data**: Biodiversity loss, deforestation, water resources, air quality
+            • **Climate Policy**: National climate strategies, NDCs, carbon pricing, adaptation plans
+            • **Renewable Energy**: Solar facilities, wind power, renewable capacity by country/region
+            • **Corporate Sustainability**: Company environmental impacts, water stress, GHG emissions
+            • **Physical Climate Risks**: Floods, droughts, heat exposure, extreme weather impacts
+            • **Environmental Data**: Biodiversity loss, deforestation, water resources, air quality
 
-**Example questions you could ask:**
-- "What are the water stress risks for major companies in Brazil?"
-- "Show me solar capacity growth in India over the last 5 years"
-- "How are financial institutions addressing climate risks?"
-- "What climate adaptation policies has Nigeria implemented?"
-- "Compare renewable energy deployment between China and the US"
+            **Example questions you could ask:**
+            - "What are the water stress risks for major companies in Brazil?"
+            - "Show me solar capacity growth in India over the last 5 years"
+            - "How are financial institutions addressing climate risks?"
+            - "What climate adaptation policies has Nigeria implemented?"
+            - "Compare renewable energy deployment between China and the US"
 
-How can I help you explore climate and environmental topics today?"""
+            How can I help you explore climate and environmental topics today?"""
         }
         
         return {
@@ -1429,17 +1453,17 @@ How can I help you explore climate and environmental topics today?"""
         
         classification_prompt = f"""Classify this follow-up query based on the conversation context.
 
-Recent exchange:
-{recent_exchange}
+        Recent exchange:
+        {recent_exchange}
 
-Current query: "{user_query}"
+        Current query: "{user_query}"
 
-Classification rules:
-- "follow_up_simple": Query asks for clarification, specific details, or facts already mentioned in previous response (e.g., "How many?", "What was the capacity?", "Tell me more about X that you mentioned")
-- "follow_up_complex": Query extends the topic but needs some new data (e.g., "What about other countries?", "Show me trends over time")
-- "new_topic": Query is unrelated to previous discussion or asks about completely different aspect
+        Classification rules:
+        - "follow_up_simple": Query asks for clarification, specific details, or facts already mentioned in previous response (e.g., "How many?", "What was the capacity?", "Tell me more about X that you mentioned")
+        - "follow_up_complex": Query extends the topic but needs some new data (e.g., "What about other countries?", "Show me trends over time")
+        - "new_topic": Query is unrelated to previous discussion or asks about completely different aspect
 
-Return ONLY one of: follow_up_simple, follow_up_complex, new_topic"""
+        Return ONLY one of: follow_up_simple, follow_up_complex, new_topic"""
         
         try:
             response = await call_small_model(
@@ -1481,18 +1505,18 @@ Return ONLY one of: follow_up_simple, follow_up_complex, new_topic"""
             return False, "Query requires additional data beyond cached context"
         else:  # follow_up_simple
             # Check if we have relevant facts to answer
-            fact_summary = "\n".join([f"- {fact.text_content[:100]}..." for fact in self.cached_facts[:10]])
+            fact_summary = "\n".join([f"- {fact.text_content}..." for fact in self.cached_facts])
             
             check_prompt = f"""Can this query be answered using ONLY the available facts?
 
-Query: "{user_query}"
+            Query: "{user_query}"
 
-Available facts:
-{fact_summary}
+            Available facts:
+            {fact_summary}
 
-Previous response included: {self.cached_response_text[:500]}...
+            Previous response included: {self.cached_response_text}...
 
-Answer with YES if the facts contain the specific information needed, or NO if new data is required."""
+            Answer with YES if the facts contain the specific information needed, or NO if new data is required."""
             
             try:
                 response = await call_small_model(
@@ -1653,7 +1677,7 @@ Instructions:
                 return self._create_redirect_response(user_query)
 
             # If this is a meta/capability/identity query, return a capabilities overview
-            if self._is_meta_query(user_query):
+            if await self._is_meta_query(user_query):
                 return await self._create_capabilities_response(user_query)
             
             # Initialize fact tracer for debugging if enabled
@@ -1776,14 +1800,12 @@ Instructions:
         Each server has:
         - brief: One-line description for pre-filter
         - detailed: Comprehensive capability list for scout phase
-        - routing_prompt: Specific instructions for relevance determination
         - collection_instructions: How to effectively use tools during Phase 1
         """
         return {
-            "kg": {
+            "cpr": {
                 "brief": "Climate Knowledge Graph with physical & transition risks, energy systems, financial climate impacts",
-                "detailed": "Knowledge graph containing climate risk data, energy system information, financial climate impacts, physical risks (floods, droughts, heat), transition risks (policy, technology, market), sectoral analysis, and interconnected climate-finance relationships",
-                "routing_prompt": "Analyze if this query relates to policies, passages/citations, concept relationships/paths, or sector-specific climate analysis. Prefer KG for policy answers.",
+                "detailed": "This dataset is a knowledge graph of climate/environment related concepts applied to POLICY documents. This dataset is especially useful is policy is being discussed.",
                 "collection_instructions": """Knowledge Graph expected workflow (concepts → neighbors → passages):
                 
                 1) Resolve concepts from the query (do NOT assume 'Brazil' as a concept; CPR KG is Brazil-scoped):
@@ -1818,8 +1840,7 @@ Instructions:
             },
             "solar": {
                 "brief": "Solar facility database with locations, capacity, renewable infrastructure globally",
-                "detailed": "Comprehensive solar facility database with geospatial locations, capacity data (MW), facility metadata, country/region aggregations, renewable energy infrastructure mapping, and solar deployment trends",
-                "routing_prompt": "Determine if this query needs solar facility locations, renewable capacity data, solar infrastructure mapping, or country/region solar statistics.",
+                "detailed": "Comprehensive solar facility database with geospatial locations, capacity data (MW), countries, and datetimes with a range over when they could've been constructed.",
                 "collection_instructions": """Tool usage strategy for Solar Database:
                 - IMPORTANT: Call 'GetSolarFacilitiesMapData' when you need to show geographic distribution
                 - Use 'GetSolarFacilitiesByCountry' for detailed country-level facility data
@@ -1834,7 +1855,6 @@ Instructions:
             "gist": {
                 "brief": "Company environmental data: water stress (MSA), drought/flood risks, heat exposure, GHG emissions",
                 "detailed": "GIST Impact database with company-level environmental metrics including: water stress (Mean Species Abundance), drought risk, flood risk (coastal/riverine), extreme heat exposure, extreme precipitation, temperature anomalies, land use changes (urban expansion, forest loss, agricultural conversion), population density impacts, corporate environmental impacts (Scope 1/2/3 GHG emissions, water consumption, SOX/NOX emissions, nitrogen/phosphorous pollution, waste generation), and asset-level risk assessments",
-                "routing_prompt": "Analyze if this query needs company environmental data, water risk metrics, climate physical risks, GHG emissions, pollution data, or corporate sustainability metrics.",
                 "collection_instructions": """Tool usage strategy for GIST Impact Database:
                 - Use 'GetGistCompanyWaterData' for water stress and MSA metrics
                 - Use 'GetGistCompanyClimateRisks' for physical climate risks (drought, flood, heat)
@@ -1848,7 +1868,6 @@ Instructions:
             "lse": {
                 "brief": "NDC commitments, climate targets, emissions reductions, Brazilian governance, policy frameworks",
                 "detailed": "Comprehensive climate policy database including: NDC targets and commitments (emissions reduction percentages, net-zero dates, renewable energy goals), NDC vs domestic policy comparison, institutional frameworks (direction setting, planning, coordination), climate policies (cross-cutting, sectoral mitigation/adaptation), Brazilian state-level governance, implementation tracking, and TPI emissions pathways",
-                "routing_prompt": "Essential for queries about: NDC commitments, climate targets, emissions reduction goals, net-zero targets, renewable energy commitments, climate policy frameworks, institutional governance, Brazilian state assessments, policy implementation status. Key terms: NDC, targets, commitments, 2030, 2035, 2050, net-zero, emissions reduction, climate neutrality, Paris Agreement.",
                 "collection_instructions": """Tool usage strategy for LSE Climate Policy:
                 - Use 'GetNDCTargets' FIRST for specific country NDC commitments and targets
                 - For energy-specific NDC queries, also call 'GetPlansAndPoliciesData' to find energy sector details
@@ -1870,7 +1889,6 @@ Instructions:
             "viz": {
                 "brief": "Data visualization tools for creating charts, tables, and comparisons",
                 "detailed": "Visualization server providing smart chart generation, comparison tables, and data visualization tools. Can create Bar/Line/Pie charts, comparison tables with percentages and totals, and optimize visualization types based on data characteristics",
-                "routing_prompt": "Use when needing to create visualizations, comparison tables, or formatted data presentations. Especially useful for multi-entity comparisons.",
                 "collection_instructions": """Tool usage strategy for Viz Server:
                 CRITICAL: NEVER generate, invent, or guess data values! Only visualize data that has been explicitly provided to you from other servers.
                 
@@ -1897,8 +1915,7 @@ Instructions:
             },
             "deforestation": {
                 "brief": "Brazil deforestation polygon data from processed satellite imagery",
-                "detailed": "Deforestation area polygons with hectare measurements, spatial queries, and statistics for Brazil. Derived from satellite imagery analysis showing forest loss areas.",
-                "routing_prompt": "Include when query mentions deforestation, forest loss, cleared areas, land use change, or environmental impact in Brazil. This server has actual polygon data, not just text descriptions.",
+                "detailed": "Deforestation area polygons with for spatial analysis",
                 "collection_instructions": """Tool usage strategy for Deforestation:
                 IMPORTANT: Always call GetDeforestationAreas first when deforestation is mentioned in the query
                 - Use 'GetDeforestationAreas' as your primary tool for deforestation data
@@ -1908,12 +1925,11 @@ Instructions:
                 - These tools return polygon geometries that auto-register for spatial correlation
                 - The polygon data enables geographic overlap analysis with other datasets"""
             },
-            "municipalities": {
-                "brief": "Brazilian municipality boundaries and demographic data",
-                "detailed": "Complete administrative boundaries for all 5,570+ Brazilian municipalities with population, area, and spatial queries. Includes state capitals and enables regional analysis.",
-                "routing_prompt": "Include when query mentions Brazilian cities, municipalities, administrative regions, urban areas, population centers, or needs regional aggregation. Essential for 'which municipalities' questions.",
+            "admin": {
+                "brief": "Brazilian administrative boundaries",
+                "detailed": "Administrative boundaries for municipalities and states within Brazil. Useful for when asked about particular places within Brazil. If a query asks about a specific state or municipality, use this server to get the polygon boundary for that place.",
                 "collection_instructions": """Tool usage strategy for Municipalities:
-                - Use 'GetMunicipalitiesByFilter' for demographic/administrative queries
+                - Use 'GetMunicipalitiesByFilter' for administrative queries
                 - Use 'GetMunicipalityBoundaries' for specific municipality polygons
                 - Use 'GetMunicipalitiesInBounds' for spatial region queries
                 - Use 'FindMunicipalitiesNearPoint' for proximity searches
@@ -1924,7 +1940,6 @@ Instructions:
             "geospatial": {
                 "brief": "Spatial correlation engine for geographic relationship analysis",
                 "detailed": "Correlates different geographic datasets by proximity, overlap, or containment. Does NOT store data - only analyzes relationships during query session. Receives entity registrations from other servers and performs spatial analysis.",
-                "routing_prompt": "Include when query implies spatial relationships between different data types (facilities IN/NEAR deforestation, assets close to hazards, geographic overlap analysis). This is a correlation engine, not a data source.",
                 "collection_instructions": """Tool usage strategy for Geospatial:
                 - This server is PASSIVE in Phase 1 - it receives auto-registered entities from other servers
                 - ACTIVE in Phase 2 - use for correlation and map generation
@@ -1932,122 +1947,165 @@ Instructions:
                 - Use 'GenerateCorrelationMap' to create multi-layer visualization
                 - Use 'GetRegisteredEntities' to check what data is available
                 - Use 'ClearSpatialIndex' between different queries"""
+            },
+            "meta": {
+                "brief": "Metadata server for managing and retrieving dataset information",
+                "detailed": "Handles metadata for various datasets, including descriptions, schemas, and provenance information. Supports querying and updating metadata records.",
+                "collection_instructions": """Call the tools to find out more information about this project."""
+            },
+            "spa": {
+                "brief": "Semantic passage index for retrieving relevant text passages from documents",
+                "detailed": "The Science Panel for the Amazon released the Amazon Assessment Report 2021 at COP26, which has been called an “encyclopedia” of the Amazon region. This landmark report is unprecedented for its scientific and geographic scope, the inclusion of Indigenous scientists, and its transparency, having undergone peer review and public consultation.",
+                "collection_instructions": """Tool usage strategy for SPA:
+                - Use 'AmazonAssessmentListDocs' to get an overview of available documents
+                - Use 'AmazonAssessmentSearch' for keyword-based searches
+                - Use 'AmazonAssessmentAsk' for expert Q&A with context
+                - All tools leverage the semantic passage index for retrieval
+                - Ensure queries are clear and specific to improve results"""
             }
         }
     
+    async def _evaluate_server_relevance(self, query: str, server_name: str, config: dict) -> tuple[str, bool]:
+        """
+        Evaluate if a single server is relevant to the query.
+
+        Args:
+            query: User query
+            server_name: Name of the server to evaluate
+            config: Server configuration with descriptions
+
+        Returns:
+            Tuple of (server_name, is_relevant)
+        """
+        # Simple, focused prompt that relies on server descriptions
+        prompt = f"""Query: "{query}"
+
+        Data Source: {server_name}
+        Capabilities: {config['detailed']}
+
+        Does this data source contain information that would help answer the query?
+
+        Answer YES if:
+        - The source has data which is likely to be relevant to answering the query
+        - The query asks for information this source provides
+
+        Answer NO if:
+        - The source doesn't have relevant data for this specific query
+        - Other sources would be more appropriate
+        - The connection is tangential or coincidental
+
+        Respond with only YES or NO."""
+
+        try:
+            response = await call_small_model(
+                system="You are a precise query router. Reply with only YES or NO.",
+                user_prompt=prompt,
+                max_tokens=10,
+                temperature=0
+            )
+
+            # Parse response
+            answer = response.strip().upper()
+            is_relevant = answer == "YES"
+
+            # Log decision for debugging
+            print(f"  {'✓' if is_relevant else '✗'} {server_name}: {answer}")
+
+            return (server_name, is_relevant)
+
+        except Exception as e:
+            print(f"  ⚠ Error evaluating {server_name}: {e}")
+            # On error, default to including the server (fail-open)
+            return (server_name, True)
+
+    def _apply_routing_rules(self, relevant_servers: List[str], query: str) -> List[str]:
+        """
+        Apply business logic rules after relevance evaluation.
+
+        Args:
+            relevant_servers: List of servers marked as relevant
+            query: Original user query
+
+        Returns:
+            Final list of servers to use
+        """
+        # Always include viz server for potential visualizations
+        if 'viz' not in relevant_servers:
+            relevant_servers.append('viz')
+
+        # Check for spatial relationship keywords
+        spatial_keywords = ['near', 'close to', 'within', 'overlap', 'proximity', 'adjacent', 'surrounding']
+        query_lower = query.lower()
+        if any(keyword in query_lower for keyword in spatial_keywords):
+            # If spatial relationships mentioned and we have geographic data sources
+            geographic_servers = ['solar', 'deforestation', 'municipalities']
+            if any(server in relevant_servers for server in geographic_servers):
+                if 'geospatial' not in relevant_servers:
+                    relevant_servers.append('geospatial')
+                    print(f"  ➕ Added 'geospatial' for spatial correlation")
+
+        # Ensure at least one data server (not just viz)
+        if len(relevant_servers) == 1 and relevant_servers[0] == 'viz':
+            # Default to kg if no data servers selected
+            relevant_servers.insert(0, 'kg')
+            print(f"  ➕ Added 'kg' as default data source")
+
+        return relevant_servers
+
     async def _phase0_prefilter(self, user_query: str) -> List[str]:
         """
-        Phase 0: Pre-filter servers using a single LLM call.
-        
-        Quickly identifies potentially relevant servers to avoid wasting tokens
-        on obviously irrelevant ones. Uses brief descriptions for efficiency.
-        
+        Phase 0: Pre-filter servers using parallel per-server LLM evaluation.
+
+        Each server is evaluated independently for relevance, allowing for
+        more precise routing decisions based on detailed server capabilities.
+
         Args:
             user_query: Original user query
-            
+
         Returns:
             List of server names that should proceed to scout phase
         """
+        print(f"\n🔍 Phase 0: Evaluating server relevance for query")
         server_descriptions = self._get_server_descriptions()
-        
-        # Build server list for pre-filter prompt
-        server_list = "\n".join([
-            f"- {name}: {config['brief']}" 
-            for name, config in server_descriptions.items()
-        ])
 
-        
-        # Check for NDC-specific keywords
-        ndc_keywords = ['ndc', 'nationally determined contribution', 'commitment', 'target', 
-                       'emissions reduction', 'net-zero', 'net zero', 'climate neutral', 
-                       '2030', '2035', '2050', 'paris agreement', 'climate policy',
-                       'implementation', 'domestic policy']
-        
-        query_lower = user_query.lower()
-        has_ndc_keywords = any(keyword in query_lower for keyword in ndc_keywords)
-        
-        prefilter_prompt = f"""Given this user query: "{user_query}"
+        # Create evaluation tasks for all servers (except always-include ones)
+        evaluation_tasks = []
+        always_include_servers = []
 
-        Which of these data sources might be relevant? Return ONLY the server IDs that could help answer this query.
+        for server_name, config in server_descriptions.items():
+            # Check if server should always be included
+            if config.get('always_include', False):
+                always_include_servers.append(server_name)
+                print(f"  ✓ {server_name}: ALWAYS INCLUDED")
+                continue
 
-        Available servers:
-        {server_list}
+            # Create evaluation task
+            task = self._evaluate_server_relevance(user_query, server_name, config)
+            evaluation_tasks.append(task)
 
-        Instructions:
-        - Be selective: only include servers that DIRECTLY answer the query
-        - IMPORTANT: Always include 'viz' as it's a utility server for creating visualizations
-        - DO NOT include servers just because they mention the same country/topic
-        
-        NEGATIVE EXAMPLES - DO NOT include these servers:
-        - Query: "What are Brazil's NDC commitments?" 
-          DON'T include: solar (facility data not needed for policy question)
-          DON'T include: gist (company data not needed for national commitments)
-          
-        - Query: "Show me renewable energy trends"
-          DON'T include: gist (unless asking about company emissions)
-          DON'T include: lse (unless asking about policy targets)
-          
-        - Query: "What is the water stress in São Paulo?"
-          DON'T include: solar (facilities not relevant to water stress)
-          DON'T include: lse (policy not relevant to water data)
-          
-        POSITIVE EXAMPLES - DO include these servers:
-        - Query: "What are Brazil's NDC commitments?" → ["lse", "kg", "viz"]
-        - Query: "Map solar facilities in India" → ["solar", "viz"]
-        - Query: "Compare emissions across sectors" → ["gist", "viz"]
-        - Query: "Water stress for Brazilian companies" → ["gist", "viz"]
-        
-        SPECIAL RULES:
-        - If the query mentions NDC, commitments, targets, emissions reduction, net-zero, or years like 2030/2035/2050, include 'lse'
-        - 'viz' should ALWAYS be included for potential visualizations
-        {"- NOTE: This query contains NDC/climate policy keywords - consider including 'lse'" if has_ndc_keywords else ""}
+        # Run all evaluations in parallel
+        if evaluation_tasks:
+            results = await asyncio.gather(*evaluation_tasks, return_exceptions=True)
+        else:
+            results = []
 
-        Return a JSON array of relevant server IDs only.
-        Examples: ["kg", "viz"] or ["solar", "viz"] or ["lse", "kg", "viz"]"""
+        # Process results
+        relevant_servers = always_include_servers.copy()
 
-        try:
-            # Use small model for speed
-            response = await call_small_model(
-                system="You are a query router. Return only a valid JSON array of server IDs.",
-                user_prompt=prefilter_prompt,
-                max_tokens=100,
-                temperature=0
-            )
-            
-            # Parse JSON response
-            relevant_servers = json.loads(response.strip())
+        for result in results:
+            if isinstance(result, Exception):
+                print(f"  ⚠ Evaluation error: {result}")
+                continue
 
-            # Validate server names
-            valid_servers = [s for s in relevant_servers if s in server_descriptions]
+            server_name, is_relevant = result
+            if is_relevant:
+                relevant_servers.append(server_name)
 
-            # Ensure KG is included for KG-like queries (passages, paths, relations)
-            kg_triggers = [
-                'passage', 'passages', 'mention both', 'co-mention',
-                'shortest path', 'relationship path', 'path between', 'relationship between',
-                'concept', 'concepts', 'knowledge graph', 'kg'
-            ]
-            ql = user_query.lower()
-            if any(k in ql for k in kg_triggers) and 'kg' not in valid_servers:
-                valid_servers.append('kg')
-            # Ensure LSE is included for policy-oriented queries
-            if any(k in ql for k in ['policy', 'policies']) and 'lse' not in valid_servers:
-                valid_servers.append('lse')
-            
-            # Policy-first override: for policy queries, prioritize datasets (KG/LSE) and keep viz for tables
-            if any(k in ql for k in ['policy', 'policies']):
-                desired = ['kg', 'lse']
-                # Always include viz as a utility if present
-                if 'viz' in server_descriptions:
-                    desired.append('viz')
-                valid_servers = [s for s in desired if s in server_descriptions]
-            
-            print(f"Pre-filter selected servers: {valid_servers}")
-            return valid_servers
-            
-        except (json.JSONDecodeError, Exception) as e:
-            print(f"Pre-filter error: {e}. Defaulting to all servers.")
-            # On error, return all servers (graceful degradation)
-            return list(server_descriptions.keys())
+        # Apply business rules and special cases
+        relevant_servers = self._apply_routing_rules(relevant_servers, user_query)
+
+        print(f"\n✅ Pre-filter selected servers: {relevant_servers}")
+        return relevant_servers
     
     async def _phase1_collect_information(self, user_query: str) -> Dict[str, PhaseResult]:
         """
@@ -2068,7 +2126,7 @@ Instructions:
         if not relevant_servers:
             # If pre-filter returns empty, default to knowledge graph
             print("No servers selected by pre-filter. Defaulting to 'kg' server.")
-            relevant_servers = ["kg"]
+            relevant_servers = ["cpr"]
         
         server_descriptions = self._get_server_descriptions()
         
@@ -2183,7 +2241,8 @@ Instructions:
                                 tool_id="FindSpatialCorrelations",
                                 server_origin="geospatial",
                                 source_type="Database",
-                                description="Deterministic Phase 1 correlation"
+                                description="Deterministic Phase 1 correlation",
+                                source_url=self._resolve_source_url("geospatial", "FindSpatialCorrelations")
                             )
                         ))
                     if map_data:
@@ -2197,7 +2256,8 @@ Instructions:
                                 tool_id="GenerateCorrelationMap",
                                 server_origin="geospatial",
                                 source_type="Database",
-                                description="Deterministic Phase 1 correlation map"
+                                description="Deterministic Phase 1 correlation map",
+                                source_url=self._resolve_source_url("geospatial", "GenerateCorrelationMap")
                             )
                         ))
                     results["geospatial"] = PhaseResult(
@@ -2264,7 +2324,7 @@ Instructions:
             # Build optional query-specific hints to guide tool choice (no shortcuts)
             query_hints = ""
             ql = user_query.lower()
-            if server_name == "kg":
+            if server_name == "cpr":
                 hints = []
                 if any(k in ql for k in ["shortest path", "relationship path", "path between", "how are", "how is", "connected to"]):
                     hints.append("For relationship/path queries, consider calling 'FindConceptPathWithEdges' with the two concept names and an appropriate max_len (e.g., 4).")
@@ -2589,7 +2649,7 @@ Instructions:
             is_spatial_query = correlation_intent
 
             # Policy intent (keep KG/LSE focus)
-            policy_intent = any(k in q_lower for k in ["policy", "policies"]) and server_name == "kg"
+            policy_intent = any(k in q_lower for k in ["policy", "policies"]) and server_name == "cpr"
             
             # Add specific instructions for spatial queries
             spatial_instructions = ""
@@ -2597,55 +2657,55 @@ Instructions:
                 if server_name == "solar":
                     spatial_instructions = """
 
-SPATIAL QUERY DETECTED! You MUST:
-1. Call GetSolarFacilitiesByCountry with country='Brazil' to get solar facility locations
-2. This will provide geographic data (lat/lon) needed for spatial correlation
-3. DO NOT skip this step - the geospatial server needs this data"""
+            SPATIAL QUERY DETECTED! You MUST:
+            1. Call GetSolarFacilitiesByCountry with country='Brazil' to get solar facility locations
+            2. This will provide geographic data (lat/lon) needed for spatial correlation
+            3. DO NOT skip this step - the geospatial server needs this data"""
                 elif server_name == "deforestation":
                     spatial_instructions = """
 
-SPATIAL QUERY DETECTED! You MUST:
-1. IMMEDIATELY call GetDeforestationAreas with these parameters: {"limit": 1000}
-2. This is MANDATORY - do not analyze or think, just call GetDeforestationAreas FIRST
-3. This will provide geographic boundaries needed for spatial correlation
-4. After getting the data, you can summarize what you found
-5. DO NOT skip this step - the geospatial server needs this data"""
+            SPATIAL QUERY DETECTED! You MUST:
+            1. IMMEDIATELY call GetDeforestationAreas with these parameters: {"limit": 1000}
+            2. This is MANDATORY - do not analyze or think, just call GetDeforestationAreas FIRST
+            3. This will provide geographic boundaries needed for spatial correlation
+            4. After getting the data, you can summarize what you found
+            5. DO NOT skip this step - the geospatial server needs this data"""
                 elif server_name == "gist":
                     spatial_instructions = """
 
-SPATIAL QUERY DETECTED! You MUST:
-1. Call tools that return assets with latitude/longitude coordinates
-2. This geographic data is needed for spatial correlation
-3. DO NOT skip this step - the geospatial server needs this data"""
-            
+            SPATIAL QUERY DETECTED! You MUST:
+            1. Call tools that return assets with latitude/longitude coordinates
+            2. This geographic data is needed for spatial correlation
+            3. DO NOT skip this step - the geospatial server needs this data"""
+                        
             # Create focused system prompt for Phase 1 collection
             system_prompt = f"""You are collecting information from the {server_name} server to answer: {user_query}
 
-CRITICAL: Focus ONLY on facts that directly answer this specific question.
+            CRITICAL: Focus ONLY on facts that directly answer this specific question.
 
-Server capabilities: {config['detailed']}
+            Server capabilities: {config['detailed']}
 
-{config['collection_instructions']}{spatial_instructions}{query_hints}
+            {config['collection_instructions']}{spatial_instructions}{query_hints}
 
-COLLECTION PRIORITIES:
-1. Call tools that DIRECTLY answer "{user_query}" - not just related topics
-2. When you receive numerical data, check for units and context
-3. If units are missing, note this (e.g., "value is 45 but units not specified")
-4. Prioritize complete information: value + unit + timeframe + context
-5. Focus on concrete facts: numbers with units, dates, percentages, specific names
+            COLLECTION PRIORITIES:
+            1. Call tools that DIRECTLY answer "{user_query}" - not just related topics
+            2. When you receive numerical data, check for units and context
+            3. If units are missing, note this (e.g., "value is 45 but units not specified")
+            4. Prioritize complete information: value + unit + timeframe + context
+            5. Focus on concrete facts: numbers with units, dates, percentages, specific names
 
-DO NOT collect:
-- Tangentially related information
-- Data about entities not mentioned in the query
-- Background context unless specifically requested
-- Infrastructure counts unless asked for
+            DO NOT collect:
+            - Tangentially related information
+            - Data about entities not mentioned in the query
+            - Background context unless specifically requested
+            - Infrastructure counts unless asked for
 
-Guidelines:
-- Extract key facts with their complete context from each tool response
-- Stop when you have enough to answer the specific question (usually 2-4 tool calls)
-- Be efficient with your token budget
+            Guidelines:
+            - Extract key facts with their complete context from each tool response
+            - Stop when you have enough to answer the specific question (usually 2-4 tool calls)
+            - Be efficient with your token budget
 
-When you have collected enough information to answer "{user_query}", respond with a summary instead of calling more tools."""
+            When you have collected enough information to answer "{user_query}", respond with a summary instead of calling more tools."""
 
             # Initialize messages for the conversation
             messages = []
@@ -2789,7 +2849,8 @@ When you have collected enough information to answer "{user_query}", respond wit
                                             tool_id="FindSpatialCorrelations",
                                             server_origin="geospatial",
                                             source_type="Database",
-                                            description="Deterministic Phase 1 correlation"
+                                            description="Deterministic Phase 1 correlation",
+                                            source_url=self._resolve_source_url("geospatial", "FindSpatialCorrelations")
                                         )
                                     ))
                                 if not self._geo_map_generated:
@@ -2810,7 +2871,8 @@ When you have collected enough information to answer "{user_query}", respond wit
                                                 tool_id="GenerateCorrelationMap",
                                                 server_origin="geospatial",
                                                 source_type="Database",
-                                                description="Deterministic Phase 1 correlation map"
+                                                description="Deterministic Phase 1 correlation map",
+                                                source_url=self._resolve_source_url("geospatial", "GenerateCorrelationMap")
                                             )
                                         ))
                                         self._geo_map_generated = True
@@ -3219,11 +3281,12 @@ When you have collected enough information to answer "{user_query}", respond wit
                     source_type=self._get_source_type_for_server(server_name),
                     description=f"Data from {tool_name}",
                     server_origin=server_name,
+                    source_url=self._resolve_source_url(server_name, tool_name),
                     metadata={"tool_args": tool_args}
                 )
                 
                 # Special handling: KG policy discovery tool returns passages list
-                if server_name == "kg" and tool_name == "DiscoverPolicyContextForQuery" and isinstance(result_data, dict) and isinstance(result_data.get("passages"), list):
+                if server_name == "cpr"and tool_name == "DiscoverPolicyContextForQuery" and isinstance(result_data, dict) and isinstance(result_data.get("passages"), list):
                     passages = result_data.get("passages", [])
                     for p in passages[:25]:
                         txt = (p.get("text") or "")
@@ -3257,6 +3320,7 @@ When you have collected enough information to answer "{user_query}", respond wit
                             source_type=self._get_source_type_for_server(server_name),
                             description=passage_desc,
                             server_origin=server_name,
+                            source_url=self._resolve_source_url(server_name, passage_tool_id),
                             metadata={
                                 "tool_args": tool_args,
                                 "passage_id": pid,
@@ -3286,7 +3350,7 @@ When you have collected enough information to answer "{user_query}", respond wit
                 # Extract facts based on data type
                 if isinstance(result_data, list):
                     # Special handling: KG passage lists with span metadata
-                    if server_name == "kg" and result_data and isinstance(result_data[0], dict) and (
+                    if server_name == "cpr"and result_data and isinstance(result_data[0], dict) and (
                         "passage_id" in result_data[0] or "doc_id" in result_data[0]
                     ):
                         for item in result_data:
@@ -3340,6 +3404,7 @@ When you have collected enough information to answer "{user_query}", respond wit
                                 source_type="Document",
                                 description=desc,
                                 server_origin=server_name,
+                                source_url=self._resolve_source_url(server_name, tool_name),
                                 metadata={"tool_args": tool_args, "doc_id": doc_id, "passage_id": passage_id}
                             )
 
@@ -3774,8 +3839,7 @@ When you have collected enough information to answer "{user_query}", respond wit
     def _get_source_name_for_tool(self, tool_name: str, server_name: str) -> str:
         """Get a human-readable source name for a tool."""
         source_names = {
-            "kg": "CPR Knowledge Graph",
-            # Use dataset name expected by users/UI
+            "cpr": "CPR Knowledge Graph",
             "solar": "TransitionZero Solar Asset Mapper (TZ-SAM), Q1 2025",
             "gist": "GIST Impact Database",
             "lse": "LSE Climate Policy Database",
@@ -3787,7 +3851,7 @@ When you have collected enough information to answer "{user_query}", respond wit
     def _get_source_type_for_server(self, server_name: str) -> str:
         """Get the source type for a server."""
         source_types = {
-            "kg": "Knowledge Graph",
+            "cpr": "Knowledge Graph",
             # Treat solar facilities as a dataset for clearer citations
             "solar": "Dataset",
             "gist": "Database",
@@ -3796,6 +3860,15 @@ When you have collected enough information to answer "{user_query}", respond wit
             "formatter": "Tool"
         }
         return source_types.get(server_name, "Database")
+
+    def _resolve_source_url(self, server_name: str, tool_name: str) -> str:
+        """Resolve SourceURL from module-level mapping and datasets.json."""
+        try:
+            from utils.dataset_resolver import resolve_dataset_url
+            _ds, url = resolve_dataset_url(tool_name=tool_name, server_name=server_name)
+            return url or ""
+        except Exception:
+            return ""
     
     async def _should_do_phase2_deep_dive(self, user_query: str, 
                                           collection_results: Dict[str, PhaseResult],
@@ -3880,42 +3953,42 @@ When you have collected enough information to answer "{user_query}", respond wit
         # Create evaluation prompt
         evaluation_prompt = f"""Analyze whether deeper investigation is needed to fully answer this query.
 
-User Query: {user_query}
+        User Query: {user_query}
 
-Facts Collected from Phase 1:
-{chr(10).join(all_facts)}
+        Facts Collected from Phase 1:
+        {chr(10).join(all_facts)}
 
-Servers that provided data: {', '.join(servers_with_facts)}
+        Servers that provided data: {', '.join(servers_with_facts)}
 
-Evaluate based on:
-1. Completeness: Do the facts sufficiently answer the query?
-2. Gaps: Are there obvious missing pieces that need filling?
-3. Contradictions: Do facts from different servers conflict?
-4. Cross-references: Would correlating data across servers add value?
-5. Depth: Does the query warrant deeper analysis than these initial facts?
-6. Specificity: Are there specific subtopics or metrics mentioned but not detailed?
+        Evaluate based on:
+        1. Completeness: Do the facts sufficiently answer the query?
+        2. Gaps: Are there obvious missing pieces that need filling?
+        3. Contradictions: Do facts from different servers conflict?
+        4. Cross-references: Would correlating data across servers add value?
+        5. Depth: Does the query warrant deeper analysis than these initial facts?
+        6. Specificity: Are there specific subtopics or metrics mentioned but not detailed?
 
-Examples when Phase 2 IS needed:
-- Query asks for "commitments related to energy" but facts only show emissions targets, not energy-specific targets
-- Query asks for "correlation between X and Y" but facts don't show relationships
-- Query asks for "trends" but only got point-in-time data
-- Facts mention entities that other servers could provide more detail on
-- Geographic query that needs coordinate matching across servers
+        Examples when Phase 2 IS needed:
+        - Query asks for "commitments related to energy" but facts only show emissions targets, not energy-specific targets
+        - Query asks for "correlation between X and Y" but facts don't show relationships
+        - Query asks for "trends" but only got point-in-time data
+        - Facts mention entities that other servers could provide more detail on
+        - Geographic query that needs coordinate matching across servers
 
-Examples when Phase 2 is NOT needed:
-- Simple factual questions that Phase 1 fully answered
-- Query asks for a list and we got the list
-- All relevant data has been collected
-- Specific numerical targets are already extracted with units
+        Examples when Phase 2 is NOT needed:
+        - Simple factual questions that Phase 1 fully answered
+        - Query asks for a list and we got the list
+        - All relevant data has been collected
+        - Specific numerical targets are already extracted with units
 
-Respond with JSON:
-{{
-    "need_phase2": true/false,
-    "reasoning": "one sentence explanation",
-    "gaps_identified": ["specific gap 1", "specific gap 2"],
-    "servers_for_phase2": ["server1", "server2"],
-    "follow_up_queries": ["specific follow-up question 1", "specific follow-up question 2"]
-}}"""
+        Respond with JSON:
+        {{
+            "need_phase2": true/false,
+            "reasoning": "one sentence explanation",
+            "gaps_identified": ["specific gap 1", "specific gap 2"],
+            "servers_for_phase2": ["server1", "server2"],
+            "follow_up_queries": ["specific follow-up question 1", "specific follow-up question 2"]
+        }}"""
 
         try:
             response = await call_large_model(
@@ -4163,7 +4236,8 @@ Respond with JSON:
                             tool_id="FindSpatialCorrelations",
                             server_origin="geospatial",
                             source_type="Database",
-                            description="Spatial correlation between registered entities"
+                            description="Spatial correlation between registered entities",
+                            source_url=self._resolve_source_url("geospatial", "FindSpatialCorrelations")
                         )
                     )
                 )
@@ -4193,7 +4267,8 @@ Respond with JSON:
                                 tool_id="GenerateCorrelationMap",
                                 server_origin="geospatial",
                                 source_type="Map",
-                                description="GeoJSON map for spatial correlations"
+                                description="GeoJSON map for spatial correlations",
+                                source_url=self._resolve_source_url("geospatial", "GenerateCorrelationMap")
                             )
                         )
                     )
@@ -4472,37 +4547,52 @@ Respond with JSON:
             iteration += 1
             
             # Build the unified prompt
-            system_prompt = """You are analyzing information to answer a user query.
-            You have access to tools from multiple data sources including visualization tools.
-            Call tools to gather data and create appropriate visualizations.
-            When you have sufficient information AND visualizations, respond with 'COMPLETE'."""
-            
-            user_prompt = f"""User Query: {user_query}
+            system_prompt = """System prompt (generic, minimal, dedup-first)
 
-What We Know So Far:
-{facts_context}
+                You are an efficient tool-using agent. Only output tool_use blocks or EXACTLY: COMPLETE
 
-Available servers and their capabilities:
-- solar: Solar facility data, maps, capacity statistics
-- viz: Create charts, tables, and comparisons
-- kg: Knowledge graph and climate policy data
-- lse: Climate legislation and NDC data
+                Objectives:
+                - Collect the smallest set of tool results needed to answer the query.
+                - Produce at most one directly-helpful visualization (only if it clarifies the answer).
+                - Minimize calls and avoid duplicates.
 
-IMPORTANT: Consider what the user is asking for:
-- If they want "geographic distribution" → use map generation tools
-- If they want "comparison" or "compare" → use CreateComparisonTable from viz server
-- If they have facility counts by country → create a comparison table
-- If they mention multiple entities → gather data for each and create comparisons
+                Rules:
+                - Deduplicate: Before any call, review “What We Know So Far” (and “RecentCalls” if provided). Do NOT call the same
+                server.tool with identical arguments more than once in this query.
+                - Respect constraints: If the user specifies constraints (e.g., limit/size, time, place, entity set), pass them via
+                tool parameters when available. If a parameter isn’t supported, collect once and filter in reasoning; do NOT re-call to
+                “refine”.
+                - Variants: For closely related parameter variants, call each at most once. If a variant returns no results, do not retry
+                the same variant.
+                - Call budget: Prefer 1–3 calls that directly return the entities/metrics needed. Avoid background/context calls unless
+                they unlock the exact answer.
+                - Visualization: Choose a single, most-informative visualization only if it directly answers the ask. Do not generate
+                duplicate or redundant visuals.
+                - Completion: When you have the required entities + metrics (with user constraints applied) and at most one helpful
+                visualization, reply EXACTLY: COMPLETE
 
-Analyze what information and visualizations are still needed.
-Call relevant tools to:
-1. Fill specific gaps in our knowledge
-2. Create visualizations (maps, tables, charts) as appropriate
-3. Generate comparisons when multiple entities are involved
-4. Provide comprehensive answers with data and visuals
+                User prompt (generic, reusable)
 
-If you have gathered sufficient information AND created appropriate visualizations, respond with just 'COMPLETE'.
-Otherwise, call tools to gather missing data or create needed visualizations."""
+                User Query: {user_query}
+
+                What We Know So Far:
+                {facts_context}
+
+                Guidance:
+                - Use each needed server.tool+arguments combination at most once; reuse data already present above.
+                - Apply any explicit user constraints (limit/size, filters, time, geography) via tool parameters if supported.
+                - Checklist before your next call:
+                    1) Do I already have the entities + metric(s) the user asked for (respecting constraints)?
+                    2) Am I about to repeat a server.tool with identical arguments?
+                    3) Will this call materially add required information?
+
+                Do this:
+                1) Identify the minimal tool call(s) and exact arguments that directly produce the needed data.
+                2) Make only those calls (no duplicates). If a parameter (e.g., limit) is supported, pass it; otherwise collect once and
+                filter mentally.
+                3) If a visualization helps, create exactly one that directly clarifies the answer.
+                4) If the answer is sufficient with the visualization, reply EXACTLY: COMPLETE; otherwise, make only the missing, non-
+                duplicate call(s)."""
             
             # Convert tools to format expected by call_model_with_tools
             tools_list = [
@@ -4516,7 +4606,7 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
             
             try:
                 response = await call_model_with_tools(
-                    model=SMALL_MODEL,
+                    model=LARGE_MODEL,
                     system=system_prompt,
                     messages=[{"role": "user", "content": user_prompt}],
                     tools=tools_list,
@@ -4699,8 +4789,9 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         except Exception:
             _translate_modules = None
         
-        # Prefer a single correlation map over base maps for spatial queries
-        PREFER_CORRELATION_MAP = True
+        # Prefer correlation maps only when the user explicitly asks for spatial relations
+        # (e.g., within/near/overlap), otherwise prefer base facilities maps.
+        PREFER_CORRELATION_MAP = False
 
         # Step 1: Collect all facts
         all_facts = []
@@ -4828,6 +4919,13 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                             print(f"DEBUG: Captured generic map from {server_name} fact {i}: {map_data['geojson_url']}")
                             map_data_list.append(map_data)
 
+        # Enrich collected facts with structured visualization data (tables/charts)
+        # This converts known tool payloads (e.g., lists of companies) into tabular data
+        try:
+            await self._enhance_facts_with_visualization_data(all_facts)
+        except Exception as e:
+            print(f"Warning: _enhance_facts_with_visualization_data failed: {e}")
+
         # Fallback (deterministic): only for explicit correlation intent. If we have geospatial
         # correlation facts but no map captured yet, proactively generate a correlation map.
         try:
@@ -4890,12 +4988,30 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
                 deduped.append(md)
             map_data_list = deduped
 
-        # If preferred, keep only correlation maps when available
-        if PREFER_CORRELATION_MAP and any(isinstance(md, dict) and md.get("is_correlation_map") for md in map_data_list):
-            map_data_list = [md for md in map_data_list if md.get("is_correlation_map")]
-            # Keep only the first correlation map to avoid multiple similar layers
-            if len(map_data_list) > 1:
-                map_data_list = map_data_list[:1]
+        # Map preference: Only prefer correlation maps when correlation intent is detected.
+        try:
+            corr_intent_p3 = any(kw in user_query.lower() for kw in [
+                "within", "inside", "intersect", "overlap", "near", "close to",
+                "proximity", "adjacent", "around", "km"
+            ])
+        except Exception:
+            corr_intent_p3 = False
+
+        has_corr_maps = any(isinstance(md, dict) and md.get("is_correlation_map") for md in map_data_list)
+        if has_corr_maps:
+            if corr_intent_p3:
+                # User asked for a spatial relation; prioritize correlation maps
+                map_data_list = [md for md in map_data_list if md.get("is_correlation_map")]
+                if len(map_data_list) > 1:
+                    map_data_list = map_data_list[:1]
+            else:
+                # Keep base facilities maps if present; avoid showing empty correlation maps by default
+                base_maps = [md for md in map_data_list if not md.get("is_correlation_map")]
+                if base_maps:
+                    map_data_list = base_maps
+                else:
+                    # Fall back to the first correlation map if no base map exists
+                    map_data_list = [m for m in map_data_list if m.get("is_correlation_map")][:1]
         
         if not all_facts:
             return [{
@@ -5044,6 +5160,61 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
             elif self._has_categories(raw):
                 fact.numerical_data = self._extract_categorical(raw)
                 fact.data_type = "comparison"
+
+            # GIST: Companies at risk (convert to table)
+            elif (
+                isinstance(raw, dict)
+                and isinstance(raw.get("companies"), list)
+                and raw.get("companies")
+                and any(k in raw.keys() for k in ["risk_type", "risk_level", "companies_found"])  # heuristic for GIST risk calls
+            ):
+                try:
+                    companies = raw.get("companies", [])
+                    # Validate expected fields
+                    sample = companies[0] if companies else {}
+                    expected_fields = {"company_name", "at_risk_assets", "risk_percentage"}
+                    if isinstance(sample, dict) and expected_fields.issubset(set(sample.keys())):
+                        columns = [
+                            "Rank",
+                            "Company",
+                            "At-risk assets",
+                            "% of company assets",
+                            "Sector",
+                            "Country",
+                            "Total assets",
+                        ]
+                        rows = []
+                        for idx, item in enumerate(companies, start=1):
+                            try:
+                                rows.append([
+                                    idx,
+                                    item.get("company_name", ""),
+                                    int(item.get("at_risk_assets", 0) or 0),
+                                    float(item.get("risk_percentage", 0) or 0),
+                                    item.get("sector_code", ""),
+                                    item.get("country", ""),
+                                    int(item.get("total_assets", 0) or 0),
+                                ])
+                            except Exception:
+                                continue
+                        if rows:
+                            # Friendly label for risk type
+                            rt = str(raw.get("risk_type") or "").upper()
+                            rt_label = {
+                                "FLOOD_RIVERINE": "riverine flood",
+                                "FLOOD_COASTAL": "coastal flood",
+                            }.get(rt, rt.replace("_", " ").lower())
+                            rl = str(raw.get("risk_level") or "").title()
+                            title = f"Companies at {rl} risk ({rt_label})"
+                            fact.numerical_data = {
+                                "columns": columns,
+                                "rows": rows,
+                                "title": title,
+                                "source": "gist_companies_risk",
+                            }
+                            fact.data_type = "tabular"
+                except Exception:
+                    pass
             
             # Special-case: top countries by facility count (solar server)
             elif isinstance(raw, dict) and (isinstance(raw.get("countries"), list) or isinstance(raw.get("top_10_countries"), list)):
@@ -5465,24 +5636,24 @@ Otherwise, call tools to gather missing data or create needed visualizations."""
         
         relevance_prompt = f"""Query: {user_query}
 
-Available {viz_type}: {viz_description}
+            Available {viz_type}: {viz_description}
 
-Should this {viz_type} be included in the response?
+            Should this {viz_type} be included in the response?
 
-Decision criteria:
-- Maps: Include ONLY if the query explicitly asks about locations, geography, spatial distribution, or "where"
-- Tables: Include ONLY if the query asks to compare multiple entities, see breakdowns, or requests detailed data
-- Charts: Include ONLY if the query asks about trends, changes over time, growth, or proportions
+            Decision criteria:
+            - Maps: Include ONLY if the query explicitly asks about locations, geography, spatial distribution, or "where"
+            - Tables: Include ONLY if the query asks to compare multiple entities, see breakdowns, or requests detailed data
+            - Charts: Include ONLY if the query asks about trends, changes over time, growth, or proportions
 
-The visualization must DIRECTLY help answer the specific question, not just be related to the topic.
+            The visualization must DIRECTLY help answer the specific question, not just be related to the topic.
 
-Examples:
-- Query: "What are Brazil's NDC targets?" → DON'T include map of solar facilities
-- Query: "Where are solar facilities in Brazil?" → DO include map
-- Query: "Compare emissions across sectors" → DO include comparison table
-- Query: "What is the water stress level?" → DON'T include unrelated charts
+            Examples:
+            - Query: "What are Brazil's NDC targets?" → DON'T include map of solar facilities
+            - Query: "Where are solar facilities in Brazil?" → DO include map
+            - Query: "Compare emissions across sectors" → DO include comparison table
+            - Query: "What is the water stress level?" → DON'T include unrelated charts
 
-Answer YES or NO:"""
+            Answer YES or NO:"""
 
         try:
             response = await call_small_model(
@@ -5823,6 +5994,7 @@ Only include modules that exist above. Ensure all modules are included exactly o
         fact_list = []
         has_map_data = False
         has_chart_data = False
+        has_table_data = False
         
         # Log synthesis prompt if tracer is available
         if self.client.fact_tracer:
@@ -5860,7 +6032,39 @@ Only include modules that exist above. Ensure all modules are included exactly o
         ranked = sorted(filtered or facts, key=_fact_score, reverse=True)
 
         for i, fact in enumerate(ranked):
-            fact_list.append(f"{i+1}. {fact.text_content}")
+            # Base textual fact content
+            fact_entry = f"{i+1}. {fact.text_content}"
+
+            # If this fact includes a tabular payload, append a raw excerpt (top 20 rows) so the LLM can see actual table data
+            try:
+                if getattr(fact, 'numerical_data', None) and getattr(fact, 'data_type', None) == 'tabular':
+                    table = fact.numerical_data or {}
+                    cols = table.get('columns') or []
+                    rows = table.get('rows') or []
+                    title = table.get('title') or ''
+                    if isinstance(cols, list) and isinstance(rows, list) and rows:
+                        has_table_data = True
+                        try:
+                            top_n = min(20, len(rows))
+                            header = " | ".join([str(c) for c in cols])
+                            lines = []
+                            for r in rows[:top_n]:
+                                if isinstance(r, (list, tuple)):
+                                    row_vals = [str(v) for v in r[:len(cols)]]
+                                else:
+                                    # Fallback: attempt to map dict by column order
+                                    row_vals = [str(r.get(c, '')) if isinstance(r, dict) else str(r) for c in cols]
+                                lines.append(" | ".join(row_vals))
+                            table_block = "\n".join([header] + lines)
+                            prefix_title = f"Table: {title}\n" if title else "Table:\n"
+                            fact_entry += f"\n{prefix_title}{table_block}"
+                        except Exception:
+                            pass
+            except Exception:
+                # Never let table summarization break synthesis
+                pass
+
+            fact_list.append(fact_entry)
             # Check if this fact contains map data
             if 'raw_result' in fact.metadata:
                 raw = fact.metadata['raw_result']
@@ -6212,7 +6416,7 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
                     if table_data.get("columns") and table_data.get("rows"):
                         modules.append({
                             "type": "table",
-                            "heading": self._extract_table_title(fact.text_content),
+                            "heading": table_data.get("title") or self._extract_table_title(fact.text_content),
                             "columns": table_data["columns"],
                             "rows": table_data["rows"]
                         })
@@ -6261,13 +6465,14 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
                     fact.citation.source_name,
                     fact.citation.tool_id,
                     fact.citation.source_type,
-                    desc or ""
+                    desc or "",
+                    fact.citation.source_url or ""
                 ])
         
         return {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
             "rows": rows
         }
     
@@ -6489,7 +6694,7 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
             return
         
         # Meta/capability queries: return dynamic datasets overview early
-        if orchestrator._is_meta_query(user_query):
+        if await orchestrator._is_meta_query(user_query):
             yield {
                 "type": "thinking",
                 "data": {
@@ -6521,7 +6726,7 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
         
         if not relevant_servers:
             # Default to knowledge graph if no servers selected
-            relevant_servers = ["kg"]
+            relevant_servers = ["cpr"]
             yield {
                 "type": "thinking",
                 "data": {
@@ -6532,15 +6737,16 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
         else:
             # Announce selected servers
             server_names = {
-                "kg": "Knowledge Graph",
-                "solar": "Solar Facilities",
-                "gist": "Environmental Impact",
-                "lse": "Climate Policy",
+                "cpr": "Climate Policy Radar",
+                "solar": "TZ-SAM",
+                "gist": "GIST Environmental Impact",
+                "lse": "LSE (and Friends) Governance Data",
                 "viz": "Visualization",
                 "geospatial": "Geospatial Correlation",
                 "deforestation": "Deforestation",
-                "municipalities": "Municipalities",
-                "heat": "Heat Stress"
+                "municipalities": "Administrative Boundaries",
+                "heat": "Heat Stress",
+                "spa": "Science Panel for the Amazon",
             }
             friendly_names = [server_names.get(s, s) for s in relevant_servers]
             yield {
@@ -6832,9 +7038,9 @@ async def test_server_connections():
         # TODO: Test each server connection
         # TODO: Make sample tool calls
         # TODO: Report status
-        
-        return {"status": "all_connected", "servers": ["kg", "solar", "gist", "lse", "formatter"]}
-        
+
+        return {"status": "all_connected", "servers": ["cpr", "solar", "gist", "lse", "formatter"]}
+
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
