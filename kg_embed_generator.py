@@ -259,11 +259,19 @@ class KGEmbedGenerator:
     
     async def fetch_kg_data(self, query: str, mcp_response: Optional[Dict[str, Any]] = None, citation_registry: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Fetch KG data from the KG visualization server, optionally enhanced with MCP response data."""
+
+        print(
+            f"[KG] fetch_kg_data start query={query!r} has_mcp={bool(mcp_response)}",
+            flush=True,
+        )
         
         # Check if MCP response contains kg_context (pre-built context from conversation)
         if mcp_response and "kg_context" in mcp_response:
             kg_context = mcp_response["kg_context"]
-            print(f"🎯 Using pre-built KG context with {len(kg_context.get('nodes', []))} nodes and {len(kg_context.get('edges', []))} edges")
+            print(
+                f"[KG] using MCP kg_context nodes={len(kg_context.get('nodes', []))} edges={len(kg_context.get('edges', []))}",
+                flush=True,
+            )
             
             # Format the kg_context for D3.js visualization
             # Convert edges to links format expected by D3
@@ -301,8 +309,10 @@ class KGEmbedGenerator:
             # print(f"📡 Payload: {json.dumps(payload, indent=2)}")
             
             try:
+                print(f"[KG] POST {endpoint} (with MCP)", flush=True)
                 async with aiohttp.ClientSession() as session:
                     async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                        print(f"[KG] MCP endpoint status={response.status}", flush=True)
                         if response.status == 200:
                             data = await response.json()
                             print(f"📡 KG server response keys: {list(data.keys())}")
@@ -337,8 +347,10 @@ class KGEmbedGenerator:
         # print(f"📡 Payload: {json.dumps(payload, indent=2)}")
         
         try:
+            print(f"[KG] POST {endpoint} (fallback)", flush=True)
             async with aiohttp.ClientSession() as session:
                 async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                    print(f"[KG] fallback endpoint status={response.status}", flush=True)
                     if response.status == 200:
                         data = await response.json()
                         print(f"📡 KG server response keys: {list(data.keys())}")
@@ -367,8 +379,13 @@ class KGEmbedGenerator:
         Generate a static KG visualization file for a query, optionally enhanced with MCP response data.
         Returns the relative path to the generated file.
         """
+        print(f"[KG] generate_embed start query={query!r}", flush=True)
         # Get KG data (enhanced with MCP response if available)
         kg_data = await self.fetch_kg_data(query, mcp_response, citation_registry)
+        print(
+            f"[KG] generate_embed got nodes={len(kg_data.get('nodes', []))} links={len(kg_data.get('links', []))}",
+            flush=True,
+        )
         
         # Handle both "links" and "edges" formats from KG server
         if "edges" in kg_data and "links" not in kg_data:
@@ -377,13 +394,42 @@ class KGEmbedGenerator:
         # Check for valid data
         nodes = kg_data.get("nodes", [])
         links = kg_data.get("links", [])
-        
+
+        # Remove root dataset nodes like "CPR Knowledge Graph" to avoid redundant hubs
+        def _is_root_dataset(node: Dict[str, Any]) -> bool:
+            if not isinstance(node, dict):
+                return False
+            if node.get("type") != "Dataset":
+                return False
+            label = str(node.get("label", "")).lower()
+            node_id = str(node.get("id", "")).lower()
+            return "knowledge graph" in label or "knowledge_graph" in node_id
+
+        removed_ids = {node.get("id") for node in nodes if _is_root_dataset(node)}
+        if removed_ids:
+            nodes = [node for node in nodes if node.get("id") not in removed_ids]
+            links = [link for link in links if link.get("source") not in removed_ids and link.get("target") not in removed_ids]
+            kg_data["nodes"] = nodes
+            kg_data["links"] = links
+            if "edges" in kg_data and isinstance(kg_data["edges"], list):
+                kg_data["edges"] = [edge for edge in kg_data["edges"] if edge.get("source") not in removed_ids and edge.get("target") not in removed_ids]
+
+        # Restrict visualization to concept nodes only for clarity
+        concept_ids = {node.get("id") for node in nodes if isinstance(node, dict) and str(node.get("type", "")).lower() == "concept"}
+        if concept_ids:
+            nodes = [node for node in nodes if node.get("id") in concept_ids]
+            links = [link for link in links if link.get("source") in concept_ids and link.get("target") in concept_ids]
+            kg_data["nodes"] = nodes
+            kg_data["links"] = links
+            if "edges" in kg_data and isinstance(kg_data["edges"], list):
+                kg_data["edges"] = [edge for edge in kg_data["edges"] if edge.get("source") in concept_ids and edge.get("target") in concept_ids]
+
         if not nodes and not links:
-            print(f"No KG nodes or links found for query: {query}")
-            print(f"KG server response keys: {list(kg_data.keys())}")
+            print(f"[KG] no nodes/links after filtering for query={query!r}", flush=True)
+            print(f"[KG] KG server response keys: {list(kg_data.keys())}", flush=True)
             return None
-        
-        print(f"📊 KG data found: {len(nodes)} nodes, {len(links)} links")
+
+        print(f"📊 KG data found: {len(nodes)} nodes, {len(links)} links", flush=True)
         
         # Generate filename
         query_hash = self._generate_query_hash(query)

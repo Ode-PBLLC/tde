@@ -18,21 +18,26 @@ import aiohttp
 from kg_embed_generator import KGEmbedGenerator
 import secrets
 from typing import List, Tuple
-from utils.language import detect_portuguese
+from utils.language import detect_portuguese, should_respond_in_portuguese
 from datetime import timedelta
 import csv
 from pathlib import Path
 
-# Add the mcp directory to the path
-sys.path.append('mcp')
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
 # Allow switching orchestrators via env var ORCHESTRATOR={redo|plan}
 # Default stays on the modern 3‑phase orchestrator (mcp_chat_redo)
-_orch = os.getenv("ORCHESTRATOR", "redo").lower()
+_orch = os.getenv("ORCHESTRATOR", "v2").lower()
 if _orch in ("plan", "plan_execute", "plan-execute"):
-    from mcp_chat_plan_execute import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
+    from mcp.mcp_chat_plan_execute import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
     print("Using mcp_chat_plan_execute orchestrator")
+elif _orch in ("v2", "simple", "simple_v2"):
+    from mcp.mcp_chat_v2 import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
+    print("Using mcp_chat_v2 orchestrator")
 else:
-    from mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
+    from mcp.mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
     print("Using mcp_chat_redo orchestrator")
 
 app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
@@ -99,16 +104,32 @@ class SessionStore:
         
         return context_window
     
-    def extract_response_summary(self, modules: List[Dict[str, Any]], max_length: int = 500) -> str:
+    def extract_response_summary(
+        self,
+        modules: List[Dict[str, Any]],
+        max_length: Optional[int] = None,
+    ) -> str:
         """Extract text summary from response modules for history storage."""
-        text_parts = []
+
+        text_parts: List[str] = []
         for module in modules:
-            if module.get("type") == "text":
-                text_parts.append(module.get("content", ""))
-        
-        summary = " ".join(text_parts)
-        if len(summary) > max_length:
-            summary = summary[:max_length] + "..."
+            if module.get("type") != "text":
+                continue
+
+            content = module.get("content")
+            if isinstance(content, str) and content.strip():
+                text_parts.append(content.strip())
+                continue
+
+            texts = module.get("texts")
+            if isinstance(texts, list):
+                joined = "\n".join(str(item) for item in texts if item)
+                if joined.strip():
+                    text_parts.append(joined.strip())
+
+        summary = "\n\n".join(text_parts).strip()
+        if max_length is not None and max_length > 0 and len(summary) > max_length:
+            summary = summary[:max_length].rstrip() + "..."
         return summary
     
     def log_conversation(self, conversation_id: str, query: str, 
@@ -305,6 +326,51 @@ class StreamQueryRequest(BaseModel):
     language: Optional[str] = None
 
 _detect_portuguese = detect_portuguese
+_should_use_portuguese = should_respond_in_portuguese
+
+_PORTUGUESE_PREFS = {
+    "pt",
+    "pt-br",
+    "ptbr",
+    "pt_br",
+    "portuguese",
+    "português",
+    "portugues",
+    "brazilian portuguese",
+    "brazilian-portuguese",
+}
+
+_ENGLISH_PREFS = {"en", "english"}
+
+
+async def _resolve_target_language(language_pref: Optional[str], query_text: str) -> Optional[str]:
+    """Determine the output language for a query.
+
+    Prefers explicit request parameters, falls back to LLM-based inference that checks
+    whether the user expects Brazilian Portuguese.
+    """
+
+    pref = (language_pref or "").lower().strip()
+    if not pref and not query_text:
+        return None
+
+    pref = pref.replace("_", "-")
+
+    if pref in _PORTUGUESE_PREFS:
+        return "pt-br"
+    if pref in _ENGLISH_PREFS:
+        return None
+
+    if not query_text:
+        return None
+
+    try:
+        if await _should_use_portuguese(query_text):
+            return "pt-br"
+    except Exception:
+        return None
+
+    return None
 
 def _derive_kg_from_context(kg_context: Dict[str, Any]) -> Dict[str, Any]:
     """Build concepts and relationships arrays from a kg_context structure.
@@ -526,20 +592,8 @@ async def process_query(req: QueryRequest, request: Request):
         os.chdir(script_dir)
         
         # Pass conversation context to process_chat_query
-        # Determine target language: explicit or auto-detect
-        target_lang = None
-        lang_pref = (req.language or "").lower().strip()
-        if lang_pref in ("pt", "pt-br", "pt-pt", "portuguese", "português"):
-            target_lang = "pt"
-        elif lang_pref in ("en", "english"):
-            target_lang = None
-        else:
-            # Auto-detect Portuguese based on query text
-            try:
-                if _detect_portuguese(req.query):
-                    target_lang = "pt"
-            except Exception:
-                target_lang = None
+        # Determine target language: explicit or auto-detect via small LLM call
+        target_lang = await _resolve_target_language(req.language, req.query)
 
         full_result = await process_chat_query(
             req.query,
@@ -564,9 +618,8 @@ async def process_query(req: QueryRequest, request: Request):
             # Apply translation to modules if needed
             modules = full_result.get("modules", [])
             try:
-                if target_lang == "pt" and modules:
-                    sys.path.append('mcp')
-                    from translation import translate_modules as _translate_modules
+                if target_lang and target_lang.startswith("pt") and modules:
+                    from mcp.translation import translate_modules as _translate_modules
                     modules = await _translate_modules(modules, target_lang)
             except Exception:
                 pass
@@ -1044,19 +1097,8 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
             response_modules = []
             
             # Use streaming that properly sends content
-            # Determine target language for stream
-            target_lang = None
-            lang_pref = (stream_req.language or "").lower().strip()
-            if lang_pref in ("pt", "pt-br", "pt-pt", "portuguese", "português"):
-                target_lang = "pt"
-            elif lang_pref in ("en", "english"):
-                target_lang = None
-            else:
-                try:
-                    if _detect_portuguese(stream_req.query):
-                        target_lang = "pt"
-                except Exception:
-                    target_lang = None
+            # Determine target language for stream using the shared resolver
+            target_lang = await _resolve_target_language(stream_req.language, stream_req.query)
 
             async for event in stream_chat_query(
                 stream_req.query,
@@ -1064,20 +1106,27 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                 correlation_session_id=session_id,
                 target_language=target_lang,
             ):
+                event_type = event.get("type")
+
                 # Capture complete event for history
-                if event.get("type") == "complete":
+                if event_type == "complete":
                     response_data = event.get("data", {})
                     if isinstance(response_data, dict):
                         response_modules = response_data.get("modules", [])
+                        citation_registry = response_data.get("citation_registry")
                         # Augment with KG embed URL and KG arrays at top level to match frontend
                         try:
                             import sys as _sys, os as _os
                             _sys.path.append(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
                             from kg_embed_generator import KGEmbedGenerator as _KG
                             kg_gen = _KG()
-                            # Build minimal structured response for KG generator
-                            structured = {"modules": response_modules}
-                            kg_res = await kg_gen.generate_embed(stream_req.query, structured)
+                            # Use the full structured response (includes kg_context when available)
+                            structured = response_data
+                            kg_res = await kg_gen.generate_embed(
+                                stream_req.query,
+                                structured,
+                                citation_registry,
+                            )
                             if kg_res and isinstance(kg_res, dict):
                                 kg_rel = kg_res.get("relative_path")
                                 kg_url = kg_res.get("url_path")
@@ -1112,18 +1161,28 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                             response_data["relationships"] = kg_arrays.get("relationships", [])
                         except Exception as _e2:
                             print(f"[STREAM] KG arrays augmentation failed: {_e2}")
-                
-                # Handle content chunks specially for compatibility
-                if event.get("type") == "content":
-                    # Send content in the format the client expects
-                    content_chunk = {
-                        "content": event.get("content", "")
-                    }
-                    yield f"data: {json.dumps(content_chunk, ensure_ascii=False)}\n\n"
-                else:
-                    # Format other events as Server-Sent Events
-                    event_data = json.dumps(event, ensure_ascii=False)
-                    yield f"data: {event_data}\n\n"
+                if event_type in {"thinking", "thinking_complete"}:
+                    data = event.get("data")
+                    if data is None:
+                        message = event.get("message") or event.get("content") or ""
+                        data = {"message": message}
+                    elif not isinstance(data, dict):
+                        data = {"message": str(data)}
+                    thinking_payload = {"type": event_type, "data": data}
+                    yield f"data: {json.dumps(thinking_payload, ensure_ascii=False)}\n\n"
+                    continue
+
+                if event_type == "content":
+                    data = event.get("data")
+                    if data is None or not isinstance(data, dict):
+                        data = {"content": event.get("content", "")}
+                    content_payload = {"type": "content", "data": data}
+                    yield f"data: {json.dumps(content_payload, ensure_ascii=False)}\n\n"
+                    continue
+
+                # Format other events as Server-Sent Events
+                event_data = json.dumps(event, ensure_ascii=False)
+                yield f"data: {event_data}\n\n"
             
             # Send completion signal as JSON (frontend expects JSON per event)
             yield "data: " + json.dumps({"type": "done"}) + "\n\n"

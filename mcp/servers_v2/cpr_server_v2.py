@@ -1,0 +1,711 @@
+"""CPR Knowledge Graph server for the v2 MCP contract."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+import time
+from typing import Any, Dict, List, Optional
+
+try:  # pragma: no cover - optional dependency
+    import anthropic  # type: ignore
+except Exception:  # pragma: no cover
+    anthropic = None  # type: ignore
+
+from fastmcp import FastMCP
+
+if __package__ in {None, ""}:
+    from pathlib import Path
+
+    ROOT = Path(__file__).resolve().parents[2]
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+
+    from mcp.contracts_v2 import (  # type: ignore
+        ArtifactPayload,
+        CitationPayload,
+        FactPayload,
+        KnowledgeGraphPayload,
+        MessagePayload,
+        RunQueryResponse,
+    )
+    from mcp.servers_v2.base import RunQueryMixin  # type: ignore
+    from mcp.servers_v2 import cpr_tools as tools  # type: ignore
+    from mcp.servers_v2.support_intent import SupportIntent  # type: ignore
+else:  # pragma: no cover
+    from ..contracts_v2 import (
+        ArtifactPayload,
+        CitationPayload,
+        FactPayload,
+        KnowledgeGraphPayload,
+        MessagePayload,
+        RunQueryResponse,
+    )
+    from ..servers_v2.base import RunQueryMixin
+    from . import cpr_tools as tools
+    from ..support_intent import SupportIntent
+
+
+DATASET_TITLE = "CPR Knowledge Graph (Brazilian policy corpus)"
+DATASET_URL = "https://www.climatepolicyradar.org/"
+DATASET_ID = "climate_policy_radar"
+
+FACT_SNIPPET_MAX_CHARS = 600
+
+
+def _load_dataset_citations() -> Dict[str, str]:
+    path = Path(__file__).resolve().parents[2] / "static" / "meta" / "datasets.json"
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except Exception:
+        return {}
+
+    mapping: Dict[str, str] = {}
+    for item in payload.get("items", []):
+        dataset_id = item.get("id")
+        citation = item.get("citation")
+        if dataset_id and citation:
+            mapping[str(dataset_id)] = str(citation)
+    return mapping
+
+
+DATASET_CITATIONS = _load_dataset_citations()
+
+
+def _dataset_citation(dataset_id: str) -> Optional[str]:
+    return DATASET_CITATIONS.get(dataset_id)
+
+
+class CPRServerV2(RunQueryMixin):
+    """Expose CPR knowledge graph tools and run_query via FastMCP."""
+
+    def __init__(self) -> None:
+        self.mcp = FastMCP("cpr-server-v2")
+
+        self._anthropic_client = None
+        if anthropic and os.getenv("ANTHROPIC_API_KEY"):
+            try:
+                self._anthropic_client = anthropic.Anthropic()
+            except Exception as exc:  # pragma: no cover - credential issues
+                print(f"[cpr-server] Warning: Anthropic client unavailable: {exc}")
+
+        self._register_capabilities_tool()
+        self._register_query_support_tool()
+        self._register_tool_concepts()
+        self._register_tool_lookup()
+        self._register_tool_relationships()
+        self._register_tool_paths()
+        self._register_tool_passages()
+        self._register_tool_metadata()
+        self._register_tool_debug()
+        self._register_run_query_tool()
+
+    # ------------------------------------------------------------------ helpers
+    def _capabilities_metadata(self) -> Dict[str, Any]:
+        return {
+            "name": "cpr",
+            "description": "Brazil-focused policy knowledge graph with concepts, relationships, and annotated passages.",
+            "version": "2.0.0",
+            "tags": ["policy", "knowledge graph", "passages"],
+            "dataset": DATASET_TITLE,
+            "url": DATASET_URL,
+            "tools": [
+                "describe_capabilities",
+                "query_support",
+                "GetConcepts",
+                "CheckConceptExists",
+                "GetSemanticallySimilarConcepts",
+                "SearchConceptsByText",
+                "SearchConceptsFuzzy",
+                "FindConceptMatchesByNgrams",
+                "GetTopConceptsByQuery",
+                "GetDocumentNeighbors",
+                "GetConceptNeighbors",
+                "GetDocumentPassages",
+                "GetDocumentMetadata",
+                "DebugConcept",
+                "run_query",
+            ],
+        }
+
+    def _capability_summary(self) -> str:
+        metadata = self._capabilities_metadata()
+        return (
+            f"Dataset: {metadata['dataset']} ({metadata['description']}). "
+            "Covers Brazilian climate policy documents, concept nodes, relationships, and annotated evidence passages."
+        )
+
+    def _classify_support(self, query: str) -> SupportIntent:
+        if not self._anthropic_client:
+            return SupportIntent(
+                supported=True,
+                score=0.3,
+                reasons=["LLM unavailable; defaulting to dataset summary"],
+            )
+
+        prompt = (
+            "Decide whether the CPR climate policy knowledge graph should be used to answer the question."
+            " The graph spans Brazilian laws, regulations, strategies, and related passages."
+            " Reply with JSON {\"supported\": true|false, \"reason\": \"short explanation\"}.\n"
+            f"Dataset capabilities: {self._capability_summary()}\n"
+            f"Question: {query}"
+        )
+
+        try:
+            response = self._anthropic_client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=128,
+                temperature=0,
+                system="Respond with valid JSON only.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = response.content[0].text.strip()
+        except Exception as exc:  # pragma: no cover - network failures
+            return SupportIntent(
+                supported=True,
+                score=0.3,
+                reasons=[f"LLM intent unavailable: {exc}"],
+            )
+
+        def _parse(blob: str) -> Optional[Dict[str, Any]]:
+            try:
+                parsed = json.loads(blob)
+                return parsed if isinstance(parsed, dict) else None
+            except json.JSONDecodeError:
+                return None
+
+        data = _parse(text)
+        if not data:
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1 and start < end:
+                data = _parse(text[start : end + 1])
+
+        if not data:
+            return SupportIntent(
+                supported=True,
+                score=0.3,
+                reasons=["LLM returned non-JSON response"],
+            )
+
+        supported = bool(data.get("supported", False))
+        reason = str(data.get("reason")) if data.get("reason") else None
+        score = 0.9 if supported else 0.1
+
+        reasons = [reason] if reason else []
+        if not reasons:
+            reasons.append("LLM classification")
+
+        return SupportIntent(supported=supported, score=score, reasons=reasons)
+
+    @staticmethod
+    def _as_str(value: Any) -> str:
+        if value is None:
+            return ""
+        try:
+            if isinstance(value, (int, float)):
+                return str(value)
+            if hasattr(value, "item"):
+                try:
+                    return str(value.item())
+                except Exception:
+                    pass
+            return str(value)
+        except Exception:
+            return ""
+
+    def _candidate_concepts(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        cleaned_query = (query or "").strip()
+        if not cleaned_query:
+            return []
+
+        ranked: Dict[str, Dict[str, Any]] = {}
+        order_counter = 0
+
+        def _register(items: Optional[List[Dict[str, Any]]], priority: int) -> None:
+            nonlocal order_counter
+            if not items:
+                return
+            for item in items:
+                label_raw = item.get("label")
+                label = str(label_raw or "").strip()
+                if not label:
+                    continue
+                key = label.lower()
+                candidate = {
+                    "label": label,
+                    "wikibase_id": self._as_str(item.get("wikibase_id")) or None,
+                }
+                existing = ranked.get(key)
+                if existing:
+                    if priority < existing["priority"]:
+                        existing.update({"priority": priority, "candidate": candidate})
+                    continue
+                ranked[key] = {
+                    "priority": priority,
+                    "order": order_counter,
+                    "candidate": candidate,
+                }
+                order_counter += 1
+
+        # Direct heuristics on the full query first.
+        _register(tools.search_concepts_by_text(cleaned_query, limit=limit * 2), priority=1)
+        _register(tools.search_concepts_fuzzy(cleaned_query, limit=limit * 2), priority=1)
+        try:
+            _register(tools.get_top_concepts_by_query(cleaned_query, top_k=limit * 2), priority=2)
+        except Exception:
+            pass
+        _register(tools.find_concept_matches_by_ngrams(cleaned_query, top_k=limit * 2), priority=3)
+        _register(tools.get_top_concepts_by_query_local(cleaned_query, top_k=limit * 2), priority=3)
+
+        # Break the query into candidate keywords and short phrases to broaden matches.
+        token_pattern = re.compile(r"[\w'-]+", re.UNICODE)
+        raw_tokens = [tok.strip("-'_") for tok in token_pattern.findall(cleaned_query)]
+        tokens = [tok for tok in raw_tokens if tok and len(tok) >= 4]
+        stopwords = {
+            "about",
+            "across",
+            "after",
+            "between",
+            "brazil",
+            "brazilian",
+            "climate",
+            "including",
+            "policy",
+            "policies",
+            "regarding",
+            "toward",
+            "towards",
+            "using",
+            "which",
+            "where",
+            "would",
+        }
+
+        keywords: List[str] = []
+        seen_kw: set[str] = set()
+        for token in tokens:
+            token_lower = token.lower()
+            if token_lower in stopwords or token_lower in seen_kw:
+                continue
+            seen_kw.add(token_lower)
+            keywords.append(token)
+            if len(keywords) >= 12:
+                break
+
+        # Also capture a handful of two/three-word phrases for additional context.
+        phrases: List[str] = []
+        for window in (3, 2):
+            if len(tokens) < window:
+                continue
+            for idx in range(len(tokens) - window + 1):
+                phrase = " ".join(tokens[idx : idx + window])
+                phrase_lower = phrase.lower()
+                if phrase_lower in stopwords or phrase_lower in seen_kw:
+                    continue
+                seen_kw.add(phrase_lower)
+                phrases.append(phrase)
+                if len(phrases) >= 8:
+                    break
+            if len(phrases) >= 8:
+                break
+
+        def _search_with_phrase(phrase: str, *, priority: int) -> None:
+            _register(tools.search_concepts_by_text(phrase, limit=4), priority=priority)
+            _register(tools.search_concepts_fuzzy(phrase, limit=4), priority=priority)
+            _register(tools.find_concept_matches_by_ngrams(phrase, top_k=4), priority=priority + 1)
+            try:
+                _register(tools.get_top_concepts_by_query(phrase, top_k=3), priority=priority + 1)
+            except Exception:
+                pass
+
+        for keyword in keywords:
+            _search_with_phrase(keyword, priority=0)
+
+        for phrase in phrases:
+            _search_with_phrase(phrase, priority=1)
+
+        if not ranked:
+            return []
+
+        ordered = sorted(
+            ranked.values(), key=lambda payload: (payload["priority"], payload["order"])
+        )
+        return [entry["candidate"] for entry in ordered[:limit]]
+
+    @staticmethod
+    def _fact_snippet(text: str) -> str:
+        """Return a longer snippet for fact rendering without overwhelming output."""
+
+        text = (text or "").strip()
+        if len(text) <= FACT_SNIPPET_MAX_CHARS:
+            return text
+
+        candidate = text[:FACT_SNIPPET_MAX_CHARS]
+        cutoff = candidate.rfind(" ")
+        if cutoff == -1:
+            cutoff = FACT_SNIPPET_MAX_CHARS
+        return candidate[:cutoff].rstrip() + "…"
+
+    def _passage_citation(
+        self,
+        concept_label: str,
+        passage: Dict[str, Any],
+    ) -> CitationPayload:
+        metadata = passage.get("metadata", {}) or {}
+        passage_id = str(metadata.get("passage_id") or passage.get("id") or "unknown")
+        document_id = str(metadata.get("document_id") or "unknown")
+        citation_id = f"passage_{document_id}_{passage_id}"
+        description = f"Passage {passage_id} in document {document_id} mentioning {concept_label}."
+        return CitationPayload(
+            id=citation_id,
+            server="cpr",
+            tool="run_query",
+            title=f"CPR passage {document_id}",
+            source_type="Policy Document",
+            description=_dataset_citation(DATASET_ID) or description,
+            metadata={
+                "document_id": document_id,
+                "passage_id": passage_id,
+                "concept": concept_label,
+            },
+        )
+
+    def _build_kg(
+        self,
+        concepts: List[Dict[str, Any]],
+    ) -> KnowledgeGraphPayload:
+        nodes: Dict[str, Dict[str, Any]] = {}
+        edges: List[Dict[str, Any]] = []
+
+        nodes["cpr_dataset"] = {
+            "id": "cpr_dataset",
+            "type": "dataset",
+            "label": DATASET_TITLE,
+            "url": DATASET_URL,
+        }
+
+        for concept in concepts:
+            label = concept.get("label")
+            if not label:
+                continue
+            cid = self._as_str(concept.get("wikibase_id") or label) or label
+            nodes[cid] = {
+                "id": cid,
+                "type": "concept",
+                "label": label,
+            }
+            edges.append({"source": "cpr_dataset", "target": cid, "type": "dataset_contains"})
+
+            neighbors = tools.get_concept_graph_neighbors(label, limit=10)
+            for neighbor in neighbors:
+                target_label = neighbor.get("target_label") or neighbor.get("label")
+                if not target_label:
+                    continue
+                target_id = self._as_str(neighbor.get("target_id")) or target_label
+                if target_id not in nodes:
+                    nodes[target_id] = {
+                        "id": target_id,
+                        "type": "concept",
+                        "label": target_label,
+                    }
+                edges.append(
+                    {
+                        "source": cid,
+                        "target": target_id,
+                        "type": neighbor.get("edge_type", "related"),
+                    }
+                )
+
+        return KnowledgeGraphPayload(nodes=list(nodes.values()), edges=edges)
+
+    # ------------------------------------------------------------------ tools
+    def _register_capabilities_tool(self) -> None:
+        @self.mcp.tool()
+        def describe_capabilities(format: str = "json") -> str:  # type: ignore[misc]
+            """Describe the CPR KG dataset, provenance, and key tools."""
+
+            payload = self._capabilities_metadata()
+            return json.dumps(payload) if format == "json" else str(payload)
+
+    def _register_query_support_tool(self) -> None:
+        @self.mcp.tool()
+        def query_support(query: str, context: dict) -> str:  # type: ignore[misc]
+            """Decide if the CPR knowledge graph should handle this query."""
+
+            intent = self._classify_support(query)
+            payload = {
+                "server": "cpr",
+                "query": query,
+                "supported": intent.supported,
+                "score": intent.score,
+                "reasons": intent.reasons,
+            }
+            return json.dumps(payload)
+
+    def _register_tool_concepts(self) -> None:
+        @self.mcp.tool()
+        def GetConcepts() -> list[str]:  # type: ignore[misc]
+            """List preferred concept labels in the CPR knowledge graph."""
+
+            return tools.get_concepts()
+
+        @self.mcp.tool()
+        def CheckConceptExists(concept: str) -> bool:  # type: ignore[misc]
+            """Return True if the concept label exists in the graph."""
+
+            return tools.check_concept_exists(concept)
+
+        @self.mcp.tool()
+        def GetSemanticallySimilarConcepts(concept: str) -> list[str]:  # type: ignore[misc]
+            """List concepts that are semantically similar to the given label."""
+
+            return tools.get_semantically_similar_concepts(concept)
+
+    def _register_tool_lookup(self) -> None:
+        @self.mcp.tool()
+        def SearchConceptsByText(text: str, limit: int = 10) -> list[dict]:  # type: ignore[misc]
+            """Case-insensitive substring search over concept labels."""
+
+            return tools.search_concepts_by_text(text, limit)
+
+        @self.mcp.tool()
+        def SearchConceptsFuzzy(text: str, limit: int = 10) -> list[dict]:  # type: ignore[misc]
+            """Fuzzy match concepts using RapidFuzz when available."""
+
+            return tools.search_concepts_fuzzy(text, limit)
+
+        @self.mcp.tool()
+        def FindConceptMatchesByNgrams(text: str, top_k: int = 5) -> list[dict]:  # type: ignore[misc]
+            """Find exact unigram/bigram matches in concept labels."""
+
+            return tools.find_concept_matches_by_ngrams(text, top_k)
+
+        @self.mcp.tool()
+        def GetTopConceptsByQuery(query: str, top_k: int = 5) -> list[dict]:  # type: ignore[misc]
+            """Retrieve concepts whose embeddings best match the query."""
+
+            return tools.get_top_concepts_by_query(query, top_k)
+
+        @self.mcp.tool()
+        def GetTopConceptsByQueryLocal(query: str, top_k: int = 5) -> list[dict]:  # type: ignore[misc]
+            """Offline token-overlap concept retrieval."""
+
+            return tools.get_top_concepts_by_query_local(query, top_k)
+
+        @self.mcp.tool()
+        def GetAlternativeLabels(concept: str) -> list[str]:  # type: ignore[misc]
+            """Alternative labels for a concept."""
+
+            return tools.get_alternative_labels(concept)
+
+        @self.mcp.tool()
+        def GetDescription(concept: str) -> str:  # type: ignore[misc]
+            """Description text for a concept."""
+
+            return tools.get_description(concept)
+
+    def _register_tool_relationships(self) -> None:
+        @self.mcp.tool()
+        def GetRelatedConcepts(concept: str) -> list[dict]:  # type: ignore[misc]
+            """Retrieve related concepts (undirected edges)."""
+
+            return tools.get_related_concepts(concept)
+
+        @self.mcp.tool()
+        def GetSubconcepts(concept: str) -> list[dict]:  # type: ignore[misc]
+            """Retrieve subconcepts (outgoing HAS_SUBCONCEPT edges)."""
+
+            return tools.get_subconcepts(concept)
+
+        @self.mcp.tool()
+        def GetParentConcepts(concept: str) -> list[dict]:  # type: ignore[misc]
+            """Retrieve parent concepts (incoming HAS_SUBCONCEPT edges)."""
+
+            return tools.get_parent_concepts(concept)
+
+        @self.mcp.tool()
+        def GetConceptGraphNeighbors(concept: str, limit: int = 15) -> list[dict]:  # type: ignore[misc]
+            """Neighbors and edge types for a concept."""
+
+            return tools.get_concept_graph_neighbors(concept, limit)
+
+    def _register_tool_paths(self) -> None:
+        @self.mcp.tool()
+        def FindConceptPathWithEdges(source_concept: str, target_concept: str, max_len: int = 5) -> list[dict]:  # type: ignore[misc]
+            """Shortest paths between two concepts with edge metadata."""
+
+            return tools.find_concept_path_with_edges(source_concept, target_concept, max_len)
+
+        @self.mcp.tool()
+        def FindConceptPathRich(source_concept: str, target_concept: str) -> list[dict]:  # type: ignore[misc]
+            """Shortest path with node labels between concepts."""
+
+            return tools.find_concept_path_rich(source_concept, target_concept)
+
+        @self.mcp.tool()
+        def ExplainConceptRelationship(source_concept: str, target_concept: str) -> dict:  # type: ignore[misc]
+            """Explain the relationship between two concepts using path analysis."""
+
+            return tools.explain_concept_relationship(source_concept, target_concept)
+
+    def _register_tool_passages(self) -> None:
+        @self.mcp.tool()
+        def GetPassagesMentioningConcept(concept: str, limit: int = 5) -> list[dict]:  # type: ignore[misc]
+            """Retrieve passages mentioning the specified concept."""
+
+            return tools.get_passages_mentioning_concept(concept, limit)
+
+        @self.mcp.tool()
+        def PassagesMentioningBothConcepts(concept_a: str, concept_b: str, limit: int = 5) -> list[dict]:  # type: ignore[misc]
+            """Retrieve passages where two concepts co-occur."""
+
+            return tools.passages_mentioning_both_concepts(concept_a, concept_b, limit)
+
+    def _register_tool_metadata(self) -> None:
+        @self.mcp.tool()
+        def GetKGDatasetMetadata() -> dict:  # type: ignore[misc]
+            """Return dataset metadata (counts, coverage)."""
+
+            return tools.get_dataset_metadata()
+
+        @self.mcp.tool()
+        def GetAvailableDatasets() -> list[dict]:  # type: ignore[misc]
+            """List available KG datasets."""
+
+            return tools.get_available_datasets()
+
+        @self.mcp.tool()
+        def GetDatasetContent(dataset_id: str) -> dict:  # type: ignore[misc]
+            """Return dataset content summary for the provided ID."""
+
+            return tools.get_dataset_content(dataset_id)
+
+        @self.mcp.tool()
+        def DescribeServer() -> dict:  # type: ignore[misc]
+            """Describe the CPR server and live statistics."""
+
+            return tools.describe_server()
+
+    def _register_tool_debug(self) -> None:
+        @self.mcp.tool()
+        def DebugEmbeddingStatus() -> dict:  # type: ignore[misc]
+            """Return embedding availability diagnostics."""
+
+            return tools.debug_embedding_status()
+
+        @self.mcp.tool()
+        def GetSemanticDebugLog(limit: int = 50) -> dict:  # type: ignore[misc]
+            """Return recent semantic debug logs."""
+
+            return tools.get_semantic_debug_log(limit)
+
+    # ------------------------------------------------------------------ run_query
+    def handle_run_query(self, *, query: str, context: dict) -> RunQueryResponse:
+        start = time.perf_counter()
+        concepts = self._candidate_concepts(query, limit=5)
+
+        citations: Dict[str, CitationPayload] = {}
+        facts: List[FactPayload] = []
+        table_rows: List[List[Any]] = []
+        processed_labels: set[str] = set()
+
+        def _consume(batch: List[Dict[str, Any]]) -> None:
+            for concept in batch:
+                label = concept.get("label")
+                if not label or label in processed_labels:
+                    continue
+                processed_labels.add(label)
+                passages = tools.get_passages_mentioning_concept(label, limit=3)
+                if not passages:
+                    continue
+                for passage in passages:
+                    citation = self._passage_citation(label, passage)
+                    citations[citation.id] = citation
+
+                    passage_text = str(passage.get("text", ""))
+                    metadata = passage.get("metadata", {}) or {}
+                    document_id = self._as_str(metadata.get("document_id") or "unknown") or "unknown"
+                    passage_id = self._as_str(metadata.get("passage_id") or "unknown") or "unknown"
+
+                    print(
+                        "[cpr] context snippet:",
+                        f"concept={label!r}",
+                        f"document={document_id}",
+                        f"passage={passage_id}",
+                        passage_text,
+                        flush=True,
+                    )
+
+                    snippet = self._fact_snippet(passage_text)
+                    fact_id = f"{citation.id}_fact"
+                    facts.append(
+                        FactPayload(
+                            id=fact_id,
+                            text=f"Document {document_id} references {label}: {snippet}",
+                            citation_id=citation.id,
+                            metadata={
+                                "concept": label,
+                                "document_id": document_id,
+                                "passage_id": passage_id,
+                            },
+                        )
+                    )
+                    table_rows.append([
+                        label,
+                        document_id,
+                        snippet,
+                    ])
+
+        _consume(concepts)
+
+        if not facts:
+            expanded = self._candidate_concepts(query, limit=12)
+            _consume(expanded)
+            concepts = expanded
+
+        messages: List[MessagePayload] = []
+        if not facts:
+            messages.append(
+                MessagePayload(
+                    level="warning",
+                    text="No CPR passages matched the query using concept discovery heuristics.",
+                )
+            )
+
+        kg_payload = self._build_kg(concepts)
+
+        artifacts: List[ArtifactPayload] = []
+
+        duration_ms = int((time.perf_counter() - start) * 1000)
+
+        next_actions = []
+        if concepts:
+            next_actions.append("Use cpr:GetPassagesMentioningConcept for full context")
+            next_actions.append("Call cpr:GetConceptGraphNeighbors on top concepts for deeper KG analysis")
+
+        return RunQueryResponse(
+            server="cpr",
+            query=query,
+            facts=facts,
+            citations=list(citations.values()),
+            artifacts=artifacts,
+            messages=messages,
+            kg=kg_payload,
+            next_actions=next_actions,
+            duration_ms=duration_ms,
+        )
+
+
+def create_server() -> FastMCP:
+    """Entry point used by ``python -m mcp.servers_v2.cpr_server_v2``."""
+
+    server = CPRServerV2()
+    return server.mcp
+
+
+if __name__ == "__main__":  # pragma: no cover - manual execution
+    create_server().run()
