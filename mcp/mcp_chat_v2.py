@@ -13,6 +13,7 @@ import uuid
 from collections import defaultdict
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from itertools import cycle, islice
 from pathlib import Path
 from collections.abc import Mapping
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Set, cast
@@ -35,6 +36,9 @@ NARRATIVE_SYNTH_OPENAI_MODEL = "gpt-4.1-2025-04-14"
 # Query enrichment configuration
 QUERY_ENRICHMENT_ENABLED = True  # options: True, False
 QUERY_ENRICHMENT_MODEL = "claude-3-5-haiku-20241022"
+NARRATIVE_SYNTH_MAX_ATTEMPTS = 3
+NARRATIVE_SYNTH_TIMEOUT_SECONDS = 60
+NARRATIVE_SYNTH_BASE_RETRY_DELAY = 0.5
 
 _MARKER_PATTERN = re.compile(r"\[\[(F\d+)\]\]")
 
@@ -221,6 +225,7 @@ from .contract_validation import (
 )
 from .contracts_v2 import (
     ArtifactPayload,
+    CitationPayload,
     FactPayload,
     KnowledgeGraphPayload,
     QueryContext,
@@ -245,7 +250,6 @@ DOMAINS_IN_SCOPE = [
 
 # Only these servers are trusted to contribute knowledge-graph nodes.
 KG_TRUSTED_SERVERS = {"cpr"}
-
 
 class MultiServerClient:
     """Lightweight multi-server MCP client for v2 orchestration."""
@@ -699,13 +703,13 @@ class LLMRelevanceClassifier:
         print(f"[router-llm] {server_name}: raw answer={normalized}")
         return is_relevant
 
-    async def is_query_in_scope(
+    async def determine_scope_level(
         self, query: str, conversation_history: Optional[List[Dict[str, str]]] = None
-    ) -> bool:
-        """Determine whether the query fits within the assistant's supported domains."""
+    ) -> str:
+        """Classify queries as IN_SCOPE, NEAR_SCOPE, or OUT_OF_SCOPE."""
 
         if not self.available:
-            return True
+            return "IN_SCOPE"
 
         recent_context = []
         if conversation_history:
@@ -722,28 +726,44 @@ class LLMRelevanceClassifier:
 
         prompt = (
             "You are a scope classifier for a climate and environmental assistant.\n"
-            "Determine if the user query is within supported domains.\n\n"
+            "Classify the user query into one of three categories:\n"
+            "- IN_SCOPE: clearly covered by the domains or builds directly on prior context.\n"
+            "- NEAR_SCOPE: climate or environmental in theme but about geographies or datasets the assistant does not cover (e.g., outside Brazil) or otherwise too general.\n"
+            "- OUT_OF_SCOPE: unrelated topics (sports, pop culture, etc.) or requests with no climate/environment tie.\n\n"
             f"Conversation context:\n{context_block}\n\n"
             f"Supported domains:\n{domains}\n\n"
-            "The assistant also treats meta questions about itself (capabilities, datasets, how to use it) as in scope.\n\n"
+            "The assistant treats meta questions about itself (capabilities, datasets, how to use it) as IN_SCOPE.\n"
+            "If the user references the previous conversation, consider that within scope.\n\n"
             f"Query: \"{query}\"\n\n"
-            "Respond with YES if the query is within scope or builds on the context. Respond with NO if it is clearly unrelated."
+            "Respond with exactly one token: IN_SCOPE, NEAR_SCOPE, or OUT_OF_SCOPE."
         )
 
         try:
             answer = await self._call_model(
-                system="You classify queries as in scope or out of scope. Reply YES or NO only.",
+                system="You classify queries as IN_SCOPE, NEAR_SCOPE, or OUT_OF_SCOPE. Reply with one label only.",
                 prompt=prompt,
             )
         except Exception as exc:  # pragma: no cover - conservative fallback
-            logger.info(f"Scope check failed ({exc}); defaulting to in-scope")
-            return True
+            logger.info(f"Scope check failed ({exc}); defaulting to IN_SCOPE")
+            return "IN_SCOPE"
 
         normalized = answer.strip().upper()
-        in_scope = normalized.startswith("YES")
-        if not in_scope:
+        if normalized.startswith("IN_" ):
+            return "IN_SCOPE"
+        if normalized.startswith("NEAR"):
+            return "NEAR_SCOPE"
+        if normalized.startswith("OUT"):
             logger.info(f"Scope guard flagged query as out-of-scope: {query[:100]}")
-        return in_scope
+            return "OUT_OF_SCOPE"
+
+        # Fallback for unexpected outputs
+        return "IN_SCOPE"
+
+    async def is_query_in_scope(
+        self, query: str, conversation_history: Optional[List[Dict[str, str]]] = None
+    ) -> bool:
+        level = await self.determine_scope_level(query, conversation_history)
+        return level != "OUT_OF_SCOPE"
 
     async def _call_model(self, *, system: str, prompt: str) -> str:
         if self._anthropic_client is not None:
@@ -765,6 +785,135 @@ class LLMRelevanceClassifier:
                     model=self._OPENAI_MODEL,
                     input=prompt,
                     max_output_tokens=16,
+                )
+                first = response.output[0] if getattr(response, "output", None) else None
+                if hasattr(first, "text"):
+                    return first.text
+                raise RuntimeError("OpenAI response missing text output")
+
+            return await asyncio.to_thread(_run_openai)
+
+        raise RuntimeError("No LLM client configured")
+
+
+class OutOfScopeResponder:
+    """Generate contextual out-of-scope nudges using a lightweight LLM."""
+
+    _ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
+    _OPENAI_MODEL = "gpt-4.1-mini"
+
+    def __init__(self) -> None:
+        self._anthropic_client = None
+        self._openai_client = None
+
+        if anthropic and os.getenv("ANTHROPIC_API_KEY"):
+            try:
+                self._anthropic_client = anthropic.Anthropic()
+            except Exception as exc:  # pragma: no cover - credential issues
+                logger.info(f"Out-of-scope Anthropic client unavailable: {exc}")
+
+        if self._anthropic_client is None and OpenAI and os.getenv("OPENAI_API_KEY"):
+            try:
+                self._openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            except Exception as exc:  # pragma: no cover - credential issues
+                logger.info(f"Out-of-scope OpenAI client unavailable: {exc}")
+
+    @property
+    def available(self) -> bool:
+        return bool(self._anthropic_client or self._openai_client)
+
+    async def craft_response(
+        self,
+        query: str,
+        conversation_history: Optional[List[Dict[str, str]]],
+        domain_lines: str,
+        *,
+        mode: str = "redirect",
+    ) -> Optional[str]:
+        if not self.available:
+            return None
+
+        recent_messages: List[str] = []
+        if conversation_history:
+            for message in conversation_history[-6:]:
+                content = (message.get("content") or "").strip()
+                if not content:
+                    continue
+                role = message.get("role", "user")
+                role_label = "User" if role == "user" else "Assistant"
+                recent_messages.append(f"{role_label}: {content}")
+
+        context_block = "\n".join(recent_messages) if recent_messages else "(no prior context)"
+
+        if mode == "bridge":
+            prompt = (
+                "You are composing a short reply for a climate-policy assistant when the user asks"
+                " about climate topics that sit outside the assistant's primary datasets."
+                " Use the conversation context provided. If the user is referencing a specific"
+                " detail (like a number or name) from earlier messages, restate it accurately."
+                " Offer a concise, general answer (1-2 sentences) based on broad climate knowledge"
+                " or the conversation context, without inventing detailed statistics. Follow with"
+                " a friendly sentence reminding them that the assistant specialises in the domains"
+                " listed below. Keep the total response to three sentences or fewer."
+                "\n\nSupported domains:\n"
+                f"{domain_lines}\n\n"
+                "Conversation so far:\n"
+                f"{context_block}\n\n"
+                "User follow-up:\n"
+                f"{query}\n\n"
+                "Return plain text without bullet points."
+            )
+        else:
+            prompt = (
+                "You are composing a brief follow-up message for a climate-policy assistant when"
+                " a user asks something outside its supported domains. Use only the conversation"
+                " context provided. If the user is asking about a detail that appears in the prior"
+                " conversation, restate it succinctly. Then add a friendly note steering them back"
+                " toward the supported domains. Keep the response to three sentences or fewer."
+                "\n\nSupported domains:\n"
+                f"{domain_lines}\n\n"
+                "Conversation so far:\n"
+                f"{context_block}\n\n"
+                "User follow-up:\n"
+                f"{query}\n\n"
+                "Return plain text without bullet points."
+            )
+
+        try:
+            response_text = await self._call_model(
+                system=(
+                    "You craft concise, context-aware replies. Answer only using the "
+                    "information above and encourage the user to ask about supported domains."
+                ),
+                prompt=prompt,
+            )
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            logger.info(f"Out-of-scope LLM reply failed: {exc}")
+            return None
+
+        cleaned = (response_text or "").strip()
+        return cleaned or None
+
+    async def _call_model(self, *, system: str, prompt: str) -> str:
+        if self._anthropic_client is not None:
+            def _run_anthropic() -> str:
+                response = self._anthropic_client.messages.create(
+                    model=self._ANTHROPIC_MODEL,
+                    max_tokens=256,
+                    temperature=0,
+                    system=system,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                return response.content[0].text
+
+            return await asyncio.to_thread(_run_anthropic)
+
+        if self._openai_client is not None:
+            def _run_openai() -> str:
+                response = self._openai_client.responses.create(
+                    model=self._OPENAI_MODEL,
+                    input=prompt,
+                    max_output_tokens=256,
                 )
                 first = response.output[0] if getattr(response, "output", None) else None
                 if hasattr(first, "text"):
@@ -920,7 +1069,7 @@ class NarrativeSynthesizer:
     def available(self) -> bool:
         return bool(self._anthropic_client or self._openai_client)
 
-    def _choose_provider(self) -> str:
+    def _candidate_providers(self) -> List[str]:
         order: List[str]
         if self._provider_preference == "openai":
             order = ["openai", "anthropic"]
@@ -929,12 +1078,18 @@ class NarrativeSynthesizer:
         else:
             order = ["openai", "anthropic"]
 
+        providers: List[str] = []
         for candidate in order:
             if candidate == "anthropic" and self._anthropic_client is not None:
-                return "anthropic"
-            if candidate == "openai" and self._openai_client is not None:
-                return "openai"
+                providers.append("anthropic")
+            elif candidate == "openai" and self._openai_client is not None:
+                providers.append("openai")
+        return providers
 
+    def _choose_provider(self) -> str:
+        providers = self._candidate_providers()
+        if providers:
+            return providers[0]
         raise RuntimeError("No LLM client configured for NarrativeSynthesizer")
 
     async def generate(
@@ -962,10 +1117,17 @@ class NarrativeSynthesizer:
         if not ordered_sequence:
             ordered_sequence = trimmed_ids
 
+        def _build_fallback_result() -> NarrativeResult:
+            fallback_paragraphs = [f"{e.text} [[{e.id}]]" for e in trimmed]
+            fallback_paragraphs = _ensure_evidence_markers(
+                fallback_paragraphs, ordered_sequence
+            )
+            return NarrativeResult(
+                paragraphs=fallback_paragraphs, citation_sequence=ordered_sequence
+            )
+
         if not self.available:
-            paragraphs = [f"{e.text} [[{e.id}]]" for e in trimmed]
-            paragraphs = _ensure_evidence_markers(paragraphs, ordered_sequence)
-            return NarrativeResult(paragraphs=paragraphs, citation_sequence=ordered_sequence)
+            return _build_fallback_result()
 
         evidence_lines = []
         for item in trimmed:
@@ -1008,8 +1170,7 @@ class NarrativeSynthesizer:
 
         full_system_prompt = f"{system_prompt}\n\n{prompt}"
 
-        def _invoke() -> str:
-            provider = self._choose_provider()
+        def _invoke_with_provider(provider: str) -> str:
             print(f"[KGDEBUG] narrative provider={provider}", flush=True)
 
             if provider == "anthropic":
@@ -1029,7 +1190,7 @@ class NarrativeSynthesizer:
                 except Exception as anthropic_error:
                     print(f"[KGDEBUG] anthropic call error: {anthropic_error}", flush=True)
                     raise
-                parts = []
+                parts: List[str] = []
                 for block in getattr(response, "content", []) or []:
                     if hasattr(block, "text"):
                         parts.append(block.text)
@@ -1052,30 +1213,84 @@ class NarrativeSynthesizer:
                 raise
             return _extract_openai_text(response)
 
-        print("[KGDEBUG] about to invoke narrative provider", flush=True)
-        try:
-            print("[KGDEBUG] calling narrative provider", flush=True)
-            raw = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=15)
+        providers = self._candidate_providers()
+        if not providers:
             print(
-                f"[KGDEBUG] narrative provider returned text length={len(raw)}",
+                "[KGDEBUG] no narrative providers available; returning fallback narrative",
                 flush=True,
             )
-            paragraphs = [p.strip() for p in raw.strip().split("\n\n") if p.strip()]
-            if not paragraphs:
-                raise ValueError("No paragraphs returned")
-            paragraphs = _ensure_evidence_markers(paragraphs, ordered_sequence)
-            return NarrativeResult(paragraphs=paragraphs, citation_sequence=ordered_sequence)
-        except asyncio.TimeoutError:
-            print("[KGDEBUG] narrative provider timed out; falling back to fact list", flush=True)
-            llm_logger.info("Narrative synthesizer timed out while calling provider")
-        except Exception as exc:
-            print(f"[KGDEBUG] narrative provider error: {exc}", flush=True)
-            llm_logger.info(f"Narrative synthesis failed ({exc}); falling back to fact list")
+            return _build_fallback_result()
+        attempt_providers = list(islice(cycle(providers), NARRATIVE_SYNTH_MAX_ATTEMPTS))
+        total_attempts = len(attempt_providers)
+        attempt_errors: List[str] = []
+
+        for attempt_index, provider in enumerate(attempt_providers, start=1):
+            print(
+                f"[KGDEBUG] narrative attempt {attempt_index}/{total_attempts} provider={provider}",
+                flush=True,
+            )
+            try:
+                raw = await asyncio.wait_for(
+                    asyncio.to_thread(_invoke_with_provider, provider),
+                    timeout=NARRATIVE_SYNTH_TIMEOUT_SECONDS,
+                )
+                print(
+                    f"[KGDEBUG] narrative provider returned text length={len(raw)}",
+                    flush=True,
+                )
+                paragraphs = [p.strip() for p in raw.strip().split("\n\n") if p.strip()]
+                if not paragraphs:
+                    raise ValueError("No paragraphs returned")
+                paragraphs = _ensure_evidence_markers(paragraphs, ordered_sequence)
+                return NarrativeResult(
+                    paragraphs=paragraphs, citation_sequence=ordered_sequence
+                )
+            except asyncio.CancelledError:
+                raise
+            except asyncio.TimeoutError:
+                print(
+                    f"[KGDEBUG] narrative provider timeout on attempt {attempt_index}",
+                    flush=True,
+                )
+                llm_logger.info(
+                    "Narrative synthesizer attempt %s/%s with %s timed out",
+                    attempt_index,
+                    total_attempts,
+                    provider,
+                )
+                attempt_errors.append(f"{provider} timeout")
+            except Exception as exc:
+                print(
+                    f"[KGDEBUG] narrative provider error on attempt {attempt_index}: {exc}",
+                    flush=True,
+                )
+                llm_logger.info(
+                    "Narrative synthesis attempt %s/%s with %s failed (%s)",
+                    attempt_index,
+                    total_attempts,
+                    provider,
+                    exc,
+                )
+                attempt_errors.append(f"{provider}: {exc}")
+
+            if attempt_index < total_attempts:
+                delay = min(
+                    NARRATIVE_SYNTH_BASE_RETRY_DELAY * (2 ** (attempt_index - 1)), 2.0
+                )
+                print(
+                    f"[KGDEBUG] narrative retry sleeping for {delay} seconds",
+                    flush=True,
+                )
+                await asyncio.sleep(delay)
+
+        if attempt_errors:
+            llm_logger.info(
+                "Narrative synthesizer retries exhausted; falling back to fact list (%s)",
+                "; ".join(attempt_errors),
+            )
 
         print("[KGDEBUG] returning fallback narrative from evidences", flush=True)
-        paragraphs = [f"{e.text} [[{e.id}]]" for e in trimmed]
-        paragraphs = _ensure_evidence_markers(paragraphs, ordered_sequence)
-        return NarrativeResult(paragraphs=paragraphs, citation_sequence=ordered_sequence)
+        return _build_fallback_result()
 
 
 # ----------------------------------------------------------------------------
@@ -1413,7 +1628,8 @@ class SimpleOrchestrator:
         self._streamed_fact_count: int = 0
         self._max_fact_messages_per_query: int = 12
         self._max_fact_messages_per_server: int = 3
-        self._fact_thinking_max_chars: int = 220
+        self._fact_thinking_max_chars: int = 160
+        self._out_of_scope_responder = OutOfScopeResponder()
 
     def _format_fact_thinking_message(self, fact: FactPayload) -> Optional[str]:
         """Return a truncated thinking message for textual facts."""
@@ -1426,7 +1642,7 @@ class SimpleOrchestrator:
         if len(text) > max_chars:
             text = text[: max_chars - 3].rstrip() + "..."
 
-        return f'🔍 Relevant Fact Found: "{text}"'
+        return f'🔍 Considering the following passage "{text}"'
 
     async def _emit_fact_thinking_events(
         self,
@@ -1556,23 +1772,42 @@ class SimpleOrchestrator:
             previous_assistant_message=previous_assistant_message,
         )
 
-        await emit("🔍 Evaluating query and available tools", "initialization")
+        await emit("🔍 Looking at your question and which sources might help", "initialization")
 
-        in_scope = True
+        scope_level = "IN_SCOPE"
         if self._llm_classifier:
             try:
-                in_scope = await self._llm_classifier.is_query_in_scope(
+                scope_level = await self._llm_classifier.determine_scope_level(
                     query, conversation_history or []
                 )
             except Exception as exc:  # pragma: no cover - defensive logging
                 logger.info(f"Scope guard error ({exc}); proceeding with query")
 
-        if not in_scope:
+        if scope_level == "OUT_OF_SCOPE":
             await emit(
                 "🙏 This question looks outside the supported domains; offering guidance instead.",
                 "initialization",
             )
-            response = self._build_out_of_scope_response(query)
+            response = await self._build_out_of_scope_response(
+                query,
+                conversation_history or [],
+            )
+            translated_modules = await translate_modules_if_needed(response.get("modules", []))
+            if translated_modules is not response.get("modules"):
+                response = dict(response)
+                response["modules"] = translated_modules
+            validate_final_response(response)
+            return response
+
+        if scope_level == "NEAR_SCOPE":
+            await emit(
+                "ℹ️ Sharing a brief high-level answer, then steering back to core domains",
+                "initialization",
+            )
+            response = await self._build_near_scope_response(
+                query,
+                conversation_history or [],
+            )
             translated_modules = await translate_modules_if_needed(response.get("modules", []))
             if translated_modules is not response.get("modules"):
                 response = dict(response)
@@ -1588,8 +1823,9 @@ class SimpleOrchestrator:
             "spa": "Science Panel for the Amazon",
             "deforestation": "PRODES",
             "lse": "NDCAlign",
-            "wmo_cli": "Scientific Documents for Climate",
+            "wmo_cli": "Scientific Documents for Climate (WMO and IPCC)",
             "meta": "Project Specific Knowledge",
+            "extreme_heat": "Extreme Heat Indices"
         }
 
         def _pretty_server_name(server_name: str) -> str:
@@ -1605,9 +1841,16 @@ class SimpleOrchestrator:
             if stage == "query_support":
                 support: QuerySupportPayload = payload["payload"]  # type: ignore[index]
                 status = "accepted" if support.supported else "rejected"
-                message = (
-                    f"📡 {_pretty_server_name(server_name)}: relevance score {support.score:.2f} ({status})"
-                )
+
+                if status == "accepted":
+                    message = (
+                        f"📡 {_pretty_server_name(server_name)} seems helpful here..."
+                    )
+                else:
+                    message = (
+                        f"🚫 {_pretty_server_name(server_name)} does not seem relevant.."
+                    )
+                
                 await emit(message, "routing")
             elif stage == "query_support_error":
                 error = payload.get("error")
@@ -1622,7 +1865,7 @@ class SimpleOrchestrator:
                     "routing",
                 )
 
-        await emit("🧭 Routing query to candidate MCP servers", "routing")
+        await emit("🧭 Checking with the data sources that might have answers", "routing")
         supports = await self._router.route(query, context, progress_callback=router_progress)
         if not supports:
             raise ContractValidationError("No servers accepted the query")
@@ -1635,8 +1878,8 @@ class SimpleOrchestrator:
             if stage == "run_query":
                 response: RunQueryResponse = payload["payload"]  # type: ignore[index]
                 message = (
-                    f"✅ {_pretty_server_name(server_name)}: returned {len(response.facts)} facts, "
-                    f"{len(response.artifacts)} artifacts"
+                    f"✅ {_pretty_server_name(server_name)} server shared {len(response.facts)} passages "
+                    f"and {len(response.artifacts)} visuals"
                 )
                 await emit(message, "execution")
             elif stage == "run_query_error":
@@ -1658,7 +1901,7 @@ class SimpleOrchestrator:
                     "execution",
                 )
 
-        await emit("📥 Gathering detailed responses", "execution")
+        await emit("📥 Gathering the detailed results", "execution")
         responses = await self._executor.execute(
             supports, context, progress_callback=executor_progress
         )
@@ -1667,7 +1910,7 @@ class SimpleOrchestrator:
 
         await self._emit_fact_thinking_events(responses, emit)
 
-        await emit("🧠 Synthesizing narrative and assembling modules", "synthesis")
+        await emit("🧠 Pulling everything together...", "synthesis")
         evidences, evidence_map = self._collect_evidences(responses)
         print(
             f"[KGDEBUG] collected evidences: {len(evidences)} items from {len(responses)} responses",
@@ -1774,24 +2017,40 @@ class SimpleOrchestrator:
         validate_final_response(final_payload)
 
         await emit(
-            "✅ Response synthesis complete", "synthesis", event_type="thinking_complete"
+            "✅ All set—here's what we found", "synthesis", event_type="thinking_complete"
         )
 
         return final_payload
 
-    def _build_out_of_scope_response(self, query: str) -> Dict[str, Any]:
-        """Return a friendly redirect when the query is out of scope."""
+    async def _build_out_of_scope_response(
+        self,
+        query: str,
+        conversation_history: List[Dict[str, str]],
+    ) -> Dict[str, Any]:
+        """Return a contextual redirect when the query is out of scope."""
 
         domain_lines = "\n".join(f"- {domain}" for domain in DOMAINS_IN_SCOPE)
+        guidance_text = None
+
+        if self._out_of_scope_responder and self._out_of_scope_responder.available:
+            guidance_text = await self._out_of_scope_responder.craft_response(
+                query,
+                conversation_history,
+                domain_lines,
+            )
+
+        if not guidance_text:
+            guidance_text = (
+                "That one's outside what I can cover, since I'm focused on our core climate datasets."
+                " These include:\n"
+                f"{domain_lines}\n\n"
+                "Feel free to pivot back to any of those areas and I can go much deeper."
+            )
+
         guidance_module = {
             "type": "text",
             "heading": "",
-            "content": (
-                "That question is outside of my scope, but I'd be happy to answer questions based on the domains I know more about! "
-                "These include:\n"
-                f"{domain_lines}\n"
-                "Let me know what you'd like to explore next."
-            ),
+            "texts": [guidance_text],
         }
         citation_module = {
             "type": "numbered_citation_table",
@@ -1802,6 +2061,67 @@ class SimpleOrchestrator:
         }
 
         modules = [guidance_module, citation_module]
+        metadata = self._build_metadata(query, modules, kg_available=False)
+        return {
+            "query": query,
+            "modules": modules,
+            "metadata": metadata,
+            "kg_context": {"nodes": [], "edges": []},
+            "citation_registry": {"citations": {}},
+        }
+
+    async def _build_near_scope_response(
+        self,
+        query: str,
+        conversation_history: List[Dict[str, str]],
+    ) -> Dict[str, Any]:
+        """Provide a brief answer for near-scope queries and nudge toward core domains."""
+
+        domain_lines = "\n".join(f"- {domain}" for domain in DOMAINS_IN_SCOPE)
+        bridge_text: Optional[str] = None
+
+        if self._out_of_scope_responder and self._out_of_scope_responder.available:
+            bridge_text = await self._out_of_scope_responder.craft_response(
+                query,
+                conversation_history,
+                domain_lines,
+                mode="bridge",
+            )
+
+        if not bridge_text:
+            snippet = query.strip()
+            if len(snippet) > 120:
+                snippet = snippet[:117].rstrip() + "..."
+
+            bridge_text = (
+                f"I don't have detailed datasets on \"{snippet}\", but I can acknowledge it at a high level. "
+                "For deep dives with evidence, I'm strongest on the domains listed below."
+            )
+
+        reminder_text = (
+            "If you'd like to stay in the areas where I have primary evidence, try one of these focus domains:\n"
+            f"{domain_lines}"
+        )
+
+        guidance_module = {
+            "type": "text",
+            "heading": "Quick Note",
+            "texts": [bridge_text],
+        }
+        reminder_module = {
+            "type": "text",
+            "heading": "Where I Can Help Most",
+            "texts": [reminder_text],
+        }
+        citation_module = {
+            "type": "numbered_citation_table",
+            "heading": "References",
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
+            "rows": [],
+            "allow_empty": True,
+        }
+
+        modules = [guidance_module, reminder_module, citation_module]
         metadata = self._build_metadata(query, modules, kg_available=False)
         return {
             "query": query,
@@ -2075,25 +2395,65 @@ class SimpleOrchestrator:
         return None
 
     def _merge_map_modules(self, modules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        map_indices = sorted(
-            [
+        map_indices = [
             idx
             for idx, module in enumerate(modules)
             if module.get("type") == "map" and module.get("mapType") == "geojson_url"
         ]
-        )
         if len(map_indices) <= 1:
             return modules
 
         project_root = Path(__file__).resolve().parents[1]
         static_maps_dir = project_root / "static" / "maps"
+
+        groups: Dict[Any, List[int]] = {}
+        for idx in map_indices:
+            metadata = modules[idx].get("metadata") or {}
+            merge_group = metadata.get("merge_group")
+            if merge_group:
+                groups.setdefault(merge_group, []).append(idx)
+
+        consumed: Set[int] = set()
+        result: List[Dict[str, Any]] = []
+
+        for idx, module in enumerate(modules):
+            if idx in consumed:
+                continue
+
+            if (
+                module.get("type") == "map"
+                and module.get("mapType") == "geojson_url"
+            ):
+                metadata = module.get("metadata") or {}
+                merge_group = metadata.get("merge_group")
+                group_indices = groups.get(merge_group, []) if merge_group else []
+                if merge_group and len(group_indices) > 1:
+                    candidate_modules = [modules[i] for i in group_indices if i not in consumed]
+                    combined = self._combine_map_group(candidate_modules, project_root, static_maps_dir)
+                    if combined:
+                        result.append(combined)
+                        consumed.update(group_indices)
+                        continue
+
+            result.append(module)
+            consumed.add(idx)
+
+        return result
+
+    def _combine_map_group(
+        self,
+        map_modules: List[Mapping[str, Any]],
+        project_root: Path,
+        static_maps_dir: Path,
+    ) -> Optional[Dict[str, Any]]:
+        if len(map_modules) <= 1:
+            return None
+
         combined_features: List[Dict[str, Any]] = []
         legend_by_key: Dict[str, Dict[str, Any]] = {}
         combined_bounds: Optional[Dict[str, float]] = None
         total_feature_count = 0
         geometry_type = None
-
-        map_modules = [modules[idx] for idx in map_indices]
 
         for module in map_modules:
             geojson_url = module.get("geojson_url")
@@ -2104,14 +2464,14 @@ class SimpleOrchestrator:
                 payload = json.loads(path.read_text())
             except Exception:
                 continue
+
             features = payload.get("features", [])
             if isinstance(features, list):
                 combined_features.extend(features)
                 total_feature_count += len(features)
 
             metadata = module.get("metadata") or {}
-            bounds_candidate = metadata.get("bounds")
-            combined_bounds = self._union_bounds(combined_bounds, bounds_candidate)
+            combined_bounds = self._union_bounds(combined_bounds, metadata.get("bounds"))
 
             legend = metadata.get("legend")
             if isinstance(legend, Mapping):
@@ -2133,7 +2493,7 @@ class SimpleOrchestrator:
                 geometry_type = metadata.get("geometry_type")
 
         if len(combined_features) <= 1:
-            return modules
+            return None
 
         combined_filename = f"combined_map_{uuid.uuid4().hex[:10]}.geojson"
         static_maps_dir.mkdir(parents=True, exist_ok=True)
@@ -2144,7 +2504,7 @@ class SimpleOrchestrator:
                 encoding="utf-8",
             )
         except Exception:
-            return modules
+            return None
 
         if geometry_type is None:
             geometry_type = "polygon"
@@ -2156,6 +2516,10 @@ class SimpleOrchestrator:
                 "items": list(legend_by_key.values()),
             },
         }
+        first_metadata = map_modules[0].get("metadata") or {}
+        merge_group = first_metadata.get("merge_group")
+        if merge_group:
+            combined_metadata["merge_group"] = merge_group
         if geometry_type:
             combined_metadata["geometry_type"] = geometry_type
         if combined_bounds:
@@ -2183,16 +2547,7 @@ class SimpleOrchestrator:
         if combined_metadata.get("geometry_type"):
             combined_module["geometry_type"] = combined_metadata["geometry_type"]
 
-        insert_index = min(map_indices)
-        new_modules: List[Dict[str, Any]] = []
-        for idx, module in enumerate(modules):
-            if idx == insert_index:
-                new_modules.append(combined_module)
-            if idx in map_indices:
-                continue
-            new_modules.append(module)
-
-        return new_modules
+        return combined_module
 
     @staticmethod
     def _derive_combined_map_heading(
