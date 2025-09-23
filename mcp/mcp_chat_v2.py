@@ -28,9 +28,9 @@ FACT_ORDERER_PROVIDER = "openai"  # options: anthropic, openai, auto
 FACT_ORDERER_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 FACT_ORDERER_OPENAI_MODEL = "gpt-5.0"
 
-NARRATIVE_SYNTH_PROVIDER = "anthropic"  # options: anthropic, openai, auto
+NARRATIVE_SYNTH_PROVIDER = "openai"  # options: anthropic, openai, auto
 NARRATIVE_SYNTH_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
-NARRATIVE_SYNTH_OPENAI_MODEL = "gpt-5.0"
+NARRATIVE_SYNTH_OPENAI_MODEL = "gpt-4.1-2025-04-14"
 
 _MARKER_PATTERN = re.compile(r"\[\[(F\d+)\]\]")
 
@@ -891,7 +891,7 @@ class NarrativeSynthesizer:
             "You are writing an analyst-grade summary for the given query.\n"
             "Assume each question is about Brazil. This is a Brazil-focused assistant. We will add support for other countries in the future.\n"
             "Don't say you're going to answer the question; just answer it.\n"
-            "Use only the provided evidence items. Each item has an ID like F1.\n"
+            "Use the provided evidence items to respond to the user's query. Each item has an ID like F1.\n"
             "Present the evidence in this order: "
             f"{order_instruction}.\n"
             "Open with a single paragraph that directly answers the question, weaving the key takeaway from the strongest evidence and including at least one citation marker (e.g., [[F1]]).\n"
@@ -899,8 +899,9 @@ class NarrativeSynthesizer:
             "You must provide the information in an engaging, coherent narrative.\n"
             "Every sentence that uses evidence must include citation markers using the syntax [[F1]] immediately after the relevant clause.\n"
             "If multiple evidence items support a sentence, include multiple markers, e.g., [[F1]][[F3]].\n"
-            "Do not invent new information; common knowledge may be used only to connect cited facts and must never introduce new claims.\n"
             "Avoid repeating tool scaffolding or status bullet text verbatim—integrate those ideas into polished prose instead of copying headings like 'NDC Overview & Domestic Comparison'.\n"
+            "Do NOT write about methodologies, datasets, analysis approaches, or what 'enables' or 'makes possible' any findings.\n"
+            "If evidence describes datasets or analytical methods, DO NOT include this information in your response, unless you are asked. Focus only on substantive findings and facts.\n"
             "Do NOT write information ABOUT your data (NDCAlign has these tables, 'I am going to write about this data', etc). Just write the narrative.\n"
             "You have a wealth of information present within your general knowledge and through tools. You are in charge of making this information engaging and compelling. Stay humble but state known facts confidently.\n"
             "Do not start answers with phrases like 'Based on the provided evidence...' OR similar phrasing.\n"
@@ -914,7 +915,7 @@ class NarrativeSynthesizer:
             "Return the paragraphs as plain text separated by blank lines."
         )
 
-        system_prompt = "You are a precise analyst who follows instructions exactly."
+        system_prompt = "You are a helpful, precise analyst who follows instructions exactly."
 
         full_system_prompt = f"{system_prompt}\n\n{prompt}"
 
