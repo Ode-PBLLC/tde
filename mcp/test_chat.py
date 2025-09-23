@@ -2,7 +2,8 @@ import anthropic
 import asyncio
 import sys
 import os
-from typing import Optional
+import json
+from typing import Optional, Dict
 
 from contextlib import AsyncExitStack
 from dotenv import load_dotenv
@@ -25,7 +26,87 @@ class SimplifiedClient:
         self.exit_stack = AsyncExitStack()
         self.anthropic = anthropic.Anthropic(api_key=api_key)
 
-    async def connect_and_run(self, query: str):
+    def enrich_query_with_llm(self, query: str) -> Dict:
+        """
+        Enriches the query using an LLM to add domain context for Brazilian environmental data.
+        
+        Args:
+            query: The original user query
+        
+        Returns:
+            Dictionary with enrichment data including enriched_query
+        """
+        enrichment_prompt = """You are a query enricher for an environmental and climate data system in Brazil. If the user does not specify the area, assume they are discussing Brazil and the surrounding regions.
+    Always:
+    - Map the query to at least one domain from this list:
+    Climate change, impacts, and policies
+    Environmental data and sustainability
+    Energy systems, renewable energy, and solar facilities
+    Corporate environmental performance and ESG
+    Water resources, biodiversity, and ecosystems
+    Environmental regulations, NDCs, and climate governance
+    Physical climate risks (floods, droughts, heat stress)
+    GHG emissions and carbon footprint
+    Environmental justice and climate adaptation
+    Deforestation and extreme heat
+    Questions about this project
+    - Add domain context, entities (commodity, phenomenon, geography, time).
+    - Include synonyms, acronyms, and scientific names.
+    - Exclude unrelated meanings in "must_not".
+    - Guess intent (lookup, dataset, analysis, spatial, policy, etc).
+    - Return only JSON.
+
+    Schema: {original, enriched_query, domain_tags, entities, aliases, must_not, intent, confidence}"""
+
+        try:
+            response = self.anthropic.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=500,
+                temperature=0.2,
+                system=enrichment_prompt,
+                messages=[{"role": "user", "content": query}]
+            )
+            
+            # Extract JSON from response
+            response_text = response.content[0].text if response.content else "{}"
+            
+            # Try to parse JSON
+            try:
+                enrichment_data = json.loads(response_text)
+            except json.JSONDecodeError:
+                # If not valid JSON, try to extract JSON from the text
+                import re
+                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                if json_match:
+                    enrichment_data = json.loads(json_match.group())
+                else:
+                    # Fallback: return original query
+                    enrichment_data = {
+                        "original": query,
+                        "enriched_query": query,
+                        "domain_tags": [],
+                        "entities": {},
+                        "aliases": [],
+                        "must_not": [],
+                        "intent": "unknown",
+                        "confidence": 0.5
+                    }
+            
+            # Ensure enriched_query exists
+            if "enriched_query" not in enrichment_data:
+                enrichment_data["enriched_query"] = query
+            
+            return enrichment_data
+            
+        except Exception as e:
+            print(f"Error enriching query: {e}")
+            return {
+                "original": query,
+                "enriched_query": query,
+                "error": str(e)
+            }
+
+    async def connect_and_run(self, query: str, enrich: bool = True):
         """Connects to the server, processes the query, and closes the connection."""
         is_python = self.server_script_path.endswith('.py')
         if not is_python:
@@ -45,6 +126,38 @@ class SimplifiedClient:
             self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
             await self.session.initialize()
             print("Connection successful! Processing query...")
+            
+            # Enrich query if requested
+            if enrich:
+                print("Enriching query...")
+                try:
+                    enrichment_data = self.enrich_query_with_llm(query)
+                    
+                    # Check if enrichment was successful
+                    if "error" in enrichment_data:
+                        print(f"⚠️  Enrichment failed: {enrichment_data['error']}")
+                        print("Proceeding with original query...")
+                    else:
+                        enriched_query = enrichment_data.get("enriched_query", query)
+                        
+                        # Validate enriched query is not empty or None
+                        if enriched_query and enriched_query.strip() and enriched_query != query:
+                            print(f"\n--- Query Enrichment ---")
+                            print(f"Original: {query}")
+                            print(f"Enriched: {enriched_query}")
+                            if "domain_tags" in enrichment_data and enrichment_data["domain_tags"]:
+                                print(f"Domains: {', '.join(enrichment_data['domain_tags'])}")
+                            if "intent" in enrichment_data:
+                                print(f"Intent: {enrichment_data['intent']}")
+                            
+                            # Use enriched query for processing
+                            query = enriched_query
+                        else:
+                            print("⚠️  Enrichment returned empty or identical result, using original query")
+                            
+                except Exception as e:
+                    print(f"⚠️  Unexpected error during enrichment: {e}")
+                    print("Proceeding with original query...")
             
             result = await self.process_query(query)
             print("\n--- Response from Server ---")
@@ -167,4 +280,4 @@ if __name__ == "__main__":
     #server_to_use = os.environ.get("SERVER_TO_USE", "mcp/world_bank_server.py")
 
     client = SimplifiedClient(server_to_use)
-    asyncio.run(client.connect_and_run(query))
+    asyncio.run(client.connect_and_run(query, enrich = True))

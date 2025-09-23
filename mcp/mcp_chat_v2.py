@@ -32,6 +32,10 @@ NARRATIVE_SYNTH_PROVIDER = "openai"  # options: anthropic, openai, auto
 NARRATIVE_SYNTH_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 NARRATIVE_SYNTH_OPENAI_MODEL = "gpt-4.1-2025-04-14"
 
+# Query enrichment configuration
+QUERY_ENRICHMENT_ENABLED = True  # options: True, False
+QUERY_ENRICHMENT_MODEL = "claude-3-5-haiku-20241022"
+
 _MARKER_PATTERN = re.compile(r"\[\[(F\d+)\]\]")
 
 
@@ -98,6 +102,91 @@ try:  # Optional OpenAI routing support
     from openai import OpenAI  # type: ignore
 except Exception:  # pragma: no cover - optional dependency may be missing
     OpenAI = None  # type: ignore
+
+
+class QueryEnricher:
+    """Enriches queries with domain context for Brazilian environmental data."""
+    
+    def __init__(self):
+        self._anthropic_client = None
+        if anthropic and os.getenv("ANTHROPIC_API_KEY"):
+            try:
+                self._anthropic_client = anthropic.Anthropic()
+            except Exception:
+                pass  # Will fall back to no enrichment
+    
+    def enrich_query_with_llm(self, query: str) -> Dict[str, Any]:
+        """
+        Enriches the query using an LLM to add domain context for Brazilian environmental data.
+        
+        Args:
+            query: The original user query
+        
+        Returns:
+            Dictionary with enrichment data including enriched_query
+        """
+        if not self._anthropic_client:
+            return {
+                "original": query,
+                "enriched_query": query,
+                "error": "No Anthropic client available"
+            }
+        
+        enrichment_prompt = """You are a query enricher for an environmental and climate data system in Brazil. If the user does not specify the area, assume they are discussing Brazil and the surrounding regions.
+
+Your job is to expand the query with relevant domain context, synonyms, and technical terms to improve search and retrieval.
+
+Add relevant terms from these domains when applicable:
+- Climate change, impacts, and policies
+- Environmental data and sustainability  
+- Energy systems, renewable energy, and solar facilities
+- Corporate environmental performance and ESG
+- Water resources, biodiversity, and ecosystems
+- Environmental regulations, NDCs, and climate governance
+- Physical climate risks (floods, droughts, heat stress)
+- GHG emissions and carbon footprint
+- Environmental justice and climate adaptation
+- Deforestation and extreme heat
+
+Return your response in this exact format:
+QUERY: [enhanced query with additional relevant terms and context]
+DOMAINS: [comma-separated list of relevant domains]
+TERMS: [comma-separated list of additional technical terms, synonyms, acronyms]
+
+Keep the enhanced query focused and comprehensive."""
+
+        try:
+            response = self._anthropic_client.messages.create(
+                model=QUERY_ENRICHMENT_MODEL,
+                max_tokens=300,
+                temperature=0.2,
+                system=enrichment_prompt,
+                messages=[{"role": "user", "content": query}]
+            )
+            
+            # Extract text from response
+            response_text = response.content[0].text if response.content else ""
+            enriched_query = response_text.strip()
+            
+            # Validate enriched query
+            if not enriched_query or enriched_query == query:
+                return {
+                    "original": query,
+                    "enriched_query": query,
+                    "error": "No enrichment generated"
+                }
+            
+            return {
+                "original": query,
+                "enriched_query": enriched_query
+            }
+            
+        except Exception as e:
+            return {
+                "original": query,
+                "enriched_query": query,
+                "error": f"Enrichment failed: {str(e)}"
+            }
 
 try:  # Optional translation support
     from .translation import translate_modules as _translate_modules
@@ -1317,6 +1406,8 @@ class SimpleOrchestrator:
         self._executor = QueryExecutor(client)
         self._fact_orderer = FactOrderer()
         self._narrative = NarrativeSynthesizer()
+        self._query_enricher = QueryEnricher()
+        self._enable_enrichment = QUERY_ENRICHMENT_ENABLED
         self._streamed_fact_ids: Set[str] = set()
         self._fact_message_counts: Dict[str, int] = defaultdict(int)
         self._streamed_fact_count: int = 0
@@ -1435,9 +1526,29 @@ class SimpleOrchestrator:
             except Exception:  # pragma: no cover - translation is best effort
                 return modules
 
-        language = detect_language(query)
+        # Store original query for final response
+        original_query = query
+        processing_query = query
+        
+        # Enrich query for better internal processing (routing, fact extraction)
+        if self._enable_enrichment:
+            try:
+                enrichment_data = self._query_enricher.enrich_query_with_llm(query)
+                if "error" not in enrichment_data:
+                    enriched_query = enrichment_data.get("enriched_query", query)
+                    if enriched_query and enriched_query.strip() and enriched_query != query:
+                        processing_query = enriched_query
+                        await emit("🔍 Query enriched for better processing", "initialization")
+                    else:
+                        await emit("🔍 Query enrichment returned no changes", "initialization")
+                else:
+                    await emit("⚠️ Query enrichment failed, using original query", "initialization")
+            except Exception as exc:
+                await emit(f"⚠️ Query enrichment error: {exc}, using original query", "initialization")
+
+        language = detect_language(processing_query)
         context = QueryContext(
-            query=query,
+            query=processing_query,  # Use enriched query for internal processing
             conversation=conversation_history or [],
             language=language,
             session_id=session_identifier,
@@ -1625,7 +1736,7 @@ class SimpleOrchestrator:
             flush=True,
         )
 
-        metadata = self._build_metadata(query, modules, kg_available=has_kg_content)
+        metadata = self._build_metadata(original_query, modules, kg_available=has_kg_content)
         print(f"[KGDEBUG] metadata built: {metadata}", flush=True)
 
         modules = await translate_modules_if_needed(modules)
@@ -1644,7 +1755,7 @@ class SimpleOrchestrator:
             kg_context_payload["urls"] = kg_urls
 
         final_payload: Dict[str, Any] = {
-            "query": query,
+            "query": original_query,  # Always return original query to user
             "modules": modules,
             "metadata": metadata,
             "kg_context": kg_context_payload,
