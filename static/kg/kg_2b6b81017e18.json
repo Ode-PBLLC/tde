@@ -1,0 +1,19 @@
+{
+  "query": "Which states have the most deforestation?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "deforestation",
+        "label": "deforestation",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "deforestation"
+      }
+    ],
+    "links": [],
+    "edges": [],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "15059.23"
+}

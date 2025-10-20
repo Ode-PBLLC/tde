@@ -15,114 +15,55 @@ Author: Implementation guided by new_mcp_chat_ideas.md
 import asyncio
 import os
 import json
-from typing import Dict, List, Any, Optional, Union, Tuple, Set
+from typing import Dict, List, Any, Optional, Union, Tuple, Set, Callable, Awaitable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
 import logging
 from pathlib import Path
+from urllib.parse import quote
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 import anthropic
 from dotenv import load_dotenv
 
-# Import performance optimizer
-try:
-    from performance_optimizer import (
-        PerformanceOptimizer, QueryComplexity, 
-        ProgressiveResponseBuilder, SmartRouter
-    )
-    OPTIMIZER_AVAILABLE = True
-except ImportError:
-    OPTIMIZER_AVAILABLE = False
-    print("Warning: Performance optimizer not available")
-
-# Import fact tracer for debugging
-try:
-    from fact_tracer import FactTracer
-    FACT_TRACER_AVAILABLE = True
-except ImportError:
-    FACT_TRACER_AVAILABLE = False
-    print("Warning: Fact tracer not available for debugging")
-
 # Load environment variables
 load_dotenv()
 
-# Feature flags
-def _geo_llm_only() -> bool:
-    """Return True if geospatial deterministic correlation should be disabled (LLM only)."""
-    val = os.environ.get("TDE_GEO_USE_LLM_ONLY") or os.environ.get("TDE_DISABLE_DETERMINISTIC_GEO")
-    return str(val).lower() in ("1", "true", "yes")
-
 # =============================================================================
-# LOGGING CONFIGURATION FOR LLM CALLS
+# CONFIGURATION
 # =============================================================================
 
-# Determine log directory - use environment variable or create in current project
-# This allows deployment flexibility while maintaining local development paths
-log_dir_path = os.environ.get('TDE_LOG_DIR')
-if log_dir_path:
-    LOG_DIR = Path(log_dir_path)
-else:
-    # Use project-relative logs directory
-    # This works whether running from project root or mcp subdirectory
-    current_file = Path(__file__).resolve()
-    project_root = current_file.parent.parent  # Go up from mcp/ to project root
-    LOG_DIR = project_root / "logs"
+# Feature flags - centralized configuration
+CONFIG = {
+    "DEBUG": os.getenv("DEBUG", "").lower() in ("1", "true", "yes"),
+    "DEBUG_FACTS": os.getenv("TDE_DEBUG_FACTS", "").lower() in ("1", "true", "yes"),
+    "GEO_LLM_ONLY": os.getenv("TDE_GEO_USE_LLM_ONLY", "").lower() in ("1", "true", "yes"),
+    "OPTIMIZER_AVAILABLE": False,  # Disabled - not implemented
+    "FACT_TRACER_AVAILABLE": False,  # Disabled - not implemented
+}
 
-# Create logs directory if it doesn't exist
-try:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Configure LLM call logger
-    llm_logger = logging.getLogger("llm_calls")
-    llm_logger.setLevel(logging.DEBUG)
-    
-    # Create file handler with timestamp
-    log_filename = LOG_DIR / f"llm_calls_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    file_handler = logging.FileHandler(log_filename)
-    file_handler.setLevel(logging.DEBUG)
-    
-    # Create console handler for important logs
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    
-    # Create formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
-    
-    # Add handlers to logger
-    llm_logger.addHandler(file_handler)
-    llm_logger.addHandler(console_handler)
-    
-    llm_logger.info(f"LLM call logging initialized. Log file: {log_filename}")
-    
-except Exception as e:
-    # If logging setup fails, create a minimal console-only logger
-    # This ensures the application still works even if file logging fails
-    print(f"Warning: Could not set up file logging: {e}")
-    print(f"Attempted log directory: {LOG_DIR}")
-    
-    llm_logger = logging.getLogger("llm_calls")
-    llm_logger.setLevel(logging.INFO)
-    
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    
-    formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    console_handler.setFormatter(formatter)
-    llm_logger.addHandler(console_handler)
-    
-    llm_logger.info("LLM call logging initialized (console only - file logging disabled)")
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+
+# Simple console-only logging setup
+llm_logger = logging.getLogger("llm_calls")
+llm_logger.setLevel(logging.INFO if not os.getenv('DEBUG') else logging.DEBUG)
+
+# Console handler only
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO if not os.getenv('DEBUG') else logging.DEBUG)
+
+# Simple formatter
+formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+console_handler.setFormatter(formatter)
+llm_logger.addHandler(console_handler)
 
 # =============================================================================
 # CONFIGURATION: MODEL SELECTION
@@ -136,53 +77,18 @@ LARGE_MODEL = "claude-3-5-sonnet-20241022"  # Powerful for synthesis and complex
 ANTHROPIC_CLIENT = anthropic.Anthropic()
 
 # =============================================================================
-# LLM PAYLOAD SANITIZATION & LOGGING HELPERS
+# LLM HELPER UTILITIES
 # =============================================================================
 
-# Keys commonly used in large/geo payloads that should not be echoed to the LLM
-SENSITIVE_BIG_KEYS = {"features", "geometry", "geojson", "coordinates", "data", "polygons", "points"}
-
-def _truncate_string(s: str, max_len: int = 4000) -> str:
+def _truncate_string(s: str, max_len: int = 10000) -> str:
+    """Simple string truncation utility."""
     try:
         return s if len(s) <= max_len else s[:max_len] + f"... [truncated {len(s)-max_len} chars]"
     except Exception:
         return str(s)[:max_len] + "... [truncated]"
 
-def _sanitize_obj_for_llm(obj: Any, removed_counts: Optional[Dict[str, int]] = None, max_list_len: int = 50) -> Any:
-    """Recursively sanitize an object so we never pass raw GeoJSON/heavy arrays to the LLM."""
-    from collections.abc import Mapping, Sequence
-    if removed_counts is None:
-        removed_counts = {}
-    # Dict-like
-    if isinstance(obj, Mapping):
-        out = {}
-        for k, v in obj.items():
-            kl = str(k).lower()
-            if kl in SENSITIVE_BIG_KEYS:
-                try:
-                    length = len(v) if hasattr(v, '__len__') else 1
-                except Exception:
-                    length = 1
-                removed_counts[kl] = removed_counts.get(kl, 0) + length
-                out[k] = {"_omitted_for_llm": True, "_approx_count": length}
-            else:
-                out[k] = _sanitize_obj_for_llm(v, removed_counts, max_list_len)
-        return out
-    # Strings
-    if isinstance(obj, str):
-        return _truncate_string(obj, 2000)
-    # Lists/tuples
-    if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
-        if len(obj) > max_list_len:
-            head = [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj[:max_list_len]]
-            return head + [{"_omitted_for_llm": True, "_omitted_items": len(obj) - max_list_len}]
-        return [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj]
-    # Fallback
-    return obj
-
 def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
-    """Create a safe, compact string for tool_result content sent back to the LLM."""
-    removed_counts: Dict[str, int] = {}
+    """Prepare tool result for LLM consumption with simple truncation."""
     try:
         if hasattr(result, 'content') and isinstance(result.content, list) and result.content:
             first = result.content[0]
@@ -190,41 +96,27 @@ def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
                 txt = first.text
                 try:
                     data = json.loads(txt)
-                    # DISABLED SANITIZATION - pass through data directly
-                    # sanitized = _sanitize_obj_for_llm(data, removed_counts)
-                    # payload_str = json.dumps(sanitized, ensure_ascii=False)
+                    # Pass through data directly without sanitization
                     payload_str = json.dumps(data, ensure_ascii=False)
                 except json.JSONDecodeError:
-                    payload_str = _truncate_string(txt, 10000)  # Increased limit
-                if removed_counts:
-                    llm_logger.warning(f"Sanitized tool_result for {tool_name}; removed heavy keys: {removed_counts}")
+                    payload_str = _truncate_string(txt)
                 llm_logger.debug(f"tool_result payload length: {len(payload_str)}")
                 return payload_str
         # Fallback to str(result)
-        payload_str = _truncate_string(str(result), 4000)
+        payload_str = _truncate_string(str(result))
         llm_logger.debug(f"tool_result payload length: {len(payload_str)}")
         return payload_str
     except Exception as e:
         return f"[tool_result_unavailable: {e}]"
 
 def _log_llm_messages_summary(messages: List[Dict[str, Any]], label: str):
+    """Simple message summary logging."""
     try:
         serialized = json.dumps(messages, ensure_ascii=False)
         size_kb = len(serialized.encode('utf-8')) / 1024.0
         llm_logger.info(f"LLM messages summary [{label}]: messages={len(messages)} size≈{size_kb:.1f}KB")
     except Exception as e:
         llm_logger.debug(f"Could not summarize LLM messages: {e}")
-
-def _write_llm_payload_log(label: str, payload: Dict[str, Any]):
-    """Write the exact system+messages payload we send to the LLM to a daily log file."""
-    try:
-        date_str = datetime.now().strftime('%Y%m%d')
-        log_file = LOG_DIR / f"llm_payloads_{date_str}.log"
-        entry = {"ts": datetime.now().isoformat(), "label": label, "payload": payload}
-        with open(log_file, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception as e:
-        llm_logger.error(f"Failed to write LLM payload log: {e}")
 
 # =============================================================================
 # LLM HELPER FUNCTIONS
@@ -251,16 +143,6 @@ async def call_small_model(system: str, user_prompt: str, max_tokens: int = 1000
     
     try:
         messages_payload = [{"role": "user", "content": user_prompt}]
-        _write_llm_payload_log(
-            label=f"small_model:{SMALL_MODEL}",
-            payload={
-                "model": SMALL_MODEL,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "system": system,
-                "messages": messages_payload,
-            }
-        )
         response = ANTHROPIC_CLIENT.messages.create(
             model=SMALL_MODEL,
             max_tokens=max_tokens,
@@ -300,16 +182,6 @@ async def call_large_model(system: str, user_prompt: str, max_tokens: int = 2000
     
     try:
         messages_payload = [{"role": "user", "content": user_prompt}]
-        _write_llm_payload_log(
-            label=f"large_model:{LARGE_MODEL}",
-            payload={
-                "model": LARGE_MODEL,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "system": system,
-                "messages": messages_payload,
-            }
-        )
         response = ANTHROPIC_CLIENT.messages.create(
             model=LARGE_MODEL,
             max_tokens=max_tokens,
@@ -357,23 +229,6 @@ async def call_model_with_tools(model: str, system: str, messages: List[Dict[str
     
     try:
         _log_llm_messages_summary(messages, f"tools={len(tools)} model={model}")
-        # Log exact messages + slim tool metadata to avoid serialization issues
-        try:
-            tools_log = [{"name": t.get("name", ""), "description": t.get("description", "")} for t in tools]
-        except Exception:
-            tools_log = []
-        _write_llm_payload_log(
-            label=f"tools_model:{model}",
-            payload={
-                "model": model,
-                "max_tokens": max_tokens,
-                "system": system,
-                "messages": messages,
-                "tools": tools_log,
-            }
-        )
-        # Note: Recent Anthropic SDKs no longer require or accept the tools beta header.
-        # Passing deprecated beta headers can cause 400 errors. Call without extra_headers.
         response = ANTHROPIC_CLIENT.messages.create(
             model=model,
             max_tokens=max_tokens,
@@ -787,11 +642,6 @@ class MultiServerClient:
         self.citation_registry = CitationRegistry()
         self.kg_context_tracker = KGContextTracker()  # Track KG context for visualization
         
-        # Initialize fact tracer if debugging is enabled
-        self.fact_tracer = None
-        if os.getenv('DEBUG_FACTS', '').lower() == 'true' and FACT_TRACER_AVAILABLE:
-            self.fact_tracer = None  # Will be initialized per query
-        
     async def __aenter__(self):
         """Async context manager entry."""
         return self
@@ -1011,6 +861,25 @@ class QueryOrchestrator:
         self._admin_zone_bootstrapped: bool = False
         # Target language preference (e.g., 'pt' for Portuguese)
         self.target_language = (target_language or "").lower() or None
+        self._streamed_fact_keys: Set[str] = set()
+        self._streamed_fact_count: int = 0
+        self._max_fact_messages_per_query: int = 12
+        self._max_fact_messages_per_server: int = 3
+        self._fact_thinking_max_chars: int = 220
+        self._fact_streaming_servers: Set[str] = {
+            "cpr",
+            "gist",
+            "lse",
+            "spa",
+            "wmo_cli",
+        }
+        self._fact_streaming_tool_blocklist: Set[str] = {
+            "GetTopConceptsByQuery",
+            "GetTopConceptsByQueryLocal",
+            "FindConceptMatchesByNgrams",
+            "SearchConceptsFuzzy",
+            "GetConceptGraphNeighbors",
+        }
 
     # --- Generic intent detectors (admin/zone/ranking) ---
     def _detect_admin_intent(self, query: str) -> Optional[str]:
@@ -1055,23 +924,166 @@ class QueryOrchestrator:
             return False
         self._tool_calls_done.add(key)
         return True
-    
+
     def _format_conversation_history(self) -> str:
         """Format conversation history for LLM context."""
         if not self.conversation_history:
             return ""
-        
+
         formatted = []
         for msg in self.conversation_history:
             role = "User" if msg["role"] == "user" else "Assistant"
             formatted.append(f"{role}: {msg['content']}")
-        
+
         return "\n".join(formatted)
-    
+
+    def _build_passage_snippet(self, text: str, matched_terms: Optional[List[str]], max_len: int = 240) -> str:
+        """Return a concise excerpt from a passage, centered on the first matched term when available."""
+        if not isinstance(text, str):
+            return ""
+
+        # Collapse whitespace to keep snippets readable
+        normalized = " ".join(text.split())
+        if not normalized:
+            return ""
+
+        lower_text = normalized.lower()
+        if matched_terms:
+            for term in matched_terms:
+                term_norm = (term or "").strip().lower()
+                if not term_norm:
+                    continue
+                idx = lower_text.find(term_norm)
+                if idx != -1:
+                    half_window = max_len // 2
+                    start = max(0, idx - half_window)
+                    end = min(len(normalized), idx + len(term_norm) + half_window)
+                    snippet = normalized[start:end].strip()
+                    if start > 0:
+                        snippet = "…" + snippet
+                    if end < len(normalized):
+                        snippet = snippet + "…"
+                    return snippet
+
+        snippet = normalized[:max_len].strip()
+        if len(normalized) > max_len:
+            snippet += "…"
+        return snippet
+
+    def _format_fact_thinking_message(self, fact: Fact) -> Optional[str]:
+        """Return a truncated thinking message for a textual fact."""
+        # Skip non-textual artifacts that already surface via modules
+        if fact.map_reference:
+            return None
+
+        text = (fact.text_content or "").strip()
+        if not text:
+            return None
+
+        tool_name = (fact.metadata or {}).get("tool")
+        if tool_name and tool_name in self._fact_streaming_tool_blocklist:
+            return None
+
+        citation = fact.citation
+        if not citation:
+            return None
+
+        citation_meta = citation.metadata or {}
+        has_passage_context = any(
+            key in citation_meta for key in ("passage_id", "doc_id", "citation_id")
+        )
+        if fact.server_origin == "cpr" and not has_passage_context:
+            return None
+
+        # Collapse whitespace to keep messages compact
+        text = " ".join(text.split())
+        if not text:
+            return None
+
+        lower_text = text.lower()
+        blocked_phrases = (
+            "no direct passages",
+            "try broader",
+            "try alternative",
+            "consider calling",
+            "items from",
+            "retrieved ",
+            "data fields",
+        )
+        if any(phrase in lower_text for phrase in blocked_phrases):
+            return None
+
+        if lower_text.startswith("found ") and " item" in lower_text:
+            return None
+
+        max_chars = max(40, self._fact_thinking_max_chars)
+        if len(text) > max_chars:
+            text = text[: max_chars - 3].rstrip() + "..."
+
+        return f'🔍 Relevant Fact Found: "{text}"'
+
+    async def _maybe_stream_fact_events(
+        self,
+        server_name: str,
+        facts: List[Fact],
+        fact_event_callback: Optional[Callable[[Dict[str, Any]], Awaitable[None]]],
+    ) -> None:
+        if not fact_event_callback or not facts:
+            return
+
+        events = self._generate_fact_thinking_events(server_name, facts)
+        for event in events:
+            await fact_event_callback(event)
+
+    def _generate_fact_thinking_events(
+        self,
+        server_name: str,
+        facts: List[Fact],
+        per_server_limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Build thinking events for newly discovered textual facts."""
+        if server_name not in self._fact_streaming_servers:
+            return []
+
+        if self._streamed_fact_count >= self._max_fact_messages_per_query:
+            return []
+
+        limit = per_server_limit or self._max_fact_messages_per_server
+        events: List[Dict[str, Any]] = []
+
+        for fact in facts:
+            if not isinstance(fact, Fact):
+                continue
+
+            if fact.source_key in self._streamed_fact_keys:
+                continue
+
+            message = self._format_fact_thinking_message(fact)
+            if not message:
+                continue
+
+            events.append({
+                "type": "thinking",
+                "data": {
+                    "message": message,
+                    "category": "fact",
+                },
+            })
+
+            self._streamed_fact_keys.add(fact.source_key)
+            self._streamed_fact_count += 1
+
+            if len(events) >= limit:
+                break
+            if self._streamed_fact_count >= self._max_fact_messages_per_query:
+                break
+
+        return events
+
     async def _is_query_relevant(self, user_query: str) -> bool:
         """
         Check if the query is relevant to climate/environment/policy domain.
-        
+
         Args:
             user_query: User's query to check
             
@@ -1111,6 +1123,9 @@ class QueryOrchestrator:
             - Physical climate risks (floods, droughts, heat stress)
             - GHG emissions and carbon footprint
             - Environmental justice and climate adaptation
+            - Deforestation
+            - Extreme Heat
+
 
             Additionally, ALWAYS treat as relevant any meta questions about the assistant/app itself, including:
             - What you can do or talk about (capabilities, topics, features, examples)
@@ -1151,6 +1166,8 @@ class QueryOrchestrator:
             - Physical climate risks (floods, droughts, heat stress)
             - GHG emissions and carbon footprint
             - Environmental justice and climate adaptation
+            - Deforestation
+            - Extreme Heat
 
             ALSO IN-SCOPE: Meta questions about the assistant/app itself, including:
             - What we can do or talk about (capabilities, topics, features, examples)
@@ -1336,15 +1353,15 @@ class QueryOrchestrator:
             "cpr": "Knowledge Graph",
             "solar": "Solar Facilities",
             "gist": "Corporate Environmental Metrics (GIST)",
-            "lse": "LSE (and Friends) Governance Data",
-            "deforestation": "Deforestation (Brazil)",
+            "lse": "NDC Align",
+            "deforestation": "PRODES Deforestation",
             "admins": "Brazilian Administrative Boundaries",
             "heat": "Heat Stress Layers",
             "geospatial": "Geospatial Correlation",
             "viz": "Visualization",
             "spa": "Science Panel for the Amazon",
             "wmo_cli": "WMO / IPCC Reports",
-            "mb_deforest": "MapBiomas Deforestation"
+            "mb_deforest": "MapBiomas Deforestation Annual Report"
         }
         # Show datasets only (exclude engines like geospatial/viz)
         included_keys = set()
@@ -1357,9 +1374,6 @@ class QueryOrchestrator:
                 display_name = r.get("name") if isinstance(r, dict) and r.get("name") else friendly_names.get(key, key)
                 rows.append([display_name, summary, describe_to_metrics(key, r)])
                 included_keys.add(key)
-
-        # Fallbacks for any missing entries (datasets only; exclude engines like geospatial/viz)
-        # Do not add fallback rows with "metadata unavailable" — show only live datasets
 
         overview_text = (
             "This workspace exposes live datasets: a climate policy knowledge graph, corporate environmental metrics (GIST), "
@@ -1418,27 +1432,29 @@ class QueryOrchestrator:
         Returns:
             API-compliant response with redirect message
         """
+        domains_in_scope = [
+            "Climate change, impacts, and policies",
+            "Environmental data and sustainability",
+            "Energy systems, renewable energy, and solar facilities",
+            "Corporate environmental performance and ESG",
+            "Water resources, biodiversity, and ecosystems",
+            "Environmental regulations, NDCs, and climate governance",
+            "Physical climate risks (floods, droughts, heat stress)",
+            "GHG emissions and carbon footprint",
+            "Environmental justice and climate adaptation",
+            "Deforestation and extreme heat"
+        ]
+
+        domain_lines = "\n".join(f"- {domain}" for domain in domains_in_scope)
         redirect_module = {
             "type": "text",
-            "heading": "Let me help you with climate and environmental topics",
-            "content": """
-            
-            Unfortunately I can't help you with that, but I can assist with many climate and environmental topics. I can help you with questions about:
-
-            • **Climate Policy**: National climate strategies, NDCs, carbon pricing, adaptation plans
-            • **Renewable Energy**: Solar facilities, wind power, renewable capacity by country/region
-            • **Corporate Sustainability**: Company environmental impacts, water stress, GHG emissions
-            • **Physical Climate Risks**: Floods, droughts, heat exposure, extreme weather impacts
-            • **Environmental Data**: Biodiversity loss, deforestation, water resources, air quality
-
-            **Example questions you could ask:**
-            - "What are the water stress risks for major companies in Brazil?"
-            - "Show me solar capacity growth in India over the last 5 years"
-            - "How are financial institutions addressing climate risks?"
-            - "What climate adaptation policies has Nigeria implemented?"
-            - "Compare renewable energy deployment between China and the US"
-
-            How can I help you explore climate and environmental topics today?"""
+            "heading": "Out of Scope",
+            "content": (
+                "That question is outside of my scope, but I'd be happy to answer questions based on the domains I know more about! "
+                "These include:\n"
+                f"{domain_lines}\n"
+                "Let me know what you'd like to explore next."
+            )
         }
         
         return {
@@ -1683,13 +1699,9 @@ Instructions:
             self._geospatial_cleared = False
             
             # Estimate query complexity for optimization
-            if OPTIMIZER_AVAILABLE:
-                complexity = await PerformanceOptimizer.estimate_complexity(user_query)
-                llm_logger.info(f"Query complexity: {complexity.value}")
-                tool_limit = PerformanceOptimizer.TOOL_LIMITS[complexity]
-            else:
-                complexity = None
-                tool_limit = 15  # Default limit
+            # Performance optimizer disabled
+            complexity = None
+            tool_limit = 15  # Default limit
             
             # First check if query is relevant to our domain
             is_relevant = await self._is_query_relevant(user_query)
@@ -1700,10 +1712,7 @@ Instructions:
             if await self._is_meta_query(user_query):
                 return await self._create_capabilities_response(user_query)
             
-            # Initialize fact tracer for debugging if enabled
-            if os.getenv('DEBUG_FACTS', '').lower() == 'true' and FACT_TRACER_AVAILABLE:
-                self.client.fact_tracer = FactTracer(user_query)
-                llm_logger.info(f"Fact tracing enabled with trace_id: {self.client.fact_tracer.trace_id}")
+            # Fact tracing disabled (not implemented)
             
             # NEW: Check if we can answer from cached context
             can_use_context, reasoning = await self._can_answer_from_context(user_query)
@@ -1822,7 +1831,7 @@ Instructions:
         - detailed: Comprehensive capability list for scout phase
         - collection_instructions: How to effectively use tools during Phase 1
         """
-        return {
+        configs = {
             "cpr": {
                 "brief": "Climate Knowledge Graph with physical & transition risks, energy systems, financial climate impacts",
                 "detailed": "This dataset is a knowledge graph of climate/environment related concepts applied to POLICY documents. This dataset is especially useful is policy is being discussed.",
@@ -1994,7 +2003,7 @@ Instructions:
             },
             "spa": {
                 "brief": "Semantic passage index for retrieving relevant text passages from documents",
-                "detailed": "The Science Panel for the Amazon released the Amazon Assessment Report 2021 at COP26, which has been called an “encyclopedia” of the Amazon region. This landmark report is unprecedented for its scientific and geographic scope, the inclusion of Indigenous scientists, and its transparency, having undergone peer review and public consultation.",
+                "detailed": "The Science Panel for the Amazon released the Amazon Assessment Report 2021 at COP26, which has been called an “encyclopedia” of the Amazon region. This landmark report is unprecedented for its scientific and geographic scope, the inclusion of Indigenous scientists, and its transparency, having undergone peer review and public consultation. It's very likely that you'll want to query this source.",
                 "collection_instructions": """Tool usage strategy for SPA:
                 - Use 'AmazonAssessmentListDocs' to get an overview of available documents
                 - Use 'AmazonAssessmentSearch' for keyword-based searches
@@ -2004,6 +2013,20 @@ Instructions:
             }
         }
     
+
+        brazil_scope_note = (
+            "BRAZIL SCOPE: This prototype only covers Brazil. Always limit data collection, tool arguments, and reasoning to Brazilian geographies and actors. "
+            "If a user asks about other countries, explain the Brazil-only scope and pivot back to Brazilian context unless they explicitly require a comparison."
+        )
+        for cfg in configs.values():
+            detailed = cfg.get("detailed")
+            if detailed:
+                cfg["detailed"] = f"{brazil_scope_note}\n\n{detailed}"
+            instructions = cfg.get("collection_instructions")
+            if instructions:
+                cfg["collection_instructions"] = f"{brazil_scope_note}\n\n{instructions}"
+        return configs
+
     async def _evaluate_server_relevance(self, query: str, server_name: str, config: dict) -> tuple[str, bool]:
         """
         Evaluate if a single server is relevant to the query.
@@ -2213,7 +2236,7 @@ Instructions:
             "within", "inside", "intersect", "overlap", "near", "close to",
             "proximity", "adjacent", "located in", "around", "km"
         ])
-        if (not _geo_llm_only()) and is_spatial_query and self.client.sessions.get("geospatial"):
+        if (not CONFIG["GEO_LLM_ONLY"]) and is_spatial_query and self.client.sessions.get("geospatial"):
             try:
                 reg = await self.client.call_tool("GetRegisteredEntities", {"session_id": self.spatial_session_id}, "geospatial")
                 reg_data = {}
@@ -2310,7 +2333,13 @@ Instructions:
         
         return results
     
-    async def _collect_server_information(self, user_query: str, server_name: str, config: Dict[str, Any]) -> PhaseResult:
+    async def _collect_server_information(
+        self,
+        user_query: str,
+        server_name: str,
+        config: Dict[str, Any],
+        fact_event_callback: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None,
+    ) -> PhaseResult:
         """
         Actively collect information from a pre-filtered relevant server.
         
@@ -2583,6 +2612,7 @@ Instructions:
                             except Exception as e:
                                 llm_logger.warning(f"KG PASSAGES logging error: {e}")
                             collected_facts.extend(facts_here)
+                            await self._maybe_stream_fact_events(server_name, facts_here, fact_event_callback)
                         except Exception as e:
                             print(f"KG bootstrap error for '{label}': {e}")
 
@@ -2601,6 +2631,7 @@ Instructions:
                             except Exception:
                                 pass
                             collected_facts.extend(facts_here)
+                            await self._maybe_stream_fact_events(server_name, facts_here, fact_event_callback)
                         except Exception as e:
                             llm_logger.warning(f"KG neighbor passage fetch failed for '{label}': {e}")
 
@@ -2627,6 +2658,7 @@ Instructions:
                                 pass
                             llm_logger.info(f"KG BOOTSTRAP co-mentions added: {len(both_facts)}")
                             collected_facts.extend(both_facts)
+                            await self._maybe_stream_fact_events(server_name, both_facts, fact_event_callback)
                     except Exception as e:
                         llm_logger.warning(f"KG BOOTSTRAP co-mentions failed: {e}")
 
@@ -2663,6 +2695,7 @@ Instructions:
                         llm_logger.warning(f"KG relationship explanation failed: {e}")
 
                     if collected_facts:
+                        await self._maybe_stream_fact_events(server_name, collected_facts, fact_event_callback)
                         return PhaseResult(
                             is_relevant=True,
                             facts=collected_facts,
@@ -2719,6 +2752,8 @@ Instructions:
                         
             # Create focused system prompt for Phase 1 collection
             system_prompt = f"""You are collecting information from the {server_name} server to answer: {user_query}
+
+            BRAZIL FOCUS: This prototype only serves Brazil. Restrict tool calls, filters, and reasoning to Brazilian geographies, entities, and datasets. If the user requests information about another country, state that only Brazilian coverage is available and redirect collection back to Brazil unless they explicitly demand a comparison.
 
             CRITICAL: Focus ONLY on facts that directly answer this specific question.
 
@@ -2794,7 +2829,9 @@ Instructions:
             if policy_intent:
                 try:
                     disc = await self.client.call_tool("DiscoverPolicyContextForQuery", {"query": user_query, "top_concepts": 3, "neighbor_limit": 10, "passage_limit": 25}, server_name)
-                    facts.extend(self._extract_facts_from_result("DiscoverPolicyContextForQuery", {"query": user_query}, disc, server_name))
+                    new_facts = self._extract_facts_from_result("DiscoverPolicyContextForQuery", {"query": user_query}, disc, server_name)
+                    facts.extend(new_facts)
+                    await self._maybe_stream_fact_events(server_name, new_facts, fact_event_callback)
                     # Pull recent KG semantic debug lines and forward to orchestrator logs for visibility
                     try:
                         semlog = await self.client.call_tool("GetSemanticDebugLog", {"limit": 80}, server_name)
@@ -2824,20 +2861,14 @@ Instructions:
             if correlation_intent:
                 try:
                     if server_name == "deforestation":
-                        # Skip fetching/streaming deforestation polygons. Correlation will
-                        # use the geospatial server's static deforestation index, and maps
-                        # include only correlated polygons. This avoids large payloads that hang.
-                        print("  Phase 1 - deforestation: Skipping polygon bootstrap; using static deforestation index")
+                                # Skip large deforestation polygon fetching to avoid performance issues
+                        print("  Phase 1 - deforestation: Skipping polygon bootstrap for performance")
                         return PhaseResult(
                             is_relevant=True,
                             facts=facts,
-                            reasoning="Skipped polygon bootstrap; using static deforestation index",
+                            reasoning="Skipped polygon bootstrap for performance",
                             continue_processing=True
                         )
-                        # Deterministically fetch a SMALL sample of deforestation areas so geospatial
-                        # correlation can run even if the static index is unavailable.
-                        # Important: avoid unbounded payloads that freeze the frontend.
-                        # Use a sane default cap and a small min area to reduce geometry size.
                         def_args = {"min_area_hectares": 5, "limit": 500}
                         print(f"  Phase 1 - deforestation: Bootstrap calling GetDeforestationAreas {def_args}")
                         dres = await self.client.call_tool("GetDeforestationAreas", def_args, "deforestation")
@@ -2923,7 +2954,9 @@ Instructions:
                         bootstrap_args = {"country": "Brazil", "limit": 10000}
                         print(f"  Phase 1 - {server_name}: Bootstrap calling GetFacilitiesForGeospatial {bootstrap_args}")
                         result = await self.client.call_tool("GetFacilitiesForGeospatial", bootstrap_args, server_name)
-                        facts.extend(self._extract_facts_from_result("GetFacilitiesForGeospatial", bootstrap_args, result, server_name))
+                        new_facts = self._extract_facts_from_result("GetFacilitiesForGeospatial", bootstrap_args, result, server_name)
+                        facts.extend(new_facts)
+                        await self._maybe_stream_fact_events(server_name, new_facts, fact_event_callback)
                         # If the query is to SHOW or MAP solar assets in Brazil, generate the map deterministically
                         try:
                             wants_map = any(k in ql for k in ["map", "show", "where", "locations", "assets", "facilities"]) and ("brazil" in ql)
@@ -2931,7 +2964,9 @@ Instructions:
                                 map_args = {"country": "Brazil", "limit": 10000}
                                 print(f"  Phase 1 - solar: Generating map via GetSolarFacilitiesMapData {map_args}")
                                 map_res = await self.client.call_tool("GetSolarFacilitiesMapData", map_args, server_name)
-                                facts.extend(self._extract_facts_from_result("GetSolarFacilitiesMapData", map_args, map_res, server_name))
+                                map_facts = self._extract_facts_from_result("GetSolarFacilitiesMapData", map_args, map_res, server_name)
+                                facts.extend(map_facts)
+                                await self._maybe_stream_fact_events(server_name, map_facts, fact_event_callback)
                         except Exception as e:
                             print(f"  Phase 1 - solar: Map generation skipped: {e}")
                         # Directly register entities if present
@@ -3064,7 +3099,9 @@ Instructions:
                             muni_args = {"limit": 6000}
                             print(f"  Phase 1 - forced bootstrap: municipalities {muni_args}")
                             mres = await self.client.call_tool("GetMunicipalitiesByFilter", muni_args, "municipalities")
-                            facts.extend(self._extract_facts_from_result("GetMunicipalitiesByFilter", muni_args, mres, "municipalities"))
+                            muni_facts = self._extract_facts_from_result("GetMunicipalitiesByFilter", muni_args, mres, "municipalities")
+                            facts.extend(muni_facts)
+                            await self._maybe_stream_fact_events("municipalities", muni_facts, fact_event_callback)
                             if hasattr(mres, 'content') and mres.content:
                                 import json as _json
                                 mdata = _json.loads(mres.content[0].text)
@@ -3083,7 +3120,9 @@ Instructions:
                                 heat_args = {"quintiles": [5], "limit": 5000}
                                 print(f"  Phase 1 - forced bootstrap: heat {heat_args}")
                                 hres = await self.client.call_tool("GetHeatQuintilesForGeospatial", heat_args, "heat")
-                                facts.extend(self._extract_facts_from_result("GetHeatQuintilesForGeospatial", heat_args, hres, "heat"))
+                                heat_facts = self._extract_facts_from_result("GetHeatQuintilesForGeospatial", heat_args, hres, "heat")
+                                facts.extend(heat_facts)
+                                await self._maybe_stream_fact_events("heat", heat_facts, fact_event_callback)
                                 if hasattr(hres, 'content') and hres.content:
                                     import json as _json
                                     hdata = _json.loads(hres.content[0].text)
@@ -3196,6 +3235,7 @@ Instructions:
                                 tool_name, tool_args, result, server_name
                             )
                             facts.extend(extracted_facts)
+                            await self._maybe_stream_fact_events(server_name, extracted_facts, fact_event_callback)
                             
                             # Auto-register geographic entities with geospatial server
                             await self._auto_register_geographic_entities(
@@ -3287,9 +3327,7 @@ Instructions:
         """
         facts = []
         
-        # Log tool call if tracer is available
-        if self.client.fact_tracer:
-            self.client.fact_tracer.log_tool_call(server_name, tool_name, tool_args, result)
+        # Fact tracer logging disabled
         
         try:
             # Parse result content
@@ -3323,12 +3361,17 @@ Instructions:
                     source_url=self._resolve_source_url(server_name, tool_name),
                     metadata={"tool_args": tool_args}
                 )
+
+                if server_name == "lse":
+                    lse_facts = self._extract_lse_facts(tool_name, result_data, tool_args, base_citation)
+                    if lse_facts:
+                        facts.extend(lse_facts)
+                        return facts
                 
                 # Special handling: KG policy discovery tool returns passages list
                 if server_name == "cpr"and tool_name == "DiscoverPolicyContextForQuery" and isinstance(result_data, dict) and isinstance(result_data.get("passages"), list):
                     passages = result_data.get("passages", [])
                     for p in passages[:25]:
-                        txt = (p.get("text") or "")
                         pid = p.get("passage_id")
                         doc_id = p.get("doc_id")
                         match_type = (p.get("match_type") or "").lower()
@@ -3353,6 +3396,21 @@ Instructions:
                             label_str = ", ".join(labels[:3]) if labels else "concept"
                             passage_desc = f"Passage {pid} mentioning {label_str}"
 
+                        txt = p.get("text") or p.get("snippet") or p.get("preview") or ""
+                        if not txt:
+                            # Skip passages that have no retrievable text content
+                            continue
+
+                        snippet = self._build_passage_snippet(txt, matched_terms)
+                        if snippet:
+                            fact_text = f"Quoted evidence: '{snippet}'"
+                        else:
+                            trimmed = " ".join(txt.split())
+                            fact_text = trimmed[:240] + ("…" if len(trimmed) > 240 else "")
+
+                        if doc_id:
+                            fact_text = f"{fact_text} (doc {doc_id})"
+
                         specific_citation = Citation(
                             source_name=self._get_source_name_for_tool(passage_tool_id, server_name),
                             tool_id=passage_tool_id,
@@ -3370,10 +3428,14 @@ Instructions:
                         )
 
                         facts.append(Fact(
-                            text_content=txt[:400] + ("…" if len(txt) > 400 else ""),
+                            text_content=fact_text,
                             source_key=f"kg_passage_{pid}",
                             server_origin=server_name,
-                            metadata={"tool": passage_tool_id, "raw_result": p},
+                            metadata={
+                                "tool": passage_tool_id,
+                                "raw_result": p,
+                                "passage_snippet": snippet or fact_text
+                            },
                             citation=specific_citation
                         ))
                     # Also include a compact summary fact
@@ -3420,6 +3482,7 @@ Instructions:
                         )
 
                         fact_text = text[:240] + ("..." if len(text) > 240 else "") if text else desc
+                        fact_text = f"...{text[3:-3]}..."
 
                         facts.append(Fact(
                             text_content=fact_text,
@@ -3489,15 +3552,28 @@ Instructions:
                                 text_snippet = (item.get("text") or "")
                                 desc = (text_snippet[:100] + "...") if text_snippet else "Passage"
 
-                            source_name = doc_id or self._get_source_name_for_tool(tool_name, server_name)
-                            if concept_label:
-                                source_name = f"{source_name} — {concept_label}"
+                            # Keep CPR citations aligned with KG metadata while still surfacing document context
+                            source_name = self._get_source_name_for_tool(tool_name, server_name)
+                            source_type = self._get_source_type_for_server(server_name)
+
+                            doc_context = None
+                            if doc_id:
+                                doc_context = doc_id
+                                if concept_label:
+                                    doc_context = f"{doc_context} — {concept_label}"
+                                if passage_id:
+                                    doc_context = f"{doc_context} (passage {passage_id})"
+                            elif concept_label:
+                                doc_context = concept_label
+
+                            description_parts = [part for part in [doc_context, desc] if part]
+                            citation_description = " | ".join(description_parts) if description_parts else (desc or "Passage")
 
                             citation = Citation(
                                 source_name=source_name,
-                                tool_id=f"{tool_name}:{passage_id}" if passage_id else tool_name,
-                                source_type="Document",
-                                description=desc,
+                                tool_id=tool_name,
+                                source_type=source_type,
+                                description=citation_description,
                                 server_origin=server_name,
                                 source_url=self._resolve_source_url(server_name, tool_name),
                                 metadata={"tool_args": tool_args, "doc_id": doc_id, "passage_id": passage_id}
@@ -3578,6 +3654,83 @@ Instructions:
                         ))
                     
                 elif isinstance(result_data, dict):
+                    handled_special_case = False
+                    # Dedicated summary for facilities map data so the LLM doesn't invent correlation framing
+                    if tool_name == "GetSolarFacilitiesMapData":
+                        summary = result_data.get("summary", {}) or {}
+                        metadata_info = result_data.get("metadata", {}) or {}
+                        dataset_name = (metadata_info.get("data_source")
+                                        or summary.get("data_source")
+                                        or "TZ-SAM Q1 2025")
+                        total_facilities = summary.get("total_facilities")
+                        total_capacity = summary.get("total_capacity_mw")
+                        countries = summary.get("countries") or metadata_info.get("countries") or []
+                        bounds = summary.get("bounds") or metadata_info.get("bounds") or {}
+                        geom_type = (result_data.get("geometry_type")
+                                     or summary.get("geometry_type")
+                                     or "point")
+
+                        def _fmt_coord(value: Optional[float], lat: bool) -> Optional[str]:
+                            if value is None:
+                                return None
+                            hemisphere = 'N' if lat and value >= 0 else 'S' if lat else 'E' if value >= 0 else 'W'
+                            return f"{abs(float(value)):.1f}°{hemisphere}"
+
+                        lat_span = None
+                        lon_span = None
+                        try:
+                            north = bounds.get("north")
+                            south = bounds.get("south")
+                            east = bounds.get("east")
+                            west = bounds.get("west")
+                            north_fmt = _fmt_coord(north, lat=True)
+                            south_fmt = _fmt_coord(south, lat=True)
+                            east_fmt = _fmt_coord(east, lat=False)
+                            west_fmt = _fmt_coord(west, lat=False)
+                            if north_fmt and south_fmt:
+                                lat_span = f"{south_fmt} to {north_fmt}"
+                            if west_fmt and east_fmt:
+                                lon_span = f"{west_fmt} to {east_fmt}"
+                        except Exception:
+                            lat_span = None
+                            lon_span = None
+
+                        parts = []
+                        if total_facilities is not None:
+                            parts.append(f"{total_facilities:,} solar facilities")
+                        if countries:
+                            country_list = ", ".join(countries[:3])
+                            if len(countries) > 3:
+                                country_list += ", …"
+                            parts.append(f"covering {country_list}")
+                        if total_capacity:
+                            parts.append(f"totaling {total_capacity:,.0f} MW of capacity")
+                        if geom_type:
+                            parts.append(f"stored as {geom_type} features")
+
+                        summary_segments = "; ".join(parts) if parts else "Solar facilities dataset"
+                        fact_lines = [f"{dataset_name} GeoJSON dataset: {summary_segments}."]
+                        if lat_span or lon_span:
+                            span_parts = []
+                            if lat_span:
+                                span_parts.append(f"latitudes {lat_span}")
+                            if lon_span:
+                                span_parts.append(f"longitudes {lon_span}")
+                            fact_lines.append(f"Geographic coverage spans {' and '.join(span_parts)}.")
+                        fact_lines.append("Each feature retains facility name, capacity_mw, cluster_id, technology, and construction timestamps.")
+
+                        facts.append(Fact(
+                            text_content=" ".join(fact_lines),
+                            source_key=f"{server_name}_{tool_name}_summary_{hash(json.dumps(summary, sort_keys=True))}",
+                            server_origin=server_name,
+                            metadata={
+                                "tool": tool_name,
+                                "raw_result": result_data
+                            },
+                            citation=base_citation
+                        ))
+                        handled_special_case = True
+
                     # If a tool returned a ready-to-render table module, convert to a tabular fact
                     try:
                         if result_data.get('type') == 'table' and result_data.get('columns') and result_data.get('rows'):
@@ -3612,103 +3765,110 @@ Instructions:
                             facts.append(mfact)
                     except Exception:
                         pass
-                    # Dictionary - extract key information with units
-                    if tool_name == "GetSolarFacilitiesMultipleCountries":
-                        print(f"DEBUG: GetSolarFacilitiesMultipleCountries result_data keys: {list(result_data.keys())}")
-                        print(f"DEBUG: Has geojson_url: {'geojson_url' in result_data}")
-                    
-                    # Look for common patterns to build complete facts with units
-                    unit_keys = ['unit', 'units', 'measure', 'metric', 'unit_of_measure']
-                    time_keys = ['year', 'target_year', 'by_year', 'date', 'period', 'deadline']
-                    measure_keys = ['measure', 'metric', 'indicator', 'type', 'category']
-                    value_keys = ['value', 'total', 'amount', 'capacity', 'target', 'goal']
-                    
-                    # Try to extract structured information
-                    value = None
-                    for vk in value_keys:
-                        if vk in result_data:
-                            value = result_data[vk]
-                            break
-                    
-                    unit = next((result_data.get(k) for k in unit_keys if k in result_data), '')
-                    measure = next((result_data.get(k) for k in measure_keys if k in result_data), '')
-                    timeframe = next((result_data.get(k) for k in time_keys if k in result_data), '')
-                    
-                    # Special handling for specific tool types
-                    if 'data' in result_data and isinstance(result_data['data'], list):
-                        count = len(result_data['data'])
-                        fact_text = f"Found {count} records"
-                        if tool_args:
-                            args_str = ', '.join([f'{k}={v}' for k, v in tool_args.items()])
-                            fact_text += f" ({args_str})"
-                    elif value is not None and (unit or measure):
-                        # Build complete fact with units
-                        if measure:
-                            fact_text = f"{measure}: {value}"
-                        else:
-                            fact_text = f"{value}"
-                        
-                        if unit:
-                            fact_text += f" {unit}"
-                        
-                        if timeframe:
-                            fact_text += f" (by {timeframe})" if 'target' in str(value).lower() or 'goal' in str(value).lower() else f" ({timeframe})"
-                        
-                        # Add context from tool args if relevant
-                        if tool_args and 'country' in tool_args:
-                            fact_text = f"{tool_args['country']}: {fact_text}"
-                    elif 'total' in result_data:
-                        # Enhanced total handling
-                        total = result_data['total']
-                        if unit:
-                            fact_text = f"Total: {total} {unit}"
-                        else:
-                            fact_text = f"Total: {total}"
-                        if timeframe:
-                            fact_text += f" ({timeframe})"
-                    elif 'metadata' in result_data:
-                        meta = result_data['metadata']
-                        fact_text = f"Data: {', '.join([f'{k}={v}' for k, v in meta.items()])}"
+                    if handled_special_case:
+                        pass
                     else:
-                        # Extract actual key-value pairs for meaningful facts
-                        key_values = []
-                        for key, value in result_data.items():
-                            if isinstance(value, (str, int, float, bool)):
-                                # Try to identify if this is a value with implicit units
-                                if any(indicator in key.lower() for indicator in ['percent', 'rate', 'ratio', 'capacity', 'mw', 'gw', 'emissions', 'co2']):
-                                    # Add context from the key name
-                                    key_values.append(f"{key}: {value}")
-                                else:
-                                    key_values.append(f"{key}: {value}")
-                            elif isinstance(value, list) and len(value) > 0:
-                                key_values.append(f"{key}: {len(value)} items")
-                            elif isinstance(value, dict):
-                                # Check if nested dict has value/unit structure
-                                if 'value' in value and 'unit' in value:
-                                    key_values.append(f"{key}: {value['value']} {value['unit']}")
-                                else:
-                                    key_values.append(f"{key}: {len(value)} fields")
+                        # Dictionary - extract key information with units
+                        if tool_name == 'GetSolarFacilitiesMultipleCountries':
+                            print(f"DEBUG: GetSolarFacilitiesMultipleCountries result_data keys: {list(result_data.keys())}")
+                            print(f"DEBUG: Has geojson_url: {'geojson_url' in result_data}")
                         
-                        if key_values:
-                            # Join first few key-value pairs for the fact
-                            fact_text = "; ".join(key_values[:5])  # Limit to 5 to keep it concise
-                            if len(key_values) > 5:
-                                fact_text += f" (and {len(key_values) - 5} more fields)"
+                        # Look for common patterns to build complete facts with units
+                        unit_keys = ['unit', 'units', 'measure', 'metric', 'unit_of_measure']
+                        time_keys = ['year', 'target_year', 'by_year', 'date', 'period', 'deadline']
+                        measure_keys = ['measure', 'metric', 'indicator', 'type', 'category']
+                        value_keys = ['value', 'total', 'amount', 'capacity', 'target', 'goal']
+                        
+                        # Try to extract structured information
+                        value = None
+                        for vk in value_keys:
+                            if vk in result_data:
+                                value = result_data[vk]
+                                break
+                        
+                        unit = next((result_data.get(k) for k in unit_keys if k in result_data), '')
+                        measure = next((result_data.get(k) for k in measure_keys if k in result_data), '')
+                        timeframe = next((result_data.get(k) for k in time_keys if k in result_data), '')
+                        
+                        # Special handling for specific tool types
+                        if 'data' in result_data and isinstance(result_data['data'], list):
+                            count = len(result_data['data'])
+                            fact_text = f"Found {count} records"
+                            if tool_args:
+                                args_str = ', '.join([f"{k}={v}" for k, v in tool_args.items()])
+                                fact_text += f" ({args_str})"
+                        elif value is not None and (unit or measure):
+                            # Build complete fact with units
+                            if measure:
+                                fact_text = f"{measure}: {value}"
+                            else:
+                                fact_text = f"{value}"
+                            
+                            if unit:
+                                fact_text += f" {unit}"
+                            
+                            if timeframe:
+                                fact_text += f" (by {timeframe})" if 'target' in str(value).lower() or 'goal' in str(value).lower() else f" ({timeframe})"
+                            
+                            # Add context from tool args if relevant
+                            if tool_args and 'country' in tool_args:
+                                fact_text = f"{tool_args['country']}: {fact_text}"
+                        elif 'total' in result_data:
+                            # Enhanced total handling
+                            total = result_data['total']
+                            if unit:
+                                fact_text = f"Total: {total} {unit}"
+                            else:
+                                fact_text = f"Total: {total}"
+                            if timeframe:
+                                fact_text += f" ({timeframe})"
+                        elif 'metadata' in result_data:
+                            meta = result_data['metadata']
+                            try:
+                                meta_pairs = ", ".join(f"{k}={v}" for k, v in meta.items())
+                                fact_text = f"Data: {meta_pairs}"
+                            except Exception:
+                                fact_text = "Data: metadata available"
                         else:
-                            # Fallback only if no extractable content
-                            fact_text = f"Retrieved {len(result_data)} data fields"
-                    
-                    facts.append(Fact(
-                        text_content=fact_text,
-                        source_key=f"{server_name}_{tool_name}_{hash(str(tool_args))}",
-                        server_origin=server_name,
-                        metadata={
-                            "tool": tool_name, 
-                            "data_keys": list(result_data.keys()),
-                            "raw_result": result_data  # Preserve for Phase 3
-                        },
-                        citation=base_citation
-                    ))
+                            # Extract actual key-value pairs for meaningful facts
+                            key_values = []
+                            for key, value in result_data.items():
+                                if isinstance(value, (str, int, float, bool)):
+                                    # Try to identify if this is a value with implicit units
+                                    if any(indicator in key.lower() for indicator in ['percent', 'rate', 'ratio', 'capacity', 'mw', 'gw', 'emissions', 'co2']):
+                                        # Add context from the key name
+                                        key_values.append(f"{key}: {value}")
+                                    else:
+                                        key_values.append(f"{key}: {value}")
+                                elif isinstance(value, list) and len(value) > 0:
+                                    key_values.append(f"{key}: {len(value)} items")
+                                elif isinstance(value, dict):
+                                    # Check if nested dict has value/unit structure
+                                    if 'value' in value and 'unit' in value:
+                                        key_values.append(f"{key}: {value['value']} {value['unit']}")
+                                    else:
+                                        key_values.append(f"{key}: {len(value)} fields")
+                            
+                            if key_values:
+                                # Join first few key-value pairs for the fact
+                                fact_text = '; '.join(key_values[:5])  # Limit to 5 to keep it concise
+                                if len(key_values) > 5:
+                                    fact_text += f" (and {len(key_values) - 5} more fields)"
+                            else:
+                                # Fallback only if no extractable content
+                                fact_text = f"Retrieved {len(result_data)} data fields"
+                        
+                        facts.append(Fact(
+                            text_content=fact_text,
+                            source_key=f"{server_name}_{tool_name}_{hash(str(tool_args))}",
+                            server_origin=server_name,
+                            metadata={
+                                'tool': tool_name,
+                                'data_keys': list(result_data.keys()),
+                                'raw_result': result_data  # Preserve for Phase 3
+                            },
+                            citation=base_citation
+                        ))
                     
                 elif isinstance(result_data, str):
                     # Plain text result - summarize
@@ -3737,12 +3897,371 @@ Instructions:
                 preview = fact.text_content[:100] + "..." if len(fact.text_content) > 100 else fact.text_content
                 print(f"    Fact {i}: {preview}")
         
-        # Log facts extraction if tracer is available
-        if self.client.fact_tracer and facts:
-            self.client.fact_tracer.log_fact_extraction("phase1", server_name, result_data if 'result_data' in locals() else None, facts)
+        # Fact extraction logging disabled
         
         return facts
-    
+
+    def _extract_lse_facts(
+        self,
+        tool_name: str,
+        result_data: Any,
+        tool_args: dict,
+        base_citation: Citation,
+    ) -> List[Fact]:
+        """Convert structured LSE responses into citeable fact objects."""
+        if not isinstance(result_data, dict):
+            return []
+
+        facts: List[Fact] = []
+
+        def build_fact_text(
+            question: Optional[str],
+            answer: Optional[str],
+            domestic: Optional[str],
+            prefix: Optional[str] = None,
+        ) -> Optional[str]:
+            parts: List[str] = []
+            label = (question or "").strip()
+            if label:
+                label_clean = label[:-1] if label.endswith("?") else label
+                if prefix:
+                    parts.append(f"{prefix} {label_clean}:")
+                else:
+                    parts.append(f"{label_clean}:")
+            elif prefix:
+                parts.append(f"{prefix}:")
+            if answer:
+                parts.append(answer.strip())
+            if domestic:
+                parts.append(f"Domestic evidence: {domestic.strip()}")
+            sentence = " ".join(part for part in parts if part)
+            return sentence.strip() or None
+
+        if tool_name == "GetNDCTargets":
+            interim_targets = result_data.get("interim_targets", {}) if isinstance(result_data.get("interim_targets"), dict) else {}
+            for year, payload in interim_targets.items():
+                if not isinstance(payload, dict):
+                    continue
+                fact_text = build_fact_text(
+                    payload.get("question"),
+                    payload.get("answer"),
+                    payload.get("domestic"),
+                    prefix=f"Interim target {year}",
+                )
+                if not fact_text:
+                    continue
+                citation = self._clone_citation(
+                    base_citation,
+                    extra_metadata={"year": year, "question": payload.get("question")},
+                )
+                facts.append(
+                    Fact(
+                        text_content=fact_text,
+                        source_key=f"lse_ndc_target_{year}",
+                        server_origin="lse",
+                        metadata={
+                            "tool": tool_name,
+                            "year": year,
+                            "raw_result": payload,
+                        },
+                        citation=citation,
+                    )
+                )
+
+            long_term = result_data.get("long_term")
+            if isinstance(long_term, dict):
+                fact_text = build_fact_text(
+                    long_term.get("question"),
+                    long_term.get("answer"),
+                    long_term.get("domestic"),
+                    prefix="Long-term target",
+                )
+                if fact_text:
+                    citation = self._clone_citation(
+                        base_citation,
+                        extra_metadata={"question": long_term.get("question"), "category": "long_term"},
+                    )
+                    facts.append(
+                        Fact(
+                            text_content=fact_text,
+                            source_key="lse_ndc_long_term",
+                            server_origin="lse",
+                            metadata={
+                                "tool": tool_name,
+                                "category": "long_term",
+                                "raw_result": long_term,
+                            },
+                            citation=citation,
+                        )
+                    )
+
+            principles = result_data.get("principles")
+            if isinstance(principles, list):
+                for idx, principle in enumerate(principles, start=1):
+                    if not isinstance(principle, dict):
+                        continue
+                    fact_text = build_fact_text(
+                        principle.get("question"),
+                        principle.get("answer"),
+                        principle.get("domestic"),
+                        prefix=f"NDC principle {idx}",
+                    )
+                    if not fact_text:
+                        continue
+                    citation = self._clone_citation(
+                        base_citation,
+                        extra_metadata={
+                            "question": principle.get("question"),
+                            "category": "principle",
+                            "index": idx,
+                        },
+                    )
+                    facts.append(
+                        Fact(
+                            text_content=fact_text,
+                            source_key=f"lse_ndc_principle_{idx}",
+                            server_origin="lse",
+                            metadata={
+                                "tool": tool_name,
+                                "category": "principle",
+                                "index": idx,
+                                "raw_result": principle,
+                            },
+                            citation=citation,
+                        )
+                    )
+
+        elif tool_name == "GetNDCImplementationStatus":
+            implemented = result_data.get("implemented_targets", []) if isinstance(result_data.get("implemented_targets"), list) else []
+            seen: Set[Tuple[str, str]] = set()
+            for entry in implemented:
+                if not isinstance(entry, dict):
+                    continue
+                key = (entry.get("question", ""), entry.get("domestic", ""))
+                if key in seen:
+                    continue
+                seen.add(key)
+                fact_text = build_fact_text(
+                    entry.get("question"),
+                    entry.get("ndc"),
+                    entry.get("domestic"),
+                    prefix="Implementation status",
+                )
+                if not fact_text:
+                    continue
+                citation = self._clone_citation(
+                    base_citation,
+                    extra_metadata={"question": entry.get("question"), "category": "implemented"},
+                )
+                facts.append(
+                    Fact(
+                        text_content=fact_text,
+                        source_key=f"lse_ndc_implemented_{len(seen)}",
+                        server_origin="lse",
+                        metadata={
+                            "tool": tool_name,
+                            "category": "implemented",
+                            "raw_result": entry,
+                        },
+                        citation=citation,
+                    )
+                )
+
+            instruments = result_data.get("instruments", []) if isinstance(result_data.get("instruments"), list) else []
+            for entry in instruments:
+                if not isinstance(entry, dict):
+                    continue
+                key = (entry.get("question", ""), entry.get("domestic", ""))
+                if key in seen:
+                    continue
+                seen.add(key)
+                fact_text = build_fact_text(
+                    entry.get("question"),
+                    entry.get("ndc"),
+                    entry.get("domestic"),
+                    prefix="Implementation instrument",
+                )
+                if not fact_text:
+                    continue
+                citation = self._clone_citation(
+                    base_citation,
+                    extra_metadata={"question": entry.get("question"), "category": "instrument"},
+                )
+                facts.append(
+                    Fact(
+                        text_content=fact_text,
+                        source_key=f"lse_ndc_instrument_{len(seen)}",
+                        server_origin="lse",
+                        metadata={
+                            "tool": tool_name,
+                            "category": "instrument",
+                            "raw_result": entry,
+                        },
+                        citation=citation,
+                    )
+                )
+
+            pending = result_data.get("pending_targets", []) if isinstance(result_data.get("pending_targets"), list) else []
+            if pending:
+                fact_text = (
+                    f"NDC implementation progress: {len(implemented)} targets implemented, "
+                    f"{len(pending)} pending; implementation rate {result_data.get('implementation_rate_percent', 0)}%."
+                )
+                citation = self._clone_citation(
+                    base_citation,
+                    extra_metadata={"category": "implementation_summary"},
+                )
+                facts.append(
+                    Fact(
+                        text_content=fact_text,
+                        source_key="lse_ndc_implementation_summary",
+                        server_origin="lse",
+                        metadata={
+                            "tool": tool_name,
+                            "category": "summary",
+                            "raw_result": result_data,
+                        },
+                        citation=citation,
+                    )
+                )
+
+        elif tool_name in {
+            "GetInstitutionalFramework",
+            "GetClimatePolicy",
+            "GetSubnationalGovernance",
+            "GetStateClimatePolicy",
+        }:
+            def record_sentence(record: Dict[str, Any], prefix: Optional[str] = None) -> Optional[str]:
+                if not isinstance(record, dict):
+                    return None
+                question = record.get("question") or record.get("label")
+                summary = record.get("summary") or record.get("response") or record.get("answer")
+                justification = record.get("justification")
+                implementation = record.get("implementation_information") or record.get("implementation_information_2")
+                status = record.get("status")
+                parts: List[str] = []
+                if prefix:
+                    parts.append(prefix)
+                if question:
+                    q = question.strip()
+                    q = q[:-1] if q.endswith('?') else q
+                    parts.append(f"{q}:")
+                if summary and summary.strip().lower() not in {"yes", "no", "n/a"}:
+                    parts.append(summary.strip())
+                elif record.get("response"):
+                    parts.append(f"Response: {record['response'].strip()}")
+                if status:
+                    parts.append(f"Status: {status.strip()}")
+                if justification:
+                    parts.append(f"Justification: {justification.strip()}")
+                if implementation:
+                    parts.append(f"Implementation evidence: {implementation.strip()}")
+                sentence = " ".join(part for part in parts if part)
+                return _truncate_string(sentence.strip(), 750) or None
+
+            def add_record_facts(records: List[Dict[str, Any]], context: Dict[str, Any], category: str, prefix_base: Optional[str] = None) -> None:
+                if not isinstance(records, list):
+                    return
+                seen_local: Set[str] = set()
+                for idx, record in enumerate(records, start=1):
+                    sentence = record_sentence(
+                        record,
+                        prefix=f"{prefix_base} {idx}" if prefix_base else None,
+                    )
+                    if not sentence:
+                        continue
+                    key_seed = f"{category}_{record.get('question') or record.get('label') or idx}"
+                    if key_seed in seen_local:
+                        continue
+                    seen_local.add(key_seed)
+                    citation = self._clone_citation(
+                        base_citation,
+                        extra_metadata={
+                            "category": category,
+                            "context": context,
+                            "question": record.get("question") or record.get("label"),
+                        },
+                    )
+                    facts.append(
+                        Fact(
+                            text_content=sentence,
+                            source_key=f"lse_{category}_{hash(key_seed) & 0xFFFFFFFF}",
+                            server_origin="lse",
+                            metadata={
+                                "tool": tool_name,
+                                "category": category,
+                                "context": context,
+                                "raw_record": record,
+                            },
+                            citation=citation,
+                        )
+                    )
+
+            if tool_name == "GetInstitutionalFramework":
+                topics = result_data.get("topics", [])
+                for topic in topics:
+                    context = {
+                        "topic": topic.get("topic"),
+                        "slug": topic.get("slug"),
+                    }
+                    add_record_facts(topic.get("records", []), context, "institution", prefix_base=context["topic"])
+
+            elif tool_name == "GetClimatePolicy":
+                policy_types = result_data.get("policy_types", [])
+                for policy in policy_types:
+                    context = {
+                        "policy_type": policy.get("policy_type"),
+                        "slug": policy.get("slug"),
+                    }
+                    add_record_facts(policy.get("records", []), context, "policy", prefix_base=context["policy_type"])
+
+            elif tool_name in {"GetSubnationalGovernance", "GetStateClimatePolicy"}:
+                if result_data.get("records") and isinstance(result_data.get("records"), list):
+                    context = {
+                        "state": result_data.get("state"),
+                        "state_code": result_data.get("state_code"),
+                    }
+                    prefix = context["state"] or "Subnational"
+                    add_record_facts(result_data.get("records", []), context, "subnational_record", prefix_base=prefix)
+                states = result_data.get("states")
+                if isinstance(states, list):
+                    for state_info in states[: len(states)]:
+                        if not isinstance(state_info, dict):
+                            continue
+                        summary = state_info.get("summary")
+                        if not summary:
+                            continue
+                        context = {
+                            "state": state_info.get("state"),
+                            "state_code": state_info.get("state_code"),
+                        }
+                        citation = self._clone_citation(
+                            base_citation,
+                            extra_metadata={"category": "subnational_overview", "context": context},
+                        )
+                        text = _truncate_string(
+                            f"{state_info.get('state') or 'State'} overview: {summary}",
+                            400,
+                        )
+                        facts.append(
+                            Fact(
+                                text_content=text,
+                                source_key=f"lse_subnational_overview_{hash(state_info.get('state')) & 0xFFFFFFFF}",
+                                server_origin="lse",
+                                metadata={
+                                    "tool": tool_name,
+                                    "category": "subnational_overview",
+                                    "context": context,
+                                    "raw_record": state_info,
+                                },
+                                citation=citation,
+                            )
+                        )
+
+            return facts
+
+        return facts
+
     async def _auto_register_geographic_entities(self, server_name: str, tool_name: str, result: Any) -> None:
         """
         Auto-register geographic entities with the geospatial server for correlation.
@@ -3937,7 +4456,7 @@ Instructions:
             "cpr": "CPR Knowledge Graph",
             "solar": "TransitionZero Solar Asset Mapper (TZ-SAM), Q1 2025",
             "gist": "GIST Impact Database",
-            "lse": "LSE Climate Policy Database",
+            "lse": "NDC Align",
             "heat": "PlanetSapling Heat Stress (Brazil 2020–2025)",
             "formatter": "Response Formatter",
             "spa": "Science Panel for the Amazon Reports",
@@ -3970,6 +4489,27 @@ Instructions:
             return url or ""
         except Exception:
             return ""
+
+    def _clone_citation(
+        self,
+        base: Citation,
+        *,
+        extra_metadata: Optional[Dict[str, Any]] = None,
+        description: Optional[str] = None,
+    ) -> Citation:
+        """Create a shallow copy of a citation with optional metadata tweaks."""
+        metadata = dict(base.metadata) if isinstance(base.metadata, dict) else {}
+        if extra_metadata:
+            metadata.update(extra_metadata)
+        return Citation(
+            source_name=base.source_name,
+            tool_id=base.tool_id,
+            source_type=base.source_type,
+            description=description if description is not None else base.description,
+            server_origin=base.server_origin,
+            source_url=base.source_url,
+            metadata=metadata,
+        )
     
     async def _should_do_phase2_deep_dive(self, user_query: str, 
                                           collection_results: Dict[str, PhaseResult],
@@ -4038,13 +4578,7 @@ Instructions:
         if not all_facts:
             return False, "No facts collected in Phase 1", []
         
-        # Use optimizer heuristics if available
-        if OPTIMIZER_AVAILABLE and complexity:
-            should_skip, reason = PerformanceOptimizer.should_skip_phase2(
-                complexity, total_facts, time_elapsed
-            )
-            if should_skip:
-                return False, reason, []
+        # Performance optimizer disabled - using simple heuristics
         
         # Quick heuristic: Skip Phase 2 for simple queries with sufficient facts
         # Note: Do not skip if admin–zone intent was detected above.
@@ -4146,8 +4680,13 @@ Instructions:
             # On error, default to no Phase 2
             return False, "Evaluation failed, proceeding with current data", []
     
-    async def _phase2_deep_dive(self, user_query: str, scout_results: Dict[str, PhaseResult], 
-                                reasoning: str = "") -> Dict[str, PhaseResult]:
+    async def _phase2_deep_dive(
+        self,
+        user_query: str,
+        scout_results: Dict[str, PhaseResult],
+        reasoning: str = "",
+        fact_event_callback: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None,
+    ) -> Dict[str, PhaseResult]:
         """
         Phase 2: Unified Deep Dive - All tools from all relevant servers available.
         
@@ -4326,22 +4865,22 @@ Instructions:
                         corr_data = json.loads(corr_result.content[0].text)
                     except Exception:
                         corr_data = {"text": str(corr_result)}
-                phase2_facts.append(
-                    Fact(
-                        text_content=f"Spatial correlation: total_correlations={corr_data.get('total_correlations', 'unknown')}",
-                        source_key="geospatial_correlation_result",
-                        server_origin="geospatial",
-                        metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
-                        citation=Citation(
-                            source_name="GEOSPATIAL",
-                            tool_id="FindSpatialCorrelations",
-                            server_origin="geospatial",
-                            source_type="Database",
-                            description="Spatial correlation between registered entities",
-                            source_url=self._resolve_source_url("geospatial", "FindSpatialCorrelations")
-                        )
-                    )
-                )
+                # new_fact = Fact(
+                #     text_content=f"Spatial correlation: total_correlations={corr_data.get('total_correlations', 'unknown')}",
+                #     source_key="geospatial_correlation_result",
+                #     server_origin="geospatial",
+                #     metadata={"tool": "FindSpatialCorrelations", "raw_result": corr_data},
+                #     citation=Citation(
+                #         source_name="GEOSPATIAL",
+                #         tool_id="FindSpatialCorrelations",
+                #         server_origin="geospatial",
+                #         source_type="Database",
+                #         description="Spatial correlation between registered entities",
+                #         source_url=self._resolve_source_url("geospatial", "FindSpatialCorrelations")
+                #     )
+                # )
+                phase2_facts.append(new_fact)
+                await self._maybe_stream_fact_events("geospatial", [new_fact], fact_event_callback)
                 # Generate a correlation map for visualization
                 try:
                     # Use legacy correlation_type when solar↔deforestation is present
@@ -4357,22 +4896,22 @@ Instructions:
                             map_data = json.loads(map_res.content[0].text)
                         except Exception:
                             map_data = {"text": str(map_res)}
-                    phase2_facts.append(
-                        Fact(
-                            text_content="Correlation map generated",
-                            source_key="geospatial_correlation_map",
-                            server_origin="geospatial",
-                            metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
-                            citation=Citation(
-                                source_name="GEOSPATIAL",
-                                tool_id="GenerateCorrelationMap",
-                                server_origin="geospatial",
-                                source_type="Map",
-                                description="GeoJSON map for spatial correlations",
-                                source_url=self._resolve_source_url("geospatial", "GenerateCorrelationMap")
-                            )
-                        )
-                    )
+                    # map_fact = Fact(
+                    #     text_content="Correlation map generated",
+                    #     source_key="geospatial_correlation_map",
+                    #     server_origin="geospatial",
+                    #     metadata={"tool": "GenerateCorrelationMap", "raw_result": map_data},
+                    #     citation=Citation(
+                    #         source_name="GEOSPATIAL",
+                    #         tool_id="GenerateCorrelationMap",
+                    #         server_origin="geospatial",
+                    #         source_type="Map",
+                    #         description="GeoJSON map for spatial correlations",
+                    #         source_url=self._resolve_source_url("geospatial", "GenerateCorrelationMap")
+                    #     )
+                    # )
+                    phase2_facts.append(map_fact)
+                    await self._maybe_stream_fact_events("geospatial", [map_fact], fact_event_callback)
                 except Exception as e:
                     print(f"Phase 2 - geospatial map generation skipped: {e}")
                 
@@ -4462,35 +5001,26 @@ Instructions:
                             [r["municipality"], r["state"], r["heat_overlap_pct"], r["solar_per_1000km2"], r["composite_score"]]
                             for r in top_n
                         ]
-                        phase2_facts.append(
-                            Fact(
-                                text_content="Top municipalities by heat exposure × low solar presence (proxy for weak renewable access).",
-                                source_key="heat_low_solar_top_munis",
+                        table_fact = Fact(
+                            text_content="Top municipalities by heat exposure × low solar presence (proxy for weak renewable access).",
+                            source_key="heat_low_solar_top_munis",
+                            server_origin="geospatial",
+                            data_type="tabular",
+                            numerical_data={
+                                "columns": columns,
+                                "rows": table_rows,
+                                "raw": top_n
+                            },
+                            citation=Citation(
+                                source_name="Internal geospatial overlay",
+                                tool_id="ComputeAreaOverlapByEntityTypes+ComputePointDensityByEntityTypes",
                                 server_origin="geospatial",
-                                data_type="tabular",
-                                numerical_data={
-                                    "columns": columns,
-                                    "rows": table_rows,
-                                    "raw": top_n
-                                },
-                                citation=Citation(
-                                    source_name="Internal geospatial overlay",
-                                    tool_id="ComputeAreaOverlapByEntityTypes+ComputePointDensityByEntityTypes",
-                                    server_origin="geospatial",
-                                    source_type="Derived",
-                                    description="Area overlap of heat Q5 with municipalities and solar facility density per 1000 km²."
-                                )
+                                source_type="Derived",
+                                description="Area overlap of heat Q5 with municipalities and solar facility density per 1000 km²."
                             )
                         )
-                        # Add a plain-text caveat fact
-                        phase2_facts.append(
-                            Fact(
-                                text_content="Note: No social vulnerability data included. 'Weak access' uses low solar presence as a proxy, not electrification or grid reliability.",
-                                source_key="proxy_disclaimer",
-                                server_origin="geospatial",
-                                citation=None
-                            )
-                        )
+                        phase2_facts.append(table_fact)
+                        await self._maybe_stream_fact_events("geospatial", [table_fact], fact_event_callback)
                 except Exception as e:
                     print(f"Phase 2 - heat×low-solar overlay skipped or failed: {e}")
                 # Generic admin vs. zone overlap ranking (heat, deforestation, or any polygon layer)
@@ -4582,8 +5112,8 @@ Instructions:
                             # Convert table result into a tabular Fact via extractor path by reusing the result
                             try:
                                 facts_from_table = self._extract_facts_from_result("GenerateMunicipalityOverlapTable", {"zone_entity_type": zone_choice}, table_res, "geospatial")
-                                for f in facts_from_table:
-                                    phase2_facts.append(f)
+                                phase2_facts.extend(facts_from_table)
+                                await self._maybe_stream_fact_events("geospatial", facts_from_table, fact_event_callback)
                             except Exception as e:
                                 print(f"Failed to extract table fact: {e}")
 
@@ -4618,6 +5148,7 @@ Instructions:
                                     fact.map_reference = {"url": geojson_url}
                                     fact.data_type = "geographic"
                                     phase2_facts.append(fact)
+                                    await self._maybe_stream_fact_events("geospatial", [fact], fact_event_callback)
                             except Exception as e:
                                 print(f"Choropleth generation skipped: {e}")
                 except Exception as e:
@@ -4787,9 +5318,10 @@ Instructions:
                                         description=f"Phase 2 call to {actual_tool_name}"
                                     )
                                 )
-                                
+
                                 phase2_facts.append(fact)
                                 accumulated_facts.append(fact)
+                                await self._maybe_stream_fact_events(server_name, [fact], fact_event_callback)
                                 
                                 # Update facts context for next iteration
                                 facts_context += f"\n- {fact.text_content}"
@@ -4901,9 +5433,7 @@ Instructions:
         table_data_list = []  # Store table data for creating comparison tables
         viz_table_modules = []  # Store actual table modules from viz server
         
-        # Log start of synthesis if tracer is available
-        if self.client.fact_tracer:
-            self.client.fact_tracer.log_prompt("phase3", "synthesis_start", f"Starting synthesis with {len(deep_dive_results)} server results")
+        # Synthesis logging disabled
         
         for server_name, result in deep_dive_results.items():
             if result.is_relevant:
@@ -4930,7 +5460,19 @@ Instructions:
                                     # Check if we should create separate maps per country
                                     countries = raw_result.get("countries_requested", [])
                                     facilities_by_country = raw_result.get("facilities_by_country", {})
-                                    
+                                    geom_type = str(raw_result.get("geometry_type", "point")).lower()
+                                    geom_types = raw_result.get("geometry_types")
+                                    if isinstance(geom_types, dict):
+                                        geom_types = list(geom_types.values())
+                                    if isinstance(geom_types, (list, tuple, set)):
+                                        geom_types = [str(g).lower() for g in geom_types if g]
+                                    else:
+                                        geom_types = []
+                                    if geom_type not in geom_types:
+                                        geom_types.append(geom_type)
+                                    if not geom_types:
+                                        geom_types = ["point"]
+
                                     # For now, add the combined map
                                     map_data = {
                                         "type": "map_data_summary",
@@ -4938,10 +5480,14 @@ Instructions:
                                             "description": f"Solar facilities in {', '.join(countries)}",
                                             "total_facilities": raw_result.get("total_facilities", 0),
                                             "countries": countries,
-                                            "facilities_by_country": facilities_by_country
+                                            "facilities_by_country": facilities_by_country,
+                                            "geometry_type": geom_type,
+                                            "geometry_types": geom_types
                                         },
                                         "geojson_url": raw_result["geojson_url"],
-                                        "geojson_filename": raw_result.get("geojson_filename")
+                                        "geojson_filename": raw_result.get("geojson_filename"),
+                                        "geometry_type": geom_type,
+                                        "geometry_types": geom_types
                                     }
                                     map_data["is_correlation_map"] = False
                                     map_data_list.append(map_data)
@@ -4956,13 +5502,30 @@ Instructions:
                                 
                                 # Format 3: Generic geojson_url
                                 else:
+                                    geom_type = str(raw_result.get("geometry_type", "point")).lower()
+                                    geom_types = raw_result.get("geometry_types")
+                                    if isinstance(geom_types, dict):
+                                        geom_types = list(geom_types.values())
+                                    if isinstance(geom_types, (list, tuple, set)):
+                                        geom_types = [str(g).lower() for g in geom_types if g]
+                                    else:
+                                        geom_types = []
+                                    if geom_type not in geom_types:
+                                        geom_types.append(geom_type)
+                                    if not geom_types:
+                                        geom_types = ["point"]
+
                                     map_data = {
                                         "type": "map_data_summary",
                                         "summary": {
                                             "description": "Solar facilities map",
-                                            "total_facilities": raw_result.get("total_facilities", 0)
+                                            "total_facilities": raw_result.get("total_facilities", 0),
+                                            "geometry_type": geom_type,
+                                            "geometry_types": geom_types
                                         },
-                                        "geojson_url": raw_result["geojson_url"]
+                                        "geojson_url": raw_result["geojson_url"],
+                                        "geometry_type": geom_type,
+                                        "geometry_types": geom_types
                                     }
                                     map_data["is_correlation_map"] = False
                                     map_data_list.append(map_data)
@@ -4996,11 +5559,50 @@ Instructions:
                             if not countries:
                                 countries = ["brazil"]
                             is_corr = (server_name == "geospatial") or (isinstance(desc, str) and ("correlation" in desc.lower()))
+
+                            geom_candidates = []
+
+                            def _collect_geom(value):
+                                if not value:
+                                    return
+                                if isinstance(value, str):
+                                    geom_candidates.append(value.lower())
+                                elif isinstance(value, dict):
+                                    for nested in value.values():
+                                        _collect_geom(nested)
+                                elif isinstance(value, (list, tuple, set)):
+                                    for nested in value:
+                                        _collect_geom(nested)
+
+                            _collect_geom(raw_result.get("geometry_type"))
+                            _collect_geom(raw_result.get("geometry_types"))
+                            summary_payload = raw_result.get("summary") or {}
+                            _collect_geom(summary_payload.get("geometry_type"))
+                            _collect_geom(summary_payload.get("geometry_types"))
+                            _collect_geom(meta.get("geometry_type"))
+                            _collect_geom(meta.get("geometry_types"))
+
+                            geometry_types = sorted({g for g in geom_candidates if isinstance(g, str) and g})
+                            geometry_type = "point"
+                            if geometry_types:
+                                has_point = any(g.startswith("point") for g in geometry_types)
+                                has_polygon = any(g.startswith("poly") or g.startswith("multi") for g in geometry_types)
+                                if has_polygon and not has_point:
+                                    geometry_type = "polygon"
+                                elif has_point:
+                                    geometry_type = "point"
+                                else:
+                                    geometry_type = geometry_types[0]
+                            else:
+                                geometry_types = [geometry_type]
+
                             summary_dict = {
                                 "description": desc,
                                 "bounds": b,
                                 "center": c,
-                                "countries": countries
+                                "countries": countries,
+                                "geometry_type": geometry_type,
+                                "geometry_types": geometry_types
                             }
                             if is_corr:
                                 summary_dict.update({
@@ -5015,7 +5617,9 @@ Instructions:
                                 "summary": summary_dict,
                                 "geojson_url": raw_result["geojson_url"],
                                 "geojson_filename": raw_result.get("geojson_filename"),
-                                "is_correlation_map": bool(is_corr)
+                                "is_correlation_map": bool(is_corr),
+                                "geometry_type": geometry_type,
+                                "geometry_types": geometry_types
                             }
                             print(f"DEBUG: Captured generic map from {server_name} fact {i}: {map_data['geojson_url']}")
                             map_data_list.append(map_data)
@@ -5036,7 +5640,7 @@ Instructions:
             ])
             # Determine if a correlation map is already present in what we've captured so far
             map_has_corr = any(isinstance(md, dict) and md.get("is_correlation_map") for md in map_data_list)
-            if (not _geo_llm_only()) and corr_intent and (not map_has_corr) and (not self._geo_map_generated):
+            if (not CONFIG["GEO_LLM_ONLY"]) and corr_intent and (not map_has_corr) and (not self._geo_map_generated):
                 has_geo_corr = any(
                     (getattr(f, 'server_origin', '') == 'geospatial') and isinstance(f.metadata, dict)
                     and (
@@ -5063,12 +5667,28 @@ Instructions:
                                     {"label": "Solar Assets", "color": "#FFD700"},
                                     {"label": "Deforestation Areas", "color": "#8B4513"}
                                 ])
+                                geom_type = str(mdata.get("geometry_type") or summary.get("geometry_type") or "point").lower()
+                                geom_types = mdata.get("geometry_types") or summary.get("geometry_types")
+                                if isinstance(geom_types, dict):
+                                    geom_types = list(geom_types.values())
+                                if isinstance(geom_types, (list, tuple, set)):
+                                    geom_types = [str(g).lower() for g in geom_types if g]
+                                else:
+                                    geom_types = []
+                                if geom_type not in geom_types:
+                                    geom_types.append(geom_type)
+                                if not geom_types:
+                                    geom_types = ["point"]
+                                summary.setdefault("geometry_type", geom_type)
+                                summary.setdefault("geometry_types", geom_types)
                                 map_data_list.append({
                                     "type": "map_data_summary",
                                     "summary": summary,
                                     "geojson_url": mdata.get("geojson_url"),
                                     "geojson_filename": mdata.get("geojson_filename"),
-                                    "is_correlation_map": True
+                                    "is_correlation_map": True,
+                                    "geometry_type": geom_type,
+                                    "geometry_types": geom_types
                                 })
                                 print("DEBUG: Added fallback correlation map from geospatial server in Phase 3")
                                 self._geo_map_generated = True
@@ -5127,16 +5747,6 @@ Instructions:
             for server_name, result in deep_dive_results.items():
                 if result.facts:
                     print(f"  {server_name}: {len(result.facts)} facts")
-        
-        # Log synthesis input if tracer is available
-        if self.client.fact_tracer:
-            self.client.fact_tracer.log_synthesis_input(all_facts)
-            # Log energy facts specifically
-            energy_facts = [f for f in all_facts if any(kw in f.text_content.lower() for kw in ['energy', 'renewable', 'biofuel', '18%', 'ethanol', '45%', '80%'])]
-            if energy_facts:
-                llm_logger.warning(f"🔋 {len(energy_facts)} energy facts going into synthesis:")
-                for ef in energy_facts[:5]:  # Show first 5
-                    llm_logger.warning(f"  - {ef.text_content[:150]}")
         
         # Step 2: Generate narrative with placeholder citations
         narrative_with_placeholders = await self._synthesize_narrative(user_query, all_facts)
@@ -5714,62 +6324,63 @@ Instructions:
         return ordered_modules
     
     async def _is_visualization_relevant(self, viz_module: Dict, user_query: str, viz_type: str) -> bool:
-        """
-        Check if a visualization directly helps answer the user's query.
+        # """
+        # Check if a visualization directly helps answer the user's query.
         
-        Args:
-            viz_module: The visualization module to check
-            user_query: The original user query
-            viz_type: Type of visualization ("map", "chart", "table")
+        # Args:
+        #     viz_module: The visualization module to check
+        #     user_query: The original user query
+        #     viz_type: Type of visualization ("map", "chart", "table")
             
-        Returns:
-            True if the visualization should be included
-        """
-        # Get description of what the visualization shows
-        viz_description = viz_module.get('heading', 'Data visualization')
+        # Returns:
+        #     True if the visualization should be included
+        # """
+        # # Get description of what the visualization shows
+        # viz_description = viz_module.get('heading', 'Data visualization')
         
-        # For tables from viz server, check the data content
-        if viz_type == "table" and 'data' in viz_module:
-            # Extract what the table contains
-            if 'columns' in viz_module.get('data', {}):
-                columns = viz_module['data']['columns']
-                viz_description += f" with columns: {', '.join(columns[:3])}"
+        # # For tables from viz server, check the data content
+        # if viz_type == "table" and 'data' in viz_module:
+        #     # Extract what the table contains
+        #     if 'columns' in viz_module.get('data', {}):
+        #         columns = viz_module['data']['columns']
+        #         viz_description += f" with columns: {', '.join(columns[:3])}"
         
-        relevance_prompt = f"""Query: {user_query}
+        # relevance_prompt = f"""Query: {user_query}
 
-            Available {viz_type}: {viz_description}
+        #     Available {viz_type}: {viz_description}
 
-            Should this {viz_type} be included in the response?
+        #     Should this {viz_type} be included in the response?
 
-            Decision criteria:
-            - Maps: Include ONLY if the query explicitly asks about locations, geography, spatial distribution, or "where"
-            - Tables: Include ONLY if the query asks to compare multiple entities, see breakdowns, or requests detailed data
-            - Charts: Include ONLY if the query asks about trends, changes over time, growth, or proportions
+        #     Decision criteria:
+        #     - Maps: Include ONLY if the query explicitly asks about locations, geography, spatial distribution, or "where"
+        #     - Tables: Include ONLY if the query asks to compare multiple entities, see breakdowns, or requests detailed data
+        #     - Charts: Include ONLY if the query asks about trends, changes over time, growth, or proportions
 
-            The visualization must DIRECTLY help answer the specific question, not just be related to the topic.
+        #     The visualization must DIRECTLY help answer the specific question, not just be related to the topic.
 
-            Examples:
-            - Query: "What are Brazil's NDC targets?" → DON'T include map of solar facilities
-            - Query: "Where are solar facilities in Brazil?" → DO include map
-            - Query: "Compare emissions across sectors" → DO include comparison table
-            - Query: "What is the water stress level?" → DON'T include unrelated charts
+        #     Examples:
+        #     - Query: "What are Brazil's NDC targets?" → DON'T include map of solar facilities
+        #     - Query: "Where are solar facilities in Brazil?" → DO include map
+        #     - Query: "Compare emissions across sectors" → DO include comparison table
+        #     - Query: "What is the water stress level?" → DON'T include unrelated charts
 
-            Answer YES or NO:"""
+        #     Answer YES or NO:"""
 
-        try:
-            response = await call_small_model(
-                system="You determine if visualizations directly answer queries.",
-                user_prompt=relevance_prompt,
-                max_tokens=10,
-                temperature=0
-            )
+        # try:
+        #     response = await call_small_model(
+        #         system="You determine if visualizations directly answer queries.",
+        #         user_prompt=relevance_prompt,
+        #         max_tokens=10,
+        #         temperature=0
+        #     )
             
-            return "yes" in response.strip().lower()
+        #     return "yes" in response.strip().lower()
             
-        except Exception as e:
-            print(f"Error checking visualization relevance: {e}")
-            # Default to excluding if check fails
-            return False
+        # except Exception as e:
+        #     print(f"Error checking visualization relevance: {e}")
+        #     # Default to excluding if check fails
+        #     return False
+        return True
     
     async def _llm_order_modules(
         self,
@@ -5840,7 +6451,7 @@ Only include modules that exist above. Ensure all modules are included exactly o
 
         try:
             print(f"DEBUG: Calling LLM to order modules...")
-            response = await call_small_model(
+            response = await call_large_model(
                 system="You are an expert at organizing content for optimal narrative flow. Return only valid JSON.",
                 user_prompt=prompt,
                 max_tokens=500,
@@ -6097,40 +6708,39 @@ Only include modules that exist above. Ensure all modules are included exactly o
         has_chart_data = False
         has_table_data = False
         
-        # Log synthesis prompt if tracer is available
-        if self.client.fact_tracer:
-            self.client.fact_tracer.log_prompt("phase3", "synthesis_facts", f"Preparing {len(facts)} facts for synthesis")
+        # Synthesis prompt logging disabled
         
-        # Rank and filter facts to better match the query intent
-        ql = user_query.lower()
-        def _fact_score(f: Fact) -> float:
-            score = 0.0
-            # Prefer KG evidence
-            if f.server_origin == 'kg':
-                score += 2.0
-            # Prefer quoted evidence facts
-            if isinstance(f.text_content, str) and f.text_content.startswith('Quoted evidence:'):
-                score += 2.0
-            # Prefer UNFCCC party submissions when query references national submissions
-            src = (f.citation.source_name if f.citation else '') or ''
-            if 'unfccc.party' in src.lower():
-                score += 1.0
-            # Keyword alignment
-            if 'indigenous' in ql and 'indigenous' in f.text_content.lower():
-                score += 1.0
-            if 'deforest' in ql and 'deforest' in f.text_content.lower():
-                score += 0.5
-            return score
+        # # Rank and filter facts to better match the query intent
+        # ql = user_query.lower()
+        # def _fact_score(f: Fact) -> float:
+        #     score = 0.0
+        #     # Prefer KG evidence
+        #     if f.server_origin == 'kg':
+        #         score += 2.0
+        #     # Prefer quoted evidence facts
+        #     if isinstance(f.text_content, str) and f.text_content.startswith('Quoted evidence:'):
+        #         score += 2.0
+        #     # Prefer UNFCCC party submissions when query references national submissions
+        #     src = (f.citation.source_name if f.citation else '') or ''
+        #     if 'unfccc.party' in src.lower():
+        #         score += 1.0
+        #     # Keyword alignment
+        #     if 'indigenous' in ql and 'indigenous' in f.text_content.lower():
+        #         score += 1.0
+        #     if 'deforest' in ql and 'deforest' in f.text_content.lower():
+        #         score += 0.5
+        #     return score
 
         # Drop placeholder-like generic facts (no quoted evidence and no doc id)
-        filtered = []
-        for f in facts:
-            src = (f.citation.source_name if f.citation else '') or ''
-            if src == 'guidance_doc' and not (isinstance(f.text_content, str) and f.text_content.startswith('Quoted evidence:')):
-                continue
-            filtered.append(f)
+        # filtered = []
+        # for f in facts:
+        #     src = (f.citation.source_name if f.citation else '') or ''
+        #     if src == 'guidance_doc' and not (isinstance(f.text_content, str) and f.text_content.startswith('Quoted evidence:')):
+        #         continue
+        #     filtered.append(f)
 
-        ranked = sorted(filtered or facts, key=_fact_score, reverse=True)
+        # ranked = sorted(filtered or facts, key=_fact_score, reverse=True)
+        ranked = facts
 
         for i, fact in enumerate(ranked):
             # Base textual fact content
@@ -6146,7 +6756,7 @@ Only include modules that exist above. Ensure all modules are included exactly o
                     if isinstance(cols, list) and isinstance(rows, list) and rows:
                         has_table_data = True
                         try:
-                            top_n = min(20, len(rows))
+                            top_n = min(10, len(rows))
                             header = " | ".join([str(c) for c in cols])
                             lines = []
                             for r in rows[:top_n]:
@@ -6256,18 +6866,16 @@ Structure:
 
 Remember: Every sentence should help answer "{user_query}" - if it doesn't, leave it out."""
         
-        # Log the full synthesis prompt if tracer is available
-        if self.client.fact_tracer:
-            self.client.fact_tracer.log_prompt("phase3", "synthesis_prompt", prompt)
-            # Log specific facts
-            llm_logger.debug(f"Synthesis facts preview (first 3):")
-            for fact_text in fact_list[:3]:
-                llm_logger.debug(f"  {fact_text[:150]}")
+        # Log specific facts for debugging
+        llm_logger.debug(f"Synthesis facts preview (first 3):")
+        for fact_text in fact_list[:3]:
+            llm_logger.debug(f"  {fact_text[:150]}")
         
         try:
             response = await call_large_model(
                 system=(
                     "You synthesize facts into clear, informative responses with proper citations. "
+                    "- Keep every response anchored in Brazil; if the user asks about another geography, explicitly explain the Brazil-only scope and redirect back to Brazilian context unless they insist on a comparison.\n"
                     "STRICT GUARDRails: \n"
                     "- Use ONLY the provided facts; never infer missing dimensions.\n"
                     "- If a REQUESTED dimension is ABSENT in facts (e.g., social vulnerability/SVI), explicitly state it is not available and DO NOT claim it.\n"
@@ -6275,9 +6883,9 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
                     "- DO NOT produce numeric totals (e.g., population) unless the facts include a computed number or a table specifying it. Never guess or back-solve.\n"
                     "- Each declarative claim MUST be traceable to a fact and include a [CITE_X] placeholder.\n"
                     "- Do NOT introduce institutions (e.g., BNDES, Caixa, UNDP, GEF) unless a fact explicitly mentions them; otherwise omit.\n"
-                    "- Prefer concise, qualified statements over confident generalizations when evidence is partial."
-                    "- Your tone should flow nicely from one sentence to the next, but avoid overly complex language or jargon. Aim for clarity and accessibility."
-                    "- Don't just "
+                    "- Prefer concise, qualified statements over confident generalizations when evidence is partial.\n"
+                    "- Your tone should flow nicely from one sentence to the next, but avoid overly complex language or jargon. Aim for clarity and accessibility.\n"
+                    "- You have a wealth of information present within your general knowledge and through tools. You are in charge of making this information engaging and compelling. Stay humble but state known facts confidently."
                 ),
                 user_prompt=prompt,
                 max_tokens=8192
@@ -6511,7 +7119,7 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
             except Exception as e:
                 print(f"Error creating map from solar data: {e}")
         
-        # Also check facts for additional maps (always reference by URL; do not inline GeoJSON)
+        # Also check facts for additional maps
         for fact in facts:
             if fact.map_reference and fact.data_type == "geographic":
                 try:
@@ -6666,84 +7274,7 @@ Remember: Every sentence should help answer "{user_query}" - if it doesn't, leav
 
 
 # =============================================================================
-# PHASE 3: ARTIFACT HANDLING AND RESPONSE FORMATTING
-# =============================================================================
-
-class ArtifactManager:
-    """
-    Manages artifact storage, URL generation, and embedding in responses.
-    
-    Handles large outputs like GeoJSON maps, charts, and images that can't
-    be included directly in LLM context due to token limitations.
-    """
-    
-    def __init__(self, static_dir: str = "static"):
-        self.static_dir = static_dir
-        self.artifact_base_url = "/static"  # For serving artifacts
-        
-    async def save_artifact(self, artifact_data: Any, artifact_type: ArtifactType, 
-                           query_context: str = "") -> Dict[str, Any]:
-        """
-        Save an artifact to disk and return metadata.
-        
-        TODO: Implement artifact saving:
-        1. Generate unique filename based on content hash
-        2. Ensure static directory exists
-        3. Save artifact data to appropriate format
-        4. Generate serving URL
-        5. Create summary description
-        6. Return metadata dict with url, summary, type, etc.
-        
-        Args:
-            artifact_data: The actual artifact content (GeoJSON, chart config, etc.)
-            artifact_type: Type of artifact being saved
-            query_context: Context for generating descriptive summary
-            
-        Returns:
-            Dictionary with artifact metadata for citation registry
-        """
-        # TODO: Generate unique filename
-        # TODO: Save to static directory
-        # TODO: Create descriptive summary
-        # TODO: Return metadata
-        
-        return {
-            "artifact_type": artifact_type.value,
-            "artifact_url": f"{self.artifact_base_url}/placeholder.json",
-            "summary": "Placeholder artifact summary",
-            "metadata": {"count": 0, "total_capacity": 0}
-        }
-    
-    def embed_artifacts_in_response(self, response_text: str, citation_registry: CitationRegistry) -> str:
-        """
-        Post-process synthesized response to embed artifacts.
-        
-        Detects placeholders like "[see map]" and replaces them with actual
-        artifact embeds (iframes, Chart.js configs, etc.).
-        
-        TODO: Implement artifact embedding:
-        1. Scan response for artifact placeholders
-        2. Match placeholders to artifacts in citation registry
-        3. Generate appropriate embeds:
-           - GeoJSON: iframe with map viewer
-           - Charts: Chart.js configuration
-           - Images: img tags
-        4. Replace placeholders with embeds
-        5. Preserve citation numbering
-        
-        Args:
-            response_text: Synthesized response with placeholders
-            citation_registry: Registry containing artifact references
-            
-        Returns:
-            Response with embedded artifacts
-        """
-        # TODO: Implement placeholder detection and replacement
-        return response_text
-
-
-# =============================================================================
-# PHASE 4: MAIN API INTERFACE
+# MAIN API INTERFACE
 # =============================================================================
 
 async def process_chat_query(user_query: str, conversation_history: Optional[List[Dict[str, str]]] = None, correlation_session_id: Optional[str] = None, target_language: Optional[str] = None) -> Dict:
@@ -6885,10 +7416,10 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
         else:
             # Announce selected servers
             server_names = {
-                "cpr": "Climate Policy Radar",
+                "cpr": "Climate Policy Radar Passage Library",
                 "solar": "TZ-SAM",
                 "gist": "GIST Environmental Impact",
-                "lse": "LSE (and Friends) Governance Data",
+                "lse": "NDC Align",
                 "viz": "Visualization",
                 "geospatial": "Geospatial Correlation",
                 "deforestation": "Deforestation",
@@ -6897,10 +7428,20 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
                 "spa": "Science Panel for the Amazon",
             }
             friendly_names = [server_names.get(s, s) for s in relevant_servers]
+
+            # Remove viz and geospatial from user-facing list. These aren't "datasets" but more like internal tools.
+            friendly_names = [name for name in friendly_names if name not in ["Visualization", "Geospatial Correlation"]]
+
+            viz_and_geospatial_count = 0
+            if "viz" in relevant_servers:
+                viz_and_geospatial_count += 1
+            if "geospatial" in relevant_servers:
+                viz_and_geospatial_count += 1
+
             yield {
                 "type": "thinking",
                 "data": {
-                    "message": f"📊 Selected {len(relevant_servers)} data sources: {', '.join(friendly_names)}",
+                    "message": f"📊 Selected {len(relevant_servers) - viz_and_geospatial_count} data sources: {', '.join(friendly_names)}",
                     "category": "data_discovery"
                 }
             }
@@ -6918,19 +7459,60 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
             
             # Announce starting collection from this server
             server_display = server_names.get(server_name, server_name)
-            yield {
-                "type": "thinking",
-                "data": {
-                    "message": f"📥 Collecting data from {server_display}...",
-                    "category": "data_loading"
-                }
-            }
+            if server_display not in ["Visualization", "Geospatial Correlation"]:
+                if server_display == "Climate Policy Radar Passage Library":
+                    yield {
+                        "type": "thinking",
+                        "data": {
+                            "message": f"📥 Traversing Climate Policy Radar Knowledge Graph to find relevant policy documents...",
+                            "category": "data_loading"
+                        }
+                    }
+                else:
+                    yield {
+                        "type": "thinking",
+                        "data": {
+                            "message": f"📥 Collecting data from {server_display}...",
+                            "category": "data_loading"
+                        }
+                    }
             
             # Collect information from this server
             try:
-                result = await orchestrator._collect_server_information(
-                    user_query, server_name, config
+                fact_event_queue: asyncio.Queue = asyncio.Queue()
+
+                async def emit_fact_event(event: Dict[str, Any]) -> None:
+                    await fact_event_queue.put(event)
+
+                collection_task = asyncio.create_task(
+                    orchestrator._collect_server_information(
+                        user_query,
+                        server_name,
+                        config,
+                        fact_event_callback=emit_fact_event,
+                    )
                 )
+
+                while True:
+                    if collection_task.done():
+                        break
+                    try:
+                        event = await asyncio.wait_for(fact_event_queue.get(), timeout=0.1)
+                    except asyncio.TimeoutError:
+                        continue
+                    else:
+                        yield event
+
+                result = await collection_task
+
+                while not fact_event_queue.empty():
+                    try:
+                        pending_event = fact_event_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        break
+                    else:
+                        yield pending_event
+
                 collection_results[server_name] = result
                 
                 # Report what we found
@@ -6945,14 +7527,17 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
                             "category": "information"
                         }
                     }
+                    for event in orchestrator._generate_fact_thinking_events(server_name, result.facts):
+                        yield event
                 else:
-                    yield {
-                        "type": "thinking",
-                        "data": {
-                            "message": f"ℹ️ No specific data found from {server_display}",
-                            "category": "information"
+                    if server_display != "Visualization" and server_display != "Geospatial Correlation":
+                        yield {
+                            "type": "thinking",
+                            "data": {
+                                "message": f"ℹ️ No specific data found from {server_display}",
+                                "category": "information"
+                            }
                         }
-                    }
                     
             except Exception as e:
                 # Report collection error but continue with other servers
@@ -7012,10 +7597,8 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
         start_time = time.time() if not hasattr(orchestrator, '_start_time') else orchestrator._start_time
         time_elapsed = time.time() - start_time
         
-        # Get query complexity if available
+        # Performance optimizer disabled
         complexity = None
-        if OPTIMIZER_AVAILABLE:
-            complexity = await PerformanceOptimizer.estimate_complexity(user_query)
         
         # Use LLM to decide if Phase 2 is needed
         should_deep_dive, reasoning, servers_for_phase2 = await orchestrator._should_do_phase2_deep_dive(
@@ -7040,7 +7623,38 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
             }
             
             # Run Phase 2 deep dive
-            deep_dive_results = await orchestrator._phase2_deep_dive(user_query, collection_results)
+            phase2_event_queue: asyncio.Queue = asyncio.Queue()
+
+            async def emit_phase2_event(event: Dict[str, Any]) -> None:
+                await phase2_event_queue.put(event)
+
+            phase2_task = asyncio.create_task(
+                orchestrator._phase2_deep_dive(
+                    user_query,
+                    collection_results,
+                    fact_event_callback=emit_phase2_event,
+                )
+            )
+
+            while True:
+                if phase2_task.done():
+                    break
+                try:
+                    event = await asyncio.wait_for(phase2_event_queue.get(), timeout=0.1)
+                except asyncio.TimeoutError:
+                    continue
+                else:
+                    yield event
+
+            deep_dive_results = await phase2_task
+
+            while not phase2_event_queue.empty():
+                try:
+                    pending_event = phase2_event_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                else:
+                    yield pending_event
             
             # Update total facts count
             for server_name, result in deep_dive_results.items():
@@ -7055,7 +7669,9 @@ async def stream_chat_query(user_query: str, conversation_history: Optional[List
                                 "category": "information"
                             }
                         }
-            
+                        for event in orchestrator._generate_fact_thinking_events(server_name, result.facts):
+                            yield event
+
             # Use deep dive results for synthesis
             final_results = deep_dive_results
             
@@ -7216,100 +7832,4 @@ if __name__ == "__main__":
             await cleanup_global_client()
     
     # Run main() with proper asyncio event loop
-# =============================================================================
-# LLM PAYLOAD SANITIZATION & LOGGING HELPERS
-# =============================================================================
-
-# Keys that often contain very large payloads or raw GeoJSON
-# SENSITIVE_BIG_KEYS = {
-#     "features", "geometry", "geojson", "coordinates", "data", "polygons", "points"
-# }
-
-def _truncate_string(s: str, max_len: int = 4000) -> str:
-    if len(s) <= max_len:
-        return s
-    return s[:max_len] + f"... [truncated {len(s)-max_len} chars]"
-
-# def _sanitize_obj_for_llm(obj: Any, removed_counts: Optional[Dict[str, int]] = None, max_list_len: int = 50) -> Any:
-#     """Recursively sanitize an object for safe inclusion in LLM messages.
-
-#     - Removes or summarizes large/geo structures (features/geometry/geojson/coordinates/data).
-#     - Truncates long arrays and strings.
-#     - Tracks removed elements per key in removed_counts.
-#     """
-#     from collections.abc import Mapping, Sequence
-#     if removed_counts is None:
-#         removed_counts = {}
-
-#     if isinstance(obj, Mapping):
-#         out = {}
-#         for k, v in obj.items():
-#             kl = str(k).lower()
-#             if kl in SENSITIVE_BIG_KEYS:
-#                 # summarize rather than include raw
-#                 try:
-#                     length = len(v) if hasattr(v, '__len__') else 1
-#                 except Exception:
-#                     length = 1
-#                 removed_counts[kl] = removed_counts.get(kl, 0) + length
-#                 out[k] = {"_omitted_for_llm": True, "_approx_count": length}
-#             else:
-#                 out[k] = _sanitize_obj_for_llm(v, removed_counts, max_list_len)
-#         return out
-#     elif isinstance(obj, str):
-#         return _truncate_string(obj, 2000)
-#     elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
-#         # Truncate very long lists
-#         if len(obj) > max_list_len:
-#             head = [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj[:max_list_len]]
-#             return head + [{"_omitted_for_llm": True, "_omitted_items": len(obj) - max_list_len}]
-#         else:
-#             return [_sanitize_obj_for_llm(x, removed_counts, max_list_len) for x in obj]
-#     else:
-#         return obj
-
-def _prepare_tool_result_for_llm(tool_name: str, result: Any) -> str:
-    """Create a safe, compact string for the tool_result content sent back to the LLM.
-
-    Attempts to parse JSON from the first text content; removes heavy keys and truncates.
-    Logs when sanitization removed large fields to help track payload sizes.
-    """
-    payload_str = None
-    removed_counts: Dict[str, int] = {}
-    try:
-        if hasattr(result, 'content') and isinstance(result.content, list) and result.content:
-            first = result.content[0]
-            if hasattr(first, 'text') and isinstance(first.text, str):
-                txt = first.text
-                # Try JSON parse
-                try:
-                    data = json.loads(txt)
-                    # DISABLED SANITIZATION - pass through data directly
-                    # sanitized = _sanitize_obj_for_llm(data, removed_counts)
-                    # payload_str = json.dumps(sanitized, ensure_ascii=False)
-                    payload_str = json.dumps(data, ensure_ascii=False)
-                except json.JSONDecodeError:
-                    # Not JSON; just truncate text
-                    payload_str = _truncate_string(txt, 10000)  # Increased limit
-        if payload_str is None:
-            payload_str = _truncate_string(str(result), 4000)
-    except Exception as e:
-        payload_str = f"[tool_result_unavailable: {e}]"
-
-    # Log summary of what we removed to help detect GeoJSON leakage
-    if removed_counts:
-        llm_logger.warning(f"Sanitized tool_result for {tool_name}; removed heavy keys: {removed_counts}")
-    llm_logger.debug(f"tool_result payload length: {len(payload_str)}")
-    return payload_str
-
-def _log_llm_messages_summary(messages: List[Dict[str, Any]], label: str):
-    try:
-        # Rough size estimate for the messages payload
-        import math
-        serialized = json.dumps(messages, ensure_ascii=False)
-        size_kb = len(serialized.encode('utf-8')) / 1024.0
-        llm_logger.info(f"LLM messages summary [{label}]: messages={len(messages)} size≈{size_kb:.1f}KB")
-    except Exception as e:
-        llm_logger.debug(f"Could not summarize LLM messages: {e}")
-    # Note: Running the CLI test harness is guarded above. Avoid executing anything
-    # on module import so API/server imports remain side-effect free.
+# NOTE: Duplicate helper functions removed - see lines 145-217 for the original implementations

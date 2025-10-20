@@ -1,0 +1,406 @@
+{
+  "query": "where is extreme heat the biggest problem in brazil",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q979",
+        "type": "Concept",
+        "label": "precipitation extremes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "coral bleaching",
+        "type": "Concept",
+        "label": "coral bleaching",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q374",
+        "type": "Concept",
+        "label": "extreme weather",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "temperature extremes",
+        "type": "Concept",
+        "label": "temperature extremes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "drought",
+        "type": "Concept",
+        "label": "drought",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "flood",
+        "type": "Concept",
+        "label": "flood",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "cold extremes",
+        "type": "Concept",
+        "label": "cold extremes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q389",
+        "type": "Concept",
+        "label": "cold extremes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "exposed community",
+        "type": "Concept",
+        "label": "exposed community",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "storms",
+        "type": "Concept",
+        "label": "storms",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "riverine flood",
+        "type": "Concept",
+        "label": "riverine flood",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "extreme weather",
+        "type": "Concept",
+        "label": "extreme weather",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Squalls",
+        "type": "Concept",
+        "label": "Squalls",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "heatwave",
+        "type": "Concept",
+        "label": "heatwave",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "biome shift",
+        "type": "Concept",
+        "label": "biome shift",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "marine risk",
+        "type": "Concept",
+        "label": "marine risk",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q980",
+        "type": "Concept",
+        "label": "temperature extremes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "increasing temperatures",
+        "type": "Concept",
+        "label": "increasing temperatures",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "anthropogenic climate change",
+        "type": "Concept",
+        "label": "anthropogenic climate change",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "precipitation extremes",
+        "type": "Concept",
+        "label": "precipitation extremes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "sea overwash",
+        "type": "Concept",
+        "label": "sea overwash",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1002",
+        "type": "Concept",
+        "label": "marine heatwave",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "risk",
+        "type": "Concept",
+        "label": "risk",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q374",
+        "target": "risk",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q374",
+        "target": "storms",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "temperature extremes",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "drought",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "precipitation extremes",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "flood",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "sea overwash",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "Squalls",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "anthropogenic climate change",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q374",
+        "target": "exposed community",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1002",
+        "target": "heatwave",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "marine risk",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "coral bleaching",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q979",
+        "target": "extreme weather",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q979",
+        "target": "biome shift",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q979",
+        "target": "increasing temperatures",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q979",
+        "target": "riverine flood",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q980",
+        "target": "extreme weather",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q980",
+        "target": "heatwave",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q980",
+        "target": "cold extremes",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q389",
+        "target": "temperature extremes",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q374",
+        "target": "risk",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q374",
+        "target": "storms",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "temperature extremes",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "drought",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "precipitation extremes",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "flood",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "sea overwash",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "Squalls",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q374",
+        "target": "anthropogenic climate change",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q374",
+        "target": "exposed community",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1002",
+        "target": "heatwave",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "marine risk",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "coral bleaching",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q979",
+        "target": "extreme weather",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q979",
+        "target": "biome shift",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q979",
+        "target": "increasing temperatures",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q979",
+        "target": "riverine flood",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q980",
+        "target": "extreme weather",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q980",
+        "target": "heatwave",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q980",
+        "target": "cold extremes",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q389",
+        "target": "temperature extremes",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "53771.071"
+}

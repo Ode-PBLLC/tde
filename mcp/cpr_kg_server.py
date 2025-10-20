@@ -30,7 +30,7 @@ try:
 except Exception as e:
     print(f"[CPR_KG] Warning: load_dotenv failed: {e}")
 
-mcp = FastMCP("climate-policy-radar-kg-server")
+mcp = FastMCP("climate-policy-radar-server")
 concepts = pd.read_csv(os.path.join(project_root, "extras", "concepts.csv"))  # TODO: Turn the Embeddings into a list here instead of in the tool call
 
 # maps built from the concepts dataframe you already have in RAM

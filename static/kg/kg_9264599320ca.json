@@ -1,0 +1,19 @@
+{
+  "query": "Show me a map of solar assets in brazil",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "solar_energy",
+        "label": "solar energy",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "solar"
+      }
+    ],
+    "links": [],
+    "edges": [],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "8743.626"
+}

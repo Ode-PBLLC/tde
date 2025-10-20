@@ -59,6 +59,7 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
     capacities = []
     countries = set()
     country_counts = {}
+    geometry_type = "point"  # Facilities are rendered as point features for maps
     # Track geographic bounds (min/max lat/lon)
     min_lat = None
     max_lat = None
@@ -111,6 +112,8 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
         "total_facilities": len(facilities),
         "total_capacity_mw": round(total_capacity, 1) if total_capacity > 0 else None,
         "countries": sorted(list(countries)),
+        "geometry_type": geometry_type,
+        "geometry_types": [geometry_type],
         "capacity_range_mw": {
             "min": round(min(capacities), 1) if capacities else None,
             "max": round(max(capacities), 1) if capacities else None,
@@ -157,7 +160,9 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
             "geojson_url": f"/static/maps/{filename}",
             "geojson_filename": filename,
             "file_size_kb": round(os.path.getsize(geojson_path) / 1024, 1),
-            "stats": stats
+            "stats": stats,
+            "geometry_type": geometry_type,
+            "geometry_types": [geometry_type]
         }
         
     except Exception as e:
@@ -165,7 +170,9 @@ def generate_and_save_geojson(facilities: List[Dict], identifier: str = "world",
         return {
             "success": False,
             "error": str(e),
-            "stats": stats
+            "stats": stats,
+            "geometry_type": geometry_type,
+            "geometry_types": [geometry_type]
         }
 
 @mcp.tool()
@@ -290,7 +297,10 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 10000)
             cap_range = stats['capacity_range_mw']
             if cap_range.get('min') and cap_range.get('max'):
                 description += f" (range: {cap_range['min']}-{cap_range['max']} MW)"
-        
+
+        geometry_type = geojson_result.get("geometry_type", stats.get("geometry_type", "point"))
+        geometry_types = geojson_result.get("geometry_types", stats.get("geometry_types") or [geometry_type])
+
         result = {
             "type": "map_data_summary",
             "summary": {
@@ -301,6 +311,8 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 10000)
                 "countries": stats['countries'],
                 "facilities_shown_on_map": stats['total_facilities'],
                 "bounds": stats.get('bounds'),
+                "geometry_type": geometry_type,
+                "geometry_types": geometry_types,
                 "global_context": {
                     "total_facilities_global": total_facilities_global,
                     "countries_with_data": countries_global[:10]
@@ -316,8 +328,12 @@ def GetSolarFacilitiesMapData(country: Optional[str] = None, limit: int = 10000)
                 "geojson_available": True,
                 "query_time_optimized": True,
                 "note": "Full facility data saved to GeoJSON file",
-                "bounds": stats.get('bounds')
-            }
+                "bounds": stats.get('bounds'),
+                "geometry_type": geometry_type,
+                "geometry_types": geometry_types
+            },
+            "geometry_type": geometry_type,
+            "geometry_types": geometry_types
         }
         print(f"DEBUG GetSolarFacilitiesMapData returning keys: {list(result.keys())}, NO full_data present")
         return result
@@ -398,6 +414,7 @@ def GetSolarFacilitiesForGeoJSON(country: Optional[str] = None, limit: int = 100
         
         return {
             "type": "map",
+            "geometry_type": "point",
             "geojson_url": geojson_result["geojson_url"],
             "geojson_filename": geojson_result["geojson_filename"],
             "metadata": {
@@ -489,58 +506,102 @@ def GetSolarFacilitiesInRadius(latitude: float, longitude: float, radius_km: flo
         return {"error": f"Database query failed: {str(e)}"}
 
 @mcp.tool()
-def GetSolarConstructionTimeline(start_year: int = 2017, end_year: int = 2025, country: Optional[str] = None, countries: Optional[List[str]] = None) -> Dict[str, Any]:
-    """Get construction timeline data based on source dates. Accepts either a single country or list of countries."""
+def GetSolarConstructionTimeline(start_year: int = 2010, end_year: int = 2030, country: Optional[str] = None, countries: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Get construction timeline based on constructed_after/constructed_before timestamps.
+
+    Heuristics:
+    - Prefer constructed_after (earliest known commissioning) if available
+    - Fallback to constructed_before
+    - If neither present, fallback to source_date when available
+    Returns an annual count series under `timeline_data` for downstream viz.
+    Accepts either a single `country` or list `countries`.
+    """
     if not db:
         return {"error": "Database not available"}
-    
+
     try:
-        # Get facilities with source date filtering
+        # Gather facilities for the requested scope
         if countries and not country:
-            # Multiple countries requested
-            facilities = []
+            facilities: List[Dict[str, Any]] = []
             for c in countries:
-                country_facilities = db.get_facilities_by_country(c, limit=3000)  # Limit per country
-                facilities.extend(country_facilities)
+                facilities.extend(db.get_facilities_by_country(c, limit=3000))
         elif country:
             facilities = db.get_facilities_by_country(country, limit=10000)
         else:
             facilities = db.search_facilities(limit=10000)
-        
-        # Filter by source date years
-        timeline_data = []
-        for facility in facilities:
-            if facility.get('source_date'):
-                try:
-                    source_date = pd.to_datetime(facility['source_date'])
-                    year = source_date.year
-                    if start_year <= year <= end_year:
-                        timeline_data.append({
-                            **facility,
-                            'source_year': year
-                        })
-                except:
-                    continue
-        
-        if not timeline_data:
-            return {"error": f"No facilities with source dates between {start_year}-{end_year}"}
-        
-        # Group by year
-        year_counts = {}
-        for facility in timeline_data:
-            year = facility['source_year']
-            year_counts[year] = year_counts.get(year, 0) + 1
-        
-        return {
+
+        if not facilities:
+            scope = f" for {country}" if country else (f" for {', '.join(countries)}" if countries else "")
+            return {"error": f"No facilities found{scope}"}
+
+        # Build year for each facility using constructed_after/before/source_date
+        per_facility_years: List[Tuple[int, Dict[str, Any]]] = []
+        for f in facilities:
+            year_val = None
+            # Try constructed_after
+            ca = f.get("constructed_after")
+            cb = f.get("constructed_before")
+            sd = f.get("source_date")
+            try:
+                if ca:
+                    y = pd.to_datetime(ca, errors='coerce')
+                    if pd.notnull(y):
+                        year_val = int(y.year)
+                if year_val is None and cb:
+                    y = pd.to_datetime(cb, errors='coerce')
+                    if pd.notnull(y):
+                        year_val = int(y.year)
+                if year_val is None and sd:
+                    y = pd.to_datetime(sd, errors='coerce')
+                    if pd.notnull(y):
+                        year_val = int(y.year)
+            except Exception:
+                year_val = None
+
+            if year_val is not None and start_year <= year_val <= end_year:
+                per_facility_years.append((year_val, f))
+
+        if not per_facility_years:
+            return {"error": f"No facilities with valid timestamps between {start_year}-{end_year}"}
+
+        # Aggregate counts by year (and optionally by country when multiple)
+        year_counts: Dict[int, int] = {}
+        for y, _ in per_facility_years:
+            year_counts[y] = year_counts.get(y, 0) + 1
+
+        # Prepare timeline_data list for downstream viz/table modules
+        years_sorted = sorted(year_counts.keys())
+        timeline_data = [{"year": y, "facilities": year_counts[y]} for y in years_sorted]
+
+        result: Dict[str, Any] = {
             "period": f"{start_year}-{end_year}",
             "country_filter": country,
-            "total_facilities_in_period": len(timeline_data),
-            "years_with_data": sorted(year_counts.keys()),
+            "total_facilities_in_period": int(sum(year_counts.values())),
+            "years_with_data": years_sorted,
             "yearly_counts": year_counts,
+            "timeline_data": timeline_data,  # primary data payload for viz
+            "data": timeline_data,           # alias to support generic consumers
             "data_available": True,
-            "note": "Based on source_date field in database"
+            "note": "Based on constructed_after/constructed_before with fallback to source_date"
         }
-        
+
+        # If multiple countries requested, also return per-country breakdown
+        if countries and not country:
+            # country -> year -> count
+            per_country: Dict[str, Dict[int, int]] = {}
+            for y, fac in per_facility_years:
+                ctry = fac.get("country", "Unknown")
+                per_country.setdefault(ctry, {})
+                per_country[ctry][y] = per_country[ctry].get(y, 0) + 1
+
+            per_country_timeline = {
+                c: [{"year": y, "facilities": cnt} for y, cnt in sorted(yc.items())]
+                for c, yc in per_country.items()
+            }
+            result["per_country_timeline"] = per_country_timeline
+
+        return result
+
     except Exception as e:
         return {"error": f"Database query failed: {str(e)}"}
 
@@ -590,6 +651,8 @@ def GetLargestSolarFacilities(limit: int = 20, country: Optional[str] = None) ->
                 "total_mw": stats.get('total_capacity_mw'),
                 "range_mw": stats.get('capacity_range_mw')
             },
+            "type": "map",
+            "geometry_type": "point",
             "geojson_url": geojson_result.get("geojson_url") if geojson_result["success"] else None,
             "geojson_filename": geojson_result.get("geojson_filename") if geojson_result["success"] else None,
             "note": "Sorted by capacity (MW) - full list available in GeoJSON file",
@@ -833,6 +896,8 @@ def GetSolarFacilitiesInBounds(north: float, south: float, east: float, west: fl
                 "range_mw": stats.get('capacity_range_mw')
             },
             "sample_facilities": facilities[:5],
+            "type": "map",
+            "geometry_type": "point",
             "geojson_url": geojson_result.get("geojson_url") if geojson_result["success"] else None,
             "geojson_filename": geojson_result.get("geojson_filename") if geojson_result["success"] else None,
             "data_available": True
@@ -882,6 +947,8 @@ def GetSolarFacilitiesMultipleCountries(countries: List[str], limit: int = 10000
                 "range_mw": stats.get('capacity_range_mw')
             },
             "sample_facilities": all_facilities[:5],
+            "type": "map",
+            "geometry_type": "point",
             "geojson_url": geojson_result.get("geojson_url") if geojson_result["success"] else None,
             "geojson_filename": geojson_result.get("geojson_filename") if geojson_result["success"] else None,
             "data_available": True

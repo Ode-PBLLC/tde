@@ -42,6 +42,8 @@ Cache-Control: no-cache
 
 **Event Types:**
 - **Progress**: `{"type": "thinking", "data": {"message": "🚀 Initializing...", "category": "initialization"}}`
+- **Fact snippets**: `{"type": "thinking", "data": {"message": "Fact Found: ...", "category": "fact"}}`
+  - These short messages surface newly collected textual facts during streaming; treat them as optional progress updates.
 - **Tool calls**: `{"type": "tool_call", "data": {"tool": "GetGistCompanies", "args": {...}}}`
 - **Final result**: `{"type": "complete", "data": {"query": "...", "modules": [...]}}`
 - **Errors**: `{"type": "error", "data": {"message": "...", "traceback": "..."}}`
@@ -193,10 +195,10 @@ Always appears last. Contains references for all `^1,2,3^` citations in text.
 {
   "type": "numbered_citation_table",
   "heading": "References",
-  "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
+  "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
   "rows": [
-    ["1", "GIST Corporate Directory", "GetGistCompanies", "Database", "Company data"],
-    ["2", "GIST Water Risk", "GetGistRiskData", "Database", "Risk assessment"]
+    ["1", "TransitionZero Solar Asset Mapper | TransitionZero | Global", "GetSolarCapacityByCountry", "Dataset", "Solar capacity statistics and aggregations (20 records)...", "https://www.transitionzero.org/products/solar-asset-mapper/download"],
+    ["2", "GIST Corporate Directory | GIST Environmental Research", "GetGistCompanies", "Database", "Directory of companies with sustainability and environmental data", ""]
   ]
 }
 ```
@@ -259,7 +261,11 @@ async function queryAPI(query) {
 function handleEvent(event) {
   switch (event.type) {
     case 'thinking':
-      showProgress(event.data.message);
+      if (event.data.category === 'fact') {
+        showFactHighlight(event.data.message);
+      } else {
+        showProgress(event.data.message);
+      }
       break;
     case 'complete':
       renderModules(event.data.modules);
@@ -268,6 +274,11 @@ function handleEvent(event) {
       showError(event.data.message);
       break;
   }
+}
+
+function showFactHighlight(message) {
+  // Optional: surface fact snippets in the UI or developer console
+  console.log('[fact]', message);
 }
 ```
 

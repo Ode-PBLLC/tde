@@ -35,6 +35,7 @@ except Exception:  # pragma: no cover
 import numpy as np
 import pandas as pd
 from fastmcp import FastMCP
+from sklearn.metrics.pairwise import cosine_similarity
 
 ROOT = Path(__file__).resolve().parents[2]
 if __package__ in {None, ""} and str(ROOT) not in sys.path:
@@ -854,6 +855,9 @@ DATASET_INFO = DATASET_METADATA.get(
     },
 )
 
+EXTRAS_DIR = PROJECT_ROOT / "extras"
+SEMANTIC_INDEX_PATH = EXTRAS_DIR / "lse_semantic_index.jsonl"
+
 
 class LSEServerV2(RunQueryMixin):
     """FastMCP server exposing the normalized LSE / NDC Align dataset."""
@@ -876,6 +880,10 @@ class LSEServerV2(RunQueryMixin):
                 self._openai_client = OpenAI()
             except Exception as exc:  # pragma: no cover - credential failure
                 print(f"[lse] Warning: OpenAI client unavailable: {exc}")
+
+        self._semantic_records: List[Dict[str, Any]] = []
+        self._semantic_matrix: Optional[np.ndarray] = None
+        self._load_semantic_index()
 
         self._register_capabilities_tool()
         self._register_query_support_tool()
@@ -1169,6 +1177,7 @@ class LSEServerV2(RunQueryMixin):
                 "policy_types": matches,
                 "available_policy_types": available_types,
                 "count": len(matches),
+                "citation": self._dataset_citation_dict(),
             }
 
     def _register_tool_subnational(self) -> None:
@@ -1206,6 +1215,7 @@ class LSEServerV2(RunQueryMixin):
                     "summary": sheet.summary,
                     "records": records,
                     "metric_filter": metric,
+                    "citation": self._dataset_citation_dict(),
                 }
 
             overview = []
@@ -1224,7 +1234,278 @@ class LSEServerV2(RunQueryMixin):
             return {
                 "total_states": len(overview),
                 "states": overview,
+                "citation": self._dataset_citation_dict(),
             }
+
+        @self.mcp.tool()
+        def GetStatePolicyCoverageRanking(limit: int = 27) -> Dict[str, Any]:  # type: ignore[misc]
+            """Rank Brazilian states by share of 'yes' responses in subnational questionnaire."""
+
+            slugs = self.catalog.module_index.get("subnational", [])
+            if not slugs:
+                return {"error": "Subnational data not available"}
+
+            rankings: List[Dict[str, Any]] = []
+            for slug in slugs:
+                sheet = self.catalog.get_sheet(slug)
+                if not sheet:
+                    continue
+
+                summary = sheet.summary or {}
+                total_questions = int(summary.get("rows", 0) or len(sheet.records))
+
+                if total_questions <= 0:
+                    continue
+
+                yes_count = int(summary.get("yes_responses", 0))
+                no_count = int(summary.get("no_responses", 0))
+                other_count = max(total_questions - (yes_count + no_count), 0)
+                coverage = round((yes_count / total_questions) * 100, 2)
+
+                rankings.append(
+                    {
+                        "state": sheet.metadata.get("state_name") or sheet.title,
+                        "state_code": sheet.metadata.get("state_code"),
+                        "questions": total_questions,
+                        "yes_responses": yes_count,
+                        "no_responses": no_count,
+                        "other_responses": other_count,
+                        "coverage_percent": coverage,
+                        "slug": sheet.slug,
+                    }
+                )
+
+            rankings.sort(key=lambda item: item["coverage_percent"], reverse=True)
+            limited_rankings = rankings[: max(1, limit)]
+
+            chart_payload = {
+                "labels": [entry["state"] for entry in limited_rankings],
+                "datasets": [
+                    {
+                        "label": "Yes response share (%)",
+                        "data": [round(entry["coverage_percent"], 2) for entry in limited_rankings],
+                        "backgroundColor": "#1E88E5",
+                    }
+                ],
+            }
+
+            artifact = {
+                "type": "chart",
+                "title": "State climate policy coverage",
+                "metadata": {
+                    "chartType": "bar",
+                    "metric": "coverage_percent",
+                    "limit": max(1, limit),
+                },
+                "data": chart_payload,
+            }
+
+            return {
+                "states": limited_rankings,
+                "limit": limit,
+                "artifacts": [artifact],
+                "summary": (
+                    f"Top {min(limit, len(rankings))} states by share of 'yes' responses in the subnational governance questionnaire."
+                ),
+                "citation": self._dataset_citation_dict(),
+            }
+
+        # @self.mcp.tool()
+        # def GetStatePolicyCoverageMap(limit: int = 27) -> Dict[str, Any]:  # type: ignore[misc]
+        #     """Produce a choropleth-ready GeoJSON of state policy coverage percentages."""
+
+        #     try:
+        #         import runpy
+        #         mod = runpy.run_path(str(PROJECT_ROOT / "mcp" / "servers_v2" / "brazilian_admin_server_v2.py"))
+        #         admin_server_cls = mod.get("BrazilianAdminServerV2")
+        #     except Exception as exc:
+        #         return {"error": f"Brazilian admin server unavailable: {exc}"}
+
+        #     if not admin_server_cls:
+        #         return {"error": "Brazilian admin server unavailable"}
+
+        #     admin_server = admin_server_cls()
+
+        #     slugs = self.catalog.module_index.get("subnational", [])
+        #     if not slugs:
+        #         return {"error": "Subnational data not available"}
+
+        #     rows: List[Dict[str, Any]] = []
+        #     for slug in slugs:
+        #         sheet = self.catalog.get_sheet(slug)
+        #         if not sheet:
+        #             continue
+        #         summary = sheet.summary or {}
+        #         total_questions = int(summary.get("rows", 0) or len(sheet.records))
+        #         if total_questions <= 0:
+        #             continue
+        #         yes_count = int(summary.get("yes_responses", 0))
+        #         coverage = round((yes_count / total_questions) * 100, 2)
+        #         state_code = sheet.metadata.get("state_code") or sheet.title
+        #         rows.append(
+        #             {
+        #                 "state": sheet.metadata.get("state_name") or sheet.title,
+        #                 "state_code": state_code,
+        #                 "coverage_percent": coverage,
+        #             }
+        #         )
+
+        #     rows.sort(key=lambda item: item["coverage_percent"], reverse=True)
+        #     limited_rows = rows[: max(1, limit)]
+        #     states_to_color = {row["state_code"]: row for row in limited_rows}
+
+        #     state_gdf = admin_server.states_gdf
+        #     if state_gdf is None or state_gdf.empty:
+        #         return {"error": "Brazilian state geometries unavailable"}
+
+        #     def _normalise_code(value: Optional[str]) -> str:
+        #         if value is None:
+        #             return ""
+        #         text = str(value).strip()
+        #         if text.isdigit():
+        #             mapping = [
+        #                 "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB",
+        #                 "PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
+        #             ]
+        #             idx = int(text)
+        #             if 0 <= idx < len(mapping):
+        #                 return mapping[idx]
+        #         return text.upper()
+
+        #     joined = []
+        #     min_lon = min_lat = max_lon = max_lat = None
+        #     for _, geom_row in state_gdf.iterrows():
+        #         code = _normalise_code(geom_row.get("state_code") or geom_row.get("name"))
+        #         match = states_to_color.get(code)
+        #         if match:
+        #             joined.append((geom_row.geometry, match))
+        #             try:
+        #                 minx, miny, maxx, maxy = geom_row.geometry.bounds
+        #                 min_lon = minx if min_lon is None else min(min_lon, minx)
+        #                 min_lat = miny if min_lat is None else min(min_lat, miny)
+        #                 max_lon = maxx if max_lon is None else max(max_lon, maxx)
+        #                 max_lat = maxy if max_lat is None else max(max_lat, maxy)
+        #             except Exception:
+        #                 pass
+
+        #     if not joined:
+        #         return {"error": "No matching states found for coverage map"}
+
+        #     min_value: Optional[float] = None
+        #     max_value: Optional[float] = None
+        #     coverages: List[float] = []
+        #     for geometry, record in joined:
+        #         coverage_value = float(record["coverage_percent"])
+        #         coverages.append(coverage_value)
+        #         if min_value is None or coverage_value < min_value:
+        #             min_value = coverage_value
+        #         if max_value is None or coverage_value > max_value:
+        #             max_value = coverage_value
+
+        #     range_min = min_value if min_value is not None else (min(coverages) if coverages else 0.0)
+        #     range_max = max_value if max_value is not None else (max(coverages) if coverages else 100.0)
+
+        #     # Update features with category now that range is known
+        #     features = []
+        #     for geometry, record in joined:
+        #         coverage_value = float(record["coverage_percent"])
+        #         category = "high coverage" if coverage_value >= range_max else "lower coverage"
+        #         features.append(
+        #             {
+        #                 "type": "Feature",
+        #                 "geometry": geometry.__geo_interface__,
+        #                 "properties": {
+        #                     "state": record["state"],
+        #                     "state_code": record["state_code"],
+        #                     "country": category,
+        #                     "coverage_category": category,
+        #                     "coverage_percent": coverage_value,
+        #                 },
+        #             }
+        #         )
+
+        #     if min_lon is not None and min_lat is not None and max_lon is not None and max_lat is not None:
+        #         padding_lon = max((max_lon - min_lon) * 0.05, 0.25)
+        #         padding_lat = max((max_lat - min_lat) * 0.05, 0.25)
+        #         bounds = {
+        #             "west": float(min_lon - padding_lon),
+        #             "south": float(min_lat - padding_lat),
+        #             "east": float(max_lon + padding_lon),
+        #             "north": float(max_lat + padding_lat),
+        #         }
+        #         center = {
+        #             "lon": float((min_lon + max_lon) / 2),
+        #             "lat": float((min_lat + max_lat) / 2),
+        #         }
+        #     else:
+        #         bounds = None
+        #         center = None
+
+        #     identifier = f"lse_state_policy_coverage_{len(features)}"
+        #     filename = f"lse_state_policy_coverage_{len(features)}.geojson"
+        #     path = admin_server.static_maps_dir / filename
+        #     admin_server.static_maps_dir.mkdir(parents=True, exist_ok=True)
+        #     with open(path, "w", encoding="utf-8") as handle:
+        #         json.dump({"type": "FeatureCollection", "features": features}, handle)
+
+        #     color_property = "coverage_percent"
+        #     metadata = {
+        #         "dataset_id": DATASET_ID,
+        #         "geometry_type": "polygon",
+        #         "metric": "coverage_percent",
+        #         "range": [range_min, range_max],
+        #         "fill_style": {
+        #             "type": "interpolate",
+        #             "color_property": color_property,
+        #             "palette": ["#d4e4ff", "#1e88e5"],
+        #         },
+        #     }
+        #     legend_items = [
+        #         {
+        #             "label": "High coverage",
+        #             "color": "#1e88e5",
+        #             "description": f">= {round(range_max, 2)}% yes responses",
+        #         },
+        #         {
+        #             "label": "Lower coverage",
+        #             "color": "#d4e4ff",
+        #             "description": f"<= {round(range_min, 2)}% yes responses",
+        #         },
+        #     ]
+        #     metadata["legend"] = {"title": "State coverage", "items": legend_items}
+        #     metadata["fill_style"]["match_property"] = "coverage_category"
+        #     if bounds and center:
+        #         metadata["bounds"] = bounds
+        #         metadata["center"] = center
+
+        #     artifact = {
+        #         "type": "map",
+        #         "title": "State climate policy coverage",
+        #         "metadata": metadata,
+        #         "geojson_url": f"/static/maps/{filename}",
+        #     }
+
+        #     view_state = None
+        #     if bounds and center:
+        #         view_state = {
+        #             "center": [center["lon"], center["lat"]],
+        #             "bounds": bounds,
+        #             "zoom": 4.0,
+        #         }
+
+        #     return {
+        #         "states": limited_rows,
+        #         "range": {
+        #             "min": range_min,
+        #             "max": range_max,
+        #         },
+        #         "summary": (
+        #             f"Top {min(limit, len(rows))} states by 'yes' response share in the subnational questionnaire, rendered as a choropleth."
+        #         ),
+        #         "artifacts": [artifact],
+        #         "view_state": view_state,
+        #         "citation": self._dataset_citation_dict(),
+        #     }
 
     def _register_tool_dataset_overview(self) -> None:
         @self.mcp.tool()
@@ -1262,7 +1543,9 @@ class LSEServerV2(RunQueryMixin):
     def _register_tool_search(self) -> None:
         @self.mcp.tool()
         def SearchLSEContent(
-            search_term: str,
+            search_term: Optional[str] = None,
+            *,
+            query: Optional[str] = None,
             module_type: Optional[str] = None,
             limit: int = 10,
         ) -> Dict[str, Any]:  # type: ignore[misc]
@@ -1270,7 +1553,19 @@ class LSEServerV2(RunQueryMixin):
 
             if not self.catalog.sheets:
                 return {"error": "LSE data not available"}
-            result = self.catalog.search(search_term, module=module_type, limit=limit)
+            term = search_term or query
+            if not term:
+                return {"error": "Missing search term"}
+            semantic_hits = self._semantic_search(term, limit=limit)
+            if semantic_hits:
+                return {
+                    "term": term,
+                    "results": semantic_hits,
+                    "count": len(semantic_hits),
+                    "method": "semantic",
+                }
+
+            result = self.catalog.search(term, module=module_type, limit=limit)
             if not result.get("results"):
                 result["guidance"] = (
                     "No direct matches found. Try broader keywords or explore modules via ListLSEGroups."
@@ -1304,12 +1599,20 @@ class LSEServerV2(RunQueryMixin):
 
     def _register_tool_state_policy(self) -> None:
         @self.mcp.tool()
-        def GetStateClimatePolicy(state_name: str) -> Dict[str, Any]:  # type: ignore[misc]
+        def GetStateClimatePolicy(
+            state_name: Optional[str] = None,
+            *,
+            state: Optional[str] = None,
+        ) -> Dict[str, Any]:  # type: ignore[misc]
             """Retrieve the full policy table for a specific Brazilian state."""
 
-            sheet = self.catalog.get_sheet_by_state(state_name)
+            target = state_name or state
+            if not target:
+                return {"error": "State name is required"}
+
+            sheet = self.catalog.get_sheet_by_state(target)
             if not sheet:
-                return {"error": f"State '{state_name}' not found"}
+                return {"error": f"State '{target}' not found"}
             return {
                 "state": sheet.metadata.get("state_name") or sheet.title,
                 "state_code": sheet.metadata.get("state_code"),
@@ -1361,6 +1664,10 @@ class LSEServerV2(RunQueryMixin):
 
             if not comparison["states"]:
                 comparison["error"] = "No states found for comparison"
+            comparison["citation"] = self._dataset_citation_dict()
+            comparison["citation"] = self._dataset_citation_dict()
+            comparison["citation"] = self._dataset_citation_dict()
+            comparison["citation"] = self._dataset_citation_dict()
             return comparison
 
     def _register_tool_ndc_targets(self) -> None:
@@ -1442,6 +1749,7 @@ class LSEServerV2(RunQueryMixin):
                         targets["sources"].add(source["source"])
 
             targets["sources"] = sorted(targets["sources"])
+            targets["citation"] = self._dataset_citation_dict()
             return targets
 
     def _register_tool_ndc_policy_comparison(self) -> None:
@@ -1499,6 +1807,7 @@ class LSEServerV2(RunQueryMixin):
                         }
                     )
 
+            comparison["citation"] = self._dataset_citation_dict()
             return comparison
 
     def _register_tool_ndc_implementation(self) -> None:
@@ -1554,6 +1863,7 @@ class LSEServerV2(RunQueryMixin):
                 "pending_targets": pending,
                 "implementation_rate_percent": implementation_rate,
                 "instruments": instruments,
+                "citation": self._dataset_citation_dict(),
             }
 
     def _register_tool_all_ndc(self) -> None:
@@ -1581,6 +1891,7 @@ class LSEServerV2(RunQueryMixin):
                 "metadata": sheet.metadata,
                 "summary": summary,
                 "records": sheet.records,
+                "citation": self._dataset_citation_dict(),
             }
 
     def _register_tool_institutions_all(self) -> None:
@@ -1622,7 +1933,7 @@ class LSEServerV2(RunQueryMixin):
     def _register_tool_visualization(self) -> None:
         @self.mcp.tool()
         def GetLSEVisualizationData(
-            viz_type: str,
+            viz_type: Optional[str] = None,
             filters: Optional[Dict[str, Any]] = None,
         ) -> Dict[str, Any]:  # type: ignore[misc]
             """Provide pre-aggregated data for simple visualizations."""
@@ -1630,7 +1941,8 @@ class LSEServerV2(RunQueryMixin):
             if not self.catalog.sheets:
                 return {"error": "LSE data not available"}
             filters = filters or {}
-            viz_type_lower = viz_type.lower()
+            viz_type_value = (viz_type or "states_comparison").strip()
+            viz_type_lower = viz_type_value.lower()
 
             if viz_type_lower == "states_comparison":
                 slugs = self.catalog.module_index.get("subnational", [])
@@ -1751,6 +2063,19 @@ class LSEServerV2(RunQueryMixin):
             },
         )
 
+    def _dataset_citation_dict(self) -> Dict[str, Any]:
+        citation = self._dataset_citation()
+        return {
+            "id": citation.id,
+            "server": citation.server,
+            "tool": citation.tool,
+            "title": citation.title,
+            "source_type": citation.source_type,
+            "description": citation.description,
+            "url": citation.url,
+            "metadata": citation.metadata,
+        }
+
     @staticmethod
     def _ensure_citation(
         citations: List[CitationPayload], citation: CitationPayload
@@ -1766,36 +2091,6 @@ class LSEServerV2(RunQueryMixin):
         citations: List[CitationPayload],
         citation_lookup: Dict[str, str],
     ) -> str:
-        sources = record.get("sources") or []
-        for source in sources:
-            if not isinstance(source, dict):
-                continue
-            url = source.get("source")
-            if not url:
-                continue
-            key = str(url)
-            if key in citation_lookup:
-                return citation_lookup[key]
-            citation_id = f"lse-src-{len(citation_lookup) + 1}"
-            citation_lookup[key] = citation_id
-            self._ensure_citation(
-                citations,
-                CitationPayload(
-                    id=citation_id,
-                    server="lse",
-                    tool="GetLSETab",
-                    title=sheet.title,
-                    source_type=str(source.get("source_type") or "Policy"),
-                    description=record.get("label") or record.get("question") or sheet.title,
-                    url=url,
-                    metadata={
-                        "module": sheet.module,
-                        "group": sheet.group,
-                        "state": record.get("state"),
-                    },
-                ),
-            )
-            return citation_id
         return "lse-dataset"
 
     @staticmethod
@@ -1837,6 +2132,167 @@ class LSEServerV2(RunQueryMixin):
 
         header = f"{sheet.title}: {label}"
         return header + "\n" + "\n".join(parts)
+
+    def _record_text_for_embedding(self, sheet: ProcessedSheet, record: Dict[str, Any]) -> Optional[str]:
+        text = self._format_record_text(sheet, record)
+        if not text:
+            return None
+        module = sheet.module.replace("_", " ")
+        group = sheet.group.replace("_", " ")
+        prefix = f"Module: {module} | Group: {group}"
+        return f"{prefix}\n{text}"
+
+    def _load_semantic_index(self) -> None:
+        if not SEMANTIC_INDEX_PATH.exists():
+            self._build_semantic_index()
+            return
+
+        records: List[Dict[str, Any]] = []
+        try:
+            with SEMANTIC_INDEX_PATH.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    try:
+                        entry = json.loads(line)
+                        embedding = np.array(entry.get("embedding"), dtype=float)
+                        if embedding.size == 0:
+                            continue
+                        entry["embedding"] = embedding
+                        records.append(entry)
+                    except Exception:
+                        continue
+        except Exception as exc:
+            print(f"[lse] Warning: failed to load semantic index: {exc}")
+            records = []
+
+        if records:
+            self._semantic_records = records
+            self._semantic_matrix = np.vstack([entry["embedding"] for entry in records])
+        else:
+            self._semantic_records = []
+            self._semantic_matrix = None
+            self._build_semantic_index()
+
+    def _build_semantic_index(self) -> None:
+        if self._openai_client is None:
+            return
+
+        texts: List[str] = []
+        metadata: List[Dict[str, Any]] = []
+
+        for slug in self.catalog.sheets:
+            sheet = self.catalog.get_sheet(slug)
+            if not sheet:
+                continue
+            for idx, record in enumerate(sheet.records):
+                text = self._record_text_for_embedding(sheet, record)
+                if not text:
+                    continue
+                texts.append(text)
+                metadata.append({
+                    "slug": sheet.slug,
+                    "record_index": idx,
+                    "module": sheet.module,
+                    "group": sheet.group,
+                    "title": sheet.title,
+                    "snippet": text.split("\n", 1)[-1][:280],
+                })
+
+        if not texts:
+            return
+
+        vectors: List[np.ndarray] = []
+        try:
+            batch_size = 90
+            for start in range(0, len(texts), batch_size):
+                chunk = texts[start : start + batch_size]
+                response = self._openai_client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=chunk,
+                )
+                for item in response.data:
+                    vectors.append(np.array(item.embedding, dtype=float))
+        except Exception as exc:
+            print(f"[lse] Warning: failed to generate semantic index: {exc}")
+            return
+
+        if len(vectors) != len(metadata):
+            print("[lse] Warning: embedding count mismatch; skipping semantic index")
+            return
+
+        EXTRAS_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            with SEMANTIC_INDEX_PATH.open("w", encoding="utf-8") as handle:
+                for meta, vector in zip(metadata, vectors):
+                    entry = meta.copy()
+                    entry["embedding"] = vector.tolist()
+                    json.dump(entry, handle)
+                    handle.write("\n")
+        except Exception as exc:
+            print(f"[lse] Warning: failed to persist semantic index: {exc}")
+
+        self._semantic_records = []
+        matrix = []
+        for meta, vector in zip(metadata, vectors):
+            meta_copy = meta.copy()
+            meta_copy["embedding"] = vector
+            self._semantic_records.append(meta_copy)
+            matrix.append(vector)
+
+        if matrix:
+            self._semantic_matrix = np.vstack(matrix)
+        else:
+            self._semantic_matrix = None
+
+    def _embed_query(self, text: str) -> Optional[np.ndarray]:
+        if not text or self._openai_client is None:
+            return None
+        try:
+            response = self._openai_client.embeddings.create(
+                model="text-embedding-3-small",
+                input=[text],
+            )
+            return np.array(response.data[0].embedding, dtype=float)
+        except Exception as exc:
+            print(f"[lse] Warning: query embedding failed: {exc}")
+            return None
+
+    def _semantic_search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        if (
+            not query
+            or self._semantic_matrix is None
+            or not len(self._semantic_records)
+        ):
+            return []
+
+        query_vector = self._embed_query(query)
+        if query_vector is None or query_vector.size == 0:
+            return []
+
+        similarities = cosine_similarity(query_vector.reshape(1, -1), self._semantic_matrix)[0]
+        top_indices = similarities.argsort()[::-1][:limit]
+        results: List[Dict[str, Any]] = []
+        for idx in top_indices:
+            entry = self._semantic_records[idx]
+            sheet = self.catalog.get_sheet(entry.get("slug"))
+            if not sheet:
+                continue
+            record_index = entry.get("record_index")
+            if record_index is None or record_index >= len(sheet.records):
+                continue
+            record = sheet.records[record_index]
+            snippet = entry.get("snippet") or self._format_record_text(sheet, record) or ""
+            results.append(
+                {
+                    "slug": sheet.slug,
+                    "title": sheet.title,
+                    "module": sheet.module,
+                    "group": sheet.group,
+                    "snippet": snippet,
+                    "record": record,
+                    "score": float(similarities[idx]),
+                }
+            )
+        return results
 
     @staticmethod
     def _summarize_record(sheet: ProcessedSheet, record: Dict[str, Any]) -> Optional[str]:
@@ -2060,6 +2516,8 @@ class LSEServerV2(RunQueryMixin):
             )
             seen_record_keys.add(label_key)
             citation_id = self._citation_for_record(sheet, record, citations, citation_lookup)
+            if not citation_id:
+                citation_id = dataset_citation.id
             facts.append(
                 FactPayload(
                     id=f"lse-record-{idx}",
@@ -2085,6 +2543,8 @@ class LSEServerV2(RunQueryMixin):
             if label_key in seen_record_keys:
                 continue
             citation_id = self._citation_for_record(sheet, record, citations, citation_lookup)
+            if not citation_id:
+                citation_id = dataset_citation.id
             facts.append(
                 FactPayload(
                     id=f"lse-ndc-{len(facts) + 1}",
@@ -2120,6 +2580,64 @@ class LSEServerV2(RunQueryMixin):
         state_artifact = self._state_artifact(query)
         if state_artifact:
             artifacts.append(state_artifact)
+
+        if not facts:
+            ndc_sheet = self.catalog.get_ndc_sheet()
+            if ndc_sheet:
+                for record in ndc_sheet.records:
+                    if record.get("type") != "question":
+                        continue
+                    text = self._format_record_text(ndc_sheet, record)
+                    if not text:
+                        continue
+                    facts.append(
+                        FactPayload(
+                            id=f"lse-ndc-fallback-{len(facts) + 1}",
+                            text=text,
+                            citation_id=dataset_citation.id,
+                            kind="text",
+                            metadata={
+                                "slug": ndc_sheet.slug,
+                                "module": ndc_sheet.module,
+                                "group": ndc_sheet.group,
+                                "question": record.get("label") or record.get("question"),
+                                "record": record,
+                            },
+                        )
+                    )
+                    if len(facts) >= 2:
+                        break
+
+        if not facts:
+            for slug in self.catalog.module_index.get("plans_policies", [])[:2]:
+                sheet = self.catalog.get_sheet(slug)
+                if not sheet:
+                    continue
+                for record in sheet.records:
+                    if record.get("type") == "section":
+                        continue
+                    text = self._format_record_text(sheet, record)
+                    if not text:
+                        continue
+                    facts.append(
+                        FactPayload(
+                            id=f"lse-policy-fallback-{len(facts) + 1}",
+                            text=text,
+                            citation_id=dataset_citation.id,
+                            kind="text",
+                            metadata={
+                                "slug": sheet.slug,
+                                "module": sheet.module,
+                                "group": sheet.group,
+                                "question": record.get("label") or record.get("question"),
+                                "record": record,
+                            },
+                        )
+                    )
+                    if len(facts) >= 2:
+                        break
+                if facts:
+                    break
 
         kg_nodes.append(
             {

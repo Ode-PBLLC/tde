@@ -506,8 +506,8 @@ def _calculate_high_risk_summary(risk_categories: Dict, total_assets: int) -> Di
     }
 
 @mcp.tool()
-def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH") -> Dict[str, Any]:
-    """Get companies by risk category and level."""
+def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH", limit: int = 20) -> Dict[str, Any]:
+    """Rank companies by number of assets in a given risk category/level."""
     if not data_manager.sheets:
         return {"error": "GIST data not available"}
     
@@ -562,8 +562,8 @@ def GetGistRiskByCategory(risk_type: str, risk_level: str = "HIGH") -> Dict[str,
         "companies_found": len(companies_at_risk),
         "companies": []
     }
-    
-    for _, row in companies_at_risk.head(20).iterrows():  # Limit to top 20
+
+    for _, row in companies_at_risk.head(limit).iterrows():  # Limit to top N
         total_assets = row.get('TOTAL_NUMBER_OF_ASSETS_ASSESSED_WITHIN_A_COMPANY', 0)
         at_risk_assets = row[col_name]
         risk_percentage = (at_risk_assets / total_assets * 100) if total_assets > 0 else 0

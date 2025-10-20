@@ -141,6 +141,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
     # Handle map_data_summary format (and treat any geojson_url-bearing payload as compatible)
     if map_data.get("type") == "map_data_summary" or (map_data.get("geojson_url") and isinstance(map_data.get("geojson_url"), str)):
         summary = map_data.get("summary", {})
+        metadata = map_data.get("metadata", {}) or {}
         geojson_url = map_data.get("geojson_url")
         filename_hint = map_data.get("geojson_filename")
         # Strict correlation detection: explicit flag or correlation_* filename/URL only
@@ -164,7 +165,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
         
         if not geojson_url:
             return None
-        
+
         # Ensure we have a complete URL for the frontend
         import os
         if geojson_url.startswith('/'):
@@ -173,7 +174,43 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             # Remove trailing slash from base URL if present
             base_url = base_url.rstrip('/')
             geojson_url = base_url + geojson_url
-        
+
+        # Determine geometry type(s) for downstream renderers
+        geom_candidates = []
+
+        def _collect_geometry_types(value):
+            if not value:
+                return
+            if isinstance(value, str):
+                geom_candidates.append(value.lower())
+            elif isinstance(value, dict):
+                for nested in value.values():
+                    _collect_geometry_types(nested)
+            elif isinstance(value, (list, tuple, set)):
+                for nested in value:
+                    _collect_geometry_types(nested)
+
+        _collect_geometry_types(map_data.get("geometry_type"))
+        _collect_geometry_types(map_data.get("geometry_types"))
+        _collect_geometry_types(summary.get("geometry_type"))
+        _collect_geometry_types(summary.get("geometry_types"))
+        _collect_geometry_types(metadata.get("geometry_type"))
+        _collect_geometry_types(metadata.get("geometry_types"))
+
+        geometry_types = sorted({candidate for candidate in geom_candidates if isinstance(candidate, str) and candidate})
+        geometry_type = "point"
+        if geometry_types:
+            has_point = any(candidate.startswith("point") for candidate in geometry_types)
+            has_polygon = any(candidate.startswith("poly") or candidate.startswith("multi") for candidate in geometry_types)
+            if has_polygon and not has_point:
+                geometry_type = "polygon"
+            elif has_point:
+                geometry_type = "point"
+            else:
+                geometry_type = geometry_types[0]
+        if not geometry_types:
+            geometry_types = [geometry_type]
+
         # Determine map bounds
         bounds = summary.get("bounds")
         center = summary.get("center")
@@ -225,6 +262,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             "type": "map",
             "mapType": "geojson_url",
             "geojson_url": geojson_url,
+            "geometry_type": geometry_type,
+            "geometry_types": geometry_types,
             "viewState": {
                 "center": center,
                 "zoom": 6,
@@ -238,6 +277,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "total_facilities": summary.get("total_facilities", 0),
                 "total_capacity_mw": summary.get("total_capacity_mw", 0),
                 "countries": countries,
+                "geometry_type": geometry_type,
+                "geometry_types": geometry_types,
                 "data_source": "TZ-SAM Q1 2025"
             }
         }

@@ -1,0 +1,3217 @@
+{
+  "query": "Give me an overview of renewable energy in Brazil",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q572",
+        "kind": "Concept",
+        "label": "bioenergy",
+        "description": ""
+      },
+      {
+        "id": "Q1656",
+        "kind": "Concept",
+        "label": "water quality standard",
+        "description": "It regulates the quality of water bodies aiming to prevent, reduce and/or eliminate pollution. It describes the desired condition of a water body and the means by which that condition will be protected or achieved"
+      },
+      {
+        "id": "Q1207",
+        "kind": "Concept",
+        "label": "regulatory instrument",
+        "description": "Regulatory instruments, or \"authority\" in Hood and Margetts' NATO scheme, set boundaries on behaviour through rules, like emissions disclosure, fossil fuel bans, and spatial planning laws."
+      },
+      {
+        "id": "Q1318",
+        "kind": "Concept",
+        "label": "wood gas",
+        "description": "Wood gas is a fuel gas that can be used for furnaces, stoves, and vehicles. It is a type of fuel gas."
+      },
+      {
+        "id": "Q593",
+        "kind": "Concept",
+        "label": "Renewable municipal waste",
+        "description": ""
+      },
+      {
+        "id": "Q606",
+        "kind": "Concept",
+        "label": "hydropower",
+        "description": "Hydropower is the use of falling or fast-running water to produce electricity or to power machines."
+      },
+      {
+        "id": "Q1713",
+        "kind": "Concept",
+        "label": "standard for soil quality",
+        "description": "Soil quality standards are guidelines that protect and improve the health of soil. They are important for agriculture, biodiversity, and carbon sequestration."
+      },
+      {
+        "id": "Q1322",
+        "kind": "Concept",
+        "label": "green hydrogen",
+        "description": "Green hydrogen is made by using clean electricity from surplus renewable energy sources, such as solar or wind power, to electrolyse water."
+      },
+      {
+        "id": "Q868",
+        "kind": "Concept",
+        "label": "electricity supply sector",
+        "description": "electric power generation, transmission and distribution activities"
+      },
+      {
+        "id": "Q580",
+        "kind": "Concept",
+        "label": "Animal dung",
+        "description": ""
+      },
+      {
+        "id": "Q1279",
+        "kind": "Concept",
+        "label": "feed-in-tariff",
+        "description": "A policy instrument designed to support the development and acceleration of renewable energy sources by providing a guaranteed, above-market price for producers."
+      },
+      {
+        "id": "Q583",
+        "kind": "Concept",
+        "label": "Energy crops",
+        "description": ""
+      },
+      {
+        "id": "Q1712",
+        "kind": "Concept",
+        "label": "emission standard",
+        "description": "Emission standards are legal limits on the amount of pollutants that can be released into the atmosphere. They apply to vehicles, engines, and fuels."
+      },
+      {
+        "id": "Q254",
+        "kind": "Concept",
+        "label": "clean technology",
+        "description": "Service, process, or product that enables the reduction of negative environmental impacts through significant energy efficiency improvements, the sustainable use of resources, or environmental protection activities"
+      },
+      {
+        "id": "Q631",
+        "kind": "Concept",
+        "label": "Heat pumps",
+        "description": ""
+      },
+      {
+        "id": "Q253",
+        "kind": "Concept",
+        "label": "mitigation technologies",
+        "description": ""
+      },
+      {
+        "id": "Q588",
+        "kind": "Concept",
+        "label": "wood fuel",
+        "description": "Fuelwood is wood that is harvested from forestlands and combusted directly for useable heat in the residential and commercial sectors and power in the electric utility sector."
+      },
+      {
+        "id": "Q1399",
+        "kind": "Concept",
+        "label": "technology standard",
+        "description": "Technology standards take a more prescriptive approach by requiring a specific technology, process or product than performance standards."
+      },
+      {
+        "id": "Q601",
+        "kind": "Concept",
+        "label": "geothermal energy",
+        "description": ""
+      },
+      {
+        "id": "Q589",
+        "kind": "Concept",
+        "label": "Wood waste",
+        "description": ""
+      },
+      {
+        "id": "Q1397",
+        "kind": "Concept",
+        "label": "renewable portfolio standard",
+        "description": "Renewable Portfolio Standards (RPS) require that a minimum percentage of electricity is generated from specified renewable sources."
+      },
+      {
+        "id": "Q586",
+        "kind": "Concept",
+        "label": "Waste vegetable oil",
+        "description": ""
+      },
+      {
+        "id": "Q1711",
+        "kind": "Concept",
+        "label": "environmental standard",
+        "description": "Environmental standards are legal tools used by governments to limit pollution and enforce climate action. They set thresholds for air, water, emissions, and waste, ensuring industries comply. Examples include air quality limits, emissions caps, and energy efficiency rules, promoting sustainability."
+      },
+      {
+        "id": "Q615",
+        "kind": "Concept",
+        "label": "marine energy",
+        "description": "Marine energy, also known as marine and hydrokinetic energy, is a renewable energy source that comes from the natural movement of water."
+      },
+      {
+        "id": "Q1396",
+        "kind": "Concept",
+        "label": "energy efficiency standard",
+        "description": "Energy efficiency standards are government regulations that set a minimum level of energy performance for buildings or appliances, typically measured by an energy rating scale (like A-G), meaning that products or properties must meet a certain level of efficiency to be sold or rented, aiming to reduce energy consumption and carbon emissions; in practice, this often means landlords must ensure their rental properties reach a minimum energy efficiency rating."
+      },
+      {
+        "id": "Q1660",
+        "kind": "Concept",
+        "label": "environmental noise standard",
+        "description": "It provides recommendations on acceptable noise levels to protect human health."
+      },
+      {
+        "id": "Q618",
+        "kind": "Concept",
+        "label": "solar energy",
+        "description": "Solar energy is the radiation from the sun that can be converted into heat, electricity, or chemical reactions"
+      },
+      {
+        "id": "Q574",
+        "kind": "Concept",
+        "label": "Biopower",
+        "description": ""
+      },
+      {
+        "id": "Q1657",
+        "kind": "Concept",
+        "label": "drinking water standard",
+        "description": "It sets legal limits for contaminants in drinking water aiming to guarantee its safety and protect human health."
+      },
+      {
+        "id": "Q622",
+        "kind": "Concept",
+        "label": "wind energy",
+        "description": "Wind energy harnesses the kinetic energy of moving air by using large wind turbines located on land (onshore) or in sea- or freshwater (offshore)."
+      },
+      {
+        "id": "Q600",
+        "kind": "Concept",
+        "label": "Sewage gas",
+        "description": ""
+      },
+      {
+        "id": "Q591",
+        "kind": "Concept",
+        "label": "Straw",
+        "description": ""
+      },
+      {
+        "id": "Q596",
+        "kind": "Concept",
+        "label": "biodiesel",
+        "description": "Biodiesel is a renewable, biodegradable fuel manufactured domestically from vegetable oils, animal fats, or recycled restaurant grease."
+      },
+      {
+        "id": "Q592",
+        "kind": "Concept",
+        "label": "Charcoal",
+        "description": ""
+      },
+      {
+        "id": "Q578",
+        "kind": "Concept",
+        "label": "Dry dung fuel",
+        "description": ""
+      },
+      {
+        "id": "Q587",
+        "kind": "Concept",
+        "label": "Renewable industrial waste",
+        "description": ""
+      },
+      {
+        "id": "Q575",
+        "kind": "Concept",
+        "label": "biofuel",
+        "description": ""
+      },
+      {
+        "id": "Q594",
+        "kind": "Concept",
+        "label": "Ethanol cooking fuel",
+        "description": ""
+      },
+      {
+        "id": "Q597",
+        "kind": "Concept",
+        "label": "aviation biofuel",
+        "description": ""
+      },
+      {
+        "id": "Q599",
+        "kind": "Concept",
+        "label": "Landfill gas",
+        "description": ""
+      },
+      {
+        "id": "Q582",
+        "kind": "Concept",
+        "label": "Black liquor",
+        "description": ""
+      },
+      {
+        "id": "Q1658",
+        "kind": "Concept",
+        "label": "waste management standard",
+        "description": "They are policies to improve the way businesses and/or households sort their waste, optimising the waste collection and recycling."
+      },
+      {
+        "id": "Q1281",
+        "kind": "Concept",
+        "label": "codes and standards",
+        "description": "Codes and standards are regulatory instruments that specify minimum standards to protect health and safety. This ranges from performance standards, which prescribe outcomes while allowing flexibility to achieve compliance, to the more prescriptive approach of technology-specific standards."
+      },
+      {
+        "id": "Q585",
+        "kind": "Concept",
+        "label": "Vegetal waste fuel",
+        "description": ""
+      },
+      {
+        "id": "Q1393",
+        "kind": "Concept",
+        "label": "air pollution standard",
+        "description": "There are national or regional policies setting limit values to the concentration of different pollutants in the air to protect the public health and the environment."
+      },
+      {
+        "id": "Q576",
+        "kind": "Concept",
+        "label": "Biomass",
+        "description": ""
+      },
+      {
+        "id": "Q1663",
+        "kind": "Concept",
+        "label": "food safety standards",
+        "description": "Food safety standards are a set of rules and regulations established by governments, international organizations, and industry bodies to ensure the safety and quality of the food supply chain."
+      },
+      {
+        "id": "Q1024",
+        "kind": "Concept",
+        "label": "sustainable development goal 7",
+        "description": "SDG7: affordable and clean energy"
+      },
+      {
+        "id": "Q584",
+        "kind": "Concept",
+        "label": "Crop residues",
+        "description": ""
+      },
+      {
+        "id": "Q1665",
+        "kind": "Concept",
+        "label": "hazardous pesticide standard",
+        "description": "It proposes guidelines, recommendations, and regulations aimed at ensuring the safe and effective use of pesticides. These standards help protect human health, the environment, and ensure food safety."
+      },
+      {
+        "id": "Q1395",
+        "kind": "Concept",
+        "label": "building code and standard",
+        "description": "The term 'building codes' refers to regulations that set out the standards to which all buildings and other structures must conform. They cover design, construction, alteration, repair and maintenance, and specify the minimum requirements necessary to safeguard the health, as well as other impacts on the environment."
+      },
+      {
+        "id": "Q590",
+        "kind": "Concept",
+        "label": "Rice husk",
+        "description": ""
+      },
+      {
+        "id": "Q560",
+        "kind": "Concept",
+        "label": "mitigation",
+        "description": "Reducing the emission of and quantity of greenhouse gases in the atmosphere. This involves cutting emissions from \"sources\" of greenhouse gases e.g. petrol cars and enhancing \"sinks\" which draw emissions down from the atmosphere e.g. forests."
+      },
+      {
+        "id": "Q579",
+        "kind": "Concept",
+        "label": "Manure fuel",
+        "description": ""
+      },
+      {
+        "id": "Q577",
+        "kind": "Concept",
+        "label": "Animal waste fuel",
+        "description": ""
+      },
+      {
+        "id": "Q1659",
+        "kind": "Concept",
+        "label": "nuclear safety standard",
+        "description": "These standards aim to protect human health and the environment against the dangers arising from ionising radiation. It sets limits on the maximum radiation dose that anyone should receive under normal conditions, as well as sets protective limits on the radioactivity in soil, water and air that comes from human activities."
+      },
+      {
+        "id": "Q567",
+        "kind": "Concept",
+        "label": "renewables",
+        "description": "Renewables are a natural resource or source of energy that are not depleted by use, often with a low carbon footprint"
+      },
+      {
+        "id": "Q581",
+        "kind": "Concept",
+        "label": "Bagasse",
+        "description": ""
+      },
+      {
+        "id": "Q1323",
+        "kind": "Concept",
+        "label": "blue hydrogen",
+        "description": "Blue hydrogen is produced mainly from natural gas. The definition of blue hydrogen includes the use of carbon capture and storage (CCS) to trap and store this carbon."
+      },
+      {
+        "id": "Q595",
+        "kind": "Concept",
+        "label": "biogasoline",
+        "description": "Biogasoline is a type of gasoline that's made from biomass, such as algae, agricultural waste, or plant materials like sugarcane and beets. It's also known as renewable gasoline."
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q572",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q574",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q575",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q576",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q577",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q578",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q579",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q580",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q581",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q582",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q583",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q584",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q585",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q586",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q587",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q588",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q589",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q590",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q591",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q592",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q593",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q594",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q595",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q596",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q597",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q599",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q600",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q1318",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1656",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1281",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1318",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1318",
+        "target": "Q588",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q593",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q606",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1713",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1322",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1322",
+        "target": "Q1323",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q868",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q580",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1279",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q583",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1712",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q254",
+        "target": "Q253",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q254",
+        "target": "Q560",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q254",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q631",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q631",
+        "target": "Q253",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q253",
+        "target": "Q254",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q253",
+        "target": "Q567",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q253",
+        "target": "Q560",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q588",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q588",
+        "target": "Q1318",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1399",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q601",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q589",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1397",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q586",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1711",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q615",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1396",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1660",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q618",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q574",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1657",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q622",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q600",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q591",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q596",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q592",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q578",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q587",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q575",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q575",
+        "target": "Q597",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q594",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q597",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q597",
+        "target": "Q575",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q599",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q582",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1658",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1393",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1395",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1396",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1397",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1399",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1656",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1657",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1658",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1659",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1660",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1663",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1665",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1711",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1713",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1712",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q585",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1393",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q576",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1663",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q584",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1665",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1395",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q590",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q560",
+        "target": "Q253",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q560",
+        "target": "Q254",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q560",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q579",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q577",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1659",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q253",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q572",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q601",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q606",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q615",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q618",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q622",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q631",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1322",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q560",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1323",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q254",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1279",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1024",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q868",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q581",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1323",
+        "target": "Q1322",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1323",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q595",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      }
+    ],
+    "query_concepts": [
+      "Q1397",
+      "Q567",
+      "Q587",
+      "Q593",
+      "Q1396"
+    ],
+    "query_concept_labels": [
+      "Renewable municipal waste",
+      "Renewable industrial waste",
+      "renewable portfolio standard",
+      "renewables",
+      "energy efficiency standard"
+    ],
+    "total_found": 60,
+    "concepts": [
+      {
+        "id": "Q572",
+        "label": "bioenergy"
+      },
+      {
+        "id": "Q1656",
+        "label": "water quality standard"
+      },
+      {
+        "id": "Q1207",
+        "label": "regulatory instrument"
+      },
+      {
+        "id": "Q1318",
+        "label": "wood gas"
+      },
+      {
+        "id": "Q593",
+        "label": "Renewable municipal waste"
+      },
+      {
+        "id": "Q606",
+        "label": "hydropower"
+      },
+      {
+        "id": "Q1713",
+        "label": "standard for soil quality"
+      },
+      {
+        "id": "Q1322",
+        "label": "green hydrogen"
+      },
+      {
+        "id": "Q868",
+        "label": "electricity supply sector"
+      },
+      {
+        "id": "Q580",
+        "label": "Animal dung"
+      },
+      {
+        "id": "Q1279",
+        "label": "feed-in-tariff"
+      },
+      {
+        "id": "Q583",
+        "label": "Energy crops"
+      },
+      {
+        "id": "Q1712",
+        "label": "emission standard"
+      },
+      {
+        "id": "Q254",
+        "label": "clean technology"
+      },
+      {
+        "id": "Q631",
+        "label": "Heat pumps"
+      },
+      {
+        "id": "Q253",
+        "label": "mitigation technologies"
+      },
+      {
+        "id": "Q588",
+        "label": "wood fuel"
+      },
+      {
+        "id": "Q1399",
+        "label": "technology standard"
+      },
+      {
+        "id": "Q601",
+        "label": "geothermal energy"
+      },
+      {
+        "id": "Q589",
+        "label": "Wood waste"
+      },
+      {
+        "id": "Q1397",
+        "label": "renewable portfolio standard"
+      },
+      {
+        "id": "Q586",
+        "label": "Waste vegetable oil"
+      },
+      {
+        "id": "Q1711",
+        "label": "environmental standard"
+      },
+      {
+        "id": "Q615",
+        "label": "marine energy"
+      },
+      {
+        "id": "Q1396",
+        "label": "energy efficiency standard"
+      },
+      {
+        "id": "Q1660",
+        "label": "environmental noise standard"
+      },
+      {
+        "id": "Q618",
+        "label": "solar energy"
+      },
+      {
+        "id": "Q574",
+        "label": "Biopower"
+      },
+      {
+        "id": "Q1657",
+        "label": "drinking water standard"
+      },
+      {
+        "id": "Q622",
+        "label": "wind energy"
+      },
+      {
+        "id": "Q600",
+        "label": "Sewage gas"
+      },
+      {
+        "id": "Q591",
+        "label": "Straw"
+      },
+      {
+        "id": "Q596",
+        "label": "biodiesel"
+      },
+      {
+        "id": "Q592",
+        "label": "Charcoal"
+      },
+      {
+        "id": "Q578",
+        "label": "Dry dung fuel"
+      },
+      {
+        "id": "Q587",
+        "label": "Renewable industrial waste"
+      },
+      {
+        "id": "Q575",
+        "label": "biofuel"
+      },
+      {
+        "id": "Q594",
+        "label": "Ethanol cooking fuel"
+      },
+      {
+        "id": "Q597",
+        "label": "aviation biofuel"
+      },
+      {
+        "id": "Q599",
+        "label": "Landfill gas"
+      },
+      {
+        "id": "Q582",
+        "label": "Black liquor"
+      },
+      {
+        "id": "Q1658",
+        "label": "waste management standard"
+      },
+      {
+        "id": "Q1281",
+        "label": "codes and standards"
+      },
+      {
+        "id": "Q585",
+        "label": "Vegetal waste fuel"
+      },
+      {
+        "id": "Q1393",
+        "label": "air pollution standard"
+      },
+      {
+        "id": "Q576",
+        "label": "Biomass"
+      },
+      {
+        "id": "Q1663",
+        "label": "food safety standards"
+      },
+      {
+        "id": "Q1024",
+        "label": "sustainable development goal 7"
+      },
+      {
+        "id": "Q584",
+        "label": "Crop residues"
+      },
+      {
+        "id": "Q1665",
+        "label": "hazardous pesticide standard"
+      },
+      {
+        "id": "Q1395",
+        "label": "building code and standard"
+      },
+      {
+        "id": "Q590",
+        "label": "Rice husk"
+      },
+      {
+        "id": "Q560",
+        "label": "mitigation"
+      },
+      {
+        "id": "Q579",
+        "label": "Manure fuel"
+      },
+      {
+        "id": "Q577",
+        "label": "Animal waste fuel"
+      },
+      {
+        "id": "Q1659",
+        "label": "nuclear safety standard"
+      },
+      {
+        "id": "Q567",
+        "label": "renewables"
+      },
+      {
+        "id": "Q581",
+        "label": "Bagasse"
+      },
+      {
+        "id": "Q1323",
+        "label": "blue hydrogen"
+      },
+      {
+        "id": "Q595",
+        "label": "biogasoline"
+      }
+    ],
+    "relationships": [
+      {
+        "source_id": "Q572",
+        "target_id": "Q567",
+        "source_label": "bioenergy",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "bioenergy -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q574",
+        "source_label": "bioenergy",
+        "target_label": "Biopower",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Biopower (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q575",
+        "source_label": "bioenergy",
+        "target_label": "biofuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> biofuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q576",
+        "source_label": "bioenergy",
+        "target_label": "Biomass",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Biomass (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q577",
+        "source_label": "bioenergy",
+        "target_label": "Animal waste fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Animal waste fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q578",
+        "source_label": "bioenergy",
+        "target_label": "Dry dung fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Dry dung fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q579",
+        "source_label": "bioenergy",
+        "target_label": "Manure fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Manure fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q580",
+        "source_label": "bioenergy",
+        "target_label": "Animal dung",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Animal dung (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q581",
+        "source_label": "bioenergy",
+        "target_label": "Bagasse",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Bagasse (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q582",
+        "source_label": "bioenergy",
+        "target_label": "Black liquor",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Black liquor (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q583",
+        "source_label": "bioenergy",
+        "target_label": "Energy crops",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Energy crops (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q584",
+        "source_label": "bioenergy",
+        "target_label": "Crop residues",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Crop residues (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q585",
+        "source_label": "bioenergy",
+        "target_label": "Vegetal waste fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Vegetal waste fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q586",
+        "source_label": "bioenergy",
+        "target_label": "Waste vegetable oil",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Waste vegetable oil (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q587",
+        "source_label": "bioenergy",
+        "target_label": "Renewable industrial waste",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Renewable industrial waste (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q588",
+        "source_label": "bioenergy",
+        "target_label": "wood fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> wood fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q589",
+        "source_label": "bioenergy",
+        "target_label": "Wood waste",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Wood waste (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q590",
+        "source_label": "bioenergy",
+        "target_label": "Rice husk",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Rice husk (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q591",
+        "source_label": "bioenergy",
+        "target_label": "Straw",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Straw (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q592",
+        "source_label": "bioenergy",
+        "target_label": "Charcoal",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Charcoal (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q593",
+        "source_label": "bioenergy",
+        "target_label": "Renewable municipal waste",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Renewable municipal waste (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q594",
+        "source_label": "bioenergy",
+        "target_label": "Ethanol cooking fuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Ethanol cooking fuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q595",
+        "source_label": "bioenergy",
+        "target_label": "biogasoline",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> biogasoline (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q596",
+        "source_label": "bioenergy",
+        "target_label": "biodiesel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> biodiesel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q597",
+        "source_label": "bioenergy",
+        "target_label": "aviation biofuel",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> aviation biofuel (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q599",
+        "source_label": "bioenergy",
+        "target_label": "Landfill gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Landfill gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q600",
+        "source_label": "bioenergy",
+        "target_label": "Sewage gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> Sewage gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q572",
+        "target_id": "Q1318",
+        "source_label": "bioenergy",
+        "target_label": "wood gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "bioenergy -> wood gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1656",
+        "target_id": "Q1281",
+        "source_label": "water quality standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "water quality standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1207",
+        "target_id": "Q1281",
+        "source_label": "regulatory instrument",
+        "target_label": "codes and standards",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "regulatory instrument -> codes and standards (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1318",
+        "target_id": "Q572",
+        "source_label": "wood gas",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "wood gas -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1318",
+        "target_id": "Q588",
+        "source_label": "wood gas",
+        "target_label": "wood fuel",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "wood gas -> wood fuel (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q593",
+        "target_id": "Q572",
+        "source_label": "Renewable municipal waste",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Renewable municipal waste -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q606",
+        "target_id": "Q567",
+        "source_label": "hydropower",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "hydropower -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1713",
+        "target_id": "Q1281",
+        "source_label": "standard for soil quality",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "standard for soil quality -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1322",
+        "target_id": "Q567",
+        "source_label": "green hydrogen",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "green hydrogen -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1322",
+        "target_id": "Q1323",
+        "source_label": "green hydrogen",
+        "target_label": "blue hydrogen",
+        "relationship_type": "RELATED_TO",
+        "formatted": "green hydrogen -> blue hydrogen (RELATED_TO)"
+      },
+      {
+        "source_id": "Q868",
+        "target_id": "Q567",
+        "source_label": "electricity supply sector",
+        "target_label": "renewables",
+        "relationship_type": "RELATED_TO",
+        "formatted": "electricity supply sector -> renewables (RELATED_TO)"
+      },
+      {
+        "source_id": "Q580",
+        "target_id": "Q572",
+        "source_label": "Animal dung",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Animal dung -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1279",
+        "target_id": "Q567",
+        "source_label": "feed-in-tariff",
+        "target_label": "renewables",
+        "relationship_type": "RELATED_TO",
+        "formatted": "feed-in-tariff -> renewables (RELATED_TO)"
+      },
+      {
+        "source_id": "Q583",
+        "target_id": "Q572",
+        "source_label": "Energy crops",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Energy crops -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1712",
+        "target_id": "Q1281",
+        "source_label": "emission standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "emission standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q254",
+        "target_id": "Q253",
+        "source_label": "clean technology",
+        "target_label": "mitigation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "clean technology -> mitigation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q254",
+        "target_id": "Q560",
+        "source_label": "clean technology",
+        "target_label": "mitigation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "clean technology -> mitigation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q254",
+        "target_id": "Q567",
+        "source_label": "clean technology",
+        "target_label": "renewables",
+        "relationship_type": "RELATED_TO",
+        "formatted": "clean technology -> renewables (RELATED_TO)"
+      },
+      {
+        "source_id": "Q631",
+        "target_id": "Q567",
+        "source_label": "Heat pumps",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Heat pumps -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q631",
+        "target_id": "Q253",
+        "source_label": "Heat pumps",
+        "target_label": "mitigation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Heat pumps -> mitigation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q253",
+        "target_id": "Q254",
+        "source_label": "mitigation technologies",
+        "target_label": "clean technology",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "mitigation technologies -> clean technology (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q253",
+        "target_id": "Q567",
+        "source_label": "mitigation technologies",
+        "target_label": "renewables",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "mitigation technologies -> renewables (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q253",
+        "target_id": "Q560",
+        "source_label": "mitigation technologies",
+        "target_label": "mitigation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation technologies -> mitigation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q588",
+        "target_id": "Q572",
+        "source_label": "wood fuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "wood fuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q588",
+        "target_id": "Q1318",
+        "source_label": "wood fuel",
+        "target_label": "wood gas",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "wood fuel -> wood gas (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1399",
+        "target_id": "Q1281",
+        "source_label": "technology standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "technology standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q601",
+        "target_id": "Q567",
+        "source_label": "geothermal energy",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "geothermal energy -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q589",
+        "target_id": "Q572",
+        "source_label": "Wood waste",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Wood waste -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1397",
+        "target_id": "Q1281",
+        "source_label": "renewable portfolio standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "renewable portfolio standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q586",
+        "target_id": "Q572",
+        "source_label": "Waste vegetable oil",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Waste vegetable oil -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1711",
+        "target_id": "Q1281",
+        "source_label": "environmental standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "environmental standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q615",
+        "target_id": "Q567",
+        "source_label": "marine energy",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "marine energy -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1396",
+        "target_id": "Q1281",
+        "source_label": "energy efficiency standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "energy efficiency standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1660",
+        "target_id": "Q1281",
+        "source_label": "environmental noise standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "environmental noise standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q618",
+        "target_id": "Q567",
+        "source_label": "solar energy",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "solar energy -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q574",
+        "target_id": "Q572",
+        "source_label": "Biopower",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Biopower -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1657",
+        "target_id": "Q1281",
+        "source_label": "drinking water standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "drinking water standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q622",
+        "target_id": "Q567",
+        "source_label": "wind energy",
+        "target_label": "renewables",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "wind energy -> renewables (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q600",
+        "target_id": "Q572",
+        "source_label": "Sewage gas",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Sewage gas -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q591",
+        "target_id": "Q572",
+        "source_label": "Straw",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Straw -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q596",
+        "target_id": "Q572",
+        "source_label": "biodiesel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "biodiesel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q592",
+        "target_id": "Q572",
+        "source_label": "Charcoal",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Charcoal -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q578",
+        "target_id": "Q572",
+        "source_label": "Dry dung fuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Dry dung fuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q587",
+        "target_id": "Q572",
+        "source_label": "Renewable industrial waste",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Renewable industrial waste -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q575",
+        "target_id": "Q572",
+        "source_label": "biofuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "biofuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q575",
+        "target_id": "Q597",
+        "source_label": "biofuel",
+        "target_label": "aviation biofuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "biofuel -> aviation biofuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q594",
+        "target_id": "Q572",
+        "source_label": "Ethanol cooking fuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Ethanol cooking fuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q597",
+        "target_id": "Q572",
+        "source_label": "aviation biofuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "aviation biofuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q597",
+        "target_id": "Q575",
+        "source_label": "aviation biofuel",
+        "target_label": "biofuel",
+        "relationship_type": "RELATED_TO",
+        "formatted": "aviation biofuel -> biofuel (RELATED_TO)"
+      },
+      {
+        "source_id": "Q599",
+        "target_id": "Q572",
+        "source_label": "Landfill gas",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Landfill gas -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q582",
+        "target_id": "Q572",
+        "source_label": "Black liquor",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Black liquor -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1658",
+        "target_id": "Q1281",
+        "source_label": "waste management standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "waste management standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1207",
+        "source_label": "codes and standards",
+        "target_label": "regulatory instrument",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "codes and standards -> regulatory instrument (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1393",
+        "source_label": "codes and standards",
+        "target_label": "air pollution standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> air pollution standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1395",
+        "source_label": "codes and standards",
+        "target_label": "building code and standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> building code and standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1396",
+        "source_label": "codes and standards",
+        "target_label": "energy efficiency standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> energy efficiency standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1397",
+        "source_label": "codes and standards",
+        "target_label": "renewable portfolio standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> renewable portfolio standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1399",
+        "source_label": "codes and standards",
+        "target_label": "technology standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> technology standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1656",
+        "source_label": "codes and standards",
+        "target_label": "water quality standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> water quality standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1657",
+        "source_label": "codes and standards",
+        "target_label": "drinking water standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> drinking water standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1658",
+        "source_label": "codes and standards",
+        "target_label": "waste management standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> waste management standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1659",
+        "source_label": "codes and standards",
+        "target_label": "nuclear safety standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> nuclear safety standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1660",
+        "source_label": "codes and standards",
+        "target_label": "environmental noise standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> environmental noise standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1663",
+        "source_label": "codes and standards",
+        "target_label": "food safety standards",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> food safety standards (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1665",
+        "source_label": "codes and standards",
+        "target_label": "hazardous pesticide standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> hazardous pesticide standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1711",
+        "source_label": "codes and standards",
+        "target_label": "environmental standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> environmental standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1713",
+        "source_label": "codes and standards",
+        "target_label": "standard for soil quality",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> standard for soil quality (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1712",
+        "source_label": "codes and standards",
+        "target_label": "emission standard",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "codes and standards -> emission standard (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q585",
+        "target_id": "Q572",
+        "source_label": "Vegetal waste fuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Vegetal waste fuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1393",
+        "target_id": "Q1281",
+        "source_label": "air pollution standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "air pollution standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q576",
+        "target_id": "Q572",
+        "source_label": "Biomass",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Biomass -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1663",
+        "target_id": "Q1281",
+        "source_label": "food safety standards",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "food safety standards -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1024",
+        "target_id": "Q567",
+        "source_label": "sustainable development goal 7",
+        "target_label": "renewables",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 7 -> renewables (RELATED_TO)"
+      },
+      {
+        "source_id": "Q584",
+        "target_id": "Q572",
+        "source_label": "Crop residues",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Crop residues -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1665",
+        "target_id": "Q1281",
+        "source_label": "hazardous pesticide standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "hazardous pesticide standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1395",
+        "target_id": "Q1281",
+        "source_label": "building code and standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "building code and standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q590",
+        "target_id": "Q572",
+        "source_label": "Rice husk",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Rice husk -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q560",
+        "target_id": "Q253",
+        "source_label": "mitigation",
+        "target_label": "mitigation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation -> mitigation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q560",
+        "target_id": "Q254",
+        "source_label": "mitigation",
+        "target_label": "clean technology",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation -> clean technology (RELATED_TO)"
+      },
+      {
+        "source_id": "Q560",
+        "target_id": "Q567",
+        "source_label": "mitigation",
+        "target_label": "renewables",
+        "relationship_type": "RELATED_TO",
+        "formatted": "mitigation -> renewables (RELATED_TO)"
+      },
+      {
+        "source_id": "Q579",
+        "target_id": "Q572",
+        "source_label": "Manure fuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Manure fuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q577",
+        "target_id": "Q572",
+        "source_label": "Animal waste fuel",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Animal waste fuel -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1659",
+        "target_id": "Q1281",
+        "source_label": "nuclear safety standard",
+        "target_label": "codes and standards",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "nuclear safety standard -> codes and standards (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q253",
+        "source_label": "renewables",
+        "target_label": "mitigation technologies",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "renewables -> mitigation technologies (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q572",
+        "source_label": "renewables",
+        "target_label": "bioenergy",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> bioenergy (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q601",
+        "source_label": "renewables",
+        "target_label": "geothermal energy",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> geothermal energy (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q606",
+        "source_label": "renewables",
+        "target_label": "hydropower",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> hydropower (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q615",
+        "source_label": "renewables",
+        "target_label": "marine energy",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> marine energy (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q618",
+        "source_label": "renewables",
+        "target_label": "solar energy",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> solar energy (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q622",
+        "source_label": "renewables",
+        "target_label": "wind energy",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> wind energy (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q631",
+        "source_label": "renewables",
+        "target_label": "Heat pumps",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> Heat pumps (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q1322",
+        "source_label": "renewables",
+        "target_label": "green hydrogen",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "renewables -> green hydrogen (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q560",
+        "source_label": "renewables",
+        "target_label": "mitigation",
+        "relationship_type": "RELATED_TO",
+        "formatted": "renewables -> mitigation (RELATED_TO)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q1323",
+        "source_label": "renewables",
+        "target_label": "blue hydrogen",
+        "relationship_type": "RELATED_TO",
+        "formatted": "renewables -> blue hydrogen (RELATED_TO)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q254",
+        "source_label": "renewables",
+        "target_label": "clean technology",
+        "relationship_type": "RELATED_TO",
+        "formatted": "renewables -> clean technology (RELATED_TO)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q1279",
+        "source_label": "renewables",
+        "target_label": "feed-in-tariff",
+        "relationship_type": "RELATED_TO",
+        "formatted": "renewables -> feed-in-tariff (RELATED_TO)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q1024",
+        "source_label": "renewables",
+        "target_label": "sustainable development goal 7",
+        "relationship_type": "RELATED_TO",
+        "formatted": "renewables -> sustainable development goal 7 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q868",
+        "source_label": "renewables",
+        "target_label": "electricity supply sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "renewables -> electricity supply sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q581",
+        "target_id": "Q572",
+        "source_label": "Bagasse",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "Bagasse -> bioenergy (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1323",
+        "target_id": "Q1322",
+        "source_label": "blue hydrogen",
+        "target_label": "green hydrogen",
+        "relationship_type": "RELATED_TO",
+        "formatted": "blue hydrogen -> green hydrogen (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1323",
+        "target_id": "Q567",
+        "source_label": "blue hydrogen",
+        "target_label": "renewables",
+        "relationship_type": "RELATED_TO",
+        "formatted": "blue hydrogen -> renewables (RELATED_TO)"
+      },
+      {
+        "source_id": "Q595",
+        "target_id": "Q572",
+        "source_label": "biogasoline",
+        "target_label": "bioenergy",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "biogasoline -> bioenergy (SUBCONCEPT_OF)"
+      }
+    ],
+    "query": "Give me an overview of renewable energy in Brazil",
+    "extraction_method": "query_and_mcp_enhanced",
+    "query_concepts_count": 5,
+    "mcp_concepts_count": 0,
+    "total_concepts_found": 5,
+    "mcp_concepts": [],
+    "links": [
+      {
+        "source": "Q572",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q574",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q575",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q576",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q577",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q578",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q579",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q580",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q581",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q582",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q583",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q584",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q585",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q586",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q587",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q588",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q589",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q590",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q591",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q592",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q593",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q594",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q595",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q596",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q597",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q599",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q600",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q572",
+        "target": "Q1318",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1656",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1281",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1318",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1318",
+        "target": "Q588",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q593",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q606",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1713",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1322",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1322",
+        "target": "Q1323",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q868",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q580",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1279",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q583",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1712",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q254",
+        "target": "Q253",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q254",
+        "target": "Q560",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q254",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q631",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q631",
+        "target": "Q253",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q253",
+        "target": "Q254",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q253",
+        "target": "Q567",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q253",
+        "target": "Q560",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q588",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q588",
+        "target": "Q1318",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1399",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q601",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q589",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1397",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q586",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1711",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q615",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1396",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1660",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q618",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q574",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1657",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q622",
+        "target": "Q567",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q600",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q591",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q596",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q592",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q578",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q587",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q575",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q575",
+        "target": "Q597",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q594",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q597",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q597",
+        "target": "Q575",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q599",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q582",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1658",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1393",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1395",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1396",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1397",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1399",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1656",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1657",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1658",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1659",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1660",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1663",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1665",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1711",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1713",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1712",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q585",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1393",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q576",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1663",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q584",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1665",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1395",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q590",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q560",
+        "target": "Q253",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q560",
+        "target": "Q254",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q560",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q579",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q577",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1659",
+        "target": "Q1281",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q253",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q572",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q601",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q606",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q615",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q618",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q622",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q631",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1322",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q560",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1323",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q254",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1279",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1024",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q868",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q581",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1323",
+        "target": "Q1322",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1323",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q595",
+        "target": "Q572",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      }
+    ]
+  },
+  "generated_at": "575854.452"
+}

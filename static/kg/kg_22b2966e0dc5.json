@@ -1,0 +1,240 @@
+{
+  "query": "Summarize Brazil's NDC targets and implementation status",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q1551",
+        "type": "Concept",
+        "label": "policy implementation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "governance sector",
+        "type": "Concept",
+        "label": "governance sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1074",
+        "type": "Concept",
+        "label": "marine dumping",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "plastic disposal",
+        "type": "Concept",
+        "label": "plastic disposal",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1651",
+        "type": "Concept",
+        "label": "target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "policy instruments",
+        "type": "Concept",
+        "label": "policy instruments",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emissions reduction target",
+        "type": "Concept",
+        "label": "emissions reduction target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1379",
+        "type": "Concept",
+        "label": "charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fees and charges",
+        "type": "Concept",
+        "label": "fees and charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "pollution charge",
+        "type": "Concept",
+        "label": "pollution charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "user charge",
+        "type": "Concept",
+        "label": "user charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "congestion charge",
+        "type": "Concept",
+        "label": "congestion charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "imbalance charge",
+        "type": "Concept",
+        "label": "imbalance charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emission charge",
+        "type": "Concept",
+        "label": "emission charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1073",
+        "type": "Concept",
+        "label": "plastic sedimentation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1551",
+        "target": "governance sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1074",
+        "target": "plastic disposal",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "emissions reduction target",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1073",
+        "target": "plastic disposal",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1551",
+        "target": "governance sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1074",
+        "target": "plastic disposal",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "emissions reduction target",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1073",
+        "target": "plastic disposal",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "41915.199"
+}

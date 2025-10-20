@@ -1,0 +1,19 @@
+{
+  "query": "Where is solar asset 14079?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "solar_energy",
+        "label": "solar energy",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "solar"
+      }
+    ],
+    "links": [],
+    "edges": [],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "12086.447"
+}

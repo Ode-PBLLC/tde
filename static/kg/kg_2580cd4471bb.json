@@ -1,0 +1,355 @@
+{
+  "query": "Tell me about solar power in Brazil",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "electricity supply sector",
+        "type": "Concept",
+        "label": "electricity supply sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q175",
+        "type": "Concept",
+        "label": "Solar water distillation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Adaptation technologies",
+        "type": "Concept",
+        "label": "Adaptation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q618",
+        "type": "Concept",
+        "label": "solar energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Heliothermic",
+        "type": "Concept",
+        "label": "Heliothermic",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "energy efficiency",
+        "type": "Concept",
+        "label": "energy efficiency",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "District heating and cooling",
+        "type": "Concept",
+        "label": "District heating and cooling",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "solar energy",
+        "type": "Concept",
+        "label": "solar energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Flywheels",
+        "type": "Concept",
+        "label": "Flywheels",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Connection of isolated grids",
+        "type": "Concept",
+        "label": "Connection of isolated grids",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Water management and conservation technologies",
+        "type": "Concept",
+        "label": "Water management and conservation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Smart grids",
+        "type": "Concept",
+        "label": "Smart grids",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Capacitors",
+        "type": "Concept",
+        "label": "Capacitors",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "renewables",
+        "type": "Concept",
+        "label": "renewables",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "technologies",
+        "type": "Concept",
+        "label": "technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q281",
+        "type": "Concept",
+        "label": "energy and power technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "hydrogen infrastructure",
+        "type": "Concept",
+        "label": "hydrogen infrastructure",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Batteries",
+        "type": "Concept",
+        "label": "Batteries",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1504",
+        "type": "Concept",
+        "label": "electric power production",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Solar photovoltaic",
+        "type": "Concept",
+        "label": "Solar photovoltaic",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q620",
+        "type": "Concept",
+        "label": "Solar photovoltaic",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Energy storage",
+        "type": "Concept",
+        "label": "Energy storage",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q618",
+        "target": "renewables",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q618",
+        "target": "Solar photovoltaic",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q618",
+        "target": "Heliothermic",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q620",
+        "target": "solar energy",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1504",
+        "target": "electricity supply sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Water management and conservation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q281",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q281",
+        "target": "District heating and cooling",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "hydrogen infrastructure",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Smart grids",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Connection of isolated grids",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "energy efficiency",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Energy storage",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Capacitors",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Batteries",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Flywheels",
+        "type": "HAS_SUBCONCEPT"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q618",
+        "target": "renewables",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q618",
+        "target": "Solar photovoltaic",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q618",
+        "target": "Heliothermic",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q620",
+        "target": "solar energy",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1504",
+        "target": "electricity supply sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Water management and conservation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q281",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q281",
+        "target": "District heating and cooling",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "hydrogen infrastructure",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Smart grids",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Connection of isolated grids",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "energy efficiency",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Energy storage",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Capacitors",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Batteries",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q281",
+        "target": "Flywheels",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "7056.263"
+}

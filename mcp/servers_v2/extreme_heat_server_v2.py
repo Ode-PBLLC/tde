@@ -960,11 +960,33 @@ class ExtremeHeatServerV2(RunQueryMixin):
             """
 
             if not GEOSPATIAL_AVAILABLE or gpd is None or pd is None:
-                return {"error": "GeoPandas not installed"}
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {"level": "warning", "text": "GeoPandas not installed"}
+                    ],
+                    "details": {"error": "GeoPandas not installed"},
+                }
 
             cleaned_quintiles = list(quintiles) if quintiles else list(DEFAULT_QUINTILES)
             if cleaned_quintiles != [5]:
-                return {"error": "Only top quintile (5) supported for map generation currently"}
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {
+                            "level": "warning",
+                            "text": "Only top quintile (5) supported for map generation currently",
+                        }
+                    ],
+                    "details": {
+                        "error": "Only top quintile (5) supported for map generation currently",
+                        "requested_quintiles": cleaned_quintiles,
+                    },
+                }
 
             source_to_use = source or self._preferred_map_source()
 
@@ -975,7 +997,21 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 bbox=bbox,
             )
             if filtered is None or filtered.empty:
-                return {"error": "No matching heat zones"}
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {"level": "info", "text": "No matching heat zones"}
+                    ],
+                    "details": {
+                        "error": "No matching heat zones",
+                        "source": source_to_use,
+                        "quintiles": cleaned_quintiles,
+                        "limit": limit,
+                        "bbox": bbox,
+                    },
+                }
 
             identifier = source_to_use or "all"
             filename, summary = self._build_map_geojson(
@@ -984,14 +1020,110 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 source=source_to_use,
                 quintiles=cleaned_quintiles,
             )
-            dataset_info = self._dataset_info_for_source(source_to_use or (filtered.iloc[0]["source"] if not filtered.empty else ""))
-            return {
-                "type": "map",
-                "geojson_url": f"/static/maps/{filename}",
-                "geojson_filename": filename,
-                "summary": summary,
-                "citation": dataset_info,
+            dataset_entry = self._dataset_entry()
+            dataset_info = self._dataset_info_for_source(
+                source_to_use or (filtered.iloc[0]["source"] if not filtered.empty else "")
+            )
+            feature_count = int(summary.get("total_features", len(filtered))) if isinstance(summary, dict) else len(filtered)
+            source_label = source_to_use or "all sources"
+            summary_text = (
+                f"Generated an extreme-heat quintile map with {feature_count:,} zones from {source_label}."
+            )
+
+            legend_label = "Extreme Heat Zones"
+            artifact_metadata = {
+                "dataset_id": DATASET_ID,
+                "quintiles": cleaned_quintiles,
+                "source": source_to_use,
+                "limit": min(limit, DEFAULT_LIMIT),
+                "bbox": bbox,
                 "optimized_top_quintile_only": True,
+                "geometry_type": "polygon",
+                "merge_group": "extreme_heat_quintiles",
+            }
+            if isinstance(summary, dict):
+                for key in ("bounds", "center", "legend", "layers"):
+                    if summary.get(key) is not None:
+                        artifact_metadata[key] = summary[key]
+
+            legend_items = []
+            layers_payload = artifact_metadata.get("layers")
+            if isinstance(layers_payload, dict):
+                for name, layer_data in layers_payload.items():
+                    count = layer_data.get("count")
+                    legend_items.append(
+                        {
+                            "label": name.replace("_", " ").title(),
+                            "color": layer_data.get("color") or QUINTILE_COLORS.get(5, "#E31A1C"),
+                            "description": f"{count} features" if count is not None else None,
+                        }
+                    )
+            elif isinstance(layers_payload, list):
+                for entry in layers_payload:
+                    if not isinstance(entry, dict):
+                        continue
+                    count = entry.get("count")
+                    legend_items.append(
+                        {
+                            "label": legend_label,
+                            "color": QUINTILE_COLORS.get(5, "#E31A1C"),
+                            "description": f"{count} zones" if count is not None else None,
+                        }
+                    )
+
+            if not legend_items:
+                legend_items.append(
+                    {
+                        "label": legend_label,
+                        "color": QUINTILE_COLORS.get(5, "#E31A1C"),
+                        "description": f"{feature_count:,} zones",
+                    }
+                )
+
+            artifact_metadata["legend"] = {
+                "title": "Extreme heat quintiles",
+                "items": legend_items,
+            }
+
+            artifact = {
+                "type": "map",
+                "title": "Extreme heat quintile map",
+                "metadata": artifact_metadata,
+                "geojson_url": f"/static/maps/{filename}",
+                "summary": summary,
+            }
+            facts = [
+                f"Top-quintile extreme heat polygons span {feature_count:,} zones in {source_label}, optimized for mapping."
+            ]
+
+            citation = {
+                "tool": "GetHeatQuintilesMap",
+                "title": dataset_info.get("title") or dataset_entry.get("title") or "Extreme Heat Indices",
+                "source_type": "Dataset",
+                "description": dataset_info.get("citation")
+                or dataset_info.get("description")
+                or dataset_entry.get("citation")
+                or dataset_entry.get("description"),
+                "metadata": {
+                    "dataset_id": DATASET_ID,
+                    "source": source_to_use,
+                    "quintiles": cleaned_quintiles,
+                },
+            }
+
+            return {
+                "summary": summary_text,
+                "facts": facts,
+                "artifacts": [artifact],
+                "messages": [],
+                "citation": citation,
+                "details": {
+                    "map_summary": summary,
+                    "source": source_to_use,
+                    "quintiles": cleaned_quintiles,
+                    "feature_count": feature_count,
+                    "filename": filename,
+                },
             }
 
     # ------------------------------------------------------------------ run_query implementation
@@ -1000,21 +1132,83 @@ class ExtremeHeatServerV2(RunQueryMixin):
         def GetHeatByStateChart(top_n: int = 10) -> Dict[str, Any]:  # type: ignore[misc]
             """Return a bar chart of top Brazilian states by extreme heat area (km^2)."""
 
-            if not GEOSPATIAL_AVAILABLE or gpd is None:
-                return {"error": "GeoPandas not installed"}
-            if not self._ensure_top_quintiles_index_ready():
-                return {"error": "Heat dataset unavailable"}
-
             stats = self._state_heat_stats or []
             if not stats:
-                return {"error": "State overlays unavailable"}
-            chart_payload = self._build_state_chart_module(stats, limit=max(1, int(top_n)))
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {"level": "warning", "text": "State overlays unavailable"}
+                    ],
+                    "details": {"error": "State overlays unavailable"},
+                }
+            top_n_int = max(1, int(top_n))
+            chart_payload = self._build_state_chart_module(stats, limit=top_n_int)
             if not chart_payload:
-                return {"error": "State overlays unavailable"}
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {"level": "warning", "text": "State overlays unavailable"}
+                    ],
+                    "details": {"error": "State overlays unavailable"},
+                }
+
+            limited_stats = stats[:top_n_int]
+            top_state = limited_stats[0]
+            top_name = str(top_state.get("state_name", "Unknown"))
+            top_area = round(float(top_state.get("area_km2", 0.0)), 2)
+            summary = (
+                f"{top_name} shows the largest area of extreme heat exposure, covering {top_area:,} km² in the top quintile."
+            )
+
+            facts: List[str] = []
+            for idx, entry in enumerate(limited_stats[:3], start=1):
+                state_label = str(entry.get("state_name", "Unknown"))
+                area = round(float(entry.get("area_km2", 0.0)), 2)
+                facts.append(
+                    f"#{idx}: {state_label} has {area:,} km² of land in the extreme-heat top quintile."
+                )
+
+            artifact = {
+                "type": "chart",
+                "title": "Extreme heat exposure by state",
+                "metadata": {
+                    "chartType": "bar",
+                    "dataset_id": DATASET_ID,
+                    "top_n": min(top_n_int, len(limited_stats)),
+                },
+                "data": {
+                    "labels": chart_payload["labels"],
+                    "datasets": chart_payload["datasets"],
+                },
+            }
+
+            dataset_entry = self._dataset_entry()
+            citation = {
+                "tool": "GetHeatByStateChart",
+                "title": dataset_entry.get("title") or "Extreme Heat Indices",
+                "source_type": "Dataset",
+                "description": dataset_entry.get("citation") or dataset_entry.get("description"),
+                "metadata": {
+                    "dataset_id": DATASET_ID,
+                    "top_n": min(top_n_int, len(limited_stats)),
+                },
+            }
+
             return {
-                "labels": chart_payload["labels"],
-                "datasets": chart_payload["datasets"],
-                "metadata": {"chartType": "bar"},
+                "summary": summary,
+                "facts": facts,
+                "artifacts": [artifact],
+                "messages": [],
+                "citation": citation,
+                "details": {
+                    "labels": chart_payload["labels"],
+                    "datasets": chart_payload["datasets"],
+                    "states": [dict(entry) for entry in limited_stats],
+                },
             }
 
     def _register_heat_by_municipality_tool(self) -> None:
@@ -1022,21 +1216,82 @@ class ExtremeHeatServerV2(RunQueryMixin):
         def GetHeatByMunicipalityChart(top_n: int = 10) -> Dict[str, Any]:  # type: ignore[misc]
             """Return a bar chart of municipalities most exposed to extreme heat."""
 
-            if not GEOSPATIAL_AVAILABLE or gpd is None:
-                return {"error": "GeoPandas not installed"}
-            if not self._ensure_top_quintiles_index_ready():
-                return {"error": "Heat dataset unavailable"}
-
             stats = self._municipality_heat_stats or []
             if not stats:
-                return {"error": "Municipality overlays unavailable"}
-            chart_payload = self._build_municipality_chart_module(stats, limit=max(1, int(top_n)))
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {"level": "warning", "text": "Municipality overlays unavailable"}
+                    ],
+                    "details": {"error": "Municipality overlays unavailable"},
+                }
+
+            top_n_int = max(1, int(top_n))
+            chart_payload = self._build_municipality_chart_module(stats, limit=top_n_int)
             if not chart_payload:
-                return {"error": "Municipality overlays unavailable"}
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {"level": "warning", "text": "Municipality overlays unavailable"}
+                    ],
+                    "details": {"error": "Municipality overlays unavailable"},
+                }
+
+            limited_stats = stats[:top_n_int]
+            top_entry = limited_stats[0]
+            top_name = f"{top_entry.get('municipality_name', 'Unknown')} ({top_entry.get('state')})"
+            top_area = round(float(top_entry.get("area_km2", 0.0)), 2)
+            summary = (
+                f"{top_name} has the largest municipal area in the extreme-heat top quintile, covering {top_area:,} km²."
+            )
+
+            facts: List[str] = []
+            for idx, entry in enumerate(limited_stats[:3], start=1):
+                label = f"{entry.get('municipality_name', 'Unknown')} ({entry.get('state')})"
+                area = round(float(entry.get("area_km2", 0.0)), 2)
+                facts.append(
+                    f"#{idx}: {label} has {area:,} km² exposed to top-quintile extreme heat."
+                )
+
             return {
-                "labels": chart_payload["labels"],
-                "datasets": chart_payload["datasets"],
-                "metadata": {"chartType": "bar"},
+                "summary": summary,
+                "facts": facts,
+                "artifacts": [
+                    {
+                        "type": "chart",
+                        "title": "Extreme heat exposure by municipality",
+                        "metadata": {
+                            "chartType": "bar",
+                            "dataset_id": DATASET_ID,
+                            "top_n": min(top_n_int, len(limited_stats)),
+                        },
+                        "data": {
+                            "labels": chart_payload["labels"],
+                            "datasets": chart_payload["datasets"],
+                        },
+                    }
+                ],
+                "messages": [],
+                "citation": {
+                    "tool": "GetHeatByMunicipalityChart",
+                    "title": self._dataset_entry().get("title") or "Extreme Heat Indices",
+                    "source_type": "Dataset",
+                    "description": self._dataset_entry().get("citation")
+                    or self._dataset_entry().get("description"),
+                    "metadata": {
+                        "dataset_id": DATASET_ID,
+                        "top_n": min(top_n_int, len(limited_stats)),
+                    },
+                },
+                "details": {
+                    "labels": chart_payload["labels"],
+                    "datasets": chart_payload["datasets"],
+                    "municipalities": [dict(entry) for entry in limited_stats],
+                },
             }
 
     def _ensure_top_quintiles_index_ready(self) -> bool:

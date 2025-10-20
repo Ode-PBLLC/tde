@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import datetime
 import json
+import inspect
 import logging
 import os
 import re
@@ -16,7 +17,7 @@ from dataclasses import dataclass
 from itertools import cycle, islice
 from pathlib import Path
 from collections.abc import Mapping
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Set, cast
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple, cast
 from urllib.parse import urlparse
 
 from .url_utils import ensure_absolute_url
@@ -39,6 +40,11 @@ QUERY_ENRICHMENT_MODEL = "claude-3-5-haiku-20241022"
 NARRATIVE_SYNTH_MAX_ATTEMPTS = 3
 NARRATIVE_SYNTH_TIMEOUT_SECONDS = 60
 NARRATIVE_SYNTH_BASE_RETRY_DELAY = 0.5
+
+# Governance summary configuration
+ENABLE_GOVERNANCE_SUMMARY = True
+GOVERNANCE_SUMMARY_OPENAI_MODEL = "gpt-4.1-mini"
+GOVERNANCE_SUMMARY_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
 
 _MARKER_PATTERN = re.compile(r"\[\[(F\d+)\]\]")
 
@@ -96,6 +102,44 @@ def _extract_openai_text(response: Any) -> str:
         return combined
 
     raise RuntimeError("OpenAI response missing text output")
+
+
+def _should_inject_governance(scope_level: str, has_narrative: bool) -> bool:
+    """Return True when the governance module should be generated."""
+
+    if not ENABLE_GOVERNANCE_SUMMARY:
+        return False
+    return scope_level.upper() == "IN_SCOPE" and has_narrative
+
+
+def _build_governance_followup_query(
+    original_query: str, narrative_paragraphs: Sequence[str]
+) -> str:
+    """Construct a focused LSE follow-up query anchored to the final narrative."""
+
+    cleaned_paragraphs = [
+        paragraph.strip()
+        for paragraph in narrative_paragraphs
+        if paragraph and paragraph.strip()
+    ]
+    narrative_block = "\n\n".join(cleaned_paragraphs)
+
+    prompt_parts = [
+        "Governance follow-up for NDC Align:",
+        f"User question: {original_query.strip()}",
+    ]
+    if narrative_block:
+        prompt_parts.append(
+            "Answer summary that will be presented to the user (use this to ground your search):"
+        )
+        prompt_parts.append(narrative_block)
+    prompt_parts.extend(
+        [
+            "Return governance evidence that contextualises the answer, including institutions, policy processes, and state-level implementation where relevant.",
+            "Prioritise authoritative Brazilian governance data drawn from the NDC Align dataset.",
+        ]
+    )
+    return "\n\n".join(prompt_parts)
 
 try:  # Optional Anthropic routing support
     import anthropic  # type: ignore
@@ -205,6 +249,8 @@ except Exception:  # pragma: no cover - optional dependency
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from utils.dataset_resolver import resolve_dataset_url
+
 
 logger = logging.getLogger(__name__)
 llm_logger = logging.getLogger("mcp.llm_router")
@@ -228,10 +274,12 @@ from .contracts_v2 import (
     CitationPayload,
     FactPayload,
     KnowledgeGraphPayload,
+    MessagePayload,
     QueryContext,
     QuerySupportPayload,
     RunQueryResponse,
 )
+from .utils_mcp import mcp_payload_from_result
 
 
 DOMAINS_IN_SCOPE = [
@@ -534,7 +582,7 @@ LLM_ROUTING_CONFIG: Dict[str, Dict[str, Any]] = {
         ),
         "always_include": False,
     },
-    "admin": {
+    "brazil_admin": {
         "detailed": (
             "Brazilian administrative boundaries for municipalities and states. Use to "
             "retrieve polygon geometries, match place names, or constrain analysis to "
@@ -1444,101 +1492,6 @@ class QueryRouter:
 RUN_QUERY_TIMEOUT_SECONDS = 60
 
 
-class QueryExecutor:
-    def __init__(self, client: MultiServerClient) -> None:
-        self._client = client
-
-    async def execute(
-        self,
-        supports: Iterable[QuerySupportPayload],
-        context: QueryContext,
-        progress_callback: Optional[
-            Callable[[str, str, Mapping[str, Any]], Awaitable[None]]
-        ] = None,
-    ) -> List[RunQueryResponse]:
-        async def run_query_call(server_name: str, session) -> tuple[str, str, Mapping[str, Any]]:
-            try:
-                response = await asyncio.wait_for(
-                    self._call_run_query(session, server_name, context),
-                    timeout=RUN_QUERY_TIMEOUT_SECONDS,
-                )
-                return ("success", server_name, response)
-            except asyncio.TimeoutError:
-                timeout_error = TimeoutError(
-                    f"run_query exceeded {RUN_QUERY_TIMEOUT_SECONDS}s"
-                )
-                return ("timeout", server_name, {"error": timeout_error})
-            except ContractValidationError as exc:
-                return ("contract_error", server_name, {"error": exc})
-            except Exception as exc:
-                return ("failure", server_name, {"error": exc})
-
-        tasks = []
-        for support in supports:
-            session = self._client.sessions.get(support.server)
-            if not session:
-                continue
-            tasks.append(asyncio.create_task(run_query_call(support.server, session)))
-
-        responses: List[RunQueryResponse] = []
-        for task in asyncio.as_completed(tasks):
-            status, server_name, payload = await task
-            if status == "success":
-                response = payload  # type: ignore[assignment]
-                if progress_callback:
-                    await progress_callback(
-                        server_name,
-                        "run_query",
-                        {"payload": response},
-                    )
-                responses.append(response)  # type: ignore[arg-type]
-            elif status == "timeout":
-                error = payload.get("error")
-                if progress_callback:
-                    await progress_callback(
-                        server_name,
-                        "run_query_timeout",
-                        {"error": error},
-                    )
-            elif status == "contract_error":
-                error = payload.get("error")
-                print(f"[executor] dropping server response: {error}")
-                if progress_callback:
-                    await progress_callback(
-                        server_name,
-                        "run_query_error",
-                        {"error": error},
-                    )
-            else:
-                error = payload.get("error")
-                if progress_callback:
-                    await progress_callback(
-                        server_name,
-                        "run_query_failure",
-                        {"error": error},
-                    )
-                raise error  # type: ignore[misc]
-        return responses
-
-    async def _call_run_query(
-        self, session, server_name: str, context: QueryContext
-    ) -> RunQueryResponse:
-        payload = {
-            "query": context.query,
-            "context": context.model_dump(mode="json"),
-        }
-
-        result = await session.call_tool("run_query", payload)
-        if not getattr(result, "content", None):
-            raise ContractValidationError(
-                f"{server_name} returned empty run_query payload"
-            )
-
-        raw = json.loads(result.content[0].text)
-        response = validate_run_query_response(raw)
-        return response
-
-
 # ----------------------------------------------------------------------------
 # Citation registry
 # ----------------------------------------------------------------------------
@@ -1610,6 +1563,589 @@ def detect_language(query: str) -> Optional[str]:
     return "en"
 
 
+async def list_server_tools(session) -> List[Dict[str, Any]]:
+    """Return a uniform manifest describing the tools exposed by a server."""
+
+    result = await session.list_tools()
+    manifest: List[Dict[str, Any]] = []
+    for tool in getattr(result, "tools", []) or []:
+        name = str(getattr(tool, "name", "") or "")
+        if not name:
+            continue
+
+        summary = getattr(tool, "description", None) or ""
+        defaults = getattr(tool, "default_arguments", None) or {}
+
+        schema = (
+            getattr(tool, "parameters", None)
+            or getattr(tool, "input_schema", None)
+            or getattr(tool, "inputSchema", None)
+            or {}
+        )
+        parameters: List[Dict[str, Any]] = []
+        required_parameters: List[str] = list(schema.get("required", []) or [])
+
+        properties = schema.get("properties", {}) if isinstance(schema, dict) else {}
+        for param_name, spec in properties.items():
+            if not isinstance(spec, dict):
+                continue
+            param_info: Dict[str, Any] = {"name": param_name}
+            description = spec.get("description") or spec.get("title")
+            if description:
+                param_info["description"] = description
+            if "type" in spec:
+                param_info["type"] = spec["type"]
+            if "default" in spec:
+                param_info["default"] = spec["default"]
+            parameters.append(param_info)
+
+        # print(            {
+        #         "name": name,
+        #         "summary": summary,
+        #         "default_arguments": defaults,
+        #         "parameters": parameters,
+        #         "required_parameters": required_parameters,
+        #         "signature": getattr(tool, "signature", ""),
+        #         "doc": getattr(tool, "description", ""),
+        #     })
+
+        manifest.append(
+            {
+                "name": name,
+                "summary": summary,
+                "default_arguments": defaults,
+                "parameters": parameters,
+                "required_parameters": required_parameters,
+                "signature": getattr(tool, "signature", ""),
+                "doc": getattr(tool, "description", ""),
+            }
+        )
+    return manifest
+class ServerToolPlanner:
+    """LLM-assisted selector for per-server tool plans."""
+
+    def __init__(
+        self,
+        anthropic_client: Any | None,
+        openai_client: Any | None,
+        *,
+        max_tools: int | None = None,
+    ) -> None:
+        self._anthropic_client = anthropic_client
+        self._openai_client = openai_client
+        self._anthropic_model = os.getenv(
+            "SERVER_PLANNER_MODEL", "claude-3-5-haiku-20241022"
+        )
+        self._openai_model = os.getenv(
+            "OPENAI_SERVER_PLANNER_MODEL", "gpt-4.1-mini"
+        )
+        default_cap = 10 if max_tools is None else max_tools
+        try:
+            env_cap = int(os.getenv("SERVER_PLANNER_MAX_TOOLS", str(default_cap)))
+            self._max_tools = max(1, env_cap)
+        except ValueError:
+            self._max_tools = default_cap
+
+    async def plan(
+        self,
+        server_name: str,
+        tools_manifest: List[Dict[str, Any]],
+        context: QueryContext,
+    ) -> List[Tuple[str, Dict[str, Any]]]:
+        if not tools_manifest:
+            return []
+
+        manifest_entries = [
+            {
+                "name": item["name"],
+                "summary": item.get("summary", ""),
+                "default_arguments": item.get("default_arguments", {}),
+            }
+            for item in tools_manifest
+        ]
+        manifest_text = json.dumps(manifest_entries, ensure_ascii=False)
+
+        query = context.query or ""
+        previous_user = context.previous_user_message or ""
+        previous_assistant = context.previous_assistant_message or ""
+
+        user_prompt = (
+            "You are selecting the best tools from ONE MCP server.\n"
+            "Return JSON of the form {\"tools\": [{\"name\": str, \"arguments\": dict}]}.\n"
+            f"Select up to {self._max_tools} tools; each tool may be used at most once.\n"
+            "Prefer tools that return charts, maps, tables, or concise summaries that answer the question.\n"
+            "If no tools clearly match, return an empty list.\n\n"
+            f"Server: {server_name}\n"
+            f"Available tools: {manifest_text}\n\n"
+            f"Current query: {query}\n"
+            f"Previous user message: {previous_user}\n"
+            f"Previous assistant message: {previous_assistant}"
+        )
+
+        plan_payload: Optional[Mapping[str, Any]] = None
+
+        if self._anthropic_client is not None:
+            def _invoke_anthropic() -> Any:
+                kwargs = dict(
+                    model=self._anthropic_model,
+                    max_tokens=500,
+                    temperature=0,
+                    system="Select the best combination of tools. Return JSON only.",
+                    messages=[{"role": "user", "content": user_prompt}],
+                )
+                try:
+                    return self._anthropic_client.messages.create(
+                        response_format={"type": "json"},
+                        **kwargs,
+                    )
+                except TypeError:
+                    return self._anthropic_client.messages.create(**kwargs)
+
+            try:
+                response = await asyncio.to_thread(_invoke_anthropic)
+                plan_payload = self._extract_payload_from_anthropic(response)
+            except Exception:
+                plan_payload = None
+
+        if plan_payload is None and self._openai_client is not None:
+            def _invoke_openai() -> Optional[str]:
+                response = self._openai_client.responses.create(
+                    model=self._openai_model,
+                    input=[
+                        {"role": "system", "content": "Return JSON only."},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    max_output_tokens=500,
+                    temperature=0,
+                )
+                return _extract_openai_text(response)
+
+            try:
+                raw_text = await asyncio.to_thread(_invoke_openai)
+                if raw_text:
+                    plan_payload = json.loads(raw_text)
+            except Exception:
+                plan_payload = None
+
+        plan = self._build_plan_from_payload(plan_payload, tools_manifest, context)
+        if plan:
+            return plan[: self._max_tools]
+
+        return self._fallback_plan(server_name, tools_manifest, context)
+
+    def _extract_payload_from_anthropic(self, response: Any) -> Optional[Mapping[str, Any]]:
+        content_blocks = getattr(response, "content", []) or []
+        for block in content_blocks:
+            if getattr(block, "type", "") == "json" and isinstance(block.json, Mapping):
+                return block.json
+
+        combined = "".join(
+            getattr(block, "text", "") for block in content_blocks if hasattr(block, "text")
+        ).strip()
+        if not combined:
+            return None
+        try:
+            payload = json.loads(combined)
+        except json.JSONDecodeError:
+            return None
+        return payload if isinstance(payload, Mapping) else None
+
+    def _build_plan_from_payload(
+        self,
+        payload: Optional[Mapping[str, Any]],
+        manifest: List[Dict[str, Any]],
+        context: QueryContext,
+    ) -> List[Tuple[str, Dict[str, Any]]]:
+        if not payload:
+            return []
+        tools = payload.get("tools") if isinstance(payload, Mapping) else None
+        if not isinstance(tools, list):
+            return []
+
+        manifest_index = {item["name"]: item for item in manifest}
+        plan: List[Tuple[str, Dict[str, Any]]] = []
+        seen: Set[str] = set()
+        for entry in tools:
+            if not isinstance(entry, Mapping):
+                continue
+            name = entry.get("name")
+            if not isinstance(name, str) or name not in manifest_index:
+                continue
+            if name in seen:
+                continue
+            arguments = entry.get("arguments")
+            merged_args = dict(manifest_index[name].get("default_arguments", {}) or {})
+            if isinstance(arguments, Mapping):
+                merged_args.update(arguments)
+            required_params = manifest_index[name].get("required_parameters", []) or []
+            parameter_specs = manifest_index[name].get("parameters", []) or []
+            param_names = {
+                spec.get("name")
+                for spec in parameter_specs
+                if isinstance(spec, Mapping) and spec.get("name")
+            }
+
+            if merged_args:
+                alias_pairs = (
+                    ("radius", "radius_km"),
+                    ("distance", "radius_km"),
+                    ("assetType", "asset_type"),
+                )
+                for alias, target in alias_pairs:
+                    if alias in merged_args and target not in merged_args:
+                        if not param_names or target in param_names:
+                            merged_args[target] = merged_args.pop(alias)
+                        elif param_names:
+                            merged_args.pop(alias)
+
+            for param_name in required_params:
+                if param_name not in merged_args:
+                    fallback_value = self._fallback_argument_value(
+                        param_name, context
+                    )
+                    if fallback_value is not None:
+                        merged_args[param_name] = fallback_value
+
+            if param_names:
+                merged_args = {
+                    key: value for key, value in merged_args.items() if key in param_names
+                }
+
+            missing_required = [
+                param_name for param_name in required_params if param_name not in merged_args
+            ]
+            if missing_required:
+                continue
+            plan.append((name, merged_args))
+            seen.add(name)
+            if len(plan) >= self._max_tools:
+                break
+        return plan
+
+    @staticmethod
+    def _fallback_argument_value(param_name: str, context: QueryContext) -> Optional[str]:
+        seed = context.query or context.previous_user_message or ""
+        if not seed:
+            return None
+        normalized_name = param_name.lower()
+        if normalized_name in {"query", "text", "concept", "concept_a", "concept_b"}:
+            return seed
+        return None
+
+    def _fallback_plan(
+        self,
+        server_name: str,
+        manifest: List[Dict[str, Any]],
+        context: QueryContext,
+    ) -> List[Tuple[str, Dict[str, Any]]]:
+        plan: List[Tuple[str, Dict[str, Any]]] = []
+        manifest_index = {item["name"]: item for item in manifest}
+
+        def _add(
+            name: str,
+            overrides: Optional[Dict[str, Any]] = None,
+            fill_required_with_query: bool = False,
+        ) -> None:
+            if name not in manifest_index or any(existing[0] == name for existing in plan):
+                return
+            entry = manifest_index[name]
+            merged = dict(entry.get("default_arguments", {}) or {})
+            if overrides:
+                merged.update({k: v for k, v in overrides.items() if v is not inspect._empty})
+            if fill_required_with_query:
+                fill_value = context.query or context.previous_user_message or ""
+                if fill_value:
+                    for param_name in entry.get("required_parameters", []) or []:
+                        merged.setdefault(param_name, fill_value)
+            if len(plan) < self._max_tools:
+                plan.append((name, merged))
+
+        lowered_query = (context.query or "").lower()
+
+        if server_name == "solar":
+            wants_map = any(keyword in lowered_query for keyword in ["map", "show", "locat", "where", "distribution"])
+            wants_state_rank = any(keyword in lowered_query for keyword in ["state", "rank", "capacity", "mw"])
+            wants_timeline = any(keyword in lowered_query for keyword in ["timeline", "trend", "over time", "year"])
+
+            if wants_map:
+                _add("get_solar_facilities_map_data", {"country": "Brazil"})
+            if wants_state_rank:
+                _add("get_solar_capacity_by_state", {})
+            if wants_timeline:
+                _add("get_solar_construction_timeline", {"country": "Brazil"})
+
+            if not plan:
+                _add("get_solar_facilities_by_country", {"country": "Brazil", "limit": 100})
+        elif server_name == "cpr":
+            concept_seed = context.query or context.previous_user_message or ""
+            if concept_seed:
+                _add("GetDescription", {"concept": concept_seed})
+                _add("GetRelatedConcepts", {"concept": concept_seed})
+                _add("GetSubconcepts", {"concept": concept_seed})
+                _add("GetConceptGraphNeighbors", {"concept": concept_seed, "limit": 15})
+            else:
+                _add("GetDescription", fill_required_with_query=True)
+        elif server_name == "spa":
+            query_seed = context.query or context.previous_user_message or ""
+            if query_seed:
+                _add("AmazonAssessmentSearch", {"query": query_seed, "k": 5})
+                _add("AmazonAssessmentAsk", {"query": query_seed, "k": 5})
+            else:
+                _add("AmazonAssessmentSearch", fill_required_with_query=True)
+        elif server_name == "gist":
+            wants_risk = any(
+                keyword in lowered_query
+                for keyword in [
+                    "risk",
+                    "hazard",
+                    "exposure",
+                    "vulnerability",
+                    "high-risk",
+                ]
+            )
+            wants_company_rollup = any(
+                keyword in lowered_query
+                for keyword in [
+                    "company",
+                    "sector",
+                    "portfolio",
+                    "industry",
+                ]
+            )
+
+            if wants_risk:
+                _add("GetGistVisualizationData", {"viz_type": "risk_distribution"})
+            if wants_company_rollup:
+                _add("GetGistCompaniesBySector", {})
+
+        return plan
+
+
+async def execute_server_plan(
+    server_name: str,
+    session,
+    plan: List[Tuple[str, Dict[str, Any]]],
+    *,
+    context: QueryContext,
+    default_citation: Optional[CitationPayload] = None,
+    debug_details: Optional[Dict[str, Any]] = None,
+) -> Optional[RunQueryResponse]:
+    """Execute a planned subset of tools and normalize into RunQueryResponse."""
+
+    if not plan:
+        if debug_details is not None:
+            debug_details.clear()
+            debug_details.update(
+                {
+                    "requested_tools": [],
+                    "tool_results": [],
+                    "total_facts": 0,
+                    "total_artifacts": 0,
+                    "fallback_reason": "plan is empty",
+                }
+            )
+        return None
+
+    facts: List[FactPayload] = []
+    artifacts: List[ArtifactPayload] = []
+    messages: List[MessagePayload] = []
+    citations: Dict[str, CitationPayload] = {}
+    kg_nodes: List[Dict[str, Any]] = []
+    kg_edges: List[Dict[str, Any]] = []
+
+    if debug_details is not None:
+        debug_details.clear()
+        debug_details.update(
+            {
+                "requested_tools": [name for name, _ in plan],
+                "tool_results": [],
+                "total_facts": 0,
+                "total_artifacts": 0,
+                "fallback_reason": None,
+            }
+        )
+
+    if default_citation:
+        citations[default_citation.id] = default_citation
+
+    for index, (tool_name, arguments) in enumerate(plan, start=1):
+        tool_debug: Dict[str, Any] = {"tool": tool_name, "status": "success"}
+        try:
+            raw_result = await session.call_tool(tool_name, arguments or {})
+            payload = mcp_payload_from_result(raw_result)
+        except Exception as exc:
+            messages.append(
+                MessagePayload(
+                    level="warning",
+                    text=f"{server_name}.{tool_name} failed: {exc}",
+                )
+            )
+            if debug_details is not None:
+                tool_debug.update(
+                    {
+                        "status": "error",
+                        "error": f"{exc.__class__.__name__}: {exc}",
+                    }
+                )
+                debug_details["tool_results"].append(tool_debug)
+            continue
+
+        citation_payload: Optional[CitationPayload] = None
+        citation_obj = payload.get("citation")
+        if isinstance(citation_obj, Mapping):
+            citation_id = str(
+                citation_obj.get("id") or f"{server_name}:{tool_name}:{index}"
+            )
+            citation_payload = CitationPayload(
+                id=citation_id,
+                server=server_name,
+                tool=str(citation_obj.get("tool") or tool_name),
+                title=str(citation_obj.get("title") or server_name),
+                source_type=str(citation_obj.get("source_type") or "Dataset"),
+                description=citation_obj.get("description"),
+                url=citation_obj.get("url"),
+            )
+            citations.setdefault(citation_payload.id, citation_payload)
+        elif default_citation:
+                citation_payload = default_citation
+
+        citation_id = citation_payload.id if citation_payload else None
+
+        summary = payload.get("summary")
+        has_summary = bool(summary)
+        fact_items = [fact for fact in payload.get("facts", []) or [] if fact]
+        artifact_items = payload.get("artifacts", []) or []
+        message_items = payload.get("messages", []) or []
+        kg_payload = payload.get("kg")
+
+        if summary:
+            facts.append(
+                FactPayload(
+                    id=f"{tool_name}_summary_{index}",
+                    text=str(summary),
+                    citation_id=citation_id,
+                )
+            )
+
+        for fact_index, fact_text in enumerate(fact_items, start=1):
+            if not fact_text:
+                continue
+            facts.append(
+                FactPayload(
+                    id=f"{tool_name}_fact_{index}_{fact_index}",
+                    text=str(fact_text),
+                    citation_id=citation_id,
+                )
+            )
+
+        for artifact_index, artifact in enumerate(artifact_items, start=1):
+            artifact_type = str(artifact.get("type", "") or "")
+            title = str(artifact.get("title") or f"{server_name} artifact {artifact_index}")
+            metadata = dict(artifact.get("metadata") or {})
+            artifact_kwargs: Dict[str, Any] = {
+                "id": f"{tool_name}_artifact_{index}_{artifact_index}",
+                "type": artifact_type or "table",
+                "title": title,
+                "metadata": metadata,
+            }
+
+            if artifact_type == "map":
+                geojson_url = artifact.get("geojson_url") or artifact.get("url")
+                if geojson_url:
+                    artifact_kwargs["geojson_url"] = ensure_absolute_url(geojson_url)
+                artifact_kwargs["url"] = geojson_url
+                if artifact.get("data") is not None:
+                    artifact_kwargs["data"] = artifact.get("data")
+            elif artifact_type == "chart":
+                artifact_kwargs["data"] = artifact.get("data")
+            elif artifact_type == "table":
+                artifact_kwargs["data"] = {
+                    "columns": artifact.get("columns", []),
+                    "rows": artifact.get("rows", []),
+                }
+            else:
+                artifact_kwargs["data"] = artifact.get("data")
+                if artifact.get("url"):
+                    artifact_kwargs["url"] = artifact.get("url")
+
+            artifacts.append(ArtifactPayload(**artifact_kwargs))
+
+        for message in payload.get("messages", []) or []:
+            if isinstance(message, Mapping):
+                text = str(message.get("text", "")).strip()
+                if not text:
+                    continue
+                level = str(message.get("level", "info"))
+            else:
+                text = str(message).strip()
+                if not text:
+                    continue
+                level = "info"
+            messages.append(MessagePayload(level=level, text=text))
+
+        if isinstance(kg_payload, Mapping):
+            nodes = kg_payload.get("nodes")
+            edges = kg_payload.get("edges")
+            if isinstance(nodes, list):
+                kg_nodes.extend([node for node in nodes if isinstance(node, Mapping)])
+            if isinstance(edges, list):
+                kg_edges.extend([edge for edge in edges if isinstance(edge, Mapping)])
+
+        if debug_details is not None:
+            produced_output = any(
+                [
+                    has_summary,
+                    bool(fact_items),
+                    bool(artifact_items),
+                    bool(message_items),
+                    isinstance(kg_payload, Mapping)
+                    and bool(kg_payload.get("nodes") or kg_payload.get("edges")),
+                ]
+            )
+            tool_debug.update(
+                {
+                    "status": tool_debug.get("status", "success"),
+                    "produced_output": produced_output,
+                    "fact_count": len(fact_items) + (1 if has_summary else 0),
+                    "artifact_count": len(artifact_items),
+                    "message_count": len(message_items),
+                }
+            )
+            debug_details["tool_results"].append(tool_debug)
+
+    if not facts and not artifacts:
+        if debug_details is not None:
+            debug_details.update(
+                {
+                    "total_facts": 0,
+                    "total_artifacts": 0,
+                    "fallback_reason": "planned tools returned no facts or artifacts",
+                }
+            )
+        return None
+
+    citation_list = list(citations.values())
+
+    if debug_details is not None:
+        debug_details.update(
+            {
+                "total_facts": len(facts),
+                "total_artifacts": len(artifacts),
+                "fallback_reason": None,
+            }
+        )
+
+    return RunQueryResponse(
+        server=server_name,
+        query=context.query,
+        facts=facts,
+        citations=citation_list,
+        artifacts=artifacts,
+        messages=messages,
+        kg=KnowledgeGraphPayload(nodes=kg_nodes, edges=kg_edges),
+    )
+
+
 class SimpleOrchestrator:
     def __init__(self, client: MultiServerClient):
         self._client = client
@@ -1618,7 +2154,6 @@ class SimpleOrchestrator:
         self._router = QueryRouter(
             client, self._manifest_registry, self._llm_classifier
         )
-        self._executor = QueryExecutor(client)
         self._fact_orderer = FactOrderer()
         self._narrative = NarrativeSynthesizer()
         self._query_enricher = QueryEnricher()
@@ -1629,7 +2164,54 @@ class SimpleOrchestrator:
         self._max_fact_messages_per_query: int = 12
         self._max_fact_messages_per_server: int = 3
         self._fact_thinking_max_chars: int = 160
+        self._server_tool_manifests: Dict[str, List[Dict[str, Any]]] = {}
+        planner_anthropic = getattr(self._narrative, "_anthropic_client", None)
+        planner_openai = getattr(self._narrative, "_openai_client", None)
+        if planner_anthropic is None and anthropic and os.getenv("ANTHROPIC_API_KEY"):
+            try:
+                planner_anthropic = anthropic.Anthropic()
+            except Exception:
+                planner_anthropic = None
+        if planner_openai is None and OpenAI and os.getenv("OPENAI_API_KEY"):
+            try:
+                planner_openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            except Exception:
+                planner_openai = None
+        self._tool_planner = ServerToolPlanner(
+            planner_anthropic,
+            planner_openai,
+        )
         self._out_of_scope_responder = OutOfScopeResponder()
+        self._governance_anthropic_client = None
+        self._governance_openai_client = None
+        if anthropic and os.getenv("ANTHROPIC_API_KEY"):
+            try:
+                self._governance_anthropic_client = anthropic.Anthropic()
+            except Exception as exc:
+                logger.info(f"Governance Anthropic client unavailable: {exc}")
+        if OpenAI and os.getenv("OPENAI_API_KEY"):
+            try:
+                self._governance_openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            except Exception as exc:
+                logger.info(f"Governance OpenAI client unavailable: {exc}")
+
+    async def _call_run_query(
+        self, session, server_name: str, context: QueryContext
+    ) -> RunQueryResponse:
+        payload = {
+            "query": context.query,
+            "context": context.model_dump(mode="json"),
+        }
+
+        result = await session.call_tool("run_query", payload)
+        if not getattr(result, "content", None):
+            raise ContractValidationError(
+                f"{server_name} returned empty run_query payload"
+            )
+
+        raw = json.loads(result.content[0].text)
+        response = validate_run_query_response(raw)
+        return response
 
     def _format_fact_thinking_message(self, fact: FactPayload) -> Optional[str]:
         """Return a truncated thinking message for textual facts."""
@@ -1674,6 +2256,218 @@ class SimpleOrchestrator:
                 self._fact_message_counts[server_name] += 1
                 self._streamed_fact_count += 1
 
+    async def _execute_with_planning(
+        self,
+        supports: Iterable[QuerySupportPayload],
+        context: QueryContext,
+        progress_callback: Optional[
+            Callable[[str, str, Mapping[str, Any]], Awaitable[None]]
+        ] = None,
+    ) -> List[RunQueryResponse]:
+        responses: List[RunQueryResponse] = []
+
+        for support in supports:
+            if not support.supported:
+                continue
+            session = self._client.sessions.get(support.server)
+            if not session:
+                continue
+
+            manifest = self._server_tool_manifests.get(support.server)
+            if manifest is None:
+                try:
+                    manifest = await list_server_tools(session)
+                except Exception as exc:
+                    manifest = []
+                    print(
+                        f"[planner] Failed to load manifest for {support.server}: {exc}",
+                        flush=True,
+                    )
+                self._server_tool_manifests[support.server] = manifest
+
+            plan: List[Tuple[str, Dict[str, Any]]] = []
+            fallback_reason: Optional[str] = None
+            try:
+                print(
+                    f"[planner] Planning tools for {support.server} (tool_count={len(manifest)})",
+                    flush=True,
+                )
+                plan = await self._tool_planner.plan(support.server, manifest, context)
+            except Exception as exc:
+                print(
+                    f"[planner] Tool planning failed for {support.server}: {exc}",
+                    flush=True,
+                )
+                plan = []
+                fallback_reason = (
+                    f"planner error ({exc.__class__.__name__}: {exc})"
+                )
+
+            skip_run_query_on_empty_plan = False
+            if plan:
+                print(
+                    f"[planner] {support.server} selected tools: {[name for name, _ in plan]}",
+                    flush=True,
+                )
+            else:
+                print(
+                    f"[planner] {support.server} returned no tools; will fallback to run_query",
+                    flush=True,
+                )
+                fallback_reason = fallback_reason or "planner returned no tools"
+                skip_run_query_on_empty_plan = support.server in {"deforestation"}
+
+            if plan and progress_callback:
+                await progress_callback(
+                    support.server,
+                    "tool_plan",
+                    {"tools": [name for name, _ in plan]},
+                )
+
+            response: Optional[RunQueryResponse] = None
+            plan_debug: Dict[str, Any] = {}
+            if plan:
+                try:
+                    response = await execute_server_plan(
+                        support.server,
+                        session,
+                        plan,
+                        context=context,
+                        debug_details=plan_debug,
+                    )
+                    if response and progress_callback:
+                        await progress_callback(
+                            support.server,
+                            "tool_execute",
+                            {
+                                "tools": [name for name, _ in plan],
+                                "payload": response,
+                            },
+                        )
+                    if response:
+                        print(
+                            f"[planner] {support.server} tool execution succeeded",
+                            flush=True,
+                        )
+                    else:
+                        if fallback_reason is None:
+                            fallback_reason = plan_debug.get("fallback_reason")
+                        failed_tools = [
+                            entry
+                            for entry in plan_debug.get("tool_results", [])
+                            if entry.get("status") == "error"
+                        ]
+                        if failed_tools:
+                            failure_summaries = \
+                                ", ".join(
+                                    f"{item['tool']}: {item.get('error')}"
+                                    for item in failed_tools
+                                    if item.get("tool")
+                                )
+                            if failure_summaries:
+                                print(
+                                    f"[planner] {support.server} tool errors: {failure_summaries}",
+                                    flush=True,
+                                )
+                        no_output_tools = [
+                            entry["tool"]
+                            for entry in plan_debug.get("tool_results", [])
+                            if entry.get("status") == "success"
+                            and not entry.get("produced_output")
+                        ]
+                        if no_output_tools:
+                            no_output_summary = ", ".join(no_output_tools)
+                            print(
+                                f"[planner] {support.server} tools produced no output: {no_output_summary}",
+                                flush=True,
+                            )
+                except Exception as exc:
+                    if progress_callback:
+                        await progress_callback(
+                            support.server,
+                            "tool_execute_failure",
+                            {"error": exc, "tools": [name for name, _ in plan]},
+                        )
+                    print(
+                        f"[planner] {support.server} tool execution failed: {exc}; falling back",
+                        flush=True,
+                    )
+                    response = None
+                    fallback_reason = (
+                        f"tool execution error ({exc.__class__.__name__}: {exc})"
+                    )
+
+            if response is None:
+                if fallback_reason is None and plan_debug:
+                    fallback_reason = plan_debug.get("fallback_reason")
+                reason_to_log = fallback_reason or "unknown planner fallback reason"
+                if skip_run_query_on_empty_plan:
+                    print(
+                        f"[planner] {support.server} skipping run_query fallback ({reason_to_log})",
+                        flush=True,
+                    )
+                    continue
+                print(
+                    f"[planner] {support.server} falling back to run_query ({reason_to_log})",
+                    flush=True,
+                )
+                try:
+                    response = await asyncio.wait_for(
+                        self._call_run_query(session, support.server, context),
+                        timeout=RUN_QUERY_TIMEOUT_SECONDS,
+                    )
+                    if progress_callback:
+                        await progress_callback(
+                            support.server,
+                            "run_query",
+                            {"payload": response},
+                        )
+                    print(
+                        f"[planner] {support.server} run_query fallback succeeded",
+                        flush=True,
+                    )
+                except asyncio.TimeoutError as exc:
+                    if progress_callback:
+                        await progress_callback(
+                            support.server,
+                            "run_query_timeout",
+                            {"error": exc},
+                        )
+                    print(
+                        f"[planner] {support.server} run_query timed out: {exc}",
+                        flush=True,
+                    )
+                    continue
+                except ContractValidationError as exc:
+                    if progress_callback:
+                        await progress_callback(
+                            support.server,
+                            "run_query_error",
+                            {"error": exc},
+                        )
+                    print(
+                        f"[planner] {support.server} run_query contract error: {exc}",
+                        flush=True,
+                    )
+                    continue
+                except Exception as exc:
+                    if progress_callback:
+                        await progress_callback(
+                            support.server,
+                            "run_query_failure",
+                            {"error": exc},
+                        )
+                    print(
+                        f"[planner] {support.server} run_query failed: {exc}",
+                        flush=True,
+                    )
+                    continue
+
+            if response:
+                responses.append(response)
+
+        return responses
+
     async def process_query(
         self,
         query: str,
@@ -1714,12 +2508,21 @@ class SimpleOrchestrator:
 
         previous_user_message: Optional[str] = None
         previous_assistant_message: Optional[str] = None
+        previous_response_modules: Optional[List[Dict[str, Any]]] = None
         if conversation_history:
             for message in reversed(conversation_history):
                 role = message.get("role")
                 content = message.get("content")
                 if role == "assistant" and previous_assistant_message is None:
                     previous_assistant_message = content
+                    structured_payload = message.get("structured")
+                    if (
+                        previous_response_modules is None
+                        and isinstance(structured_payload, Mapping)
+                    ):
+                        modules_candidate = structured_payload.get("modules")
+                        if isinstance(modules_candidate, list):
+                            previous_response_modules = modules_candidate
                 elif role == "user" and previous_user_message is None:
                     previous_user_message = content
                 if previous_user_message and previous_assistant_message:
@@ -1752,11 +2555,11 @@ class SimpleOrchestrator:
                 enrichment_data = self._query_enricher.enrich_query_with_llm(query)
                 if "error" not in enrichment_data:
                     enriched_query = enrichment_data.get("enriched_query", query)
-                    if enriched_query and enriched_query.strip() and enriched_query != query:
-                        processing_query = enriched_query
-                        await emit("🔍 Query enriched for better processing", "initialization")
-                    else:
-                        await emit("🔍 Query enrichment returned no changes", "initialization")
+                    # if enriched_query and enriched_query.strip() and enriched_query != query:
+                    #     processing_query = enriched_query
+                    #     await emit("🔍 Query enriched for better processing", "initialization")
+                    # else:
+                    #     await emit("🔍 Query enrichment returned no changes", "initialization")
                 else:
                     await emit("⚠️ Query enrichment failed, using original query", "initialization")
             except Exception as exc:
@@ -1770,9 +2573,10 @@ class SimpleOrchestrator:
             session_id=session_identifier,
             previous_user_message=previous_user_message,
             previous_assistant_message=previous_assistant_message,
+            previous_response_modules=previous_response_modules,
         )
 
-        await emit("🔍 Looking at your question and which sources might help", "initialization")
+        await emit("🔍 Considering which sources are relevant to your query...", "initialization")
 
         scope_level = "IN_SCOPE"
         if self._llm_classifier:
@@ -1825,7 +2629,7 @@ class SimpleOrchestrator:
             "lse": "NDCAlign",
             "wmo_cli": "Scientific Documents for Climate (WMO and IPCC)",
             "meta": "Project Specific Knowledge",
-            "extreme_heat": "Extreme Heat Indices"
+            "extreme_heat": "Extreme Heat Index"
         }
 
         def _pretty_server_name(server_name: str) -> str:
@@ -1844,11 +2648,11 @@ class SimpleOrchestrator:
 
                 if status == "accepted":
                     message = (
-                        f"📡 {_pretty_server_name(server_name)} seems helpful here..."
+                        f"📡 {_pretty_server_name(server_name)} seems helpful here."
                     )
                 else:
                     message = (
-                        f"🚫 {_pretty_server_name(server_name)} does not seem relevant.."
+                        f"🚫 {_pretty_server_name(server_name)} does not seem relevant."
                     )
                 
                 await emit(message, "routing")
@@ -1865,7 +2669,7 @@ class SimpleOrchestrator:
                     "routing",
                 )
 
-        await emit("🧭 Checking with the data sources that might have answers", "routing")
+        await emit("🧭 Confirming the relevance of servers...", "routing")
         supports = await self._router.route(query, context, progress_callback=router_progress)
         if not supports:
             raise ContractValidationError("No servers accepted the query")
@@ -1901,10 +2705,11 @@ class SimpleOrchestrator:
                     "execution",
                 )
 
-        await emit("📥 Gathering the detailed results", "execution")
-        responses = await self._executor.execute(
+        await emit("📥 Gathering passages and data from servers...", "execution")
+        responses = await self._execute_with_planning(
             supports, context, progress_callback=executor_progress
         )
+        self._populate_citation_urls(responses)
         if not responses:
             raise ContractValidationError("No server produced a response")
 
@@ -1942,6 +2747,7 @@ class SimpleOrchestrator:
             flush=True,
         )
 
+        governance_module: Optional[Dict[str, Any]] = None
         if narrative_result.paragraphs:
             print(
                 f"[KGDEBUG] synthesis returned narrative with {len(narrative_result.paragraphs)} paragraphs",
@@ -1959,6 +2765,15 @@ class SimpleOrchestrator:
                 evidence_map,
                 citation_registry,
             )
+            governance_module = await self._maybe_build_governance_summary(
+                original_query=original_query,
+                scope_level=scope_level,
+                narrative_paragraphs=narrative_result.paragraphs,
+                citation_registry=citation_registry,
+                responses=responses,
+                context=context,
+                emit=emit,
+            )
         else:
             print("[KGDEBUG] narrative synthesis returned no paragraphs; building summary table", flush=True)
             citation_registry = CitationRegistry()
@@ -1968,7 +2783,11 @@ class SimpleOrchestrator:
         artifact_modules = self._build_artifact_modules(responses)
         citation_module = self._build_citation_module(citation_registry)
 
-        modules = [summary_module, *artifact_modules, citation_module]
+        modules = [summary_module]
+        if governance_module:
+            modules.append(governance_module)
+        modules.extend(artifact_modules)
+        modules.append(citation_module)
 
         modules = self._merge_map_modules(modules)
 
@@ -2205,6 +3024,22 @@ class SimpleOrchestrator:
             "metadata": {"citations": self._build_citation_metadata(sequence, evidence_map, registry)},
         }
 
+    def _populate_citation_urls(self, responses: List[RunQueryResponse]) -> None:
+        """Fill missing citation URLs using the dataset resolver."""
+
+        for response in responses:
+            for citation in response.citations:
+                if getattr(citation, "url", None):
+                    continue
+                metadata = citation.metadata if isinstance(citation.metadata, Mapping) else None
+                _ds_id, url = resolve_dataset_url(
+                    tool_name=citation.tool,
+                    tool_metadata=metadata,
+                    server_name=response.server,
+                )
+                if url:
+                    citation.url = url
+
     def _collect_evidences(
         self, responses: List[RunQueryResponse]
     ) -> tuple[List[NarrativeEvidence], Dict[str, NarrativeEvidence]]:
@@ -2305,6 +3140,199 @@ class SimpleOrchestrator:
                 }
             )
         return details
+
+    async def _maybe_build_governance_summary(
+        self,
+        *,
+        original_query: str,
+        scope_level: str,
+        narrative_paragraphs: List[str],
+        citation_registry: CitationRegistry,
+        responses: List[RunQueryResponse],
+        context: QueryContext,
+        emit: Optional[Callable[[str, str], Awaitable[None]]],
+    ) -> Optional[Dict[str, Any]]:
+        if not _should_inject_governance(scope_level, bool(narrative_paragraphs)):
+            return None
+
+        if emit is not None:
+            try:
+                await emit("Considering governance implications...", "synthesis")
+            except Exception:  # pragma: no cover - thinking is best effort
+                pass
+
+        followup_response: Optional[RunQueryResponse] = None
+        try:
+            followup_response = await self._invoke_lse_followup(
+                original_query=original_query,
+                narrative_paragraphs=narrative_paragraphs,
+                context=context,
+            )
+        except Exception as exc:  # pragma: no cover - logged for diagnostics
+            logger.info(f"Governance follow-up run_query failed: {exc}")
+
+        lse_responses: List[RunQueryResponse] = list(responses)
+        if followup_response:
+            self._populate_citation_urls([followup_response])
+            lse_responses.append(followup_response)
+
+        self._register_lse_citations(citation_registry, lse_responses)
+        fact_lines = self._gather_lse_fact_lines(citation_registry, lse_responses)
+        if not fact_lines:
+            return None
+
+        try:
+            governance_text = await self._synthesize_governance_summary_text(
+                original_query,
+                narrative_paragraphs,
+                fact_lines,
+            )
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.info(f"Governance summary synthesis failed: {exc}")
+            return None
+
+        if not governance_text or not governance_text.strip():
+            return None
+
+        return {
+            "type": "text",
+            "heading": "Governance Implications",
+            "texts": [governance_text.strip()],
+        }
+
+    async def _invoke_lse_followup(
+        self,
+        *,
+        original_query: str,
+        narrative_paragraphs: List[str],
+        context: QueryContext,
+    ) -> Optional[RunQueryResponse]:
+        session = self._client.sessions.get("lse")
+        if session is None:
+            logger.info("LSE session unavailable; skipping governance follow-up")
+            return None
+
+        followup_query = _build_governance_followup_query(original_query, narrative_paragraphs)
+        followup_context = context.model_copy(
+            update={
+                "query": followup_query,
+                "timestamp": datetime.datetime.utcnow(),
+            }
+        )
+
+        try:
+            response = await asyncio.wait_for(
+                self._call_run_query(session, "lse", followup_context),
+                timeout=RUN_QUERY_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError as exc:
+            logger.info(f"Governance follow-up timed out: {exc}")
+            return None
+        except Exception as exc:
+            logger.info(f"Governance follow-up errored: {exc}")
+            return None
+
+        return response
+
+    @staticmethod
+    def _register_lse_citations(
+        citation_registry: CitationRegistry, responses: List[RunQueryResponse]
+    ) -> None:
+        for response in responses:
+            if response.server != "lse":
+                continue
+            try:
+                citation_registry.register(response.citations)
+            except Exception:
+                # Registry handles duplicates; continue on unexpected issues
+                continue
+
+    @staticmethod
+    def _gather_lse_fact_lines(
+        citation_registry: CitationRegistry, responses: List[RunQueryResponse]
+    ) -> List[str]:
+        lines: List[str] = []
+        for response in responses:
+            if response.server != "lse":
+                continue
+            lookup = {citation.id: citation for citation in response.citations}
+            for fact in response.facts:
+                citation = lookup.get(fact.citation_id)
+                if not citation:
+                    continue
+                try:
+                    number = citation_registry.number_for(citation)
+                except KeyError:
+                    continue
+                text = (fact.text or "").strip()
+                if not text:
+                    continue
+                normalised = re.sub(r"\s+", " ", text)
+                lines.append(f"^{number}^ {normalised}")
+                if len(lines) >= 16:
+                    return lines
+        return lines
+
+    async def _synthesize_governance_summary_text(
+        self,
+        user_query: str,
+        narrative_paragraphs: Sequence[str],
+        fact_lines: Sequence[str],
+    ) -> Optional[str]:
+        if not fact_lines:
+            return None
+
+        narrative_block = "\n\n".join(
+            paragraph.strip() for paragraph in narrative_paragraphs if paragraph and paragraph.strip()
+        )
+        evidence_block = "\n".join(str(line) for line in fact_lines if line)
+
+        system_prompt = (
+            "You are a climate governance analyst. Write a concise paragraph labelled Governance Summary"
+            " that interprets LSE NDC Align evidence."
+            " Use the provided citation markers like ^3^ immediately after supporting claims."
+            " Do not fabricate citations or mention unavailable evidence."
+        )
+        user_prompt = (
+            f"User question:\n{user_query.strip()}\n\n"
+            "Narrative summary that precedes your paragraph:\n"
+            f"{narrative_block or '(narrative summary unavailable)'}\n\n"
+            "Evidence from LSE (each line begins with the citation number you must reuse):\n"
+            f"{evidence_block}\n\n"
+            "Write 2-4 sentences covering governance implications, institutions, or implementation."
+            " Return only the paragraph text without headings or bullet lists."
+        )
+
+        if self._governance_openai_client is not None:
+            def _run_openai() -> str:
+                response = self._governance_openai_client.responses.create(  # type: ignore[union-attr]
+                    model=GOVERNANCE_SUMMARY_OPENAI_MODEL,
+                    input=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=0,
+                    max_output_tokens=400,
+                )
+                return _extract_openai_text(response)
+
+            return await asyncio.to_thread(_run_openai)
+
+        if self._governance_anthropic_client is not None:
+            def _run_anthropic() -> str:
+                response = self._governance_anthropic_client.messages.create(  # type: ignore[union-attr]
+                    model=GOVERNANCE_SUMMARY_ANTHROPIC_MODEL,
+                    max_tokens=400,
+                    temperature=0,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_prompt}],
+                )
+                return response.content[0].text
+
+            return await asyncio.to_thread(_run_anthropic)
+
+        logger.info("No LLM client configured for governance summary")
+        return None
 
     def _build_artifact_modules(
         self, responses: List[RunQueryResponse]

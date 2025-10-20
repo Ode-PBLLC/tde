@@ -1,0 +1,3751 @@
+{
+  "query": "What sustainable energy solutions are best for Mozambique?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q1117",
+        "kind": "Concept",
+        "label": "SDG target 4.c",
+        "description": "Substantially increase the supply of qualified teachers"
+      },
+      {
+        "id": "Q774",
+        "kind": "Concept",
+        "label": "education sector",
+        "description": "This sector involves activities that impart knowledge and skills to individuals, including formal schooling, vocational training and educational support."
+      },
+      {
+        "id": "Q1007",
+        "kind": "Concept",
+        "label": "marine biodiversity loss",
+        "description": ""
+      },
+      {
+        "id": "Q787",
+        "kind": "Concept",
+        "label": "forestry sector",
+        "description": "Activities that relate to the production of goods and services from forests."
+      },
+      {
+        "id": "Q1032",
+        "kind": "Concept",
+        "label": "sustainable development goal 14",
+        "description": "SDG14: life below water"
+      },
+      {
+        "id": "Q1607",
+        "kind": "Concept",
+        "label": "sustainable finance",
+        "description": "Integration of environmental, social, and governance (ESG) considerations into financial decision-making processes, investments, and lending practices."
+      },
+      {
+        "id": "Q1023",
+        "kind": "Concept",
+        "label": "sustainable development goal 5",
+        "description": "SDG5: Gender equality"
+      },
+      {
+        "id": "Q1110",
+        "kind": "Concept",
+        "label": "SDG target 4.3",
+        "description": "Ensure equal access for all women and men to affordable and quality technical, vocational and tertiary education, including university"
+      },
+      {
+        "id": "Q1547",
+        "kind": "Concept",
+        "label": "non-formal education",
+        "description": "Planned, structured programmes and processes of personal and social education for young people designed to improve a range of skills and competences, that happen outside the formal educational curriculum, including in youth organisations"
+      },
+      {
+        "id": "Q368",
+        "kind": "Concept",
+        "label": "marine risk",
+        "description": "Risks to the ecosystem health of the marine environment, including ocean warming, ocean acidification, and ocean deoxygenation, harming biodiversity, species health, ecosystem services, and coastal community livelihoods."
+      },
+      {
+        "id": "Q1115",
+        "kind": "Concept",
+        "label": "SDG target 4.a",
+        "description": "Build and upgrade education facilities that are child, disability and gender sensitive and provide safe, non-violent, inclusive and effective learning environments for all"
+      },
+      {
+        "id": "Q1019",
+        "kind": "Concept",
+        "label": "sustainable development goal 1",
+        "description": "SDG1: no poverty"
+      },
+      {
+        "id": "Q157",
+        "kind": "Concept",
+        "label": "Water management and conservation technologies",
+        "description": ""
+      },
+      {
+        "id": "Q1113",
+        "kind": "Concept",
+        "label": "SDG target 4.6",
+        "description": "Ensure that all youth and a substantial proportion of adults, both men and women, achieve literacy and numeracy"
+      },
+      {
+        "id": "Q1031",
+        "kind": "Concept",
+        "label": "sustainable development goal 13",
+        "description": "SDG13: climate action"
+      },
+      {
+        "id": "Q36",
+        "kind": "Concept",
+        "label": "gender equality",
+        "description": ""
+      },
+      {
+        "id": "Q874",
+        "kind": "Concept",
+        "label": "governance sector",
+        "description": ""
+      },
+      {
+        "id": "Q879",
+        "kind": "Concept",
+        "label": "secondary and post-secondary non-tertiary education",
+        "description": ""
+      },
+      {
+        "id": "Q1008",
+        "kind": "Concept",
+        "label": "terrestrial biodiversity loss",
+        "description": ""
+      },
+      {
+        "id": "Q1116",
+        "kind": "Concept",
+        "label": "SDG target 4.b",
+        "description": "substantially expand globally the number of scholarships available to developing countries for enrolment in higher education"
+      },
+      {
+        "id": "Q1108",
+        "kind": "Concept",
+        "label": "SDG target 4.1",
+        "description": "ensure that all girls and boys complete free, equitable and quality primary and secondary education leading to relevant and effective learning outcomes"
+      },
+      {
+        "id": "Q695",
+        "kind": "Concept",
+        "label": "youth",
+        "description": "People under the age of 30"
+      },
+      {
+        "id": "Q1026",
+        "kind": "Concept",
+        "label": "sustainable development goal 8",
+        "description": "SDG8: Decent work and economic growth"
+      },
+      {
+        "id": "Q1033",
+        "kind": "Concept",
+        "label": "sustainable development goal 15",
+        "description": "SDG15: life on land"
+      },
+      {
+        "id": "Q878",
+        "kind": "Concept",
+        "label": "primary education",
+        "description": ""
+      },
+      {
+        "id": "Q1396",
+        "kind": "Concept",
+        "label": "energy efficiency standard",
+        "description": "Energy efficiency standards are government regulations that set a minimum level of energy performance for buildings or appliances, typically measured by an energy rating scale (like A-G), meaning that products or properties must meet a certain level of efficiency to be sold or rented, aiming to reduce energy consumption and carbon emissions; in practice, this often means landlords must ensure their rental properties reach a minimum energy efficiency rating."
+      },
+      {
+        "id": "Q786",
+        "kind": "Concept",
+        "label": "agriculture sector",
+        "description": "Activities that involve the cultivation of crops and raising of livestock for food, fibre, and other products essential for human life and industry."
+      },
+      {
+        "id": "Q709",
+        "kind": "Concept",
+        "label": "economic sector",
+        "description": "Area of the economy in which actors engage in identical or related activities."
+      },
+      {
+        "id": "Q1030",
+        "kind": "Concept",
+        "label": "sustainable development goal 12",
+        "description": "SDG12: responsible consumption and production"
+      },
+      {
+        "id": "Q1112",
+        "kind": "Concept",
+        "label": "SDG target 4.5",
+        "description": "Eliminate gender disparities in education and ensure equal access to all levels of education and vocational training for the vulnerable"
+      },
+      {
+        "id": "Q1239",
+        "kind": "Concept",
+        "label": "asbestos",
+        "description": "Asbestos refers to a group of natural minerals once widely used in building materials. All types can cause lung cancer, mesothelioma, larynx and ovarian cancer, and asbestosis (lung fibrosis)."
+      },
+      {
+        "id": "Q1582",
+        "kind": "Concept",
+        "label": "sustainability governance",
+        "description": "set of written and unwritten rules that link ecological citizenship with institutions and norms of governance"
+      },
+      {
+        "id": "Q1021",
+        "kind": "Concept",
+        "label": "sustainable development goal 3",
+        "description": "SDG for good health and well-being"
+      },
+      {
+        "id": "Q1025",
+        "kind": "Concept",
+        "label": "sustainable development goal 6",
+        "description": "SDG6: clean water and sanitation"
+      },
+      {
+        "id": "Q404",
+        "kind": "Concept",
+        "label": "terrestrial risk",
+        "description": "Terrestrial means \"of the earth\" and relates to the ecological system that includes all living organisms and their interactions within land-based environments, such as forests, grasslands, and deserts."
+      },
+      {
+        "id": "Q567",
+        "kind": "Concept",
+        "label": "renewables",
+        "description": "Renewables are a natural resource or source of energy that are not depleted by use, often with a low carbon footprint"
+      },
+      {
+        "id": "Q1027",
+        "kind": "Concept",
+        "label": "sustainable development goal 9",
+        "description": "SDG9: industry, innovation and infrastructure"
+      },
+      {
+        "id": "Q1543",
+        "kind": "Concept",
+        "label": "education for sustainable development",
+        "description": "Process of acquiring the knowledge, skills, attitudes, and values necessary to foster progress, both individually and collectively, towards achieving global sustainable development goals"
+      },
+      {
+        "id": "Q672",
+        "kind": "Concept",
+        "label": "impacted group",
+        "description": "Groups  of people who are adversely affected by climate change or the response to it"
+      },
+      {
+        "id": "Q1114",
+        "kind": "Concept",
+        "label": "SDG target 4.7",
+        "description": "ensure that all learners acquire the knowledge and skills needed to promote sustainable development"
+      },
+      {
+        "id": "Q1029",
+        "kind": "Concept",
+        "label": "sustainable development goal 11",
+        "description": "SDG11: sustainable cities and communities"
+      },
+      {
+        "id": "Q1034",
+        "kind": "Concept",
+        "label": "sustainable development goal 16",
+        "description": "SDG16: peace, justice and strong institutions"
+      },
+      {
+        "id": "Q779",
+        "kind": "Concept",
+        "label": "finance and insurance sector",
+        "description": "Activities of businesses and institutions that provide financial services and products to individuals and organisations."
+      },
+      {
+        "id": "Q880",
+        "kind": "Concept",
+        "label": "tertiary education",
+        "description": ""
+      },
+      {
+        "id": "Q788",
+        "kind": "Concept",
+        "label": "fishing sector",
+        "description": "Activities involving the catching, processing, and selling of fish for food, recreation, and industry."
+      },
+      {
+        "id": "Q762",
+        "kind": "Concept",
+        "label": "energy supply sector",
+        "description": "The activities of industries involved in the production, distribution, and sale of energy, including electricity, gas, and renewables."
+      },
+      {
+        "id": "Q1586",
+        "kind": "Concept",
+        "label": "natural resource management",
+        "description": "Activities focused on the utilisation, protection, and restoration of natural resources"
+      },
+      {
+        "id": "Q881",
+        "kind": "Concept",
+        "label": "training trainers",
+        "description": ""
+      },
+      {
+        "id": "Q818",
+        "kind": "Concept",
+        "label": "water management sector",
+        "description": "This sector involves the distribution, treatment, and conservation of water resources."
+      },
+      {
+        "id": "Q1548",
+        "kind": "Concept",
+        "label": "technical and vocational education and training",
+        "description": "TVET is understood as comprising education, training and skills development relating to a wide range of occupational fields, production, services and livelihoods."
+      },
+      {
+        "id": "Q1020",
+        "kind": "Concept",
+        "label": "sustainable development goal 2",
+        "description": "SDG2: zero hunger"
+      },
+      {
+        "id": "Q1109",
+        "kind": "Concept",
+        "label": "SDG target 4.2",
+        "description": "ensure that all girls and boys have access to quality early childhood development, care and pre-primary education so that they are ready for primary education"
+      },
+      {
+        "id": "Q1022",
+        "kind": "Concept",
+        "label": "sustainable development goal 4",
+        "description": "SDG4: Quality education"
+      },
+      {
+        "id": "Q1018",
+        "kind": "Concept",
+        "label": "sustainable development goals",
+        "description": "17 goals adopted by all countries in the United Nations in 2015 to be achieved by 2030"
+      },
+      {
+        "id": "Q1035",
+        "kind": "Concept",
+        "label": "sustainable development goal 17",
+        "description": "SDG17: Partnerships for the goals"
+      },
+      {
+        "id": "Q1111",
+        "kind": "Concept",
+        "label": "SDG target 4.4",
+        "description": "substantially increase the number of youth and adults who have relevant skills, including technical and vocational skills, for employment, decent jobs and entrepreneurship"
+      },
+      {
+        "id": "Q1583",
+        "kind": "Concept",
+        "label": "climate change governance",
+        "description": "Development and implementation of strategies, regulations, and initiatives to mitigate, adapt, administrate risks, or deal with the transition from the impacts of climate change."
+      },
+      {
+        "id": "Q1028",
+        "kind": "Concept",
+        "label": "sustainable development goal 10",
+        "description": "SDG10: reduced inequalities"
+      },
+      {
+        "id": "Q882",
+        "kind": "Concept",
+        "label": "educational support activities",
+        "description": ""
+      },
+      {
+        "id": "Q1570",
+        "kind": "Concept",
+        "label": "education management",
+        "description": "Planning, organizing, and overseeing public education systems"
+      },
+      {
+        "id": "Q877",
+        "kind": "Concept",
+        "label": "pre-primary education",
+        "description": ""
+      },
+      {
+        "id": "Q1024",
+        "kind": "Concept",
+        "label": "sustainable development goal 7",
+        "description": "SDG7: affordable and clean energy"
+      },
+      {
+        "id": "Q704",
+        "kind": "Concept",
+        "label": "women and minority genders",
+        "description": "woman and genders outside of the gender binary"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1117",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1117",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q877",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q878",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q879",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q880",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q881",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q882",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1543",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1547",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1548",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1022",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1109",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1116",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1117",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1570",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1007",
+        "target": "Q368",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1007",
+        "target": "Q1032",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q787",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q787",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q1007",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q368",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q788",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1607",
+        "target": "Q779",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1607",
+        "target": "Q1018",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1023",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1023",
+        "target": "Q704",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1023",
+        "target": "Q36",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1110",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1547",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q368",
+        "target": "Q1007",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q368",
+        "target": "Q1032",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1115",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1019",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q157",
+        "target": "Q1025",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q157",
+        "target": "Q818",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1113",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1031",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q36",
+        "target": "Q704",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q36",
+        "target": "Q1112",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q36",
+        "target": "Q1023",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q874",
+        "target": "Q1582",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q879",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1008",
+        "target": "Q404",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1008",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1116",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1116",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1108",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q695",
+        "target": "Q1109",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1026",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q404",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q1008",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q787",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q786",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q878",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q788",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q1020",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q762",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q774",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q779",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q786",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q787",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q788",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q818",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1030",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1112",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1112",
+        "target": "Q36",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1112",
+        "target": "Q672",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q874",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q1583",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q1586",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q1018",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1021",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1025",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1025",
+        "target": "Q157",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1025",
+        "target": "Q818",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q404",
+        "target": "Q1008",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q404",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1024",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1027",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1543",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1543",
+        "target": "Q1570",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q672",
+        "target": "Q1112",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1114",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1029",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1034",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q779",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q779",
+        "target": "Q1607",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q880",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q788",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q788",
+        "target": "Q786",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q788",
+        "target": "Q1032",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q762",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q762",
+        "target": "Q1024",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1586",
+        "target": "Q1582",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q881",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q818",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q818",
+        "target": "Q1025",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q818",
+        "target": "Q157",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1548",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1020",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1020",
+        "target": "Q786",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1109",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1109",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1109",
+        "target": "Q695",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1108",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1109",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1110",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1111",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1112",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1113",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1114",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1115",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1116",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1117",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1019",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1020",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1021",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1022",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1023",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1025",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1024",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1026",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1027",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1028",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1029",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1030",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1031",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1032",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1033",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1034",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1035",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1582",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1607",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1035",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1111",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1583",
+        "target": "Q1582",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1028",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q882",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1570",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1570",
+        "target": "Q1543",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q877",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q762",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q704",
+        "target": "Q1023",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q704",
+        "target": "Q36",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      }
+    ],
+    "query_concepts": [
+      "Q1018",
+      "Q1019",
+      "Q1020",
+      "Q1021",
+      "Q1022",
+      "Q1396",
+      "Q1239"
+    ],
+    "query_concept_labels": [
+      "sustainable development goal 4",
+      "sustainable development goals",
+      "energy efficiency standard",
+      "sustainable development goal 1",
+      "asbestos",
+      "sustainable development goal 3",
+      "sustainable development goal 2"
+    ],
+    "total_found": 63,
+    "concepts": [
+      {
+        "id": "Q1117",
+        "label": "SDG target 4.c"
+      },
+      {
+        "id": "Q774",
+        "label": "education sector"
+      },
+      {
+        "id": "Q1007",
+        "label": "marine biodiversity loss"
+      },
+      {
+        "id": "Q787",
+        "label": "forestry sector"
+      },
+      {
+        "id": "Q1032",
+        "label": "sustainable development goal 14"
+      },
+      {
+        "id": "Q1607",
+        "label": "sustainable finance"
+      },
+      {
+        "id": "Q1023",
+        "label": "sustainable development goal 5"
+      },
+      {
+        "id": "Q1110",
+        "label": "SDG target 4.3"
+      },
+      {
+        "id": "Q1547",
+        "label": "non-formal education"
+      },
+      {
+        "id": "Q368",
+        "label": "marine risk"
+      },
+      {
+        "id": "Q1115",
+        "label": "SDG target 4.a"
+      },
+      {
+        "id": "Q1019",
+        "label": "sustainable development goal 1"
+      },
+      {
+        "id": "Q157",
+        "label": "Water management and conservation technologies"
+      },
+      {
+        "id": "Q1113",
+        "label": "SDG target 4.6"
+      },
+      {
+        "id": "Q1031",
+        "label": "sustainable development goal 13"
+      },
+      {
+        "id": "Q36",
+        "label": "gender equality"
+      },
+      {
+        "id": "Q874",
+        "label": "governance sector"
+      },
+      {
+        "id": "Q879",
+        "label": "secondary and post-secondary non-tertiary education"
+      },
+      {
+        "id": "Q1008",
+        "label": "terrestrial biodiversity loss"
+      },
+      {
+        "id": "Q1116",
+        "label": "SDG target 4.b"
+      },
+      {
+        "id": "Q1108",
+        "label": "SDG target 4.1"
+      },
+      {
+        "id": "Q695",
+        "label": "youth"
+      },
+      {
+        "id": "Q1026",
+        "label": "sustainable development goal 8"
+      },
+      {
+        "id": "Q1033",
+        "label": "sustainable development goal 15"
+      },
+      {
+        "id": "Q878",
+        "label": "primary education"
+      },
+      {
+        "id": "Q1396",
+        "label": "energy efficiency standard"
+      },
+      {
+        "id": "Q786",
+        "label": "agriculture sector"
+      },
+      {
+        "id": "Q709",
+        "label": "economic sector"
+      },
+      {
+        "id": "Q1030",
+        "label": "sustainable development goal 12"
+      },
+      {
+        "id": "Q1112",
+        "label": "SDG target 4.5"
+      },
+      {
+        "id": "Q1239",
+        "label": "asbestos"
+      },
+      {
+        "id": "Q1582",
+        "label": "sustainability governance"
+      },
+      {
+        "id": "Q1021",
+        "label": "sustainable development goal 3"
+      },
+      {
+        "id": "Q1025",
+        "label": "sustainable development goal 6"
+      },
+      {
+        "id": "Q404",
+        "label": "terrestrial risk"
+      },
+      {
+        "id": "Q567",
+        "label": "renewables"
+      },
+      {
+        "id": "Q1027",
+        "label": "sustainable development goal 9"
+      },
+      {
+        "id": "Q1543",
+        "label": "education for sustainable development"
+      },
+      {
+        "id": "Q672",
+        "label": "impacted group"
+      },
+      {
+        "id": "Q1114",
+        "label": "SDG target 4.7"
+      },
+      {
+        "id": "Q1029",
+        "label": "sustainable development goal 11"
+      },
+      {
+        "id": "Q1034",
+        "label": "sustainable development goal 16"
+      },
+      {
+        "id": "Q779",
+        "label": "finance and insurance sector"
+      },
+      {
+        "id": "Q880",
+        "label": "tertiary education"
+      },
+      {
+        "id": "Q788",
+        "label": "fishing sector"
+      },
+      {
+        "id": "Q762",
+        "label": "energy supply sector"
+      },
+      {
+        "id": "Q1586",
+        "label": "natural resource management"
+      },
+      {
+        "id": "Q881",
+        "label": "training trainers"
+      },
+      {
+        "id": "Q818",
+        "label": "water management sector"
+      },
+      {
+        "id": "Q1548",
+        "label": "technical and vocational education and training"
+      },
+      {
+        "id": "Q1020",
+        "label": "sustainable development goal 2"
+      },
+      {
+        "id": "Q1109",
+        "label": "SDG target 4.2"
+      },
+      {
+        "id": "Q1022",
+        "label": "sustainable development goal 4"
+      },
+      {
+        "id": "Q1018",
+        "label": "sustainable development goals"
+      },
+      {
+        "id": "Q1035",
+        "label": "sustainable development goal 17"
+      },
+      {
+        "id": "Q1111",
+        "label": "SDG target 4.4"
+      },
+      {
+        "id": "Q1583",
+        "label": "climate change governance"
+      },
+      {
+        "id": "Q1028",
+        "label": "sustainable development goal 10"
+      },
+      {
+        "id": "Q882",
+        "label": "educational support activities"
+      },
+      {
+        "id": "Q1570",
+        "label": "education management"
+      },
+      {
+        "id": "Q877",
+        "label": "pre-primary education"
+      },
+      {
+        "id": "Q1024",
+        "label": "sustainable development goal 7"
+      },
+      {
+        "id": "Q704",
+        "label": "women and minority genders"
+      }
+    ],
+    "relationships": [
+      {
+        "source_id": "Q1117",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.c",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.c -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1117",
+        "target_id": "Q774",
+        "source_label": "SDG target 4.c",
+        "target_label": "education sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "SDG target 4.c -> education sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q709",
+        "source_label": "education sector",
+        "target_label": "economic sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "education sector -> economic sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q877",
+        "source_label": "education sector",
+        "target_label": "pre-primary education",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> pre-primary education (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q878",
+        "source_label": "education sector",
+        "target_label": "primary education",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> primary education (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q879",
+        "source_label": "education sector",
+        "target_label": "secondary and post-secondary non-tertiary education",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> secondary and post-secondary non-tertiary education (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q880",
+        "source_label": "education sector",
+        "target_label": "tertiary education",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> tertiary education (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q881",
+        "source_label": "education sector",
+        "target_label": "training trainers",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> training trainers (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q882",
+        "source_label": "education sector",
+        "target_label": "educational support activities",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> educational support activities (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1543",
+        "source_label": "education sector",
+        "target_label": "education for sustainable development",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> education for sustainable development (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1547",
+        "source_label": "education sector",
+        "target_label": "non-formal education",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> non-formal education (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1548",
+        "source_label": "education sector",
+        "target_label": "technical and vocational education and training",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "education sector -> technical and vocational education and training (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1022",
+        "source_label": "education sector",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education sector -> sustainable development goal 4 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1109",
+        "source_label": "education sector",
+        "target_label": "SDG target 4.2",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education sector -> SDG target 4.2 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1116",
+        "source_label": "education sector",
+        "target_label": "SDG target 4.b",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education sector -> SDG target 4.b (RELATED_TO)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1117",
+        "source_label": "education sector",
+        "target_label": "SDG target 4.c",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education sector -> SDG target 4.c (RELATED_TO)"
+      },
+      {
+        "source_id": "Q774",
+        "target_id": "Q1570",
+        "source_label": "education sector",
+        "target_label": "education management",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education sector -> education management (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1007",
+        "target_id": "Q368",
+        "source_label": "marine biodiversity loss",
+        "target_label": "marine risk",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "marine biodiversity loss -> marine risk (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1007",
+        "target_id": "Q1032",
+        "source_label": "marine biodiversity loss",
+        "target_label": "sustainable development goal 14",
+        "relationship_type": "RELATED_TO",
+        "formatted": "marine biodiversity loss -> sustainable development goal 14 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q787",
+        "target_id": "Q709",
+        "source_label": "forestry sector",
+        "target_label": "economic sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "forestry sector -> economic sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q787",
+        "target_id": "Q1033",
+        "source_label": "forestry sector",
+        "target_label": "sustainable development goal 15",
+        "relationship_type": "RELATED_TO",
+        "formatted": "forestry sector -> sustainable development goal 15 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1032",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 14",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 14 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1032",
+        "target_id": "Q1007",
+        "source_label": "sustainable development goal 14",
+        "target_label": "marine biodiversity loss",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 14 -> marine biodiversity loss (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1032",
+        "target_id": "Q368",
+        "source_label": "sustainable development goal 14",
+        "target_label": "marine risk",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 14 -> marine risk (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1032",
+        "target_id": "Q788",
+        "source_label": "sustainable development goal 14",
+        "target_label": "fishing sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 14 -> fishing sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1607",
+        "target_id": "Q779",
+        "source_label": "sustainable finance",
+        "target_label": "finance and insurance sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable finance -> finance and insurance sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1607",
+        "target_id": "Q1018",
+        "source_label": "sustainable finance",
+        "target_label": "sustainable development goals",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable finance -> sustainable development goals (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1023",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 5",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 5 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1023",
+        "target_id": "Q704",
+        "source_label": "sustainable development goal 5",
+        "target_label": "women and minority genders",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 5 -> women and minority genders (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1023",
+        "target_id": "Q36",
+        "source_label": "sustainable development goal 5",
+        "target_label": "gender equality",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 5 -> gender equality (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1110",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.3",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.3 -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1547",
+        "target_id": "Q774",
+        "source_label": "non-formal education",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "non-formal education -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q368",
+        "target_id": "Q1007",
+        "source_label": "marine risk",
+        "target_label": "marine biodiversity loss",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "marine risk -> marine biodiversity loss (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q368",
+        "target_id": "Q1032",
+        "source_label": "marine risk",
+        "target_label": "sustainable development goal 14",
+        "relationship_type": "RELATED_TO",
+        "formatted": "marine risk -> sustainable development goal 14 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1115",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.a",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.a -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1019",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 1",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 1 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q1025",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "sustainable development goal 6",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Water management and conservation technologies -> sustainable development goal 6 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q157",
+        "target_id": "Q818",
+        "source_label": "Water management and conservation technologies",
+        "target_label": "water management sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "Water management and conservation technologies -> water management sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1113",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.6",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.6 -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1031",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 13",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 13 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q36",
+        "target_id": "Q704",
+        "source_label": "gender equality",
+        "target_label": "women and minority genders",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gender equality -> women and minority genders (RELATED_TO)"
+      },
+      {
+        "source_id": "Q36",
+        "target_id": "Q1112",
+        "source_label": "gender equality",
+        "target_label": "SDG target 4.5",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gender equality -> SDG target 4.5 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q36",
+        "target_id": "Q1023",
+        "source_label": "gender equality",
+        "target_label": "sustainable development goal 5",
+        "relationship_type": "RELATED_TO",
+        "formatted": "gender equality -> sustainable development goal 5 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q874",
+        "target_id": "Q1582",
+        "source_label": "governance sector",
+        "target_label": "sustainability governance",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "governance sector -> sustainability governance (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q879",
+        "target_id": "Q774",
+        "source_label": "secondary and post-secondary non-tertiary education",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "secondary and post-secondary non-tertiary education -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1008",
+        "target_id": "Q404",
+        "source_label": "terrestrial biodiversity loss",
+        "target_label": "terrestrial risk",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "terrestrial biodiversity loss -> terrestrial risk (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1008",
+        "target_id": "Q1033",
+        "source_label": "terrestrial biodiversity loss",
+        "target_label": "sustainable development goal 15",
+        "relationship_type": "RELATED_TO",
+        "formatted": "terrestrial biodiversity loss -> sustainable development goal 15 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1116",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.b",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.b -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1116",
+        "target_id": "Q774",
+        "source_label": "SDG target 4.b",
+        "target_label": "education sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "SDG target 4.b -> education sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1108",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.1",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.1 -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q695",
+        "target_id": "Q1109",
+        "source_label": "youth",
+        "target_label": "SDG target 4.2",
+        "relationship_type": "RELATED_TO",
+        "formatted": "youth -> SDG target 4.2 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1026",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 8",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 8 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1033",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 15",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 15 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1033",
+        "target_id": "Q404",
+        "source_label": "sustainable development goal 15",
+        "target_label": "terrestrial risk",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 15 -> terrestrial risk (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1033",
+        "target_id": "Q1008",
+        "source_label": "sustainable development goal 15",
+        "target_label": "terrestrial biodiversity loss",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 15 -> terrestrial biodiversity loss (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1033",
+        "target_id": "Q787",
+        "source_label": "sustainable development goal 15",
+        "target_label": "forestry sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 15 -> forestry sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1033",
+        "target_id": "Q786",
+        "source_label": "sustainable development goal 15",
+        "target_label": "agriculture sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 15 -> agriculture sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q878",
+        "target_id": "Q774",
+        "source_label": "primary education",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "primary education -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q786",
+        "target_id": "Q709",
+        "source_label": "agriculture sector",
+        "target_label": "economic sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "agriculture sector -> economic sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q786",
+        "target_id": "Q788",
+        "source_label": "agriculture sector",
+        "target_label": "fishing sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "agriculture sector -> fishing sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q786",
+        "target_id": "Q1020",
+        "source_label": "agriculture sector",
+        "target_label": "sustainable development goal 2",
+        "relationship_type": "RELATED_TO",
+        "formatted": "agriculture sector -> sustainable development goal 2 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q786",
+        "target_id": "Q1033",
+        "source_label": "agriculture sector",
+        "target_label": "sustainable development goal 15",
+        "relationship_type": "RELATED_TO",
+        "formatted": "agriculture sector -> sustainable development goal 15 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q709",
+        "target_id": "Q762",
+        "source_label": "economic sector",
+        "target_label": "energy supply sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "economic sector -> energy supply sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q709",
+        "target_id": "Q774",
+        "source_label": "economic sector",
+        "target_label": "education sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "economic sector -> education sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q709",
+        "target_id": "Q779",
+        "source_label": "economic sector",
+        "target_label": "finance and insurance sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "economic sector -> finance and insurance sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q709",
+        "target_id": "Q786",
+        "source_label": "economic sector",
+        "target_label": "agriculture sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "economic sector -> agriculture sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q709",
+        "target_id": "Q787",
+        "source_label": "economic sector",
+        "target_label": "forestry sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "economic sector -> forestry sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q709",
+        "target_id": "Q788",
+        "source_label": "economic sector",
+        "target_label": "fishing sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "economic sector -> fishing sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q709",
+        "target_id": "Q818",
+        "source_label": "economic sector",
+        "target_label": "water management sector",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "economic sector -> water management sector (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1030",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 12",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 12 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1112",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.5",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.5 -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1112",
+        "target_id": "Q36",
+        "source_label": "SDG target 4.5",
+        "target_label": "gender equality",
+        "relationship_type": "RELATED_TO",
+        "formatted": "SDG target 4.5 -> gender equality (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1112",
+        "target_id": "Q672",
+        "source_label": "SDG target 4.5",
+        "target_label": "impacted group",
+        "relationship_type": "RELATED_TO",
+        "formatted": "SDG target 4.5 -> impacted group (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1582",
+        "target_id": "Q874",
+        "source_label": "sustainability governance",
+        "target_label": "governance sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainability governance -> governance sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1582",
+        "target_id": "Q1583",
+        "source_label": "sustainability governance",
+        "target_label": "climate change governance",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainability governance -> climate change governance (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1582",
+        "target_id": "Q1586",
+        "source_label": "sustainability governance",
+        "target_label": "natural resource management",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainability governance -> natural resource management (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1582",
+        "target_id": "Q1018",
+        "source_label": "sustainability governance",
+        "target_label": "sustainable development goals",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainability governance -> sustainable development goals (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1021",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 3",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 3 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1025",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 6",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 6 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1025",
+        "target_id": "Q157",
+        "source_label": "sustainable development goal 6",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 6 -> Water management and conservation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1025",
+        "target_id": "Q818",
+        "source_label": "sustainable development goal 6",
+        "target_label": "water management sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 6 -> water management sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q404",
+        "target_id": "Q1008",
+        "source_label": "terrestrial risk",
+        "target_label": "terrestrial biodiversity loss",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "terrestrial risk -> terrestrial biodiversity loss (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q404",
+        "target_id": "Q1033",
+        "source_label": "terrestrial risk",
+        "target_label": "sustainable development goal 15",
+        "relationship_type": "RELATED_TO",
+        "formatted": "terrestrial risk -> sustainable development goal 15 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q567",
+        "target_id": "Q1024",
+        "source_label": "renewables",
+        "target_label": "sustainable development goal 7",
+        "relationship_type": "RELATED_TO",
+        "formatted": "renewables -> sustainable development goal 7 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1027",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 9",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 9 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1543",
+        "target_id": "Q774",
+        "source_label": "education for sustainable development",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "education for sustainable development -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1543",
+        "target_id": "Q1570",
+        "source_label": "education for sustainable development",
+        "target_label": "education management",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education for sustainable development -> education management (RELATED_TO)"
+      },
+      {
+        "source_id": "Q672",
+        "target_id": "Q1112",
+        "source_label": "impacted group",
+        "target_label": "SDG target 4.5",
+        "relationship_type": "RELATED_TO",
+        "formatted": "impacted group -> SDG target 4.5 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1114",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.7",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.7 -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1029",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 11",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 11 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1034",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 16",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 16 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q779",
+        "target_id": "Q709",
+        "source_label": "finance and insurance sector",
+        "target_label": "economic sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "finance and insurance sector -> economic sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q779",
+        "target_id": "Q1607",
+        "source_label": "finance and insurance sector",
+        "target_label": "sustainable finance",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "finance and insurance sector -> sustainable finance (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q880",
+        "target_id": "Q774",
+        "source_label": "tertiary education",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "tertiary education -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q788",
+        "target_id": "Q709",
+        "source_label": "fishing sector",
+        "target_label": "economic sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "fishing sector -> economic sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q788",
+        "target_id": "Q786",
+        "source_label": "fishing sector",
+        "target_label": "agriculture sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fishing sector -> agriculture sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q788",
+        "target_id": "Q1032",
+        "source_label": "fishing sector",
+        "target_label": "sustainable development goal 14",
+        "relationship_type": "RELATED_TO",
+        "formatted": "fishing sector -> sustainable development goal 14 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q762",
+        "target_id": "Q709",
+        "source_label": "energy supply sector",
+        "target_label": "economic sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "energy supply sector -> economic sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q762",
+        "target_id": "Q1024",
+        "source_label": "energy supply sector",
+        "target_label": "sustainable development goal 7",
+        "relationship_type": "RELATED_TO",
+        "formatted": "energy supply sector -> sustainable development goal 7 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1586",
+        "target_id": "Q1582",
+        "source_label": "natural resource management",
+        "target_label": "sustainability governance",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "natural resource management -> sustainability governance (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q881",
+        "target_id": "Q774",
+        "source_label": "training trainers",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "training trainers -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q818",
+        "target_id": "Q709",
+        "source_label": "water management sector",
+        "target_label": "economic sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "water management sector -> economic sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q818",
+        "target_id": "Q1025",
+        "source_label": "water management sector",
+        "target_label": "sustainable development goal 6",
+        "relationship_type": "RELATED_TO",
+        "formatted": "water management sector -> sustainable development goal 6 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q818",
+        "target_id": "Q157",
+        "source_label": "water management sector",
+        "target_label": "Water management and conservation technologies",
+        "relationship_type": "RELATED_TO",
+        "formatted": "water management sector -> Water management and conservation technologies (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1548",
+        "target_id": "Q774",
+        "source_label": "technical and vocational education and training",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "technical and vocational education and training -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1020",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 2",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 2 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1020",
+        "target_id": "Q786",
+        "source_label": "sustainable development goal 2",
+        "target_label": "agriculture sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 2 -> agriculture sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1109",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.2",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.2 -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1109",
+        "target_id": "Q774",
+        "source_label": "SDG target 4.2",
+        "target_label": "education sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "SDG target 4.2 -> education sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1109",
+        "target_id": "Q695",
+        "source_label": "SDG target 4.2",
+        "target_label": "youth",
+        "relationship_type": "RELATED_TO",
+        "formatted": "SDG target 4.2 -> youth (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 4",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 4 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1108",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.1",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.1 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1109",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.2",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.2 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1110",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.3",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.3 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1111",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.4",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.4 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1112",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.5",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.5 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1113",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.6",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.6 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1114",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.7",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.7 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1115",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.a",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.a (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1116",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.b",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.b (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q1117",
+        "source_label": "sustainable development goal 4",
+        "target_label": "SDG target 4.c",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goal 4 -> SDG target 4.c (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1022",
+        "target_id": "Q774",
+        "source_label": "sustainable development goal 4",
+        "target_label": "education sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 4 -> education sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1019",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 1",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 1 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1020",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 2",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 2 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1021",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 3",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 3 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1022",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 4 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1023",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 5",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 5 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1025",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 6",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 6 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1024",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 7",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 7 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1026",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 8",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 8 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1027",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 9",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 9 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1028",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 10",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 10 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1029",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 11",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 11 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1030",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 12",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 12 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1031",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 13",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 13 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1032",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 14",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 14 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1033",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 15",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 15 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1034",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 16",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 16 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1035",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable development goal 17",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "sustainable development goals -> sustainable development goal 17 (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1582",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainability governance",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goals -> sustainability governance (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1018",
+        "target_id": "Q1607",
+        "source_label": "sustainable development goals",
+        "target_label": "sustainable finance",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goals -> sustainable finance (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1035",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 17",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 17 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1111",
+        "target_id": "Q1022",
+        "source_label": "SDG target 4.4",
+        "target_label": "sustainable development goal 4",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "SDG target 4.4 -> sustainable development goal 4 (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1583",
+        "target_id": "Q1582",
+        "source_label": "climate change governance",
+        "target_label": "sustainability governance",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "climate change governance -> sustainability governance (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1028",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 10",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 10 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q882",
+        "target_id": "Q774",
+        "source_label": "educational support activities",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "educational support activities -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1570",
+        "target_id": "Q774",
+        "source_label": "education management",
+        "target_label": "education sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education management -> education sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1570",
+        "target_id": "Q1543",
+        "source_label": "education management",
+        "target_label": "education for sustainable development",
+        "relationship_type": "RELATED_TO",
+        "formatted": "education management -> education for sustainable development (RELATED_TO)"
+      },
+      {
+        "source_id": "Q877",
+        "target_id": "Q774",
+        "source_label": "pre-primary education",
+        "target_label": "education sector",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "pre-primary education -> education sector (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1024",
+        "target_id": "Q1018",
+        "source_label": "sustainable development goal 7",
+        "target_label": "sustainable development goals",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "sustainable development goal 7 -> sustainable development goals (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1024",
+        "target_id": "Q567",
+        "source_label": "sustainable development goal 7",
+        "target_label": "renewables",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 7 -> renewables (RELATED_TO)"
+      },
+      {
+        "source_id": "Q1024",
+        "target_id": "Q762",
+        "source_label": "sustainable development goal 7",
+        "target_label": "energy supply sector",
+        "relationship_type": "RELATED_TO",
+        "formatted": "sustainable development goal 7 -> energy supply sector (RELATED_TO)"
+      },
+      {
+        "source_id": "Q704",
+        "target_id": "Q1023",
+        "source_label": "women and minority genders",
+        "target_label": "sustainable development goal 5",
+        "relationship_type": "RELATED_TO",
+        "formatted": "women and minority genders -> sustainable development goal 5 (RELATED_TO)"
+      },
+      {
+        "source_id": "Q704",
+        "target_id": "Q36",
+        "source_label": "women and minority genders",
+        "target_label": "gender equality",
+        "relationship_type": "RELATED_TO",
+        "formatted": "women and minority genders -> gender equality (RELATED_TO)"
+      }
+    ],
+    "query": "What sustainable energy solutions are best for Mozambique?",
+    "extraction_method": "query_and_mcp_enhanced",
+    "query_concepts_count": 7,
+    "mcp_concepts_count": 0,
+    "total_concepts_found": 7,
+    "mcp_concepts": [],
+    "links": [
+      {
+        "source": "Q1117",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1117",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q877",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q878",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q879",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q880",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q881",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q882",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1543",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1547",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1548",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1022",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1109",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1116",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1117",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q774",
+        "target": "Q1570",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1007",
+        "target": "Q368",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1007",
+        "target": "Q1032",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q787",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q787",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q1007",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q368",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1032",
+        "target": "Q788",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1607",
+        "target": "Q779",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1607",
+        "target": "Q1018",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1023",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1023",
+        "target": "Q704",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1023",
+        "target": "Q36",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1110",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1547",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q368",
+        "target": "Q1007",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q368",
+        "target": "Q1032",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1115",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1019",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q157",
+        "target": "Q1025",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q157",
+        "target": "Q818",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1113",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1031",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q36",
+        "target": "Q704",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q36",
+        "target": "Q1112",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q36",
+        "target": "Q1023",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q874",
+        "target": "Q1582",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q879",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1008",
+        "target": "Q404",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1008",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1116",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1116",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1108",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q695",
+        "target": "Q1109",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1026",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q404",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q1008",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q787",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1033",
+        "target": "Q786",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q878",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q788",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q1020",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q786",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q762",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q774",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q779",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q786",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q787",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q788",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q709",
+        "target": "Q818",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1030",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1112",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1112",
+        "target": "Q36",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1112",
+        "target": "Q672",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q874",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q1583",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q1586",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1582",
+        "target": "Q1018",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1021",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1025",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1025",
+        "target": "Q157",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1025",
+        "target": "Q818",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q404",
+        "target": "Q1008",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q404",
+        "target": "Q1033",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q567",
+        "target": "Q1024",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1027",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1543",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1543",
+        "target": "Q1570",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q672",
+        "target": "Q1112",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1114",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1029",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1034",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q779",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q779",
+        "target": "Q1607",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q880",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q788",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q788",
+        "target": "Q786",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q788",
+        "target": "Q1032",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q762",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q762",
+        "target": "Q1024",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1586",
+        "target": "Q1582",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q881",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q818",
+        "target": "Q709",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q818",
+        "target": "Q1025",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q818",
+        "target": "Q157",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1548",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1020",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1020",
+        "target": "Q786",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1109",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1109",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1109",
+        "target": "Q695",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1108",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1109",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1110",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1111",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1112",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1113",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1114",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1115",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1116",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q1117",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1022",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1019",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1020",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1021",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1022",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1023",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1025",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1024",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1026",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1027",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1028",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1029",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1030",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1031",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1032",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1033",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1034",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1035",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1582",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1018",
+        "target": "Q1607",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1035",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1111",
+        "target": "Q1022",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1583",
+        "target": "Q1582",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1028",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q882",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1570",
+        "target": "Q774",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1570",
+        "target": "Q1543",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q877",
+        "target": "Q774",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q1018",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q567",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1024",
+        "target": "Q762",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q704",
+        "target": "Q1023",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      },
+      {
+        "source": "Q704",
+        "target": "Q36",
+        "type": "RELATED_TO",
+        "weight": 1.0
+      }
+    ]
+  },
+  "generated_at": "449828.697"
+}

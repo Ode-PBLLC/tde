@@ -1,0 +1,39 @@
+{
+  "query": "Show me solar assets within 1km of deforestation",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "solar_energy",
+        "label": "solar energy",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "solar"
+      },
+      {
+        "id": "deforestation",
+        "label": "deforestation",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "solar"
+      }
+    ],
+    "links": [
+      {
+        "source": "solar_energy",
+        "target": "deforestation",
+        "type": "INTERSECTS"
+      }
+    ],
+    "edges": [
+      {
+        "source": "solar_energy",
+        "target": "deforestation",
+        "type": "INTERSECTS",
+        "label": "INTERSECTS"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "13696.988"
+}

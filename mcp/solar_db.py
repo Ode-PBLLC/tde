@@ -51,7 +51,7 @@ class SolarDatabase:
             cursor = conn.cursor()
             
             query = """
-            SELECT cluster_id, capacity_mw, constructed_before, constructed_after, latitude, longitude, country
+            SELECT cluster_id, capacity_mw, constructed_before, constructed_after, source_date, latitude, longitude, country
             FROM solar_facilities 
             WHERE country = ? COLLATE NOCASE
             AND (capacity_mw IS NULL OR capacity_mw >= ?)
@@ -60,7 +60,28 @@ class SolarDatabase:
             
             cursor.execute(query, (normalized_country, min_capacity, limit))
             rows = cursor.fetchall()
-            
+
+            return [dict(row) for row in rows]
+
+    def get_all_facilities(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Load facility records into memory for downstream correlation workflows."""
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            query = (
+                "SELECT cluster_id, source, source_date, capacity_mw, constructed_before, "
+                "constructed_after, latitude, longitude, country "
+                "FROM solar_facilities"
+            )
+            params: List[Any] = []
+            if limit is not None:
+                query += " LIMIT ?"
+                params.append(limit)
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
             return [dict(row) for row in rows]
     
     def get_facilities_in_radius(self, latitude: float, longitude: float, radius_km: float = 50, 
@@ -170,7 +191,7 @@ class SolarDatabase:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            query = "SELECT cluster_id, capacity_mw, constructed_before, constructed_after, latitude, longitude, country FROM solar_facilities WHERE 1=1"
+            query = "SELECT cluster_id, capacity_mw, constructed_before, constructed_after, source_date, latitude, longitude, country FROM solar_facilities WHERE 1=1"
             params = []
             
             if country:

@@ -1587,28 +1587,28 @@ class GistServerV2(RunQueryMixin):
             "metadata": response.get("metadata", {}),
         }
 
-    def _get_biodiversity_trends_viz(self, filters: Dict[str, Any]) -> Dict[str, Any]:
-        company_code = filters.get("company_code")
-        if not company_code:
-            return {"error": "company_code filter required"}
-        response = self.get_biodiversity_impacts(company_code, year=None)
-        if "error" in response:
-            return response
-        data = response.get("impacts_by_year", [])
-        return {
-            "visualization_type": "biodiversity_trends",
-            "data": data,
-            "chart_config": {
-                "x_axis": "reporting_year",
-                "y_axis": "total_impacts.pdf",
-                "title": f"Biodiversity PDF impacts for {company_code}",
-                "chart_type": "line",
-            },
-            "metadata": {
-                "company_code": company_code,
-                "years": [item.get("reporting_year") for item in data],
-            },
-        }
+    # def _get_biodiversity_trends_viz(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+    #     company_code = filters.get("company_code")
+    #     if not company_code:
+    #         return {"error": "company_code filter required"}
+    #     response = self.get_biodiversity_impacts(company_code, year=None)
+    #     if "error" in response:
+    #         return response
+    #     data = response.get("impacts_by_year", [])
+    #     return {
+    #         "visualization_type": "biodiversity_trends",
+    #         "data": data,
+    #         "chart_config": {
+    #             "x_axis": "reporting_year",
+    #             "y_axis": "total_impacts.pdf",
+    #             "title": f"Biodiversity PDF impacts for {company_code}",
+    #             "chart_type": "line",
+    #         },
+    #         "metadata": {
+    #             "company_code": company_code,
+    #             "years": [item.get("reporting_year") for item in data],
+    #         },
+    #     }
 
     def _get_scope3_breakdown_viz(self, filters: Dict[str, Any]) -> Dict[str, Any]:
         company_code = filters.get("company_code")
@@ -1855,13 +1855,161 @@ class GistServerV2(RunQueryMixin):
                 # returns top companies with the most assets at high riverine-flood risk in Brazil
             """
 
-            return self.get_risk_by_category(
+            ranking = self.get_risk_by_category(
                 risk_type=risk_type,
                 risk_level=risk_level,
                 limit=limit,
                 country=country,
                 sector=sector,
             )
+
+            # Surface errors directly for planner diagnostics.
+            if ranking.get("error"):
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {
+                            "level": "warning",
+                            "text": str(ranking["error"]),
+                        }
+                    ],
+                    "citation": {
+                        "tool": "GetGistRiskByCategory",
+                        "title": "GIST hazard ranking",
+                        "source_type": "Dataset",
+                        "description": _dataset_citation(DATASET_ID),
+                        "metadata": {
+                            "risk_type": risk_type,
+                            "risk_level": risk_level,
+                            "country": country,
+                            "sector": sector,
+                        },
+                    },
+                    "details": ranking,
+                }
+
+            companies = ranking.get("companies") or []
+            if not companies:
+                return {
+                    "summary": None,
+                    "facts": [],
+                    "artifacts": [],
+                    "messages": [
+                        {
+                            "level": "info",
+                            "text": "No companies meet the requested hazard criteria.",
+                        }
+                    ],
+                    "citation": {
+                        "tool": "GetGistRiskByCategory",
+                        "title": "GIST hazard ranking",
+                        "source_type": "Dataset",
+                        "description": _dataset_citation(DATASET_ID),
+                        "metadata": {
+                            "risk_type": risk_type,
+                            "risk_level": risk_level,
+                            "country": country,
+                            "sector": sector,
+                        },
+                    },
+                    "details": ranking,
+                }
+
+            # Ensure downstream consumers receive native Python primitives.
+            ranking_native = self._to_native(ranking)
+            companies_native: List[Dict[str, Any]] = [
+                self._to_native(company) for company in companies
+                if isinstance(company, Mapping)
+            ]
+            if companies_native:
+                ranking_native["companies"] = companies_native
+                top_company = companies_native[0]
+            else:
+                top_company = companies[0]
+
+            risk_label = str(ranking.get("risk_type", risk_type)).replace("_", " ").lower()
+            level_label = str(ranking.get("risk_level", risk_level)).replace("_", " ").lower()
+            location_phrase = f" in {country}" if country else ""
+
+            top_name = top_company.get("company_name", "Unknown")
+            top_code = top_company.get("company_code", "Unknown")
+            top_assets = top_company.get("high_risk_assets", 0)
+            top_pct = top_company.get("high_risk_percentage", 0)
+
+            summary = (
+                f"{top_name} ({top_code}) shows the highest share of assets at {level_label} "
+                f"{risk_label}{location_phrase}, with {top_assets} assets accounting for "
+                f"{top_pct}% of those assessed."
+            )
+
+            facts: List[str] = []
+            for idx, company in enumerate(companies_native[: min(3, len(companies_native))], start=1):
+                facts.append(
+                    (
+                        f"#{idx}: {company.get('company_name', 'Unknown')} ({company.get('company_code', 'Unknown')}) "
+                        f"has {company.get('high_risk_assets', 0)} assets at {risk_label} {level_label} "
+                        f"risk, representing {company.get('high_risk_percentage', 0)}% of assessed assets."
+                    )
+                )
+
+            table_rows: List[List[Any]] = []
+            for idx, company in enumerate(companies_native, start=1):
+                table_rows.append(
+                    [
+                        idx,
+                        company.get("company_name"),
+                        company.get("company_code"),
+                        company.get("sector_code"),
+                        company.get("country"),
+                        company.get("high_risk_assets"),
+                        company.get("high_risk_percentage"),
+                    ]
+                )
+
+            artifact = {
+                "type": "table",
+                "title": "Company exposure ranking",
+                "metadata": {
+                    "risk_type": ranking.get("risk_type", risk_type),
+                    "risk_level": ranking.get("risk_level", risk_level),
+                    "country": country,
+                    "sector": sector,
+                },
+                "columns": [
+                    "rank",
+                    "company_name",
+                    "company_code",
+                    "sector_code",
+                    "country",
+                    "high_risk_assets",
+                    "high_risk_percentage",
+                ],
+                "rows": table_rows,
+            }
+
+            citation = {
+                "tool": "GetGistRiskByCategory",
+                "title": "GIST hazard ranking",
+                "source_type": "Dataset",
+                "description": _dataset_citation(DATASET_ID),
+                "metadata": {
+                    "risk_type": ranking.get("risk_type", risk_type),
+                    "risk_level": ranking.get("risk_level", risk_level),
+                    "country": country,
+                    "sector": sector,
+                },
+            }
+
+            return {
+                "summary": summary,
+                "facts": facts,
+                "artifacts": [artifact],
+                "messages": [],
+                "citation": citation,
+                "details": ranking_native,
+            }
 
         @self.mcp.tool()
         def GetGistHighRiskCompanies(
@@ -1974,19 +2122,84 @@ class GistServerV2(RunQueryMixin):
         ) -> Dict[str, Any]:  # type: ignore[misc]
             """Get deforestation proximity indicators."""
 
-            return self.get_deforestation_risks(company_code)
-
-        @self.mcp.tool()
-        def GetGistDeforestationExposed(limit: int = 20) -> Dict[str, Any]:  # type: ignore[misc]
-            """List companies with high deforestation proximity risk."""
-
-            return self.get_deforestation_exposed(limit)
+            payload = self.get_deforestation_risks(company_code)
+            facts: List[str] = []
+            if payload.get("error"):
+                facts.append(str(payload["error"]))
+            else:
+                if company_code:
+                    indicators = payload.get("deforestation_indicators", {}) or {}
+                    yes_flags = [name for name, value in indicators.items() if value]
+                    risk_level = payload.get("risk_level", "unknown").lower()
+                    if yes_flags:
+                        formatted = ", ".join(flag.replace("_", " ") for flag in yes_flags)
+                        facts.append(
+                            f"{payload.get('company_name', company_code)} triggers deforestation risk indicators: {formatted}."
+                        )
+                    else:
+                        facts.append(
+                            f"{payload.get('company_name', company_code)} shows no high deforestation proximity signals (risk level: {risk_level})."
+                        )
+                else:
+                    total = payload.get("total_companies", 0)
+                    high_fraction = payload.get("companies_high_fraction", 0)
+                    extreme = payload.get("companies_extreme_proximity", 0)
+                    facts.append(
+                        f"GIST identifies {high_fraction} of {total} tracked companies with a high fraction of assets near recent forest change, and {extreme} with extreme proximity."
+                    )
+            if not facts:
+                facts.append("No deforestation proximity indicators were available for this request.")
+            payload["summary_fact"] = facts[0]
+            payload["facts"] = facts
+            payload["citation"] = {
+                "id": "gist-deforestation",
+                "server": "gist",
+                "tool": "GetGistDeforestationRisks",
+                "title": "GIST Deforestation Proximity Summary",
+                "source_type": "Dataset",
+                "description": _dataset_citation(DATASET_ID),
+                "metadata": {"dataset": "DEFORESTATION"},
+            }
+            return payload
 
         @self.mcp.tool()
         def GetGistForestChangeProximity() -> Dict[str, Any]:  # type: ignore[misc]
             """Analyze forest change proximity across companies."""
 
-            return self.get_forest_change_proximity()
+            payload = self.get_forest_change_proximity()
+            facts: List[str] = []
+            if payload.get("error"):
+                facts.append(str(payload["error"]))
+            else:
+                sectors = payload.get("sector_analysis") or {}
+                if sectors:
+                    top_sector, stats = max(
+                        sectors.items(),
+                        key=lambda item: item[1].get("high_fraction_percentage", 0),
+                    )
+                    facts.append(
+                        f"{stats.get('high_fraction_percentage', 0)}% of companies in the {top_sector} sector have a high fraction of assets near forest change."
+                    )
+                total = payload.get("total_companies", 0)
+                if total:
+                    overall = payload.get("companies_high_fraction", 0)
+                    facts.append(
+                        f"Across all sectors, {overall} of {total} companies show high forest-change proximity indicators."
+                    )
+            if not facts:
+                facts.append("No forest change proximity statistics were available for this request.")
+            payload["summary_fact"] = facts[0]
+            payload["facts"] = facts
+            payload["citation"] = {
+                "id": "gist-deforestation-sectors",
+                "server": "gist",
+                "tool": "GetGistForestChangeProximity",
+                "title": "GIST Deforestation Proximity Summary",
+                "source_type": "Dataset",
+                "description": _dataset_citation(DATASET_ID),
+                "metadata": {"dataset": "DEFORESTATION"},
+            }
+            return payload
 
     def _register_visualization_tools(self) -> None:
         @self.mcp.tool()
@@ -2327,34 +2540,34 @@ class GistServerV2(RunQueryMixin):
                             }
                         )
 
-                _append_series("Total Scope 3 Emissions", "total_scope3_emissions", palette[0])
-                _append_series("Upstream Emissions", "upstream_emissions", palette[1])
-                _append_series("Downstream Emissions", "downstream_emissions", palette[2])
+                # _append_series("Total Scope 3 Emissions", "total_scope3_emissions", palette[0])
+                # _append_series("Upstream Emissions", "upstream_emissions", palette[1])
+                # _append_series("Downstream Emissions", "downstream_emissions", palette[2])
 
-                if datasets:
-                    artifacts.append(
-                        ArtifactPayload(
-                            id=f"gist-scope3-trend-{company_code.lower()}",
-                            type="chart",
-                            title=f"Scope 3 emissions by year – {company_name}",
-                            data={
-                                "labels": labels,
-                                "datasets": datasets,
-                            },
-                            metadata={
-                                "chartType": "line",
-                                "options": {
-                                    "responsive": True,
-                                    "plugins": {
-                                        "title": {
-                                            "display": True,
-                                            "text": f"Scope 3 emissions by year – {company_name}",
-                                        }
-                                    },
-                                },
-                            },
-                        )
-                    )
+                # if datasets:
+                #     artifacts.append(
+                #         ArtifactPayload(
+                #             id=f"gist-scope3-trend-{company_code.lower()}",
+                #             type="chart",
+                #             title=f"Scope 3 emissions by year – {company_name}",
+                #             data={
+                #                 "labels": labels,
+                #                 "datasets": datasets,
+                #             },
+                #             metadata={
+                #                 "chartType": "line",
+                #                 "options": {
+                #                     "responsive": True,
+                #                     "plugins": {
+                #                         "title": {
+                #                             "display": True,
+                #                             "text": f"Scope 3 emissions by year – {company_name}",
+                #                         }
+                #                     },
+                #                 },
+                #             },
+                #         )
+                #     )
         elif scope3_series.get("error"):
             messages.append(MessagePayload(level="info", text=scope3_series["error"]))
 

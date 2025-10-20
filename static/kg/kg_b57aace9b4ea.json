@@ -1,0 +1,402 @@
+{
+  "query": "how is brazil doing on its ndc commitments",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "congestion charge",
+        "type": "Concept",
+        "label": "congestion charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1237",
+        "type": "Concept",
+        "label": "dioxins",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fees and charges",
+        "type": "Concept",
+        "label": "fees and charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "tax advantage",
+        "type": "Concept",
+        "label": "tax advantage",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "direct investment",
+        "type": "Concept",
+        "label": "direct investment",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "imbalance charge",
+        "type": "Concept",
+        "label": "imbalance charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "manufacturing sector",
+        "type": "Concept",
+        "label": "manufacturing sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1379",
+        "type": "Concept",
+        "label": "charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "grant",
+        "type": "Concept",
+        "label": "grant",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "insurance",
+        "type": "Concept",
+        "label": "insurance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1519",
+        "type": "Concept",
+        "label": "mountain community",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "exposed community",
+        "type": "Concept",
+        "label": "exposed community",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q800",
+        "type": "Concept",
+        "label": "hideworking",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "avalanche",
+        "type": "Concept",
+        "label": "avalanche",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q722",
+        "type": "Concept",
+        "label": "economic instrument",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "subsidy removal",
+        "type": "Concept",
+        "label": "subsidy removal",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "persistent organic pollutants",
+        "type": "Concept",
+        "label": "persistent organic pollutants",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emission charge",
+        "type": "Concept",
+        "label": "emission charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "pollution charge",
+        "type": "Concept",
+        "label": "pollution charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "subsidy",
+        "type": "Concept",
+        "label": "subsidy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "user charge",
+        "type": "Concept",
+        "label": "user charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "loan",
+        "type": "Concept",
+        "label": "loan",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "tax",
+        "type": "Concept",
+        "label": "tax",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "policy instruments",
+        "type": "Concept",
+        "label": "policy instruments",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1237",
+        "target": "persistent organic pollutants",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q800",
+        "target": "manufacturing sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1519",
+        "target": "exposed community",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1519",
+        "target": "avalanche",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q722",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q722",
+        "target": "tax",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "tax advantage",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "grant",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "loan",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy removal",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "direct investment",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "fees and charges",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "insurance",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1237",
+        "target": "persistent organic pollutants",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q800",
+        "target": "manufacturing sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1519",
+        "target": "exposed community",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1519",
+        "target": "avalanche",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q722",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q722",
+        "target": "tax",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "tax advantage",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "grant",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "loan",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy removal",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "direct investment",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "fees and charges",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "insurance",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "57408.238"
+}

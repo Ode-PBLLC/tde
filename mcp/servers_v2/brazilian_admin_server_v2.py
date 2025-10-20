@@ -1375,30 +1375,23 @@ class BrazilianAdminServerV2(RunQueryMixin):
         return None
 
     def _heuristic_support(self, query: str) -> bool:
+        print("[brazil-admin] Heuristic support check")
         lowered = query.lower()
         keywords = [
             "municipality",
             "municipalities",
             "prefeitura",
-            "state",
-            "brazil",
-            "brazilian",
             "boundary",
+            "boundaries",
+            "geojson",
+            "polygon",
+            "shapefile",
+            "microregion",
+            "mesoregion",
+            "ibge",
             "map",
-            "region",
-            "area",
         ]
-        if any(word in lowered for word in keywords):
-            return True
-        if self.municipalities_gdf is not None:
-            for name in self.municipalities_gdf["name"].head(50).str.lower().tolist():
-                if name in lowered:
-                    return True
-        if self.states_gdf is not None:
-            for name in self.states_gdf["name"].str.lower().tolist():
-                if name in lowered:
-                    return True
-        return False
+        return any(word in lowered for word in keywords)
 
     # ------------------------------------------------------------------ run_query
     def handle_run_query(self, *, query: str, context: dict) -> RunQueryResponse:
@@ -1419,18 +1412,6 @@ class BrazilianAdminServerV2(RunQueryMixin):
 
         matched_states = self._detect_states(query)
         matched_municipalities = self._detect_municipalities(query, max_results=5)
-
-        def _is_empty(frame: Optional["gpd.GeoDataFrame"]) -> bool:
-            return frame is None or getattr(frame, "empty", True)
-
-        if _is_empty(matched_states) and _is_empty(matched_municipalities):
-            matched_states = self.states_gdf.sort_values("area_km2", ascending=False).head(1)
-            matched_municipalities = self.municipalities_gdf.sort_values(
-                "population", ascending=False
-            ).head(3)
-            default_reason = "No explicit matches; using dataset highlights"
-        else:
-            default_reason = ""
 
         citation = self._dataset_citation()
         facts: List[FactPayload] = []
@@ -1463,18 +1444,19 @@ class BrazilianAdminServerV2(RunQueryMixin):
                 )
             )
 
-        for _, row in matched_municipalities.iterrows():
-            facts.append(
-                FactPayload(
-                    id=f"muni_{self._slugify(row.get('muni_code'))}",
-                    text=(
-                        f"Municipality {row.get('name')} ({row.get('state')}) has around "
-                        f"{int(row.get('population', 0)):,} residents and covers roughly "
-                        f"{round(float(row.get('area_km2', 0.0)), 1):,} km²."
-                    ),
-                    citation_id=citation.id,
+        if matched_municipalities is not None and not matched_municipalities.empty:
+            for _, row in matched_municipalities.iterrows():
+                facts.append(
+                    FactPayload(
+                        id=f"muni_{self._slugify(row.get('muni_code'))}",
+                        text=(
+                            f"Municipality {row.get('name')} ({row.get('state')}) has around "
+                            f"{int(row.get('population', 0)):,} residents and covers roughly "
+                            f"{round(float(row.get('area_km2', 0.0)), 1):,} km²."
+                        ),
+                        citation_id=citation.id,
+                    )
                 )
-            )
 
         artifacts: List[ArtifactPayload] = []
         if matched_municipalities is not None and not matched_municipalities.empty:
@@ -1495,8 +1477,6 @@ class BrazilianAdminServerV2(RunQueryMixin):
             )
 
         messages: List[MessagePayload] = []
-        if default_reason:
-            messages.append(MessagePayload(level="info", text=default_reason))
 
         kg = self._assemble_kg(
             matched_states=matched_states,

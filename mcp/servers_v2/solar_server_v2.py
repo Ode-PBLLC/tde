@@ -5,7 +5,7 @@ returning results in the stricter v2 schema so downstream orchestrators can
 compose facts, maps, and tables deterministically.
 """
 
-from __future__ import annotations
+# from __future__ import annotations
 
 import hashlib
 import json
@@ -15,7 +15,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 try:  # pragma: no cover - optional dependency
     import anthropic  # type: ignore
@@ -200,6 +200,10 @@ SOLAR_MUNICIPALITY_STATS_PATH = (
 )
 
 CIRCLE_BUFFER_METERS = 1_000.0
+FACILITY_BUFFER_MIN_METERS = 2_000.0
+FACILITY_BUFFER_MAX_METERS = 10_000.0
+FACILITY_BUFFER_SCALE_PER_KM = 600.0  # metres to use per requested kilometre radius
+FACILITY_BUFFER_COLOR = "#1E88E5"
 
 
 def _buffer_point_as_circle(lon: float, lat: float, radius_m: float = CIRCLE_BUFFER_METERS) -> Dict[str, Any]:
@@ -278,7 +282,7 @@ class SolarServerV2(RunQueryMixin):
         self._register_tool_capacity_by_country()
         self._register_tool_capacity_by_state()
         self._register_tool_capacity_by_municipality()
-        self._register_tool_construction_timeline()
+        # self._register_tool_construction_timeline()
         self._register_tool_largest_facilities()
         self._register_tool_facility_details()
         self._register_tool_facility_location()
@@ -295,6 +299,36 @@ class SolarServerV2(RunQueryMixin):
         self._brazil_states: Dict[str, BrazilState] = {}
         self._brazil_state_aliases: Dict[str, Dict[str, Any]] = {}
         self._load_brazil_states()
+
+    # ------------------------------------------------------------------ shared formatting helpers
+    def _dataset_citation_dict(self, *, description: Optional[str] = None) -> Dict[str, Any]:
+        meta = _dataset_metadata(DATASET_ID) or {}
+        citation_text = description or _dataset_citation(DATASET_ID) or DATASET_NAME
+        return {
+            "id": "tz_sam_q1_2025",
+            "title": meta.get("title") or DATASET_NAME,
+            "source_type": "Dataset",
+            "description": citation_text,
+            "url": meta.get("source") or DATASET_URL,
+            "provider": "TransitionZero",
+        }
+
+    @staticmethod
+    def _format_capacity(value: Any) -> str:
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return str(value)
+        if abs(numeric) >= 1_000:
+            return f"{numeric:,.0f}"
+        return f"{numeric:,.1f}"
+
+    @staticmethod
+    def _format_integer(value: Any) -> str:
+        try:
+            return f"{int(value):,}"
+        except (TypeError, ValueError):
+            return str(value)
 
     # ------------------------------------------------------------------ helpers
     def _normalize_text(self, text: str) -> str:
@@ -410,6 +444,94 @@ class SolarServerV2(RunQueryMixin):
         if alias:
             return self._brazil_states.get(alias["canonical"])
         return None
+
+    _LETTER_REF_PATTERN = re.compile(
+        r"\b(?:state|row|item|entry|option|label)\s+(?:you\s+)?(?:labeled|labelled)?\s*([A-Z])\b",
+        re.IGNORECASE,
+    )
+
+    def _extract_letter_reference(self, query: str) -> Optional[str]:
+        if not query:
+            return None
+        match = self._LETTER_REF_PATTERN.search(query)
+        if match:
+            letter = match.group(1).upper()
+            if len(letter) == 1 and letter.isalpha():
+                return letter
+        # Fallback for phrasing like "state B"
+        fallback = re.search(r"\bstate\s+([A-Z])\b", query)
+        if fallback:
+            letter = fallback.group(1).upper()
+            if len(letter) == 1:
+                return letter
+        return None
+
+    def _build_label_to_state_map(
+        self, modules: Iterable[Mapping[str, Any]]
+    ) -> Dict[str, str]:
+        mapping: Dict[str, str] = {}
+        for module in modules:
+            if not isinstance(module, Mapping):
+                continue
+            module_type = str(module.get("type") or "").lower()
+            texts: List[str] = []
+            if module_type == "text":
+                if isinstance(module.get("texts"), list):
+                    texts.extend(str(item) for item in module.get("texts") if item)
+                content = module.get("content")
+                if isinstance(content, str):
+                    texts.append(content)
+            elif module_type == "focus":
+                content = module.get("content")
+                if isinstance(content, str):
+                    texts.append(content)
+            elif module_type == "table":
+                rows = module.get("rows")
+                columns = module.get("columns") or []
+                if isinstance(rows, list) and rows:
+                    # Attempt to infer from table structure if first column contains labels
+                    for row in rows:
+                        if not isinstance(row, Sequence) or not row:
+                            continue
+                        label_candidate = str(row[0]).strip()
+                        if len(label_candidate) == 1 and label_candidate.isalpha():
+                            if len(row) > 1:
+                                texts.append(f"{label_candidate}. {row[1]}")
+            for text in texts:
+                if not text:
+                    continue
+                for match in re.finditer(r"\b([A-Z])\.[\s\u202f]+([^\n]+)", text):
+                    letter = match.group(1).upper()
+                    remainder = match.group(2).strip()
+                    if not remainder:
+                        continue
+                    # Trim at common delimiters
+                    name_part = re.split(r"[:–\-]|\(|,", remainder, maxsplit=1)[0].strip()
+                    if not name_part:
+                        continue
+                    state = self._match_brazil_state(name_part)
+                    if state:
+                        mapping[letter] = state.name
+        return mapping
+
+    def _infer_state_from_context(
+        self,
+        query: str,
+        context: Mapping[str, Any],
+    ) -> Optional[BrazilState]:
+        if not isinstance(context, Mapping):
+            return None
+        modules = context.get("previous_response_modules")
+        if not isinstance(modules, list):
+            return None
+        letter = self._extract_letter_reference(query)
+        if not letter:
+            return None
+        label_map = self._build_label_to_state_map(modules)
+        state_name = label_map.get(letter)
+        if not state_name:
+            return None
+        return self._match_brazil_state(state_name)
 
     @staticmethod
     def _chart_dataset(label: str, values: List[float], color: str, *, fill: bool = False) -> Dict[str, Any]:
@@ -923,12 +1045,30 @@ class SolarServerV2(RunQueryMixin):
         }
         return mapping.get(name.lower(), name)
 
+    @staticmethod
+    def _facility_buffer_radius_m(radius_km: Optional[float]) -> float:
+        if radius_km is None:
+            return FACILITY_BUFFER_MIN_METERS
+        try:
+            radius_value = max(0.0, float(radius_km))
+        except (TypeError, ValueError):
+            return FACILITY_BUFFER_MIN_METERS
+
+        scaled = radius_value * FACILITY_BUFFER_SCALE_PER_KM
+        if scaled <= 0:
+            return FACILITY_BUFFER_MIN_METERS
+        return max(
+            FACILITY_BUFFER_MIN_METERS,
+            min(FACILITY_BUFFER_MAX_METERS, scaled),
+        )
+
     def _generate_geojson(
         self,
         facilities: List[Any],
         identifier: str,
         *,
         polygons: Optional[Iterable[Any]] = None,
+        point_buffer_radius_km: Optional[float] = None,
     ) -> GeoJSONSummary:
         project_root = Path(__file__).resolve().parents[2]
         static_maps_dir = project_root / "static" / "maps"
@@ -946,8 +1086,14 @@ class SolarServerV2(RunQueryMixin):
         facility_label = "Solar Asset"
         facility_key = facility_label.lower()
         use_polygon_markers = polygons is not None
+        point_buffer_m = (
+            self._facility_buffer_radius_m(point_buffer_radius_km)
+            if use_polygon_markers
+            else None
+        )
 
         polygon_records = list(polygons or [])
+        polygon_features: List[Dict[str, Any]] = []
         polygon_stats: Dict[str, Dict[str, Any]] = {}
         for polygon in polygon_records:
             geometry_wkt = getattr(polygon, "geometry_wkt", None)
@@ -960,18 +1106,22 @@ class SolarServerV2(RunQueryMixin):
             except Exception:
                 continue
 
-            layer_name = str(properties.get("layer") or "deforestation_polygon")
-            if "country" not in properties:
-                properties = {**properties, "country": layer_name.replace("_", " ").lower()}
-            feature_collection["features"].append(
+            layer_name = "deforestation_polygon"
+            properties = {
+                **properties,
+                "country": properties.get("country")
+                or layer_name.replace("_", " ").lower(),
+                "polygon_id": polygon_id,
+                "layer": layer_name,
+                "color_value": 1,
+                "color_hex": POLYGON_LAYER_COLORS.get(layer_name, "#F4511E"),
+                "color": POLYGON_LAYER_COLORS.get(layer_name, "#F4511E"),
+            }
+            polygon_features.append(
                 {
                     "type": "Feature",
                     "geometry": mapping(geometry),
-                    "properties": {
-                        **properties,
-                        "polygon_id": polygon_id,
-                        "layer": layer_name,
-                    },
+                    "properties": properties,
                 }
             )
             stats = polygon_stats.setdefault(
@@ -1038,10 +1188,16 @@ class SolarServerV2(RunQueryMixin):
                 "constructed_before": facility_dict.get("constructed_before"),
                 "constructed_after": facility_dict.get("constructed_after"),
                 "layer": "solar_facility",
+                "color_value": 1,
+                "color_hex": FACILITY_BUFFER_COLOR,
             }
 
             if use_polygon_markers:
-                geometry_geojson = _buffer_point_as_circle(float(lon), float(lat))
+                geometry_geojson = _buffer_point_as_circle(
+                    float(lon),
+                    float(lat),
+                    radius_m=point_buffer_m or CIRCLE_BUFFER_METERS,
+                )
             else:
                 geometry_geojson = {
                     "type": "Point",
@@ -1073,15 +1229,43 @@ class SolarServerV2(RunQueryMixin):
                 "count": plotted_count,
                 "plotted_count": plotted_count,
                 "total_capacity_mw": round(total_capacity, 1),
-                "color": "#4CAF50",
+                "color": FACILITY_BUFFER_COLOR,
+                "color_property": "color_value",
+                "fill_style": {
+                    "type": "interpolate",
+                    "color_property": "color_value",
+                    "range": [0, 1],
+                    "colorMin": FACILITY_BUFFER_COLOR,
+                    "colorMax": FACILITY_BUFFER_COLOR,
+                },
+                "z_index": 1,
             }
         }
+        if point_buffer_m:
+            metadata["layers"]["solar_asset"]["buffer_radius_m"] = point_buffer_m
+        has_facilities = bool(facility_records)
+
+        filtered_polygon_stats: Dict[str, Dict[str, Any]] = {}
         for layer_name, stats in polygon_stats.items():
+            if layer_name == "deforestation_polygon" and not has_facilities:
+                continue
+            filtered_polygon_stats[layer_name] = stats
+
+        for layer_name, stats in filtered_polygon_stats.items():
             metadata_key = "deforestation_polygons" if layer_name == "deforestation_polygon" else layer_name
             layer_color = POLYGON_LAYER_COLORS.get(layer_name, "#1E88E5")
             layer_payload: Dict[str, Any] = {
                 "count": stats.get("count", 0),
                 "color": layer_color,
+                "color_property": "color_value",
+                "fill_style": {
+                    "type": "interpolate",
+                    "color_property": "color_value",
+                    "range": [0, 1],
+                    "colorMin": layer_color,
+                    "colorMax": layer_color,
+                },
+                "z_index": 2,
             }
             total_area = stats.get("total_area_hectares")
             if total_area:
@@ -1102,7 +1286,7 @@ class SolarServerV2(RunQueryMixin):
         legend_items.append(
             {
                 "label": facility_label,
-                "color": "#4CAF50",
+                "color": FACILITY_BUFFER_COLOR,
                 "description": f"{plotted_count} facilities",
             }
         )
@@ -1143,10 +1327,22 @@ class SolarServerV2(RunQueryMixin):
                 "average": round(sum(capacities) / len(capacities), 1),
             }
 
+        # Append polygons last so they draw above buffered facilities in most renderers.
+        if polygon_features:
+            if not has_facilities:
+                polygon_features = [
+                    feature
+                    for feature in polygon_features
+                    if feature.get("properties", {}).get("layer") != "deforestation_polygon"
+                ]
+            if polygon_features:
+                feature_collection["features"].extend(polygon_features)
+
         with open(output_path, "w", encoding="utf-8") as handle:
             json.dump({"type": "FeatureCollection", **feature_collection}, handle)
 
         metadata["geometry_type"] = "polygon" if use_polygon_markers or polygon_records else "point"
+        metadata["merge_group"] = "solar_facilities"
 
         return GeoJSONSummary(url=f"/static/maps/{filename}", metadata=metadata)
 
@@ -1172,7 +1368,18 @@ class SolarServerV2(RunQueryMixin):
                 >>> query_support("Map solar plants in Brazil", {})
             """
 
-            intent = self._classify_support(query)
+            context_mapping = context if isinstance(context, dict) else {}
+            inferred_state = self._infer_state_from_context(query, context_mapping)
+            if inferred_state:
+                intent = SupportIntent(
+                    supported=True,
+                    score=0.85,
+                    reasons=[
+                        f"Follow-up referencing {inferred_state.name} from earlier solar summary"
+                    ],
+                )
+            else:
+                intent = self._classify_support(query)
             payload = {
                 "server": "solar",
                 "query": query,
@@ -1244,22 +1451,47 @@ class SolarServerV2(RunQueryMixin):
 
     def _register_tool_map_data(self) -> None:
         @self.mcp.tool()
-        def get_solar_facilities_map_data(country: str | None = None, limit: int = 500) -> dict:  # type: ignore[misc]
+        def get_solar_facilities_map_data(country: str | None = None, limit: int = 5000) -> dict:  # type: ignore[misc]
             """Generate GeoJSON for facilities (optionally filtered by country).
 
             Example:
                 >>> get_solar_facilities_map_data(country="Brazil")
             """
 
-            if country:
-                facilities = self.db.get_facilities_by_country(self._normalize_country(country), limit=limit)
-            else:
-                facilities = self.db.get_facilities_by_country("Brazil", limit=limit)
-            geojson = self._generate_geojson(facilities, identifier=country or "brazil")
+            target_country = self._normalize_country(country) if country else "Brazil"
+            facilities = self.db.get_facilities_by_country(target_country, limit=limit)
+            geojson = self._generate_geojson(facilities, identifier=target_country.lower())
+
+            stats = self._country_statistics(target_country) or {}
+            facility_count = int(stats.get("facility_count") or len(facilities))
+            total_capacity = float(stats.get("total_capacity_mw") or 0.0)
+            if not total_capacity:
+                total_capacity = sum((f.get("capacity_mw") or 0.0) for f in facilities)
+
+            summary = f"Mapped {facility_count:,} tracked solar facilities in {target_country}."
+            facts: List[str] = []
+            if total_capacity:
+                facts.append(
+                    f"These sites represent roughly {self._format_capacity(total_capacity)} MW of capacity in {target_country}."
+                )
+
+            artifacts = [
+                {
+                    "type": "map",
+                    "title": f"Solar facilities in {target_country}",
+                    "geojson_url": geojson.url,
+                    "metadata": geojson.metadata,
+                }
+            ]
+
             return {
+                "country": target_country,
                 "geojson_url": geojson.url,
                 "metadata": geojson.metadata,
-                "country": country,
+                "summary": summary,
+                "facts": facts,
+                "artifacts": artifacts,
+                "citation": self._dataset_citation_dict(),
             }
 
     def _register_tool_facilities_for_geospatial(self) -> None:
@@ -1365,8 +1597,85 @@ class SolarServerV2(RunQueryMixin):
             """Return aggregated counts and capacity per country."""
 
             stats = self.db.get_country_statistics()
-            ranked = sorted(stats, key=lambda item: item.get("facility_count", 0), reverse=True)[:limit]
-            return {"countries": ranked, "limit": limit}
+            ranked = sorted(
+                stats,
+                key=lambda item: item.get("total_capacity_mw") or item.get("facility_count", 0),
+                reverse=True,
+            )[:limit]
+
+            labels = [item.get("country", "Unknown") for item in ranked]
+            values = [float(item.get("total_capacity_mw") or 0.0) for item in ranked]
+            chart = {
+                "labels": labels,
+                "datasets": [
+                    {
+                        "label": "Solar Capacity (MW)",
+                        "data": values,
+                        "backgroundColor": "#43A047",
+                    }
+                ],
+            }
+
+            leader = ranked[0] if ranked else {}
+            leader_name = leader.get("country", "Unknown")
+            leader_capacity = self._format_capacity(leader.get("total_capacity_mw") or 0.0)
+            summary = (
+                f"{leader_name} leads tracked solar capacity with {leader_capacity} MW among the top {len(ranked)} countries."
+            )
+
+            facts: List[str] = []
+            total_capacity = sum(values)
+            if total_capacity:
+                facts.append(
+                    f"These {len(ranked)} countries account for {self._format_capacity(total_capacity)} MW combined."
+                )
+
+            target_country = "Brazil"
+            target_entry = next((item for item in ranked if item.get("country") == target_country), None)
+            if target_entry:
+                target_rank = ranked.index(target_entry) + 1
+                target_capacity = self._format_capacity(target_entry.get("total_capacity_mw") or 0.0)
+                target_facilities = self._format_integer(target_entry.get("facility_count"))
+                facts.append(
+                    f"{target_country} ranks {target_rank} with {target_capacity} MW across {target_facilities} tracked facilities."
+                )
+            elif any(item.get("country") == target_country for item in stats):
+                facts.append(
+                    f"{target_country} does not appear in the top {len(ranked)} tracked countries but remains present in the global dataset."
+                )
+
+            table_rows = [
+                [
+                    item.get("country"),
+                    self._format_integer(item.get("facility_count")),
+                    self._format_capacity(item.get("total_capacity_mw") or 0.0),
+                ]
+                for item in ranked
+            ]
+
+            artifacts = [
+                {
+                    "type": "chart",
+                    "title": "Top countries by tracked solar capacity",
+                    "data": chart,
+                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                },
+                {
+                    "type": "table",
+                    "title": "Top countries by tracked solar capacity",
+                    "columns": ["Country", "Facilities", "Capacity (MW)"],
+                    "rows": table_rows,
+                },
+            ]
+
+            return {
+                "countries": ranked,
+                "limit": limit,
+                "summary": summary,
+                "facts": facts,
+                "artifacts": artifacts,
+                "citation": self._dataset_citation_dict(),
+            }
 
     def _register_tool_capacity_by_state(self) -> None:
         @self.mcp.tool()
@@ -1376,11 +1685,69 @@ class SolarServerV2(RunQueryMixin):
             chart = self._build_state_capacity_chart(top_n=top_n)
             if not chart:
                 return {"error": "State aggregation unavailable"}
+
+            stats = self._state_facility_stats[: max(1, top_n)]
+            top_entries = [
+                f"{item.get('state_name')} ({self._format_capacity(item.get('total_capacity_mw') or 0.0)} MW)"
+                for item in stats[: min(len(stats), 3)]
+            ]
+            summary = (
+                "Top Brazilian states by tracked solar capacity are "
+                + ", ".join(top_entries)
+                + "."
+            )
+
+            brazil_stats = self._country_statistics("Brazil") or {}
+            national_capacity = float(brazil_stats.get("total_capacity_mw") or 0.0)
+            national_facilities = int(brazil_stats.get("facility_count") or 0)
+
+            facts: List[str] = []
+            if national_capacity and stats:
+                subset_capacity = sum(float(item.get("total_capacity_mw") or 0.0) for item in stats)
+                share = (subset_capacity / national_capacity) * 100 if national_capacity else 0.0
+                facts.append(
+                    f"The top {len(stats)} states account for {self._format_capacity(subset_capacity)} MW (≈{share:.1f}% of Brazil's tracked capacity)."
+                )
+            if national_facilities and stats:
+                subset_facilities = sum(int(item.get("facility_count") or 0) for item in stats)
+                share_facilities = (subset_facilities / national_facilities) * 100 if national_facilities else 0.0
+                facts.append(
+                    f"They include {self._format_integer(subset_facilities)} facilities (≈{share_facilities:.1f}% of national sites)."
+                )
+
+            table_rows = [
+                [
+                    item.get("state_name"),
+                    self._format_integer(item.get("facility_count")),
+                    self._format_capacity(item.get("total_capacity_mw") or 0.0),
+                ]
+                for item in stats
+            ]
+
+            artifacts = [
+                {
+                    "type": "chart",
+                    "title": "Top Brazilian states by solar capacity",
+                    "data": chart,
+                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                },
+                {
+                    "type": "table",
+                    "title": "Top Brazilian states by solar capacity",
+                    "columns": ["State", "Facilities", "Capacity (MW)"],
+                    "rows": table_rows,
+                },
+            ]
+
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
                 "metadata": {"chartType": "bar"},
-                "items": self._state_facility_stats[: max(1, top_n)],
+                "items": stats,
+                "summary": summary,
+                "facts": facts,
+                "artifacts": artifacts,
+                "citation": self._dataset_citation_dict(),
             }
 
     def _register_tool_capacity_by_municipality(self) -> None:
@@ -1391,42 +1758,118 @@ class SolarServerV2(RunQueryMixin):
             chart = self._build_municipality_capacity_chart(top_n=top_n)
             if not chart:
                 return {"error": "Municipality aggregation unavailable"}
+
+            stats = self._municipality_facility_stats[: max(1, top_n)]
+            top_entries = [
+                (
+                    f"{item.get('municipality_name')} ({item.get('state')}) "
+                    f"{self._format_capacity(item.get('total_capacity_mw') or 0.0)} MW"
+                )
+                for item in stats[: min(len(stats), 3)]
+            ]
+            summary = (
+                "Top municipalities by tracked capacity include "
+                + ", ".join(top_entries)
+                + "."
+            )
+
+            facts: List[str] = []
+            total_capacity = sum(float(item.get("total_capacity_mw") or 0.0) for item in stats)
+            if total_capacity:
+                facts.append(
+                    f"Combined, these municipalities host {self._format_capacity(total_capacity)} MW of solar capacity."
+                )
+
+            table_rows = [
+                [
+                    item.get("municipality_name"),
+                    item.get("state"),
+                    self._format_integer(item.get("facility_count")),
+                    self._format_capacity(item.get("total_capacity_mw") or 0.0),
+                ]
+                for item in stats
+            ]
+
+            artifacts = [
+                {
+                    "type": "chart",
+                    "title": "Top Brazilian municipalities by solar capacity",
+                    "data": chart,
+                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                },
+                {
+                    "type": "table",
+                    "title": "Top Brazilian municipalities by solar capacity",
+                    "columns": ["Municipality", "State", "Facilities", "Capacity (MW)"],
+                    "rows": table_rows,
+                },
+            ]
+
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
                 "metadata": {"chartType": "bar"},
-                "items": self._municipality_facility_stats[: max(1, top_n)],
+                "items": stats,
+                "summary": summary,
+                "facts": facts,
+                "artifacts": artifacts,
+                "citation": self._dataset_citation_dict(),
             }
 
-    def _register_tool_construction_timeline(self) -> None:
-        @self.mcp.tool()
-        def get_solar_construction_timeline(country: str | None = None) -> dict:  # type: ignore[misc]
-            """Return commissioning counts grouped by year, plus a chart payload.
+    # def _register_tool_construction_timeline(self) -> None:
+    #     @self.mcp.tool()
+    #     def get_solar_construction_timeline(country: str | None = None) -> dict:  # type: ignore[misc]
+    #         """Return commissioning counts grouped by year, plus a chart payload.
 
-            The helper uses the `constructed_before` field (falling back to
-            `constructed_after`) to infer the in-service year for each facility
-            and aggregates the totals.  The response contains both the raw
-            `(year, facility_count)` series and a Chart.js compatible dataset
-            so the frontend can render a trendline immediately.
+    #         The helper uses the `constructed_before` field (falling back to
+    #         `constructed_after`) to infer the in-service year for each facility
+    #         and aggregates the totals.  The response contains both the raw
+    #         `(year, facility_count)` series and a Chart.js compatible dataset
+    #         so the frontend can render a trendline immediately.
 
-            Args:
-                country: Optional country name; defaults to ``"Brazil"`` when
-                    omitted.
+    #         Args:
+    #             country: Optional country name; defaults to ``"Brazil"`` when
+    #                 omitted.
 
-            Returns:
-                dict: ``{"country": str, "timeline": List[Tuple[str,int]],
-                "chart": Dict}`` where ``chart`` has ``labels`` and
-                ``datasets`` keys suitable for a line chart.
-            """
+    #         Returns:
+    #             dict: ``{"country": str, "timeline": List[Tuple[str,int]],
+    #             "chart": Dict}`` where ``chart`` has ``labels`` and
+    #             ``datasets`` keys suitable for a line chart.
+    #         """
 
-            target = country or "Brazil"
-            timeline_series = self._construction_timeline_series(target)
-            chart = self._build_timeline_chart(timeline_series)
-            return {
-                "country": target,
-                "timeline": timeline_series,
-                "chart": chart,
-            }
+    #         target = country or "Brazil"
+    #         timeline_series = self._construction_timeline_series(target)
+    #         chart = self._build_timeline_chart(timeline_series)
+    #         summary: Optional[str] = None
+    #         facts: List[str] = []
+    #         if timeline_series:
+    #             first_year, first_count = timeline_series[0]
+    #             last_year, last_count = timeline_series[-1]
+    #             summary = (
+    #                 f"Commissioning records show {first_count} facilities in {first_year} "
+    #                 f"rising to {last_count} in {last_year} for {target}."
+    #             )
+
+    #         artifacts = []
+    #         if chart:
+    #             artifacts.append(
+    #                 {
+    #                     "type": "chart",
+    #                     "title": f"Solar construction timeline ({target})",
+    #                     "data": chart,
+    #                     "metadata": {"chartType": "line", "datasetLabel": "Commissioned Facilities"},
+    #                 }
+    #             )
+
+    #         return {
+    #             "country": target,
+    #             "timeline": timeline_series,
+    #             "chart": chart,
+    #             "summary": summary,
+    #             "facts": facts,
+    #             "artifacts": artifacts,
+    #             "citation": self._dataset_citation_dict(),
+    #         }
 
     def _register_tool_largest_facilities(self) -> None:
         @self.mcp.tool()
@@ -1548,7 +1991,11 @@ class SolarServerV2(RunQueryMixin):
                         matched.append(facility)
                         break
 
-            geojson = self._generate_geojson(matched, identifier="polygon")
+            geojson = self._generate_geojson(
+                matched,
+                identifier="polygon",
+                point_buffer_radius_km=buffer_km or None,
+            )
             aggregation: Dict[str, Dict[str, Any]] = {}
             for facility in matched:
                 key = facility.get("country", "Unknown")
@@ -1565,22 +2012,31 @@ class SolarServerV2(RunQueryMixin):
     def _register_tool_facilities_near_deforestation(self) -> None:
         @self.mcp.tool()
         def get_solar_facilities_near_deforestation(
-            country: str,
+            country: Optional[str] = None,
             radius_km: float = 1.0,
             limit: int = 200,
         ) -> dict:  # type: ignore[misc]
-            """Correlate solar facilities with deforestation polygons within ``radius_km``."""
+            """Correlate solar facilities with deforestation polygons within ``radius_km``.
+
+            Use when the user explicitly mentions deforestation overlap or proximity (e.g.,
+            "within X km of deforestation"). For general renewable maps prefer
+            ``get_solar_facilities_map_data``.
+            """
+
+            cleaned_country = country.strip() if isinstance(country, str) else ""
+            assumed_country = not cleaned_country
+            resolved_country = cleaned_country or "Brazil"
 
             match_limit = limit if limit > 0 else None
             correlation = self._compute_deforestation_correlation(
-                country,
+                resolved_country,
                 radius_km=radius_km,
                 match_limit=match_limit,
             )
             if correlation is None:
                 return {
                     "error": "Spatial correlation prerequisites missing; ensure providers initialised.",
-                    "country": country,
+                    "country": resolved_country,
                 }
 
             payload = {
@@ -1589,18 +2045,102 @@ class SolarServerV2(RunQueryMixin):
                 "match_count": len(correlation["matches"]),
                 "matches": correlation["matches"],
             }
+            notes: List[str] = []
+            if assumed_country:
+                notes.append(
+                    "Country not provided; defaulting to Brazil deforestation polygons."
+                )
             geojson_summary = correlation.get("geojson")
             if geojson_summary:
                 payload["geojson_url"] = geojson_summary.url
                 payload["metadata"] = geojson_summary.metadata
+                payload.setdefault("artifacts", []).append(
+                    {
+                        "type": "map",
+                        "title": f"Solar facilities near deforestation in {resolved_country}",
+                        "geojson_url": geojson_summary.url,
+                        "metadata": geojson_summary.metadata,
+                    }
+                )
+            facilities = correlation.get("facilities") or []
+            polygons = correlation.get("polygons") or []
+            facility_ids = {
+                getattr(facility, "cluster_id", None)
+                for facility in facilities
+                if getattr(facility, "cluster_id", None)
+            }
+            facility_count = len(facility_ids)
+            polygon_count = len({getattr(polygon, "polygon_id", None) for polygon in polygons if getattr(polygon, "polygon_id", None)})
+            total_capacity = sum(
+                (getattr(facility, "capacity_mw", 0.0) or 0.0)
+                for facility in facilities
+            )
+            total_area = 0.0
+            years: set[str] = set()
+            for polygon in polygons:
+                properties = getattr(polygon, "properties", {}) or {}
+                area_value = properties.get("area_hectares")
+                try:
+                    if area_value is not None:
+                        total_area += float(area_value)
+                except (TypeError, ValueError):
+                    pass
+                year_value = properties.get("year")
+                if isinstance(year_value, (int, float)):
+                    years.add(str(int(year_value)))
+                elif isinstance(year_value, str) and year_value.strip():
+                    years.add(year_value.strip())
+
+            facts: List[str] = []
+            if facility_count:
+                facts.append(
+                    f"Identified {facility_count} solar facilities in {resolved_country} within {radius_km} km of tracked deforestation polygons."
+                )
+            if polygon_count:
+                text = f"These overlaps intersect {polygon_count} deforestation polygons"
+                if total_area:
+                    text += f" spanning roughly {round(total_area, 1)} hectares"
+                text += "."
+                facts.append(text)
+            if total_capacity:
+                facts.append(
+                    f"The matched facilities represent about {round(total_capacity, 1)} MW of nameplate capacity."
+                )
+            if facts:
+                payload["facts"] = facts
+            if years:
+                payload.setdefault("metadata", {}).setdefault("layers", {}).setdefault(
+                    "deforestation_polygons",
+                    {},
+                ).setdefault("years", sorted(years))
+
+            citation = self._dataset_citation_dict(
+                description=(
+                    f"Solar facilities correlated with deforestation polygons within {radius_km} km."
+                )
+            )
+            citation.setdefault("metadata", {}).update(
+                {
+                    "country": resolved_country,
+                    "radius_km": radius_km,
+                    "datasets": [DATASET_ID, DEFORESTATION_DATASET_ID],
+                    "facility_count": facility_count,
+                    "polygon_count": polygon_count,
+                }
+            )
+            payload["citation"] = citation
             if not correlation["matches"]:
                 payload["note"] = "No overlapping deforestation polygons detected within the specified distance."
+            if notes:
+                payload["notes"] = notes
             return payload
 
     # ------------------------------------------------------------------ run_query
     def handle_run_query(self, *, query: str, context: dict) -> RunQueryResponse:
         if not isinstance(context, dict):
             context = {}
+        context_mapping = context if isinstance(context, Mapping) else {}
+
         state_context = (
             context.get("state")
             or context.get("state_name")
@@ -1611,14 +2151,26 @@ class SolarServerV2(RunQueryMixin):
         query_lower = query.lower()
 
         state_match: Optional[BrazilState] = None
+        inferred_state_from_context: Optional[BrazilState] = None
+        if context_mapping:
+            try:
+                inferred_state_from_context = self._infer_state_from_context(query, context_mapping)
+            except Exception:
+                inferred_state_from_context = None
+
         if self._brazil_states:
             state_match = self._match_brazil_state(state_context)
             if not state_match:
                 state_match = self._detect_brazil_state(query)
+            if not state_match and inferred_state_from_context:
+                state_match = inferred_state_from_context
 
         country_input = self._detect_country(query) or context.get("country") or "Brazil"
         country = self._normalize_country(country_input)
         radius_km = self._extract_radius_from_context(context, default=1.0)
+        radius_from_query = self._extract_radius_from_query(query)
+        if radius_from_query is not None:
+            radius_km = radius_from_query
 
         if self._should_correlate_with_deforestation(query, context):
             correlation = self._compute_deforestation_correlation(
@@ -1924,6 +2476,7 @@ class SolarServerV2(RunQueryMixin):
                 matched_facilities,
                 identifier=f"{normalized_country}_deforestation",
                 polygons=matched_polygons,
+                point_buffer_radius_km=radius_km,
             )
 
         return {
@@ -1952,6 +2505,35 @@ class SolarServerV2(RunQueryMixin):
                     return value
             except (TypeError, ValueError):
                 continue
+        return default
+
+    @staticmethod
+    def _extract_radius_from_query(query: str, default: Optional[float] = None) -> Optional[float]:
+        if not query:
+            return default
+        lowered = query.lower()
+        meter_match = re.search(
+            r"(\d+(?:\.\d+)?)\s*(m|meter|metre|meters|metres)\b",
+            lowered,
+        )
+        if meter_match:
+            try:
+                value = float(meter_match.group(1)) / 1000.0
+                return value if value > 0 else default
+            except ValueError:
+                return default
+
+        km_match = re.search(
+            r"(\d+(?:\.\d+)?)\s*(km|kilometer|kilometre|kilometers|kilometres)\b",
+            lowered,
+        )
+        if km_match:
+            try:
+                value = float(km_match.group(1))
+                return value if value > 0 else default
+            except ValueError:
+                return default
+
         return default
 
     @staticmethod

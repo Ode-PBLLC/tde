@@ -2709,6 +2709,32 @@ class MultiServerClient:
             print(f"🔍 MULTI-TABLE DEBUG: No tool_results_for_tables - skipping multi-table generation")
 
         # Format the final response
+        module_citations: Dict[str, List[int]] = {
+            module_id: citations.copy()
+            for module_id, citations in self.citation_registry.module_citations.items()
+        }
+
+        paragraphs = [p.strip() for p in final_response_text.split("\n\n") if p.strip()]
+        for idx, paragraph in enumerate(paragraphs):
+            citation_matches = re.findall(r"\^([0-9,]+)\^", paragraph)
+            if not citation_matches:
+                continue
+
+            inline_numbers: set[int] = set()
+            for match in citation_matches:
+                for part in match.split(','):
+                    part = part.strip()
+                    if part.isdigit():
+                        inline_numbers.add(int(part))
+
+            if not inline_numbers:
+                continue
+
+            module_id = f"text_module_{idx}"
+            existing = module_citations.get(module_id, [])
+            combined = sorted(set(existing).union(inline_numbers))
+            module_citations[module_id] = combined
+
         formatter_args = {
             "response_text": final_response_text,
             "chart_data": chart_data,
@@ -2719,7 +2745,7 @@ class MultiServerClient:
             "title": "Climate Policy Analysis",
             "citation_registry": {
                 "citations": self.citation_registry.get_all_citations(),
-                "module_citations": self.citation_registry.module_citations
+                "module_citations": module_citations,
             }
         }
         

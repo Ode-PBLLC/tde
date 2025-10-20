@@ -7,10 +7,13 @@ import asyncio
 import json
 import sys
 import os
+from pathlib import Path
 
-# Add the mcp directory to the path
-sys.path.append('mcp')
-from mcp_chat import run_query_structured
+REPO_ROOT = Path(__file__).resolve().parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
+
+from mcp.mcp_chat import run_query_structured
 
 async def get_structured_response(query: str):
     """

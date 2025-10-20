@@ -73,12 +73,22 @@ class SessionStore:
         now = datetime.utcnow().timestamp()
         self._sessions[conversation_id] = {"history": [], "last_seen": now, "created_at": now}
 
-    def append(self, conversation_id: str, role: str, content: str):
+    def append(
+        self,
+        conversation_id: str,
+        role: str,
+        content: str,
+        *,
+        structured: Optional[Dict[str, Any]] = None,
+    ):
         now = datetime.utcnow().timestamp()
         if conversation_id not in self._sessions:
             # recreate lazily if expired
             self._sessions[conversation_id] = {"history": [], "last_seen": now, "created_at": now}
-        self._sessions[conversation_id]["history"].append({"role": role, "content": content})
+        entry: Dict[str, Any] = {"role": role, "content": content}
+        if structured is not None:
+            entry["structured"] = structured
+        self._sessions[conversation_id]["history"].append(entry)
         self._sessions[conversation_id]["last_seen"] = now
 
     def get_history(self, conversation_id: str) -> List[Dict[str, str]]:
@@ -98,11 +108,11 @@ class SessionStore:
     def get_context_for_llm(self, conversation_id: str, max_turns: int = MAX_CONTEXT_TURNS) -> List[Dict[str, str]]:
         """Get the most recent N turns for LLM context."""
         history = self.get_history(conversation_id)
-        
+
         # Get last max_turns * 2 messages (user + assistant pairs)
         context_window = history[-(max_turns * 2):] if len(history) > max_turns * 2 else history
-        
-        return context_window
+        # Return a shallow copy to avoid accidental mutation downstream
+        return [dict(item) for item in context_window]
     
     def extract_response_summary(
         self,
@@ -606,7 +616,17 @@ async def process_query(req: QueryRequest, request: Request):
         if isinstance(full_result, dict) and full_result.get("metadata", {}).get("query_type") == "off_topic_redirect":
             # Store conversation and return immediately without KG processing
             session_store.append(session_id, "user", req.query)
-            session_store.append(session_id, "assistant", "I can help you with climate and environmental topics...")
+            off_topic_modules = full_result.get("modules", [])
+            session_store.append(
+                session_id,
+                "assistant",
+                "I can help you with climate and environmental topics...",
+                structured={
+                    "modules": off_topic_modules,
+                    "metadata": full_result.get("metadata", {}),
+                    "query": req.query,
+                },
+            )
             
             session_store.log_conversation(
                 session_id,
@@ -761,7 +781,17 @@ async def process_query(req: QueryRequest, request: Request):
         # Store query and response in session history
         session_store.append(session_id, "user", req.query)
         response_summary = session_store.extract_response_summary(modules)
-        session_store.append(session_id, "assistant", response_summary)
+        session_store.append(
+            session_id,
+            "assistant",
+            response_summary,
+            structured={
+                "modules": modules,
+                "metadata": structured_response.get("metadata", {}),
+                "citation_registry": full_result.get("citation_registry"),
+                "query": req.query,
+            },
+        )
         
         # Log conversation with full details
         session_store.log_conversation(
@@ -1094,7 +1124,8 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
             os.chdir(script_dir)
             
             # Track response content for session history
-            response_modules = []
+            response_modules: List[Dict[str, Any]] = []
+            response_payload: Dict[str, Any] = {}
             
             # Use streaming that properly sends content
             # Determine target language for stream using the shared resolver
@@ -1113,6 +1144,7 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                     response_data = event.get("data", {})
                     if isinstance(response_data, dict):
                         response_modules = response_data.get("modules", [])
+                        response_payload = response_data
                         citation_registry = response_data.get("citation_registry")
                         # Augment with KG embed URL and KG arrays at top level to match frontend
                         try:
@@ -1190,8 +1222,18 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
             # Store the query and response in session history
             session_store.append(session_id, "user", stream_req.query)
             if response_modules:
-                response_summary = session_store.extract_response_summary(response_modules)
-                session_store.append(session_id, "assistant", response_summary)
+                        response_summary = session_store.extract_response_summary(response_modules)
+                        session_store.append(
+                            session_id,
+                            "assistant",
+                            response_summary,
+                            structured={
+                                "modules": response_modules,
+                                "metadata": response_payload.get("metadata", {}),
+                                "citation_registry": response_payload.get("citation_registry"),
+                                "query": stream_req.query,
+                            },
+                        )
             
             # Log conversation with full details
             session_store.log_conversation(

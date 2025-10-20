@@ -1,0 +1,193 @@
+{
+  "items": [
+    {
+      "state_code": "Minas Gerais",
+      "state_name": "Minas Gerais",
+      "facility_count": 522,
+      "total_capacity_mw": 9321.866,
+      "facilities_with_capacity": 522
+    },
+    {
+      "state_code": "Bahia",
+      "state_name": "Bahia",
+      "facility_count": 118,
+      "total_capacity_mw": 2794.473,
+      "facilities_with_capacity": 118
+    },
+    {
+      "state_code": "Piau\u00ed",
+      "state_name": "Piau\u00ed",
+      "facility_count": 54,
+      "total_capacity_mw": 2228.356,
+      "facilities_with_capacity": 54
+    },
+    {
+      "state_code": "Cear\u00e1",
+      "state_name": "Cear\u00e1",
+      "facility_count": 98,
+      "total_capacity_mw": 2074.64,
+      "facilities_with_capacity": 98
+    },
+    {
+      "state_code": "Rio Grande do Norte",
+      "state_name": "Rio Grande do Norte",
+      "facility_count": 36,
+      "total_capacity_mw": 1865.289,
+      "facilities_with_capacity": 36
+    },
+    {
+      "state_code": "S\u00e3o Paulo",
+      "state_name": "S\u00e3o Paulo",
+      "facility_count": 281,
+      "total_capacity_mw": 1844.792,
+      "facilities_with_capacity": 281
+    },
+    {
+      "state_code": "Pernambuco",
+      "state_name": "Pernambuco",
+      "facility_count": 105,
+      "total_capacity_mw": 1706.186,
+      "facilities_with_capacity": 105
+    },
+    {
+      "state_code": "Para\u00edba",
+      "state_name": "Para\u00edba",
+      "facility_count": 17,
+      "total_capacity_mw": 821.364,
+      "facilities_with_capacity": 17
+    },
+    {
+      "state_code": "Mato Grosso",
+      "state_name": "Mato Grosso",
+      "facility_count": 198,
+      "total_capacity_mw": 591.401,
+      "facilities_with_capacity": 198
+    },
+    {
+      "state_code": "Goi\u00e1s",
+      "state_name": "Goi\u00e1s",
+      "facility_count": 176,
+      "total_capacity_mw": 582.414,
+      "facilities_with_capacity": 176
+    },
+    {
+      "state_code": "Mato Grosso do Sul",
+      "state_name": "Mato Grosso do Sul",
+      "facility_count": 98,
+      "total_capacity_mw": 391.846,
+      "facilities_with_capacity": 98
+    },
+    {
+      "state_code": "Rio de Janeiro",
+      "state_name": "Rio de Janeiro",
+      "facility_count": 97,
+      "total_capacity_mw": 375.508,
+      "facilities_with_capacity": 97
+    },
+    {
+      "state_code": "Paran\u00e1",
+      "state_name": "Paran\u00e1",
+      "facility_count": 108,
+      "total_capacity_mw": 356.969,
+      "facilities_with_capacity": 108
+    },
+    {
+      "state_code": "Distrito Federal",
+      "state_name": "Distrito Federal",
+      "facility_count": 81,
+      "total_capacity_mw": 245.809,
+      "facilities_with_capacity": 81
+    },
+    {
+      "state_code": "Rio Grande do Sul",
+      "state_name": "Rio Grande do Sul",
+      "facility_count": 81,
+      "total_capacity_mw": 189.492,
+      "facilities_with_capacity": 81
+    },
+    {
+      "state_code": "Par\u00e1",
+      "state_name": "Par\u00e1",
+      "facility_count": 27,
+      "total_capacity_mw": 115.97,
+      "facilities_with_capacity": 27
+    },
+    {
+      "state_code": "Maranh\u00e3o",
+      "state_name": "Maranh\u00e3o",
+      "facility_count": 31,
+      "total_capacity_mw": 114.438,
+      "facilities_with_capacity": 31
+    },
+    {
+      "state_code": "Esp\u00edrito Santo",
+      "state_name": "Esp\u00edrito Santo",
+      "facility_count": 27,
+      "total_capacity_mw": 94.02,
+      "facilities_with_capacity": 27
+    },
+    {
+      "state_code": "Alagoas",
+      "state_name": "Alagoas",
+      "facility_count": 22,
+      "total_capacity_mw": 89.958,
+      "facilities_with_capacity": 22
+    },
+    {
+      "state_code": "Santa Catarina",
+      "state_name": "Santa Catarina",
+      "facility_count": 39,
+      "total_capacity_mw": 64.541,
+      "facilities_with_capacity": 39
+    },
+    {
+      "state_code": "Tocantins",
+      "state_name": "Tocantins",
+      "facility_count": 13,
+      "total_capacity_mw": 42.806,
+      "facilities_with_capacity": 13
+    },
+    {
+      "state_code": "Rond\u00f4nia",
+      "state_name": "Rond\u00f4nia",
+      "facility_count": 15,
+      "total_capacity_mw": 41.002,
+      "facilities_with_capacity": 15
+    },
+    {
+      "state_code": "Amazonas",
+      "state_name": "Amazonas",
+      "facility_count": 11,
+      "total_capacity_mw": 23.796,
+      "facilities_with_capacity": 11
+    },
+    {
+      "state_code": "Sergipe",
+      "state_name": "Sergipe",
+      "facility_count": 7,
+      "total_capacity_mw": 18.359,
+      "facilities_with_capacity": 7
+    },
+    {
+      "state_code": "Roraima",
+      "state_name": "Roraima",
+      "facility_count": 5,
+      "total_capacity_mw": 12.2,
+      "facilities_with_capacity": 5
+    },
+    {
+      "state_code": "Amap\u00e1",
+      "state_name": "Amap\u00e1",
+      "facility_count": 3,
+      "total_capacity_mw": 6.38,
+      "facilities_with_capacity": 3
+    },
+    {
+      "state_code": "Acre",
+      "state_name": "Acre",
+      "facility_count": 2,
+      "total_capacity_mw": 1.999,
+      "facilities_with_capacity": 2
+    }
+  ]
+}

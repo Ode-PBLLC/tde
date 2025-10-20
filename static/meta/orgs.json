@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "items": [
+    { "name_of_collaborative": {
+        "name": "Transition Digital",
+        "tagline": "Transition Digital is a nonprofit collaborative founded by Climate Policy Radar, Transition Zero, Clay, and Radiant Earth. Together, we bring deep expertise in climate, data, AI, and transition modeling. Our collective experience and strong ties in the climate and tech communities position us to advance rapidly and effectively, leveraging economies of scale and scope.",
+        "url": "https://transitiondigital.org/"
+      },
+      "founding_collaborators": [
+        {
+          "name": "Climate Policy Radar",
+          "tagline": "Organising, analysing and democratising data on climate law and policy documents, leveraging AI and NLP to build open databases and applications.",
+          "url": "https://www.climatepolicyradar.org/"
+        },
+        {
+          "name": "TransitionZero",
+          "tagline": "Open data, software and insights for energy transition planning decisions.",
+          "url": "https://www.transitionzero.org/"
+        },
+        {
+          "name": "Clay",
+          "tagline": "Scaling public benefit from Earth data through foundation geoAI",
+          "url": "https://madewithclay.org/"
+        },
+        {
+          "name": "Radiant Earth",
+          "tagline": "Supports accessible data initiatives for global environmental cooperation.",
+          "url": "https://radiant.earth/"
+        }
+      ],
+            "secondary_collaborators": [
+        {
+          "name": "London School of Economics (LSE)",
+          "url": "https://www.lse.ac.uk/"
+        },
+        {
+          "name": "Grantham Research Institute on Climate Change and the Environment",
+          "url": "https://www.lse.ac.uk/granthaminstitute/about/about-the-institute/"
+        },
+        {
+          "name": "ju_ma",
+          "url": "https://juma.jur.puc-rio.br/en"
+        },
+        {
+          "name": "Laclima",
+          "url": "https://www.laclima.org/"
+        },
+        {
+          "name": "GIST Impact",
+          "url": "https://www.gistimpact.com/"
+        },
+        {
+          "name": "Ode",
+          "url": "https://ode.partners/en"
+        }
+      ]
+    }
+  ]
+}

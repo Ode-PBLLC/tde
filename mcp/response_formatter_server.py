@@ -10,6 +10,7 @@ import hashlib
 import time
 import anthropic
 import asyncio
+import re
 
 mcp = FastMCP("response-formatter-server")
 
@@ -47,19 +48,32 @@ def _add_all_citations_fallback(text: str, citation_nums: List[str]) -> str:
     """Fallback function to add all citations to text when LLM fails."""
     if not citation_nums:
         return text
-    
+
     # CITATION FIX: Sort citation numbers and use individual format
     sorted_citations = sorted(citation_nums, key=int)
     individual_citations = ' '.join([f"^{c}^" for c in sorted_citations])
     superscript = f" {individual_citations}"
-    
+
     # Add to the end of the first sentence if possible, otherwise to the end
     sentences = text.split('. ')
     if len(sentences) > 1:
-        sentences[0] = sentences[0] + superscript
+        sentences[0] = _append_superscript(sentences[0], superscript)
         return '. '.join(sentences)
     else:
-        return text + superscript
+        return _append_superscript(text, superscript)
+
+
+def _append_superscript(text: str, superscript: str) -> str:
+    """Attach a citation superscript without duplicating existing markers."""
+    if not superscript or not superscript.strip():
+        return text
+
+    clean_sup = superscript.strip()
+    trimmed_text = text.rstrip()
+    if trimmed_text.endswith(clean_sup):
+        return trimmed_text
+
+    return f"{trimmed_text} {clean_sup}"
 
 async def _insert_llm_citations(text: str, citation_registry: Dict, tool_results_context: Optional[Dict] = None) -> str:
     """
@@ -292,14 +306,14 @@ def _insert_contextual_citations(text: str, all_citations: List[int], citation_r
                 # CITATION FIX: Use individual citations instead of bunched format
                 individual_citations = ' '.join([f"^{c}^" for c in sorted(relevant_citations)])
                 superscript = f" {individual_citations}"
-                sentences[0] = sentences[0] + superscript
+                sentences[0] = _append_superscript(sentences[0], superscript)
                 return '. '.join(sentences)
         else:
             # Single sentence - add citation after the text
             # CITATION FIX: Use individual citations instead of bunched format
             individual_citations = ' '.join([f"^{c}^" for c in sorted(relevant_citations)])
             superscript = f" {individual_citations}"
-            return text + superscript
+            return _append_superscript(text, superscript)
     
     return text
 
@@ -324,25 +338,32 @@ def _insert_inline_citations(text: str, module_id: str, citation_registry: Optio
     
     # Remove duplicates and sort
     relevant_citations = sorted(list(set(relevant_citations)))
-    
+
     if not relevant_citations:
         return text
     
-    # Simple citation insertion after the text that references them
+    existing_numbers: set[int] = set()
+    for match in re.findall(r"\^([0-9,]+)\^", text):
+        for part in match.split(','):
+            cleaned = part.strip()
+            if cleaned.isdigit():
+                existing_numbers.add(int(cleaned))
+
+    missing_citations = sorted(set(relevant_citations) - existing_numbers)
+    if not missing_citations:
+        return text
+
+    superscript = ' '.join([f"^{c}^" for c in missing_citations])
     sentences = text.split('. ')
     if len(sentences) > 1:
-        # Add citations after the first few sentences
-        for i in range(min(2, len(sentences))):
-            if sentences[i] and not sentences[i].endswith('^'):
-                # Use all relevant citations for this module
-                superscript = f" ^{','.join(map(str, relevant_citations))}^"
-                sentences[i] = sentences[i] + superscript
-        
-        return '. '.join(sentences)
+        for idx, sentence in enumerate(sentences):
+            if sentence and not sentence.rstrip().endswith('^'):
+                sentences[idx] = _append_superscript(sentence, f" {superscript}")
+                return '. '.join(sentences)
+        # All candidate sentences already ended with citations; append to full text as fallback
+        return _append_superscript(text, f" {superscript}")
     else:
-        # Single sentence - add citation after the text
-        superscript = f" ^{','.join(map(str, relevant_citations))}^"
-        return text + superscript
+        return _append_superscript(text, f" {superscript}")
     
 def _create_numbered_citation_table(citation_registry: Optional[Dict] = None) -> Optional[Dict]:
     """Create a numbered citation table from the citation registry."""
@@ -374,7 +395,8 @@ def _create_numbered_citation_table(citation_registry: Optional[Dict] = None) ->
                     source_ref,
                     tool_used,
                     source_type.title(),
-                    description
+                    description,
+                    source.get("source_url", "")
                 ])
             else:
                 # Document citation format
@@ -415,16 +437,17 @@ def _create_numbered_citation_table(citation_registry: Optional[Dict] = None) ->
                     doc_ref,
                     passage_id,
                     "Document",
-                    description
+                    description,
+                    ""
                 ])
         else:
             # Legacy string source
-            rows.append([str(citation_num), str(source)[:100], "N/A", "General", ""])
+            rows.append([str(citation_num), str(source)[:100], "N/A", "General", "", ""]) 
     
     return {
         "type": "numbered_citation_table",
         "heading": "References",
-        "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
+        "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
         "rows": rows
     } if rows else None
 
@@ -479,17 +502,22 @@ async def FormatResponseAsModules(
                 
                 # CITATION_FIX: Skip fallback citations if structured_citations are provided
                 # This prevents overriding LLM's proper citation placement
-                if i == 0 and cited_paragraph == paragraph and not structured_citations:
+                if (
+                    i == 0
+                    and cited_paragraph == paragraph
+                    and not structured_citations
+                    and not re.search(r"\^[0-9,]+\^", paragraph)
+                ):
                     all_tool_citations = _get_all_tool_citations(citation_registry)
                     if all_tool_citations:
                         # CITATION FIX: Use individual citations instead of bunched format
                         print(f"🔧 CITATION DEBUG - Applying fallback citations for {len(all_tool_citations)} tools")
                         individual_citations = ' '.join([f"^{c}^" for c in sorted(all_tool_citations)])
                         superscript = f" {individual_citations}"
-                        cited_paragraph = paragraph + superscript
-                
+                        cited_paragraph = _append_superscript(paragraph, superscript)
+
                 cited_paragraphs.append(cited_paragraph)
-            
+
             paragraphs = cited_paragraphs
         
         modules.append({
@@ -1401,13 +1429,54 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
         # Handle map_data_summary case - use provided GeoJSON URL or generate fallback
         if map_data.get("type") == "map_data_summary":
             print("FORMATTER DEBUG: Creating map module from summary data")
-            
+
             countries = metadata.get("countries", ["world"])
-            
+
+            geom_candidates = []
+
+            def _collect_geom(value):
+                if not value:
+                    return
+                if isinstance(value, str):
+                    geom_candidates.append(value.lower())
+                elif isinstance(value, dict):
+                    for nested in value.values():
+                        _collect_geom(nested)
+                elif isinstance(value, (list, tuple, set)):
+                    for nested in value:
+                        _collect_geom(nested)
+
+            _collect_geom(map_data.get("geometry_type"))
+            _collect_geom(map_data.get("geometry_types"))
+            _collect_geom(summary.get("geometry_type"))
+            _collect_geom(summary.get("geometry_types"))
+            _collect_geom((map_data.get("metadata") or {}).get("geometry_type"))
+            _collect_geom((map_data.get("metadata") or {}).get("geometry_types"))
+
+            geometry_types = sorted({g for g in geom_candidates if isinstance(g, str) and g})
+            geometry_type = "point"
+            if geometry_types:
+                has_point = any(g.startswith("point") for g in geometry_types)
+                has_polygon = any(g.startswith("poly") or g.startswith("multi") for g in geometry_types)
+                if has_polygon and not has_point:
+                    geometry_type = "polygon"
+                elif has_point:
+                    geometry_type = "point"
+                else:
+                    geometry_type = geometry_types[0]
+            else:
+                geometry_types = [geometry_type]
+
             # Use provided GeoJSON URL or create fallback filename
+            import os as _os
+            base_url = _os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
             if geojson_url and geojson_filename:
                 print(f"FORMATTER DEBUG: Using orchestrator-generated GeoJSON: {geojson_filename}")
-                final_geojson_url = geojson_url
+                # Ensure absolute URL for cross-origin frontends
+                if isinstance(geojson_url, str) and geojson_url.startswith('/'):
+                    final_geojson_url = f"{base_url}{geojson_url}"
+                else:
+                    final_geojson_url = geojson_url
                 filename = geojson_filename
             else:
                 print("FORMATTER DEBUG: No GeoJSON provided, creating fallback URL")
@@ -1416,9 +1485,6 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 import hashlib
                 hash_suffix = hashlib.md5(countries_str.encode()).hexdigest()[:8]
                 filename = f"solar_facilities_{countries_str}_{hash_suffix}.geojson"
-                
-                import os
-                base_url = os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
                 final_geojson_url = f"{base_url}/static/maps/{filename}"
             
             # Calculate bounds based on provided precise bounds or country presets
@@ -1469,6 +1535,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                 "mapType": "geojson_url",
                 "geojson_url": final_geojson_url,
                 "filename": filename,
+                "geometry_type": geometry_type,
+                "geometry_types": geometry_types,
                 "viewState": {
                     "center": center,
                     "zoom": 5,
@@ -1486,6 +1554,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
                     "total_capacity_mw": metadata.get("total_capacity", 0),
                     "data_source": metadata.get("data_source", "TZ-SAM Q1 2025"),
                     "countries": countries,
+                    "geometry_type": geometry_type,
+                    "geometry_types": geometry_types,
                     "feature_count": metadata.get("total_facilities", 0),
                     "file_size_kb": 229.0  # Estimate
                 }
@@ -1561,6 +1631,7 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
             "mapType": "geojson_url",
             "geojson_url": f"{base_url}/static/maps/{filename}",  # Absolute URL for cross-origin frontend
             "filename": filename,  # For debugging/caching
+            "geometry_type": "point",
             "viewState": {
                 "center": [center_lon, center_lat],
                 "zoom": 6,
@@ -1700,29 +1771,44 @@ def _create_citation_fix_sources_table(sources: List[Dict]) -> Optional[Dict]:
     for source in sources:
         citation_id = source.get("id", "citation_?")
         citation_number = citation_id.replace("citation_", "")
-        source_name = source.get("source_name", "Unknown Source")
+        source_name_raw = source.get("source_name", "Unknown Source")
+        source_name_value = source_name_raw if isinstance(source_name_raw, str) else str(source_name_raw)
+        source_name = source_name_value
         provider = source.get("provider", "Unknown Provider")
         spatial_coverage = source.get("spatial_coverage", "N/A")
         temporal_coverage = source.get("temporal_coverage", "N/A")
         source_url = source.get("source_url", "No URL available")
-        
-        # Map provider to ID/Tool and create description
-        tool_id = f"{provider} Database" if provider != "Unknown Provider" else "Unknown Tool"
-        data_type = "Database" if "Database" in source_name else "Dataset"
-        description = f"{spatial_coverage} - {temporal_coverage}"
-        
+        doc_id = source.get("doc_id")
+        passage_id = source.get("passage_id")
+        text_snippet = source.get("text_snippet")
+
+        if doc_id or passage_id:
+            id_tool = doc_id or "Document"
+            if passage_id:
+                id_tool = f"{id_tool} / {passage_id}"
+            data_type = "Document"
+            description = text_snippet or (temporal_coverage if temporal_coverage != "N/A" else spatial_coverage)
+        else:
+            tool_id = f"{provider} Database" if provider != "Unknown Provider" else "Unknown Tool"
+            source_name_lower = source_name.lower()
+            data_type = "Database" if "database" in source_name_lower else "Dataset"
+            description_parts = [part for part in [spatial_coverage, temporal_coverage] if part and part != "N/A"]
+            description = " - ".join(description_parts) if description_parts else "N/A"
+            id_tool = tool_id
+
         rows.append([
             citation_number,
             source_name,
-            tool_id,
+            id_tool,
             data_type,
-            description
+            description,
+            source_url
         ])
     
     return {
         "type": "numbered_citation_table", 
         "heading": "References",
-        "columns": ["#", "Source", "ID/Tool", "Type", "Description"],
+        "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
         "rows": rows
     }
 

@@ -39,6 +39,14 @@ STYLE_CONFIG = {
     }
 }
 
+# Resolve base directories once for data lookups
+BASE_DIR = Path(__file__).resolve().parents[1]
+DEFORESTATION_DATASETS = [
+    ("parquet", BASE_DIR / "data" / "deforestation" / "deforestation.parquet"),
+    ("parquet", BASE_DIR / "data" / "deforestation" / "deforestation_old.parquet"),
+    ("geojson", BASE_DIR / "data" / "brazil_deforestation.geojson"),
+]
+
 def _load_style_config():
     try:
         base_dir = Path(__file__).resolve().parents[1]
@@ -75,23 +83,50 @@ STATIC_HEAT = {
 # Session-scoped storage (cleared between queries and isolated per session)
 SESSIONS: dict = {}
 
+def _load_deforestation_geodataframe():
+    """Load deforestation polygons from the first available dataset."""
+    for fmt, path in DEFORESTATION_DATASETS:
+        try:
+            if not path.exists():
+                continue
+            if fmt == "parquet":
+                print(f"[geospatial] Loading deforestation data from parquet: {path}")
+                gdf = gpd.read_parquet(path)
+            else:
+                print(f"[geospatial] Loading deforestation data from GeoJSON: {path}")
+                gdf = gpd.read_file(path)
+            return gdf, path
+        except Exception as exc:
+            print(f"[geospatial] Failed to load deforestation data from {path}: {exc}")
+            continue
+    return None, None
+
+
 def _load_static_deforestation_index() -> bool:
     """Load deforestation polygons and build a global STRtree index (EPSG:3857)."""
     if not GEOSPATIAL_AVAILABLE or STATIC_DEFOR['loaded']:
         return STATIC_DEFOR['loaded']
     try:
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        pq_path = os.path.join(base_dir, 'data', 'deforestation', 'deforestation.parquet')
-        gj_path = os.path.join(base_dir, 'data', 'brazil_deforestation.geojson')
-        if os.path.exists(pq_path):
-            gdf = gpd.read_parquet(pq_path)
-        elif os.path.exists(gj_path):
-            gdf = gpd.read_file(gj_path)
-        else:
+        gdf, source_path = _load_deforestation_geodataframe()
+        if gdf is None:
             print("[geospatial] Static deforestation data not found; static index disabled")
             return False
         if gdf.crs is None:
             gdf.set_crs(epsg=4326, inplace=True)
+            print("[geospatial] Set deforestation CRS to EPSG:4326")
+        elif str(gdf.crs).lower() not in {"epsg:4326", "ogc:crs84"}:
+            original_crs = gdf.crs
+            gdf = gdf.to_crs('EPSG:4326')
+            print(f"[geospatial] Reprojected deforestation dataset from {original_crs} to EPSG:4326")
+        if 'area_hectares' not in gdf.columns:
+            try:
+                projected = gdf.to_crs('EPSG:5880')
+                gdf['area_hectares'] = projected.geometry.area / 10000
+            except Exception as area_exc:
+                print(f"[geospatial] Failed to compute area_hectares: {area_exc}")
+                gdf['area_hectares'] = 0.0
+        if 'year' not in gdf.columns:
+            gdf['year'] = None
         gdf_3857 = gdf.to_crs('EPSG:3857')
         ids, props, geoms = [], [], []
         for idx, row in gdf_3857.iterrows():
@@ -111,7 +146,7 @@ def _load_static_deforestation_index() -> bool:
         from shapely.strtree import STRtree
         tree = STRtree(geoms)
         STATIC_DEFOR.update({'geoms_3857': geoms, 'ids': ids, 'props': props, 'tree': tree, 'loaded': True})
-        print(f"[geospatial] Static deforestation index loaded with {len(geoms)} polygons")
+        print(f"[geospatial] Static deforestation index loaded with {len(geoms)} polygons from {source_path}")
         return True
     except Exception as e:
         print(f"[geospatial] Failed to load static deforestation index: {e}")
@@ -657,6 +692,7 @@ def GenerateCorrelationMap(
         return {"error": "No entities registered for mapping"}
     
     features = []
+    geometry_types_present: set[str] = set()
     
     # Get correlated entity IDs
     correlated_pairs = {}
@@ -689,6 +725,11 @@ def GenerateCorrelationMap(
         except:
             properties = {}
         
+        # Track geometry type
+        geom_type = getattr(entity.geometry, 'geom_type', None)
+        if isinstance(geom_type, str):
+            geometry_types_present.add(geom_type.lower())
+
         # Add correlation status
         properties['layer'] = entity['entity_type']
         properties['entity_id'] = entity['entity_id']
@@ -950,7 +991,8 @@ def GenerateCorrelationMap(
             # Keep exact casing for frontend legend matching
             "countries": sorted({str(c) for c in countries}),
             # Provide counts for legend labels to avoid '(undefined)' rendering on frontend
-            "country_counts": country_counts
+            "country_counts": country_counts,
+            "geometry_types": sorted(geometry_types_present) if geometry_types_present else ["point"]
         }
     }
     
@@ -987,6 +1029,13 @@ def GenerateCorrelationMap(
         description = f"Spatial correlation map with {len(last_correlations)} relationships"
     
     # Build summary for formatter/frontend legend and view state
+    normalized_geom_types = sorted(geometry_types_present) if geometry_types_present else ["point"]
+    geom_has_point = any(g.startswith('point') for g in normalized_geom_types)
+    geom_has_polygon = any(g.startswith('poly') or g.startswith('multi') for g in normalized_geom_types)
+    summary_geometry_type = 'point'
+    if geom_has_polygon and not geom_has_point:
+        summary_geometry_type = 'polygon'
+
     summary = {
         "description": description,
         "total_features": len(features),
@@ -1002,6 +1051,8 @@ def GenerateCorrelationMap(
         "bounds": geojson["metadata"].get("bounds"),
         "center": geojson["metadata"].get("center"),
         "title": "Correlation Map",
+        "geometry_type": summary_geometry_type,
+        "geometry_types": normalized_geom_types,
         # Explicit correlation role and legend for downstream renderers
         "map_role": "correlation",
         "legend_layers": [
@@ -1016,6 +1067,8 @@ def GenerateCorrelationMap(
         "geojson_filename": filename,
         "summary": summary,
         "is_correlation_map": True,
+        "geometry_type": summary_geometry_type,
+        "geometry_types": normalized_geom_types,
         "session_id": session_id
     }
 

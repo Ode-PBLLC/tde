@@ -1,0 +1,636 @@
+{
+  "query": "Q3 To what extent does the NDC rely on future policies to define its mitigation strategies in high-emitting sectors like land use and energy?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q1344",
+        "type": "Concept",
+        "label": "mitigation finance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "More efficient heavy duty vehicles",
+        "type": "Concept",
+        "label": "More efficient heavy duty vehicles",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "carbon capture and storage",
+        "type": "Concept",
+        "label": "carbon capture and storage",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Loss & Damage",
+        "type": "Concept",
+        "label": "Loss & Damage",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "mitigation technologies",
+        "type": "Concept",
+        "label": "mitigation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Ecological buffer zones",
+        "type": "Concept",
+        "label": "Ecological buffer zones",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Bushfire reduction",
+        "type": "Concept",
+        "label": "Bushfire reduction",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Intelligent transport systems",
+        "type": "Concept",
+        "label": "Intelligent transport systems",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Forested catchments protection",
+        "type": "Concept",
+        "label": "Forested catchments protection",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Prescribed fire",
+        "type": "Concept",
+        "label": "Prescribed fire",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "greenhouse gas",
+        "type": "Concept",
+        "label": "greenhouse gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q131",
+        "type": "Concept",
+        "label": "Agriculture and land management technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "technologies",
+        "type": "Concept",
+        "label": "technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Control of sand encroachment",
+        "type": "Concept",
+        "label": "Control of sand encroachment",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "climate change governance",
+        "type": "Concept",
+        "label": "climate change governance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "reforestation",
+        "type": "Concept",
+        "label": "reforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Traffic management",
+        "type": "Concept",
+        "label": "Traffic management",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fossil fuel",
+        "type": "Concept",
+        "label": "fossil fuel",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "climate finance",
+        "type": "Concept",
+        "label": "climate finance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Freight management",
+        "type": "Concept",
+        "label": "Freight management",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "mitigation",
+        "type": "Concept",
+        "label": "mitigation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "clean technology",
+        "type": "Concept",
+        "label": "clean technology",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "climate-resilient forest management",
+        "type": "Concept",
+        "label": "climate-resilient forest management",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "mitigation governance",
+        "type": "Concept",
+        "label": "mitigation governance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "carbon dioxide",
+        "type": "Concept",
+        "label": "carbon dioxide",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q560",
+        "type": "Concept",
+        "label": "mitigation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "More efficient light duty vehicles",
+        "type": "Concept",
+        "label": "More efficient light duty vehicles",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Transport demand management",
+        "type": "Concept",
+        "label": "Transport demand management",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Forest fire control",
+        "type": "Concept",
+        "label": "Forest fire control",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "climate justice",
+        "type": "Concept",
+        "label": "climate justice",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "adaptation",
+        "type": "Concept",
+        "label": "adaptation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "afforestation",
+        "type": "Concept",
+        "label": "afforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Reduced impact logging",
+        "type": "Concept",
+        "label": "Reduced impact logging",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Biodiversity management systems",
+        "type": "Concept",
+        "label": "Biodiversity management systems",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q253",
+        "type": "Concept",
+        "label": "mitigation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1584",
+        "type": "Concept",
+        "label": "mitigation governance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Maritime support systems",
+        "type": "Concept",
+        "label": "Maritime support systems",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q560",
+        "target": "mitigation technologies",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "fossil fuel",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "adaptation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "carbon dioxide",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "Loss & Damage",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "climate justice",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "reforestation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "afforestation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "mitigation governance",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "greenhouse gas",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1344",
+        "target": "climate finance",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1584",
+        "target": "climate change governance",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1584",
+        "target": "mitigation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q253",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q253",
+        "target": "clean technology",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "carbon capture and storage",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Maritime support systems",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Traffic management",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "More efficient heavy duty vehicles",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "More efficient light duty vehicles",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Intelligent transport systems",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Transport demand management",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Freight management",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q131",
+        "target": "Reduced impact logging",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "climate-resilient forest management",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forested catchments protection",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Ecological buffer zones",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Bushfire reduction",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Prescribed fire",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Control of sand encroachment",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Biodiversity management systems",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forest fire control",
+        "type": "HAS_SUBCONCEPT"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q560",
+        "target": "mitigation technologies",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "fossil fuel",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "adaptation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "carbon dioxide",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "Loss & Damage",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "climate justice",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "reforestation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "afforestation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "mitigation governance",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q560",
+        "target": "greenhouse gas",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1344",
+        "target": "climate finance",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1584",
+        "target": "climate change governance",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1584",
+        "target": "mitigation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q253",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q253",
+        "target": "clean technology",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "carbon capture and storage",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Maritime support systems",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Traffic management",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "More efficient heavy duty vehicles",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "More efficient light duty vehicles",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Intelligent transport systems",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Transport demand management",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q253",
+        "target": "Freight management",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q131",
+        "target": "Reduced impact logging",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "climate-resilient forest management",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forested catchments protection",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Ecological buffer zones",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Bushfire reduction",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Prescribed fire",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Control of sand encroachment",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Biodiversity management systems",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forest fire control",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "23819.128"
+}

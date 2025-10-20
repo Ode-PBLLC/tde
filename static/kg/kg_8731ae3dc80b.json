@@ -1,0 +1,222 @@
+{
+  "query": "Can we drill into Mato Grosso? Show me solar there.",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q618",
+        "type": "Concept",
+        "label": "solar energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q620",
+        "type": "Concept",
+        "label": "Solar photovoltaic",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Solar photovoltaic",
+        "type": "Concept",
+        "label": "Solar photovoltaic",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "oil",
+        "type": "Concept",
+        "label": "oil",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "extraction of crude petroleum",
+        "type": "Concept",
+        "label": "extraction of crude petroleum",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "solar energy",
+        "type": "Concept",
+        "label": "solar energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "renewables",
+        "type": "Concept",
+        "label": "renewables",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Hazard management technologies",
+        "type": "Concept",
+        "label": "Hazard management technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1330",
+        "type": "Concept",
+        "label": "oil rig",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q175",
+        "type": "Concept",
+        "label": "Solar water distillation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q120",
+        "type": "Concept",
+        "label": "Groynes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Heliothermic",
+        "type": "Concept",
+        "label": "Heliothermic",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Adaptation technologies",
+        "type": "Concept",
+        "label": "Adaptation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Water management and conservation technologies",
+        "type": "Concept",
+        "label": "Water management and conservation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q618",
+        "target": "renewables",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q618",
+        "target": "Solar photovoltaic",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q618",
+        "target": "Heliothermic",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q620",
+        "target": "solar energy",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Water management and conservation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q120",
+        "target": "Hazard management technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q120",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1330",
+        "target": "oil",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1330",
+        "target": "extraction of crude petroleum",
+        "type": "RELATED_TO"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q618",
+        "target": "renewables",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q618",
+        "target": "Solar photovoltaic",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q618",
+        "target": "Heliothermic",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q620",
+        "target": "solar energy",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Water management and conservation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q175",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q120",
+        "target": "Hazard management technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q120",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1330",
+        "target": "oil",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1330",
+        "target": "extraction of crude petroleum",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "70750.215"
+}

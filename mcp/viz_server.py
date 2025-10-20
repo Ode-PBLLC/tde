@@ -9,7 +9,7 @@ returns Chart.js v3+ compatible configurations.
 
 import json
 import colorsys
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 from fastmcp import FastMCP
 
 # Initialize FastMCP server
@@ -511,7 +511,7 @@ def CreateComparisonTable(
     include_averages: bool = False,
     sort_by: str = "value",
     sort_descending: bool = True,
-    columns: Optional[List[str]] = None,
+    columns: Optional[List[Union[str, Dict[str, Any]]]] = None,
     title: Optional[str] = None,
     additional_fields: Optional[List[str]] = None
 ) -> Dict[str, Any]:
@@ -585,9 +585,15 @@ def CreateComparisonTable(
     elif additional_fields and sort_by in additional_fields:
         entities.sort(key=lambda x: x.get(sort_by, 0), reverse=sort_descending)
     
-    # Build columns
+    # Build columns (accept both list of strings and list of {label,key,format} dicts)
     if columns:
-        column_headers = columns
+        if isinstance(columns, list) and columns and isinstance(columns[0], dict):
+            column_headers = [
+                (c.get("label") or c.get("key") or "").strip() if isinstance(c, dict) else str(c)
+                for c in columns
+            ]
+        else:
+            column_headers = [str(c) for c in columns]
     else:
         column_headers = ["Entity"]
         

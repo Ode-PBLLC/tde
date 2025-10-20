@@ -1,0 +1,175 @@
+{
+  "query": "What are Brazil's NDCs and how are they doing?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q800",
+        "type": "Concept",
+        "label": "hideworking",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q234",
+        "type": "Concept",
+        "label": "O3",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q734",
+        "type": "Concept",
+        "label": "ethane",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "persistent organic pollutants",
+        "type": "Concept",
+        "label": "persistent organic pollutants",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "shale gas",
+        "type": "Concept",
+        "label": "shale gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emissions reduction target",
+        "type": "Concept",
+        "label": "emissions reduction target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "manufacturing sector",
+        "type": "Concept",
+        "label": "manufacturing sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "policy instruments",
+        "type": "Concept",
+        "label": "policy instruments",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fossil gas",
+        "type": "Concept",
+        "label": "fossil gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "ozone layer",
+        "type": "Concept",
+        "label": "ozone layer",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1651",
+        "type": "Concept",
+        "label": "target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1237",
+        "type": "Concept",
+        "label": "dioxins",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q734",
+        "target": "fossil gas",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q734",
+        "target": "shale gas",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1237",
+        "target": "persistent organic pollutants",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q800",
+        "target": "manufacturing sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "emissions reduction target",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q234",
+        "target": "ozone layer",
+        "type": "RELATED_TO"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q734",
+        "target": "fossil gas",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q734",
+        "target": "shale gas",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1237",
+        "target": "persistent organic pollutants",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q800",
+        "target": "manufacturing sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "emissions reduction target",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q234",
+        "target": "ozone layer",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "54566.376"
+}

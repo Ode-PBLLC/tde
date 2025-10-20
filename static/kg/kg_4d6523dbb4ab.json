@@ -1,0 +1,355 @@
+{
+  "query": "Tell me about agriculture and climate in Brazil",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Reduced impact logging",
+        "type": "Concept",
+        "label": "Reduced impact logging",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "sustainable agriculture",
+        "type": "Concept",
+        "label": "sustainable agriculture",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Prescribed fire",
+        "type": "Concept",
+        "label": "Prescribed fire",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q356",
+        "type": "Concept",
+        "label": "Precision agriculture",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Ecological buffer zones",
+        "type": "Concept",
+        "label": "Ecological buffer zones",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "technologies",
+        "type": "Concept",
+        "label": "technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Forest fire control",
+        "type": "Concept",
+        "label": "Forest fire control",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Control of sand encroachment",
+        "type": "Concept",
+        "label": "Control of sand encroachment",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q131",
+        "type": "Concept",
+        "label": "Agriculture and land management technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "climate smart agriculture",
+        "type": "Concept",
+        "label": "climate smart agriculture",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Adaptation technologies",
+        "type": "Concept",
+        "label": "Adaptation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1623",
+        "type": "Concept",
+        "label": "sustainable agriculture",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q351",
+        "type": "Concept",
+        "label": "Q351",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "agriculture sector",
+        "type": "Concept",
+        "label": "agriculture sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q144",
+        "type": "Concept",
+        "label": "Soilless agriculture",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Bushfire reduction",
+        "type": "Concept",
+        "label": "Bushfire reduction",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1624",
+        "type": "Concept",
+        "label": "climate smart agriculture",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Forested catchments protection",
+        "type": "Concept",
+        "label": "Forested catchments protection",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Biodiversity management systems",
+        "type": "Concept",
+        "label": "Biodiversity management systems",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "climate-resilient forest management",
+        "type": "Concept",
+        "label": "climate-resilient forest management",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Agriculture and land management technologies",
+        "type": "Concept",
+        "label": "Agriculture and land management technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "mitigation technologies",
+        "type": "Concept",
+        "label": "mitigation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1624",
+        "target": "sustainable agriculture",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q144",
+        "target": "Agriculture and land management technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q144",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q356",
+        "target": "Q351",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q356",
+        "target": "mitigation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1623",
+        "target": "agriculture sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1623",
+        "target": "climate smart agriculture",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q131",
+        "target": "Reduced impact logging",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "climate-resilient forest management",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forested catchments protection",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Ecological buffer zones",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Bushfire reduction",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Prescribed fire",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Control of sand encroachment",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Biodiversity management systems",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forest fire control",
+        "type": "HAS_SUBCONCEPT"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1624",
+        "target": "sustainable agriculture",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q144",
+        "target": "Agriculture and land management technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q144",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q356",
+        "target": "Q351",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q356",
+        "target": "mitigation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1623",
+        "target": "agriculture sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1623",
+        "target": "climate smart agriculture",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q131",
+        "target": "Reduced impact logging",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "climate-resilient forest management",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forested catchments protection",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Ecological buffer zones",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Bushfire reduction",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Prescribed fire",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Control of sand encroachment",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Biodiversity management systems",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q131",
+        "target": "Forest fire control",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "75760.993"
+}

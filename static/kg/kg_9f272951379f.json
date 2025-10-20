@@ -1,0 +1,287 @@
+{
+  "query": "Tell me about renewable energy in Brazil?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "mitigation",
+        "type": "Concept",
+        "label": "mitigation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "mitigation technologies",
+        "type": "Concept",
+        "label": "mitigation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "codes and standards",
+        "type": "Concept",
+        "label": "codes and standards",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q587",
+        "type": "Concept",
+        "label": "Renewable industrial waste",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "bioenergy",
+        "type": "Concept",
+        "label": "bioenergy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "marine energy",
+        "type": "Concept",
+        "label": "marine energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "green hydrogen",
+        "type": "Concept",
+        "label": "green hydrogen",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "energy supply sector",
+        "type": "Concept",
+        "label": "energy supply sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "solar energy",
+        "type": "Concept",
+        "label": "solar energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1397",
+        "type": "Concept",
+        "label": "renewable portfolio standard",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q567",
+        "type": "Concept",
+        "label": "renewables",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Heat pumps",
+        "type": "Concept",
+        "label": "Heat pumps",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "wind energy",
+        "type": "Concept",
+        "label": "wind energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1396",
+        "type": "Concept",
+        "label": "energy efficiency standard",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "hydropower",
+        "type": "Concept",
+        "label": "hydropower",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1477",
+        "type": "Concept",
+        "label": "energy market",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "geothermal energy",
+        "type": "Concept",
+        "label": "geothermal energy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1477",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q567",
+        "target": "mitigation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q567",
+        "target": "bioenergy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "geothermal energy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "hydropower",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "marine energy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "solar energy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "wind energy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "Heat pumps",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "green hydrogen",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "mitigation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q587",
+        "target": "bioenergy",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1396",
+        "target": "codes and standards",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1397",
+        "target": "codes and standards",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1477",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q567",
+        "target": "mitigation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q567",
+        "target": "bioenergy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "geothermal energy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "hydropower",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "marine energy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "solar energy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "wind energy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "Heat pumps",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "green hydrogen",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q567",
+        "target": "mitigation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q587",
+        "target": "bioenergy",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1396",
+        "target": "codes and standards",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1397",
+        "target": "codes and standards",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "15281.465"
+}

@@ -1,0 +1,166 @@
+{
+  "items": [
+    {
+      "state_code": "6",
+      "state_name": "Mato Grosso",
+      "area_km2": 2289823.397433,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "26",
+      "state_name": "Mato Grosso do Sul",
+      "area_km2": 1573216.811272,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "16",
+      "state_name": "Bahia",
+      "area_km2": 1464523.12049,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "25",
+      "state_name": "Piau\u00ed",
+      "area_km2": 1220240.732736,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "8",
+      "state_name": "Tocantins",
+      "area_km2": 1036823.639905,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "22",
+      "state_name": "Maranh\u00e3o",
+      "area_km2": 873994.907997,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "0",
+      "state_name": "Cear\u00e1",
+      "area_km2": 814454.66463,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "23",
+      "state_name": "Goi\u00e1s",
+      "area_km2": 658335.335173,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "9",
+      "state_name": "Par\u00e1",
+      "area_km2": 591514.209989,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "10",
+      "state_name": "Amazonas",
+      "area_km2": 467208.131989,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "2",
+      "state_name": "Roraima",
+      "area_km2": 441227.403416,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "18",
+      "state_name": "Pernambuco",
+      "area_km2": 424899.499116,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "3",
+      "state_name": "Rond\u00f4nia",
+      "area_km2": 337901.383684,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "19",
+      "state_name": "Rio Grande do Norte",
+      "area_km2": 332470.365761,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "17",
+      "state_name": "S\u00e3o Paulo",
+      "area_km2": 309234.731365,
+      "polygon_count": 6
+    },
+    {
+      "state_code": "14",
+      "state_name": "Para\u00edba",
+      "area_km2": 288730.808571,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "11",
+      "state_name": "Minas Gerais",
+      "area_km2": 194481.960199,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "1",
+      "state_name": "Paran\u00e1",
+      "area_km2": 125867.424455,
+      "polygon_count": 5
+    },
+    {
+      "state_code": "13",
+      "state_name": "Rio Grande do Sul",
+      "area_km2": 122153.790569,
+      "polygon_count": 4
+    },
+    {
+      "state_code": "24",
+      "state_name": "Alagoas",
+      "area_km2": 97356.849201,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "21",
+      "state_name": "Sergipe",
+      "area_km2": 79724.513632,
+      "polygon_count": 8
+    },
+    {
+      "state_code": "15",
+      "state_name": "Esp\u00edrito Santo",
+      "area_km2": 11237.221059,
+      "polygon_count": 3
+    },
+    {
+      "state_code": "5",
+      "state_name": "Rio de Janeiro",
+      "area_km2": 10286.825526,
+      "polygon_count": 4
+    },
+    {
+      "state_code": "7",
+      "state_name": "Amap\u00e1",
+      "area_km2": 9118.855274,
+      "polygon_count": 4
+    },
+    {
+      "state_code": "20",
+      "state_name": "Acre",
+      "area_km2": 2602.131538,
+      "polygon_count": 4
+    },
+    {
+      "state_code": "12",
+      "state_name": "Distrito Federal",
+      "area_km2": 764.860857,
+      "polygon_count": 4
+    },
+    {
+      "state_code": "4",
+      "state_name": "Santa Catarina",
+      "area_km2": 476.606425,
+      "polygon_count": 2
+    }
+  ]
+}

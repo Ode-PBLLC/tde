@@ -1,0 +1,181 @@
+configs = {
+            "cpr": {
+                "brief": "Climate Knowledge Graph with physical & transition risks, energy systems, financial climate impacts",
+                "detailed": "This dataset is a knowledge graph of climate/environment related concepts applied to POLICY documents. This dataset is especially useful is policy is being discussed.",
+                "collection_instructions": """Knowledge Graph expected workflow (concepts → neighbors → passages):
+                
+                1) Resolve concepts from the query (do NOT assume 'Brazil' as a concept; CPR KG is Brazil-scoped):
+                   - Use concept finders to identify seed concepts from the query text:
+                     • FindConceptMatchesByNgrams (exact label n-grams)
+                     • GetTopConceptsByQueryLocal (token overlap)
+                     • GetTopConceptsByQuery (semantic; only if embeddings available)
+                     • SearchConceptsFuzzy (RapidFuzz over preferred + alternative labels)
+                   - Deduplicate and keep top seeds most relevant to the query intent (e.g., 'solar energy', 'solar photovoltaic' for solar policy).
+                
+                2) Expand nearby KG context:
+                   - Use GetConceptGraphNeighbors on each seed (direction='both') to collect parent/child/related concepts.
+                   - Keep edge types (SUBCONCEPT_OF, HAS_SUBCONCEPT, RELATED_TO) to show structure.
+                   - Optionally use FindConceptPathWithEdges for short paths between key concepts.
+                
+                3) Surface passages with citations:
+                   - Use GetPassagesMentioningConcept for each seed (and select neighbor concepts when useful).
+                   - If no MENTIONS spans are found for a concept, fallback to KG-side text search against labelled_passages for the concept's preferred + alternative labels (including Portuguese terms where relevant: 'energia solar', 'fotovoltaica', 'geração distribuída', 'compensação de energia', 'PROINFA', 'ANEEL/REN 482', 'leilões').
+                   - Return real passages with passage_id/doc_id; avoid placeholders whenever possible.
+                
+                4) Assemble answer (KG-first):
+                   - Lead with a concise summary.
+                   - Provide 3–6 bullet points grounded in KG passages (with superscript citations).
+                   - Optionally add a compact 'KG Evidence' table (Passage ID, Concept, Snippet).
+                   - It is acceptable to include a supplemental asset count (e.g., solar facilities) at the end, but policy answers must prioritize KG evidence.
+                
+                Notes:
+                - Do not include geospatial correlation or facility mapping unless the user asks for spatial relationships.
+                - When extracting targets/figures, capture complete context and units.
+                - NEVER use 'ALWAYSRUN' - it's a debug tool that returns nothing useful.
+                - Prefer the composite KG policy-discovery tool when available: 'DiscoverPolicyContextForQuery'."""
+            },
+            "solar": {
+                "brief": "Solar facility database with locations, capacity, renewable infrastructure globally",
+                "detailed": "Comprehensive solar facility database with geospatial locations, capacity data (MW), countries, and datetimes with a range over when they could've been constructed.",
+                "collection_instructions": """Tool usage strategy for Solar Database:
+                - IMPORTANT: Call 'GetSolarFacilitiesMapData' when you need to show geographic distribution
+                - Use 'GetSolarFacilitiesByCountry' for detailed country-level facility data
+                - Use 'GetSolarCapacityByCountry' for country-level facility count stats (also returns top_10 list)
+                - Use 'GetTopNCountriesByFacilities' for queries like 'top 10 countries by asset/facility count'
+                - Use 'GetSolarConstructionTimeline' for temporal trends and growth analysis
+                - Use 'GetLargestSolarFacilities' to highlight major installations
+                - For multi-country analysis, use 'GetSolarFacilitiesMultipleCountries'
+                - Map tools automatically generate interactive visualizations
+                - Always aim to provide both statistics AND geographic visualizations"""
+            },
+            "gist": {
+                "brief": "Company environmental data: water stress (MSA), drought/flood risks, heat exposure, GHG emissions",
+                "detailed": "GIST Impact database with company-level environmental metrics including: water stress (Mean Species Abundance), drought risk, flood risk (coastal/riverine), extreme heat exposure, extreme precipitation, temperature anomalies, land use changes (urban expansion, forest loss, agricultural conversion), population density impacts, corporate environmental impacts (Scope 1/2/3 GHG emissions, water consumption, SOX/NOX emissions, nitrogen/phosphorous pollution, waste generation), and asset-level risk assessments",
+                "collection_instructions": """Tool usage strategy for GIST Impact Database:
+                - Use 'GetGistCompanyWaterData' for water stress and MSA metrics
+                - Use 'GetGistCompanyClimateRisks' for physical climate risks (drought, flood, heat)
+                - Use 'GetGistCompanyEmissions' for GHG data (Scope 1, 2, 3)
+                - For sector analysis, query multiple companies in the same industry
+                - Always collect both current metrics AND trend data when available
+                - For risk assessment, gather multiple risk types (water, climate, emissions)
+                - Include asset-level data when analyzing specific locations
+                - Collect both absolute values and intensity metrics for meaningful comparison"""
+            },
+            "lse": {
+                "brief": "NDC commitments, climate targets, emissions reductions, Brazilian governance, policy frameworks",
+                "detailed": "Comprehensive climate policy database including: NDC targets and commitments (emissions reduction percentages, net-zero dates, renewable energy goals), NDC vs domestic policy comparison, institutional frameworks (direction setting, planning, coordination), climate policies (cross-cutting, sectoral mitigation/adaptation), Brazilian state-level governance, implementation tracking, and TPI emissions pathways",
+                "collection_instructions": """Tool usage strategy for LSE Climate Policy:
+                - Use 'GetNDCTargets' FIRST for specific country NDC commitments and targets
+                - For energy-specific NDC queries, also call 'GetPlansAndPoliciesData' to find energy sector details
+                - Use 'GetNDCPolicyComparison' for NDC vs domestic law analysis  
+                - Use 'GetNDCImplementationStatus' for tracking progress
+                - Use 'GetTPIGraphData' for emissions pathway visualization
+                - Use 'GetInstitutionalFramework' for governance structure queries
+                - Use 'GetClimatePolicy' for specific policy details
+                - Use 'GetSubnationalGovernance' for Brazilian state-level data
+                - CRITICAL: Extract ALL quantitative targets including:
+                  * Renewable energy percentages (any % targets)
+                  * Alternative fuel targets (biofuels, hydrogen, etc.)
+                  * Capacity targets (TWh, MW, GW)
+                  * Emissions reduction percentages
+                  * Sectoral targets (transport, industry, buildings)
+                - For energy-specific queries: Look for ALL fuel types, electricity mix, capacity expansions
+                - For NDC queries, call MULTIPLE tools to ensure comprehensive coverage"""
+            },
+            "viz": {
+                "brief": "Data visualization tools for creating charts, tables, and comparisons",
+                "detailed": "Visualization server providing smart chart generation, comparison tables, and data visualization tools. Can create Bar/Line/Pie charts, comparison tables with percentages and totals, and optimize visualization types based on data characteristics",
+                "collection_instructions": """Tool usage strategy for Viz Server:
+                CRITICAL: NEVER generate, invent, or guess data values! Only visualize data that has been explicitly provided to you from other servers.
+                
+                - If you don't have specific data, DO NOT create placeholder values
+                - Wait for actual data
+                - Use 'CreateDataTable' ONLY when you have real data to display
+                  * CRITICAL DATA FORMAT: Pass percentages as whole numbers (45 for 45%, NOT 0.45)
+                  * CRITICAL DATA FORMAT: Pass years as integers (2030, NOT "2030" or 2,030)
+                - Use 'CreateComparisonTable' when you need "% of Total" calculations for counts/values
+                  * Best for facility counts, capacity comparisons, emissions by entity
+                - Use 'create_smart_chart' for automatic chart type selection
+                - Use 'create_comparison_chart' for side-by-side comparisons
+                
+                Table Selection Guide:
+                - Data contains percentages/rates? → CreateDataTable (no meaningless totals)
+                - Need proportion analysis? → CreateComparisonTable (adds "% of Total")
+                - Mixed data types? → CreateDataTable (flexible column formatting)
+                
+                DATA FORMAT REQUIREMENTS:
+                - Percentages: Always pass 45 for "45%", never 0.45
+                - Years: Always pass 2030 as integer, not "2030" string
+                - Rates: Pass as displayed (5.5 for "5.5%")
+                - Example: {"country": "Brazil", "target": 45, "year": 2030}"""
+            },
+            "deforestation": {
+                "brief": "Brazil deforestation polygon data from processed satellite imagery",
+                "detailed": "Deforestation area polygons with for spatial analysis",
+                "collection_instructions": """Tool usage strategy for Deforestation:
+                IMPORTANT: Always call GetDeforestationAreas first when deforestation is mentioned in the query
+                - Use 'GetDeforestationAreas' as your primary tool for deforestation data
+                - Use 'GetDeforestationInBounds' for specific geographic regions  
+                - Use 'GetDeforestationStatistics' for summary statistics
+                - Use 'GetDeforestationWithMap' to generate visualization maps
+                - These tools return polygon geometries that auto-register for spatial correlation
+                - The polygon data enables geographic overlap analysis with other datasets"""
+            },
+            "wmo_cli": {
+                "brief": "WMO/IPCC climate assessment passages (heat, drought, extremes, adaptation)",
+                "detailed": "Semantic retrieval over the WMO State of the Climate in Latin America and Caribbean 2024 report plus IPCC AR6 Chapter 11 and 12 documents. Returns text snippets with page-level citations for climate extremes, attribution, and region-specific adaptation insights.",
+                "collection_instructions": """Tool usage strategy for WMO/IPCC passages:
+                - Start with 'WMOIPCCReportSearch' when scoping relevant excerpts
+                - Use 'WMOReportAsk' for WMO-LAC 2024 insight synthesis
+                - Use 'IPCCCh11ReportAsk' for extreme events framing and attribution
+                - Use 'IPCCCh12ReportAsk' for Central/South America adaptation & impacts
+                - Always extract key sentences with page numbers for citations; avoid paraphrasing without evidence"""
+            },
+            "mb_deforest": {
+                "brief": "MapBiomas Annual Deforestation Report passages",
+                "detailed": "Retrieves passages from the MapBiomas Annual Deforestation (RAD) 2024 report highlighting land-use change, biome trends, and enforcement narratives.",
+                "collection_instructions": """Tool usage strategy for MapBiomas passages:
+                - Use 'MBReportSearch' to gather context snippets for a topic or biome
+                - Use 'MBReportAsk' when a synthesized answer referencing MapBiomas evidence is required
+                - Each passage includes file & page metadata; collect 2–4 relevant excerpts for solid citations
+                - Prioritize quantitative figures (hectares, %, enforcement totals) and note the timeframe"""
+            },
+            "admin": {
+                "brief": "Brazilian administrative boundaries",
+                "detailed": "Administrative boundaries for municipalities and states within Brazil. Useful for when asked about particular places within Brazil. If a query asks about a specific state or municipality, use this server to get the polygon boundary for that place.",
+                "collection_instructions": """Tool usage strategy for Municipalities:
+                - Use 'GetMunicipalitiesByFilter' for administrative queries
+                - Use 'GetMunicipalityBoundaries' for specific municipality polygons
+                - Use 'GetMunicipalitiesInBounds' for spatial region queries
+                - Use 'FindMunicipalitiesNearPoint' for proximity searches
+                - Use 'GetMunicipalityStatistics' for aggregate analysis
+                - Returns full polygon boundaries that auto-register with geospatial server
+                - Enables questions like 'which municipalities have highest deforestation'"""
+            },
+            "geospatial": {
+                "brief": "Spatial correlation engine for geographic relationship analysis",
+                "detailed": "Correlates different geographic datasets by proximity, overlap, or containment. Does NOT store data - only analyzes relationships during query session. Receives entity registrations from other servers and performs spatial analysis.",
+                "collection_instructions": """Tool usage strategy for Geospatial:
+                - This server is PASSIVE in Phase 1 - it receives auto-registered entities from other servers
+                - ACTIVE in Phase 2 - use for correlation and map generation
+                - Use 'FindSpatialCorrelations' to find relationships (within, intersects, proximity)
+                - Use 'GenerateCorrelationMap' to create multi-layer visualization
+                - Use 'GetRegisteredEntities' to check what data is available
+                - Use 'ClearSpatialIndex' between different queries"""
+            },
+            "meta": {
+                "brief": "Metadata server for managing and retrieving dataset information",
+                "detailed": "Handles metadata for various datasets, including descriptions, schemas, and provenance information. Supports querying and updating metadata records.",
+                "collection_instructions": """Call the tools to find out more information about this project."""
+            },
+            "spa": {
+                "brief": "Semantic passage index for retrieving relevant text passages from documents",
+                "detailed": "The Science Panel for the Amazon released the Amazon Assessment Report 2021 at COP26, which has been called an “encyclopedia” of the Amazon region. This landmark report is unprecedented for its scientific and geographic scope, the inclusion of Indigenous scientists, and its transparency, having undergone peer review and public consultation. It's very likely that you'll want to query this source.",
+                "collection_instructions": """Tool usage strategy for SPA:
+                - Use 'AmazonAssessmentListDocs' to get an overview of available documents
+                - Use 'AmazonAssessmentSearch' for keyword-based searches
+                - Use 'AmazonAssessmentAsk' for expert Q&A with context
+                - All tools leverage the semantic passage index for retrieval
+                - Ensure queries are clear and specific to improve results"""
+            }
+        }

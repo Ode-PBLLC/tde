@@ -1,0 +1,166 @@
+{
+  "items": [
+    {
+      "state_code": "Mato Grosso",
+      "state_name": "Mato Grosso",
+      "polygons": 21313,
+      "total_area_hectares": 831146.077
+    },
+    {
+      "state_code": "Par\u00e1",
+      "state_name": "Par\u00e1",
+      "polygons": 8448,
+      "total_area_hectares": 355274.68
+    },
+    {
+      "state_code": "Amazonas",
+      "state_name": "Amazonas",
+      "polygons": 5162,
+      "total_area_hectares": 286142.366
+    },
+    {
+      "state_code": "Rond\u00f4nia",
+      "state_name": "Rond\u00f4nia",
+      "polygons": 6994,
+      "total_area_hectares": 232030.169
+    },
+    {
+      "state_code": "Santa Catarina",
+      "state_name": "Santa Catarina",
+      "polygons": 7738,
+      "total_area_hectares": 196446.939
+    },
+    {
+      "state_code": "Paran\u00e1",
+      "state_name": "Paran\u00e1",
+      "polygons": 6678,
+      "total_area_hectares": 182191.466
+    },
+    {
+      "state_code": "Rio Grande do Sul",
+      "state_name": "Rio Grande do Sul",
+      "polygons": 5410,
+      "total_area_hectares": 114295.809
+    },
+    {
+      "state_code": "Mato Grosso do Sul",
+      "state_name": "Mato Grosso do Sul",
+      "polygons": 3544,
+      "total_area_hectares": 91423.434
+    },
+    {
+      "state_code": "Maranh\u00e3o",
+      "state_name": "Maranh\u00e3o",
+      "polygons": 2800,
+      "total_area_hectares": 81572.203
+    },
+    {
+      "state_code": "Bahia",
+      "state_name": "Bahia",
+      "polygons": 2831,
+      "total_area_hectares": 80070.324
+    },
+    {
+      "state_code": "Tocantins",
+      "state_name": "Tocantins",
+      "polygons": 2799,
+      "total_area_hectares": 75891.06
+    },
+    {
+      "state_code": "Acre",
+      "state_name": "Acre",
+      "polygons": 1767,
+      "total_area_hectares": 64570.298
+    },
+    {
+      "state_code": "S\u00e3o Paulo",
+      "state_name": "S\u00e3o Paulo",
+      "polygons": 2708,
+      "total_area_hectares": 57296.654
+    },
+    {
+      "state_code": "Minas Gerais",
+      "state_name": "Minas Gerais",
+      "polygons": 1834,
+      "total_area_hectares": 45397.339
+    },
+    {
+      "state_code": "Roraima",
+      "state_name": "Roraima",
+      "polygons": 974,
+      "total_area_hectares": 36749.957
+    },
+    {
+      "state_code": "Cear\u00e1",
+      "state_name": "Cear\u00e1",
+      "polygons": 1629,
+      "total_area_hectares": 32211.924
+    },
+    {
+      "state_code": "Goi\u00e1s",
+      "state_name": "Goi\u00e1s",
+      "polygons": 1270,
+      "total_area_hectares": 28752.31
+    },
+    {
+      "state_code": "Piau\u00ed",
+      "state_name": "Piau\u00ed",
+      "polygons": 944,
+      "total_area_hectares": 25656.658
+    },
+    {
+      "state_code": "Amap\u00e1",
+      "state_name": "Amap\u00e1",
+      "polygons": 729,
+      "total_area_hectares": 22378.444
+    },
+    {
+      "state_code": "Rio de Janeiro",
+      "state_name": "Rio de Janeiro",
+      "polygons": 831,
+      "total_area_hectares": 12390.974
+    },
+    {
+      "state_code": "Esp\u00edrito Santo",
+      "state_name": "Esp\u00edrito Santo",
+      "polygons": 581,
+      "total_area_hectares": 9831.574
+    },
+    {
+      "state_code": "Pernambuco",
+      "state_name": "Pernambuco",
+      "polygons": 288,
+      "total_area_hectares": 7083.921
+    },
+    {
+      "state_code": "Para\u00edba",
+      "state_name": "Para\u00edba",
+      "polygons": 240,
+      "total_area_hectares": 5646.638
+    },
+    {
+      "state_code": "Rio Grande do Norte",
+      "state_name": "Rio Grande do Norte",
+      "polygons": 190,
+      "total_area_hectares": 4793.734
+    },
+    {
+      "state_code": "Sergipe",
+      "state_name": "Sergipe",
+      "polygons": 26,
+      "total_area_hectares": 495.408
+    },
+    {
+      "state_code": "Distrito Federal",
+      "state_name": "Distrito Federal",
+      "polygons": 21,
+      "total_area_hectares": 349.648
+    },
+    {
+      "state_code": "Alagoas",
+      "state_name": "Alagoas",
+      "polygons": 14,
+      "total_area_hectares": 284.286
+    }
+  ]
+}

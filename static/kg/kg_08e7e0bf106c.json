@@ -1,0 +1,26 @@
+{
+  "query": "Tell me about this project",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "deforestation",
+        "label": "deforestation",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "deforestation"
+      },
+      {
+        "id": "solar_energy",
+        "label": "solar energy",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "solar"
+      }
+    ],
+    "links": [],
+    "edges": [],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "2338.949"
+}

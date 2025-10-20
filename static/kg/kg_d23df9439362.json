@@ -1,0 +1,528 @@
+{
+  "query": "how is the clean energy transition progress in brazil?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "transport equipment manufacturing",
+        "type": "Concept",
+        "label": "transport equipment manufacturing",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "renewables",
+        "type": "Concept",
+        "label": "renewables",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "labour principle",
+        "type": "Concept",
+        "label": "labour principle",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "social partners",
+        "type": "Concept",
+        "label": "social partners",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "hydrogen infrastructure",
+        "type": "Concept",
+        "label": "hydrogen infrastructure",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "public participation",
+        "type": "Concept",
+        "label": "public participation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "impacted workers",
+        "type": "Concept",
+        "label": "impacted workers",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "just transition",
+        "type": "Concept",
+        "label": "just transition",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "workers' rights",
+        "type": "Concept",
+        "label": "workers' rights",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "manufacture of basic metals",
+        "type": "Concept",
+        "label": "manufacture of basic metals",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "manufacture of coke",
+        "type": "Concept",
+        "label": "manufacture of coke",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "plastic production",
+        "type": "Concept",
+        "label": "plastic production",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "low-carbon technologies",
+        "type": "Concept",
+        "label": "low-carbon technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "mitigation",
+        "type": "Concept",
+        "label": "mitigation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "manufacture of refined petroleum products",
+        "type": "Concept",
+        "label": "manufacture of refined petroleum products",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "labour council",
+        "type": "Concept",
+        "label": "labour council",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1478",
+        "type": "Concept",
+        "label": "energy supply infrastructure",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "social protection",
+        "type": "Concept",
+        "label": "social protection",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q47",
+        "type": "Concept",
+        "label": "just transition",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1477",
+        "type": "Concept",
+        "label": "energy market",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "paper manufacturing",
+        "type": "Concept",
+        "label": "paper manufacturing",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "social dialogue",
+        "type": "Concept",
+        "label": "social dialogue",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q254",
+        "type": "Concept",
+        "label": "clean technology",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "social inclusion",
+        "type": "Concept",
+        "label": "social inclusion",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fabricated metal product manufacturing",
+        "type": "Concept",
+        "label": "fabricated metal product manufacturing",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "energy supply sector",
+        "type": "Concept",
+        "label": "energy supply sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "trade unions",
+        "type": "Concept",
+        "label": "trade unions",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "climate justice",
+        "type": "Concept",
+        "label": "climate justice",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "extractive sector",
+        "type": "Concept",
+        "label": "extractive sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "mitigation technologies",
+        "type": "Concept",
+        "label": "mitigation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1165",
+        "type": "Concept",
+        "label": "workers impacted by the transition",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q47",
+        "target": "climate justice",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q47",
+        "target": "social protection",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "social dialogue",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "social partners",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "social inclusion",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "public participation",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "trade unions",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "labour council",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "workers' rights",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "labour principle",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1477",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q254",
+        "target": "mitigation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q254",
+        "target": "low-carbon technologies",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q254",
+        "target": "mitigation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q254",
+        "target": "renewables",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1478",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1478",
+        "target": "hydrogen infrastructure",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1165",
+        "target": "impacted workers",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1165",
+        "target": "just transition",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1165",
+        "target": "extractive sector",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "transport equipment manufacturing",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "manufacture of refined petroleum products",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "paper manufacturing",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "manufacture of coke",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "manufacture of basic metals",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "fabricated metal product manufacturing",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "plastic production",
+        "type": "RELATED_TO"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q47",
+        "target": "climate justice",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q47",
+        "target": "social protection",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "social dialogue",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "social partners",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "social inclusion",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "public participation",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "trade unions",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "labour council",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "workers' rights",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q47",
+        "target": "labour principle",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1477",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q254",
+        "target": "mitigation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q254",
+        "target": "low-carbon technologies",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q254",
+        "target": "mitigation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q254",
+        "target": "renewables",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1478",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1478",
+        "target": "hydrogen infrastructure",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1165",
+        "target": "impacted workers",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1165",
+        "target": "just transition",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1165",
+        "target": "extractive sector",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "transport equipment manufacturing",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "manufacture of refined petroleum products",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "paper manufacturing",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "manufacture of coke",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "manufacture of basic metals",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "fabricated metal product manufacturing",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1165",
+        "target": "plastic production",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "74246.622"
+}

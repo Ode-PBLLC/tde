@@ -1,0 +1,589 @@
+{
+  "query": "Tell me about policies relating to urban expansion in Brazil",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q1207",
+        "kind": "Concept",
+        "label": "regulatory instrument",
+        "description": "Regulatory instruments, or \"authority\" in Hood and Margetts' NATO scheme, set boundaries on behaviour through rules, like emissions disclosure, fossil fuel bans, and spatial planning laws."
+      },
+      {
+        "id": "Q1285",
+        "kind": "Concept",
+        "label": "ban",
+        "description": "A ban is a legal action that prevents the sale or supply of a product or service, or that recalls a product from the market. Examples are bans on SF6, greenwashing, fossil fuel advertisement or single-use plastics."
+      },
+      {
+        "id": "Q1415",
+        "kind": "Concept",
+        "label": "phase-down",
+        "description": "The term \u201cPhase Down\u201d refers to structured reduction in the use of fossil fuels."
+      },
+      {
+        "id": "Q1414",
+        "kind": "Concept",
+        "label": "phase-out",
+        "description": "An approach to catalyse the gradual decline of technologies, substances and practices that compromise environmental sustainability objectives. In climate policy, \"phase out\" ofte refers to the complete cessation of fossil fuel use."
+      },
+      {
+        "id": "Q1171",
+        "kind": "Concept",
+        "label": "policy instruments",
+        "description": "Policy instruments are techniques or tools used by governing authorities to promote certain policies in order to achieve predetermined goals. Put simply, instruments are how a government tries to achieve its goals."
+      },
+      {
+        "id": "Q1283",
+        "kind": "Concept",
+        "label": "permits and licenses",
+        "description": "Environmental permits and licenses regulate business activities that could impact the environment or human health, including climate change."
+      },
+      {
+        "id": "Q1416",
+        "kind": "Concept",
+        "label": "HFC phase-down",
+        "description": ""
+      },
+      {
+        "id": "Q1417",
+        "kind": "Concept",
+        "label": "fossil fuel phase-out",
+        "description": "The complete cessation of fossil fuel use."
+      },
+      {
+        "id": "Q1282",
+        "kind": "Concept",
+        "label": "zoning and spatial planning",
+        "description": "Zoning and spatial planning are both methods for guiding the distribution of people and activities in a space, and are regulatory restriction."
+      },
+      {
+        "id": "Q1413",
+        "kind": "Concept",
+        "label": "moratorium",
+        "description": "Technically means \"temporary ban\" as placing a \u201cmoratorium\u201d implies a willingness to continue studying it and potentially revisit it in the future"
+      },
+      {
+        "id": "Q1284",
+        "kind": "Concept",
+        "label": "due diligence",
+        "description": "The processes through which enterprises can identify, prevent, mitigate and account for how they address their actual and potential adverse impacts. Due diligence is the idea that reasonable precautions should be taken to avoid causing harm to people, the environment, or society. It also involves identifying and mitigating risks before they occur."
+      },
+      {
+        "id": "Q1281",
+        "kind": "Concept",
+        "label": "codes and standards",
+        "description": "Codes and standards are regulatory instruments that specify minimum standards to protect health and safety. This ranges from performance standards, which prescribe outcomes while allowing flexibility to achieve compliance, to the more prescriptive approach of technology-specific standards."
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1207",
+        "target": "Q1171",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1281",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1282",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1283",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1285",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1284",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1413",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1414",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1415",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1415",
+        "target": "Q1285",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1415",
+        "target": "Q1416",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1414",
+        "target": "Q1285",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1414",
+        "target": "Q1417",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1171",
+        "target": "Q1207",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1283",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1416",
+        "target": "Q1415",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1417",
+        "target": "Q1414",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1282",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1413",
+        "target": "Q1285",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1284",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      }
+    ],
+    "query_concepts": [
+      "Q1285"
+    ],
+    "query_concept_labels": [
+      "ban"
+    ],
+    "total_found": 12,
+    "concepts": [
+      {
+        "id": "Q1207",
+        "label": "regulatory instrument"
+      },
+      {
+        "id": "Q1285",
+        "label": "ban"
+      },
+      {
+        "id": "Q1415",
+        "label": "phase-down"
+      },
+      {
+        "id": "Q1414",
+        "label": "phase-out"
+      },
+      {
+        "id": "Q1171",
+        "label": "policy instruments"
+      },
+      {
+        "id": "Q1283",
+        "label": "permits and licenses"
+      },
+      {
+        "id": "Q1416",
+        "label": "HFC phase-down"
+      },
+      {
+        "id": "Q1417",
+        "label": "fossil fuel phase-out"
+      },
+      {
+        "id": "Q1282",
+        "label": "zoning and spatial planning"
+      },
+      {
+        "id": "Q1413",
+        "label": "moratorium"
+      },
+      {
+        "id": "Q1284",
+        "label": "due diligence"
+      },
+      {
+        "id": "Q1281",
+        "label": "codes and standards"
+      }
+    ],
+    "relationships": [
+      {
+        "source_id": "Q1207",
+        "target_id": "Q1171",
+        "source_label": "regulatory instrument",
+        "target_label": "policy instruments",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "regulatory instrument -> policy instruments (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1207",
+        "target_id": "Q1281",
+        "source_label": "regulatory instrument",
+        "target_label": "codes and standards",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "regulatory instrument -> codes and standards (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1207",
+        "target_id": "Q1282",
+        "source_label": "regulatory instrument",
+        "target_label": "zoning and spatial planning",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "regulatory instrument -> zoning and spatial planning (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1207",
+        "target_id": "Q1283",
+        "source_label": "regulatory instrument",
+        "target_label": "permits and licenses",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "regulatory instrument -> permits and licenses (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1207",
+        "target_id": "Q1285",
+        "source_label": "regulatory instrument",
+        "target_label": "ban",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "regulatory instrument -> ban (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1207",
+        "target_id": "Q1284",
+        "source_label": "regulatory instrument",
+        "target_label": "due diligence",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "regulatory instrument -> due diligence (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1285",
+        "target_id": "Q1207",
+        "source_label": "ban",
+        "target_label": "regulatory instrument",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "ban -> regulatory instrument (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1285",
+        "target_id": "Q1413",
+        "source_label": "ban",
+        "target_label": "moratorium",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "ban -> moratorium (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1285",
+        "target_id": "Q1414",
+        "source_label": "ban",
+        "target_label": "phase-out",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "ban -> phase-out (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1285",
+        "target_id": "Q1415",
+        "source_label": "ban",
+        "target_label": "phase-down",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "ban -> phase-down (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1415",
+        "target_id": "Q1285",
+        "source_label": "phase-down",
+        "target_label": "ban",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "phase-down -> ban (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1415",
+        "target_id": "Q1416",
+        "source_label": "phase-down",
+        "target_label": "HFC phase-down",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "phase-down -> HFC phase-down (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1414",
+        "target_id": "Q1285",
+        "source_label": "phase-out",
+        "target_label": "ban",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "phase-out -> ban (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1414",
+        "target_id": "Q1417",
+        "source_label": "phase-out",
+        "target_label": "fossil fuel phase-out",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "phase-out -> fossil fuel phase-out (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1171",
+        "target_id": "Q1207",
+        "source_label": "policy instruments",
+        "target_label": "regulatory instrument",
+        "relationship_type": "HAS_SUBCONCEPT",
+        "formatted": "policy instruments -> regulatory instrument (HAS_SUBCONCEPT)"
+      },
+      {
+        "source_id": "Q1283",
+        "target_id": "Q1207",
+        "source_label": "permits and licenses",
+        "target_label": "regulatory instrument",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "permits and licenses -> regulatory instrument (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1416",
+        "target_id": "Q1415",
+        "source_label": "HFC phase-down",
+        "target_label": "phase-down",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "HFC phase-down -> phase-down (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1417",
+        "target_id": "Q1414",
+        "source_label": "fossil fuel phase-out",
+        "target_label": "phase-out",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "fossil fuel phase-out -> phase-out (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1282",
+        "target_id": "Q1207",
+        "source_label": "zoning and spatial planning",
+        "target_label": "regulatory instrument",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "zoning and spatial planning -> regulatory instrument (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1413",
+        "target_id": "Q1285",
+        "source_label": "moratorium",
+        "target_label": "ban",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "moratorium -> ban (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1284",
+        "target_id": "Q1207",
+        "source_label": "due diligence",
+        "target_label": "regulatory instrument",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "due diligence -> regulatory instrument (SUBCONCEPT_OF)"
+      },
+      {
+        "source_id": "Q1281",
+        "target_id": "Q1207",
+        "source_label": "codes and standards",
+        "target_label": "regulatory instrument",
+        "relationship_type": "SUBCONCEPT_OF",
+        "formatted": "codes and standards -> regulatory instrument (SUBCONCEPT_OF)"
+      }
+    ],
+    "query": "Tell me about policies relating to urban expansion in Brazil",
+    "extraction_method": "query_and_mcp_enhanced",
+    "query_concepts_count": 1,
+    "mcp_concepts_count": 0,
+    "total_concepts_found": 1,
+    "mcp_concepts": [],
+    "links": [
+      {
+        "source": "Q1207",
+        "target": "Q1171",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1281",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1282",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1283",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1285",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1207",
+        "target": "Q1284",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1413",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1414",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1285",
+        "target": "Q1415",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1415",
+        "target": "Q1285",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1415",
+        "target": "Q1416",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1414",
+        "target": "Q1285",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1414",
+        "target": "Q1417",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1171",
+        "target": "Q1207",
+        "type": "HAS_SUBCONCEPT",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1283",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1416",
+        "target": "Q1415",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1417",
+        "target": "Q1414",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1282",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1413",
+        "target": "Q1285",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1284",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      },
+      {
+        "source": "Q1281",
+        "target": "Q1207",
+        "type": "SUBCONCEPT_OF",
+        "weight": 1.0
+      }
+    ]
+  },
+  "generated_at": "443450.175"
+}

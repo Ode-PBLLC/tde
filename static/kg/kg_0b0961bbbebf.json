@@ -1,0 +1,1103 @@
+{
+  "query": "how does brazil deal with heat stress risk, and which areas are most exposed?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "urban poor",
+        "type": "Concept",
+        "label": "urban poor",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "informal workers",
+        "type": "Concept",
+        "label": "informal workers",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "congestion charge",
+        "type": "Concept",
+        "label": "congestion charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "people with limited assets",
+        "type": "Concept",
+        "label": "people with limited assets",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "firefighter",
+        "type": "Concept",
+        "label": "firefighter",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "rainforest",
+        "type": "Concept",
+        "label": "rainforest",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "working class",
+        "type": "Concept",
+        "label": "working class",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "woodland",
+        "type": "Concept",
+        "label": "woodland",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q690",
+        "type": "Concept",
+        "label": "people with health conditions",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "welfare activities",
+        "type": "Concept",
+        "label": "welfare activities",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Marine Diesel Oil",
+        "type": "Concept",
+        "label": "Marine Diesel Oil",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q643",
+        "type": "Concept",
+        "label": "diesel",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Adaptation technologies",
+        "type": "Concept",
+        "label": "Adaptation technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "insurance activities",
+        "type": "Concept",
+        "label": "insurance activities",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1167",
+        "type": "Concept",
+        "label": "people with limited assets",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "sustainable development goal 3",
+        "type": "Concept",
+        "label": "sustainable development goal 3",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "disaster waste impact",
+        "type": "Concept",
+        "label": "disaster waste impact",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1204",
+        "type": "Concept",
+        "label": "healthcare risk waste",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "low income people",
+        "type": "Concept",
+        "label": "low income people",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "impacted group",
+        "type": "Concept",
+        "label": "impacted group",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1169",
+        "type": "Concept",
+        "label": "people with limited formal education",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "construction sector",
+        "type": "Concept",
+        "label": "construction sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "people on the move",
+        "type": "Concept",
+        "label": "people on the move",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "heatwave",
+        "type": "Concept",
+        "label": "heatwave",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "restorative justice",
+        "type": "Concept",
+        "label": "restorative justice",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "rural poor",
+        "type": "Concept",
+        "label": "rural poor",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "tropical forests",
+        "type": "Concept",
+        "label": "tropical forests",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "vehicular fuels",
+        "type": "Concept",
+        "label": "vehicular fuels",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Hazard management technologies",
+        "type": "Concept",
+        "label": "Hazard management technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "physically vulnerable people",
+        "type": "Concept",
+        "label": "physically vulnerable people",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "public healthcare management",
+        "type": "Concept",
+        "label": "public healthcare management",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "healthcare sector",
+        "type": "Concept",
+        "label": "healthcare sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "pollution charge",
+        "type": "Concept",
+        "label": "pollution charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "user charge",
+        "type": "Concept",
+        "label": "user charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "industrial failure",
+        "type": "Concept",
+        "label": "industrial failure",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1388",
+        "type": "Concept",
+        "label": "climate risk insurance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "drought",
+        "type": "Concept",
+        "label": "drought",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "drought insurance",
+        "type": "Concept",
+        "label": "drought insurance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "forestry sector",
+        "type": "Concept",
+        "label": "forestry sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "oil",
+        "type": "Concept",
+        "label": "oil",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "biodiversity",
+        "type": "Concept",
+        "label": "biodiversity",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "liquid fuel",
+        "type": "Concept",
+        "label": "liquid fuel",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1002",
+        "type": "Concept",
+        "label": "marine heatwave",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "deforestation",
+        "type": "Concept",
+        "label": "deforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "wildfire",
+        "type": "Concept",
+        "label": "wildfire",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "distillate fuel",
+        "type": "Concept",
+        "label": "distillate fuel",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fees and charges",
+        "type": "Concept",
+        "label": "fees and charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "impacted workers",
+        "type": "Concept",
+        "label": "impacted workers",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "public caregiving services",
+        "type": "Concept",
+        "label": "public caregiving services",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "forestry",
+        "type": "Concept",
+        "label": "forestry",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "insurance",
+        "type": "Concept",
+        "label": "insurance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "imbalance charge",
+        "type": "Concept",
+        "label": "imbalance charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "people with limited formal education",
+        "type": "Concept",
+        "label": "people with limited formal education",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q5",
+        "type": "Concept",
+        "label": "forest",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emission charge",
+        "type": "Concept",
+        "label": "emission charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "desert community",
+        "type": "Concept",
+        "label": "desert community",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "carbon dioxide",
+        "type": "Concept",
+        "label": "carbon dioxide",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1379",
+        "type": "Concept",
+        "label": "charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1164",
+        "type": "Concept",
+        "label": "high-risk occupations",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "health insurance",
+        "type": "Concept",
+        "label": "health insurance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "marine risk",
+        "type": "Concept",
+        "label": "marine risk",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "food insecurity",
+        "type": "Concept",
+        "label": "food insecurity",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "flood insurance",
+        "type": "Concept",
+        "label": "flood insurance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1193",
+        "type": "Concept",
+        "label": "Safety Hazards Associated with Oil and Gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "coral bleaching",
+        "type": "Concept",
+        "label": "coral bleaching",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q100",
+        "type": "Concept",
+        "label": "Drought risk mapping",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1164",
+        "target": "impacted workers",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1164",
+        "target": "firefighter",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1164",
+        "target": "rural poor",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1164",
+        "target": "healthcare sector",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1164",
+        "target": "construction sector",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1164",
+        "target": "public healthcare management",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1388",
+        "target": "insurance",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1388",
+        "target": "insurance activities",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1388",
+        "target": "flood insurance",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1388",
+        "target": "drought insurance",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1002",
+        "target": "heatwave",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "marine risk",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "coral bleaching",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q100",
+        "target": "Hazard management technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q100",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q100",
+        "target": "desert community",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q100",
+        "target": "drought",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1193",
+        "target": "industrial failure",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1167",
+        "target": "impacted group",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1167",
+        "target": "low income people",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "working class",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "urban poor",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "rural poor",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "people with limited formal education",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "people on the move",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "informal workers",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "restorative justice",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "food insecurity",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1169",
+        "target": "people with limited assets",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1204",
+        "target": "disaster waste impact",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1204",
+        "target": "public healthcare management",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1204",
+        "target": "health insurance",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "forestry",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "tropical forests",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "rainforest",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "woodland",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "carbon dioxide",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "biodiversity",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "forestry sector",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "deforestation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "wildfire",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q643",
+        "target": "oil",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "distillate fuel",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "liquid fuel",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "vehicular fuels",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "Marine Diesel Oil",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q690",
+        "target": "physically vulnerable people",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q690",
+        "target": "welfare activities",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q690",
+        "target": "sustainable development goal 3",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q690",
+        "target": "public caregiving services",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q690",
+        "target": "health insurance",
+        "type": "RELATED_TO"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1164",
+        "target": "impacted workers",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1164",
+        "target": "firefighter",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1164",
+        "target": "rural poor",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1164",
+        "target": "healthcare sector",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1164",
+        "target": "construction sector",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1164",
+        "target": "public healthcare management",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1388",
+        "target": "insurance",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1388",
+        "target": "insurance activities",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1388",
+        "target": "flood insurance",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1388",
+        "target": "drought insurance",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1002",
+        "target": "heatwave",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "marine risk",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1002",
+        "target": "coral bleaching",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q100",
+        "target": "Hazard management technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q100",
+        "target": "Adaptation technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q100",
+        "target": "desert community",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q100",
+        "target": "drought",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1193",
+        "target": "industrial failure",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1167",
+        "target": "impacted group",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1167",
+        "target": "low income people",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "working class",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "urban poor",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "rural poor",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "people with limited formal education",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "people on the move",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "informal workers",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1167",
+        "target": "restorative justice",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "food insecurity",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1169",
+        "target": "people with limited assets",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1204",
+        "target": "disaster waste impact",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1204",
+        "target": "public healthcare management",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1204",
+        "target": "health insurance",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "forestry",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "tropical forests",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "rainforest",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "woodland",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q5",
+        "target": "carbon dioxide",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "biodiversity",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "forestry sector",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "deforestation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q5",
+        "target": "wildfire",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q643",
+        "target": "oil",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "distillate fuel",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "liquid fuel",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "vehicular fuels",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q643",
+        "target": "Marine Diesel Oil",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q690",
+        "target": "physically vulnerable people",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q690",
+        "target": "welfare activities",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q690",
+        "target": "sustainable development goal 3",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q690",
+        "target": "public caregiving services",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q690",
+        "target": "health insurance",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "22754.325"
+}

@@ -1,0 +1,19 @@
+{
+  "query": "Show me solar assets near Mato Grosso.",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "solar_energy",
+        "label": "Solar energy",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "solar"
+      }
+    ],
+    "links": [],
+    "edges": [],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "14176.688"
+}

@@ -1,0 +1,514 @@
+{
+  "query": "give me ndc commitments for brazil",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "levy",
+        "type": "Concept",
+        "label": "levy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "economic instrument",
+        "type": "Concept",
+        "label": "economic instrument",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "tax advantage",
+        "type": "Concept",
+        "label": "tax advantage",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "subsidy removal",
+        "type": "Concept",
+        "label": "subsidy removal",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emission charge",
+        "type": "Concept",
+        "label": "emission charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "policy instruments",
+        "type": "Concept",
+        "label": "policy instruments",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q715",
+        "type": "Concept",
+        "label": "tax",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1519",
+        "type": "Concept",
+        "label": "mountain community",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "direct investment",
+        "type": "Concept",
+        "label": "direct investment",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fees and charges",
+        "type": "Concept",
+        "label": "fees and charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "congestion charge",
+        "type": "Concept",
+        "label": "congestion charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1272",
+        "type": "Concept",
+        "label": "grant",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "carbon border adjustment mechanism",
+        "type": "Concept",
+        "label": "carbon border adjustment mechanism",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "tax collection",
+        "type": "Concept",
+        "label": "tax collection",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "loan",
+        "type": "Concept",
+        "label": "loan",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "pollution charge",
+        "type": "Concept",
+        "label": "pollution charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "imbalance charge",
+        "type": "Concept",
+        "label": "imbalance charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "exposed community",
+        "type": "Concept",
+        "label": "exposed community",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "user charge",
+        "type": "Concept",
+        "label": "user charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q722",
+        "type": "Concept",
+        "label": "economic instrument",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "grant",
+        "type": "Concept",
+        "label": "grant",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "subsidy",
+        "type": "Concept",
+        "label": "subsidy",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "avalanche",
+        "type": "Concept",
+        "label": "avalanche",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "tax",
+        "type": "Concept",
+        "label": "tax",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "insurance",
+        "type": "Concept",
+        "label": "insurance",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Pigouvian tax",
+        "type": "Concept",
+        "label": "Pigouvian tax",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "environmental taxes",
+        "type": "Concept",
+        "label": "environmental taxes",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "financial instrument",
+        "type": "Concept",
+        "label": "financial instrument",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1379",
+        "type": "Concept",
+        "label": "charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1519",
+        "target": "exposed community",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1519",
+        "target": "avalanche",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q722",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q722",
+        "target": "tax",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "tax advantage",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "grant",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "loan",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy removal",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "direct investment",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "fees and charges",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "insurance",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1272",
+        "target": "economic instrument",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1272",
+        "target": "financial instrument",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "economic instrument",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q715",
+        "target": "environmental taxes",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "carbon border adjustment mechanism",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "levy",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "Pigouvian tax",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "tax advantage",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q715",
+        "target": "tax collection",
+        "type": "RELATED_TO"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1519",
+        "target": "exposed community",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1519",
+        "target": "avalanche",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q722",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q722",
+        "target": "tax",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "tax advantage",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "grant",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "loan",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "subsidy removal",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "direct investment",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "fees and charges",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q722",
+        "target": "insurance",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1272",
+        "target": "economic instrument",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1272",
+        "target": "financial instrument",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "economic instrument",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q715",
+        "target": "environmental taxes",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "carbon border adjustment mechanism",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "levy",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "Pigouvian tax",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q715",
+        "target": "tax advantage",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q715",
+        "target": "tax collection",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "62065.59"
+}

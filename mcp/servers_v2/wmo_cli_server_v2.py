@@ -94,7 +94,7 @@ DATASETS = {
         "index": Path("data/wmo-lac"),
         "collection": "wmo-lac",
         "title": "WMO State of the Climate in Latin America and the Caribbean 2024",
-        "url": "https://storymaps.arcgis.com/stories/d5cbf0dac8271a5341e20a9933d7b8a3",
+        "url": "https://wmo.int/publication-series/state-of-climate-latin-america-and-caribbean-2024",
         "dataset_id": "wmo_ipcc_climate_assessments",
     },
     "ipcc_ch11": {

@@ -1,0 +1,4377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph: Who are the top three companies that are harming biodiversity?</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
+        .container { width: 100%; height: 1200px; border: 1px solid #ddd; position: relative; }
+        .graph { width: 100%; height: 100%; }
+        .tooltip { 
+            position: absolute; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            pointer-events: none; 
+            opacity: 0;
+        }
+        .query-title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            color: #333;
+        }
+        .node { cursor: pointer; }
+        .link { stroke: #999; stroke-opacity: 0.6; stroke-width: 1.5px; }
+        .node-label {
+            font-size: 10px;
+            fill: #333;
+            text-anchor: middle;
+            pointer-events: none;
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="query-title">Knowledge Graph: Who are the top three companies that are harming biodiversity?</div>
+    <div class="container">
+        <svg class="graph" id="kg-graph"></svg>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <script>
+        // Embedded KG data
+        const kgData = {
+  "nodes": [
+    {
+      "id": "Q139",
+      "kind": "Concept",
+      "label": "Biodiversity management systems",
+      "description": "Biodiversity management systems (BMS) refer to organised frameworks or strategies designed to conserve and protect biodiversity in a given area, while also ensuring that human activities and development do not negatively impact ecosystems. These systems integrate environmental, social, and economic aspects to maintain or enhance biodiversity."
+    },
+    {
+      "id": "Q1004",
+      "kind": "Concept",
+      "label": "biome shift",
+      "description": "Changes in a biome as a result of climate change, such as rising temperatures or ocean acidification"
+    },
+    {
+      "id": "Q432",
+      "kind": "Concept",
+      "label": "desertification",
+      "description": "Land degradation in arid, semi-arid and dry sub-humid areas (drylands) resulting from various factors, including climatic variations and human activities."
+    },
+    {
+      "id": "Q1008",
+      "kind": "Concept",
+      "label": "terrestrial biodiversity loss",
+      "description": ""
+    },
+    {
+      "id": "Q758",
+      "kind": "Concept",
+      "label": "third sector",
+      "description": "Activities of national and sub-national non-profit organizations, charities, and voluntary groups."
+    },
+    {
+      "id": "Q856",
+      "kind": "Concept",
+      "label": "healthcare sector",
+      "description": "This sector provides medical services, manufactures medical equipment, and develops pharmaceuticals to maintain and improve health."
+    },
+    {
+      "id": "Q10",
+      "kind": "Concept",
+      "label": "tropical forests",
+      "description": "generic forest in the tropics"
+    },
+    {
+      "id": "Q422",
+      "kind": "Concept",
+      "label": "wildfire",
+      "description": "Wildfires are any unplanned or uncontrolled fire affecting natural, cultural, industrial and residential landscapes. Changing weather conditions associated with global warming increase the probability of wildfires."
+    },
+    {
+      "id": "Q765",
+      "kind": "Concept",
+      "label": "trade sector",
+      "description": "This sector involves the wholesale and retail selling of goods."
+    },
+    {
+      "id": "Q1007",
+      "kind": "Concept",
+      "label": "marine biodiversity loss",
+      "description": ""
+    },
+    {
+      "id": "Q757",
+      "kind": "Concept",
+      "label": "informal sector",
+      "description": "Households employing domestic workers, for activities like cooking, cleaning and subsistence farming, for their own use."
+    },
+    {
+      "id": "Q12",
+      "kind": "Concept",
+      "label": "rainforest",
+      "description": "type of forest with high rainfall"
+    },
+    {
+      "id": "Q1033",
+      "kind": "Concept",
+      "label": "sustainable development goal 15",
+      "description": "SDG15: life on land"
+    },
+    {
+      "id": "Q131",
+      "kind": "Concept",
+      "label": "Agriculture and land management technologies",
+      "description": ""
+    },
+    {
+      "id": "Q404",
+      "kind": "Concept",
+      "label": "terrestrial risk",
+      "description": "Terrestrial means \"of the earth\" and relates to the ecological system that includes all living organisms and their interactions within land-based environments, such as forests, grasslands, and deserts."
+    },
+    {
+      "id": "Q415",
+      "kind": "Concept",
+      "label": "land degradation",
+      "description": "A negative trend in the condition of land, expressed as long-term reduction or loss of at least one of the following: biological productivity, ecological integrity or value to humans."
+    },
+    {
+      "id": "Q818",
+      "kind": "Concept",
+      "label": "water management sector",
+      "description": "This sector involves the distribution, treatment, and conservation of water resources."
+    },
+    {
+      "id": "Q223",
+      "kind": "Concept",
+      "label": "carbon dioxide",
+      "description": "Chemical compound and greenhouse gas that comes from the extraction and burning of fossil fuels (e.g. coal, oil, and natural gas), from wildfires, and natural processes like volcanic eruptions. It is made up of one carbon atom and two oxygen atoms."
+    },
+    {
+      "id": "Q741",
+      "kind": "Concept",
+      "label": "biodiversity",
+      "description": "The variability among living organisms from all sources and the ecological complexes of which they are part."
+    },
+    {
+      "id": "Q1011",
+      "kind": "Concept",
+      "label": "acidification",
+      "description": "Acidification refers to increased acidity in ecosystems due to pollution, harming biodiversity, degrading soils, freshwater systems, and damaging infrastructure."
+    },
+    {
+      "id": "Q7",
+      "kind": "Concept",
+      "label": "forestry",
+      "description": "science and craft of creating, managing, using, conserving and repairing forests, woodlands, and associated resources for human and environmental benefits"
+    },
+    {
+      "id": "Q767",
+      "kind": "Concept",
+      "label": "hospitality sector",
+      "description": "Activities that provide lodging, food, and entertainment services to guests, including hotels, restaurants, and resorts."
+    },
+    {
+      "id": "Q4",
+      "kind": "Concept",
+      "label": "deforestation",
+      "description": "Removal of forest and conversion of the land to non-forest use, and is the direct human-induced conversion of forested land to non-forested land"
+    },
+    {
+      "id": "Q949",
+      "kind": "Concept",
+      "label": "environmental risk",
+      "description": "Environmental risk refers to adverse impacts on terrestrial, marine, and cryospheric systems from climate-related hazards, exposure, and vulnerability, and the risks related to air-pollution."
+    },
+    {
+      "id": "Q787",
+      "kind": "Concept",
+      "label": "forestry sector",
+      "description": "Activities that relate to the production of goods and services from forests."
+    },
+    {
+      "id": "Q73",
+      "kind": "Concept",
+      "label": "Adaptation technologies",
+      "description": "Adaptation technologies are systems, tools, processes and innovations that facilitate the process of adjusting to and managing the current and future effects of climate change."
+    },
+    {
+      "id": "Q914",
+      "kind": "Concept",
+      "label": "ecological justice",
+      "description": "Concerning the balance between human communities and healthy ecosystems."
+    },
+    {
+      "id": "Q419",
+      "kind": "Concept",
+      "label": "biodiversity loss",
+      "description": "Increasing air and water temperatures and altered precipitation patterns are affecting the structure, composition and functions of ecosystems. Resulting in loss of biodiversity that help support human well-being."
+    },
+    {
+      "id": "Q418",
+      "kind": "Concept",
+      "label": "salinization",
+      "description": "Increasing evaporation from rising temperatures leads to the salinization of soil and water. Salts accumulate in the soils of arid environments."
+    },
+    {
+      "id": "Q408",
+      "kind": "Concept",
+      "label": "landslide",
+      "description": "Landslide is the downslope movement of soil, rock and organic materials under the effects of gravity, which occurs when the gravitational driving forces exceed the frictional resistance of the material resisting on the slope."
+    },
+    {
+      "id": "Q8",
+      "kind": "Concept",
+      "label": "woodland",
+      "description": "Low-density forest forming open habitats with plenty of sunlight and limited shade"
+    },
+    {
+      "id": "Q1408",
+      "kind": "Concept",
+      "label": "terrestrial protected area",
+      "description": "Terrestrial ecosystems, including forests, wetlands, and peatlands store carbon stocks, and play an role in combatting the twin crises of climate change and biodiversity loss simultaneously."
+    },
+    {
+      "id": "Q788",
+      "kind": "Concept",
+      "label": "fishing sector",
+      "description": "Activities involving the catching, processing, and selling of fish for food, recreation, and industry."
+    },
+    {
+      "id": "Q973",
+      "kind": "Concept",
+      "label": "slow onset events",
+      "description": "Slow onset events evolve gradually from incremental changes over many years or from increased frequency or intensity of recurring events. As defined in the Cancun Adaptation Framework (2010), slow onset events include risks and impacts from rising temperatures, desertification, biodiversity loss, land and forest degradation, glacial retreat, ocean acidification, sea level rise, and salinization."
+    },
+    {
+      "id": "Q16",
+      "kind": "Concept",
+      "label": "forest degradation",
+      "description": "Land degradation in forested areas, referring to the loss of the biological wealth of a forest."
+    },
+    {
+      "id": "Q420",
+      "kind": "Concept",
+      "label": "invasive species",
+      "description": "Invasive species, or alien invasive species, are non-native species that threaten ecosystems, habitats, and other species, causing social, economic, environmental, or health harm."
+    },
+    {
+      "id": "Q1514",
+      "kind": "Concept",
+      "label": "exposed community",
+      "description": "Communities that are significantly exposed to climate impacts due to their physical location"
+    },
+    {
+      "id": "Q786",
+      "kind": "Concept",
+      "label": "agriculture sector",
+      "description": "Activities that involve the cultivation of crops and raising of livestock for food, fibre, and other products essential for human life and industry."
+    },
+    {
+      "id": "Q5",
+      "kind": "Concept",
+      "label": "forest",
+      "description": "A dense collection of trees covering a relatively large area"
+    }
+  ],
+  "edges": [
+    {
+      "source": "Q139",
+      "target": "Q131",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q139",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q139",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1004",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1004",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q1004",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q419",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q758",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q10",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q422",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q422",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q422",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q765",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1007",
+      "target": "Q419",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q12",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q131",
+      "target": "Q139",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q131",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q131",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q949",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q408",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q422",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q415",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q16",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q4",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q432",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q418",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1008",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q420",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1004",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1011",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1408",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q223",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q139",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q420",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1011",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q7",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q7",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q949",
+      "target": "Q404",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q7",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q131",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q422",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q139",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q914",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q1007",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q1008",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q758",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q765",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q914",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q420",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q408",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q8",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1408",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q418",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q415",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q16",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q419",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q432",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q420",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q420",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q420",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q973",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q131",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q7",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q10",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q12",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q8",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q223",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q422",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ],
+  "query_concepts": [
+    "Q741"
+  ],
+  "query_concept_labels": [
+    "biodiversity"
+  ],
+  "total_found": 39,
+  "concepts": [
+    {
+      "id": "Q139",
+      "label": "Biodiversity management systems"
+    },
+    {
+      "id": "Q1004",
+      "label": "biome shift"
+    },
+    {
+      "id": "Q432",
+      "label": "desertification"
+    },
+    {
+      "id": "Q1008",
+      "label": "terrestrial biodiversity loss"
+    },
+    {
+      "id": "Q758",
+      "label": "third sector"
+    },
+    {
+      "id": "Q856",
+      "label": "healthcare sector"
+    },
+    {
+      "id": "Q10",
+      "label": "tropical forests"
+    },
+    {
+      "id": "Q422",
+      "label": "wildfire"
+    },
+    {
+      "id": "Q765",
+      "label": "trade sector"
+    },
+    {
+      "id": "Q1007",
+      "label": "marine biodiversity loss"
+    },
+    {
+      "id": "Q757",
+      "label": "informal sector"
+    },
+    {
+      "id": "Q12",
+      "label": "rainforest"
+    },
+    {
+      "id": "Q1033",
+      "label": "sustainable development goal 15"
+    },
+    {
+      "id": "Q131",
+      "label": "Agriculture and land management technologies"
+    },
+    {
+      "id": "Q404",
+      "label": "terrestrial risk"
+    },
+    {
+      "id": "Q415",
+      "label": "land degradation"
+    },
+    {
+      "id": "Q818",
+      "label": "water management sector"
+    },
+    {
+      "id": "Q223",
+      "label": "carbon dioxide"
+    },
+    {
+      "id": "Q741",
+      "label": "biodiversity"
+    },
+    {
+      "id": "Q1011",
+      "label": "acidification"
+    },
+    {
+      "id": "Q7",
+      "label": "forestry"
+    },
+    {
+      "id": "Q767",
+      "label": "hospitality sector"
+    },
+    {
+      "id": "Q4",
+      "label": "deforestation"
+    },
+    {
+      "id": "Q949",
+      "label": "environmental risk"
+    },
+    {
+      "id": "Q787",
+      "label": "forestry sector"
+    },
+    {
+      "id": "Q73",
+      "label": "Adaptation technologies"
+    },
+    {
+      "id": "Q914",
+      "label": "ecological justice"
+    },
+    {
+      "id": "Q419",
+      "label": "biodiversity loss"
+    },
+    {
+      "id": "Q418",
+      "label": "salinization"
+    },
+    {
+      "id": "Q408",
+      "label": "landslide"
+    },
+    {
+      "id": "Q8",
+      "label": "woodland"
+    },
+    {
+      "id": "Q1408",
+      "label": "terrestrial protected area"
+    },
+    {
+      "id": "Q788",
+      "label": "fishing sector"
+    },
+    {
+      "id": "Q973",
+      "label": "slow onset events"
+    },
+    {
+      "id": "Q16",
+      "label": "forest degradation"
+    },
+    {
+      "id": "Q420",
+      "label": "invasive species"
+    },
+    {
+      "id": "Q1514",
+      "label": "exposed community"
+    },
+    {
+      "id": "Q786",
+      "label": "agriculture sector"
+    },
+    {
+      "id": "Q5",
+      "label": "forest"
+    }
+  ],
+  "relationships": [
+    {
+      "source_id": "Q139",
+      "target_id": "Q131",
+      "source_label": "Biodiversity management systems",
+      "target_label": "Agriculture and land management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Biodiversity management systems -> Agriculture and land management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q139",
+      "target_id": "Q73",
+      "source_label": "Biodiversity management systems",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Biodiversity management systems -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q139",
+      "target_id": "Q741",
+      "source_label": "Biodiversity management systems",
+      "target_label": "biodiversity",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Biodiversity management systems -> biodiversity (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1004",
+      "target_id": "Q404",
+      "source_label": "biome shift",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "biome shift -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1004",
+      "target_id": "Q432",
+      "source_label": "biome shift",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biome shift -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q973",
+      "source_label": "desertification",
+      "target_label": "slow onset events",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "desertification -> slow onset events (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q404",
+      "source_label": "desertification",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "desertification -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q1004",
+      "source_label": "desertification",
+      "target_label": "biome shift",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> biome shift (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q1008",
+      "source_label": "desertification",
+      "target_label": "terrestrial biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> terrestrial biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q4",
+      "source_label": "desertification",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q415",
+      "source_label": "desertification",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q757",
+      "source_label": "desertification",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q786",
+      "source_label": "desertification",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q787",
+      "source_label": "desertification",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q767",
+      "source_label": "desertification",
+      "target_label": "hospitality sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> hospitality sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q818",
+      "source_label": "desertification",
+      "target_label": "water management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> water management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q432",
+      "target_id": "Q788",
+      "source_label": "desertification",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "desertification -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1008",
+      "target_id": "Q404",
+      "source_label": "terrestrial biodiversity loss",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "terrestrial biodiversity loss -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1008",
+      "target_id": "Q419",
+      "source_label": "terrestrial biodiversity loss",
+      "target_label": "biodiversity loss",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "terrestrial biodiversity loss -> biodiversity loss (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1008",
+      "target_id": "Q4",
+      "source_label": "terrestrial biodiversity loss",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial biodiversity loss -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1008",
+      "target_id": "Q432",
+      "source_label": "terrestrial biodiversity loss",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial biodiversity loss -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1008",
+      "target_id": "Q415",
+      "source_label": "terrestrial biodiversity loss",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial biodiversity loss -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1008",
+      "target_id": "Q1033",
+      "source_label": "terrestrial biodiversity loss",
+      "target_label": "sustainable development goal 15",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial biodiversity loss -> sustainable development goal 15 (RELATED_TO)"
+    },
+    {
+      "source_id": "Q758",
+      "target_id": "Q419",
+      "source_label": "third sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "third sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q856",
+      "target_id": "Q418",
+      "source_label": "healthcare sector",
+      "target_label": "salinization",
+      "relationship_type": "RELATED_TO",
+      "formatted": "healthcare sector -> salinization (RELATED_TO)"
+    },
+    {
+      "source_id": "Q856",
+      "target_id": "Q16",
+      "source_label": "healthcare sector",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "healthcare sector -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q856",
+      "target_id": "Q419",
+      "source_label": "healthcare sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "healthcare sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q10",
+      "target_id": "Q5",
+      "source_label": "tropical forests",
+      "target_label": "forest",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "tropical forests -> forest (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q422",
+      "target_id": "Q404",
+      "source_label": "wildfire",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "wildfire -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q422",
+      "target_id": "Q5",
+      "source_label": "wildfire",
+      "target_label": "forest",
+      "relationship_type": "RELATED_TO",
+      "formatted": "wildfire -> forest (RELATED_TO)"
+    },
+    {
+      "source_id": "Q422",
+      "target_id": "Q787",
+      "source_label": "wildfire",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "wildfire -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q765",
+      "target_id": "Q419",
+      "source_label": "trade sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "trade sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1007",
+      "target_id": "Q419",
+      "source_label": "marine biodiversity loss",
+      "target_label": "biodiversity loss",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "marine biodiversity loss -> biodiversity loss (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q786",
+      "source_label": "informal sector",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q418",
+      "source_label": "informal sector",
+      "target_label": "salinization",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> salinization (RELATED_TO)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q415",
+      "source_label": "informal sector",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q16",
+      "source_label": "informal sector",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q419",
+      "source_label": "informal sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q432",
+      "source_label": "informal sector",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q12",
+      "target_id": "Q5",
+      "source_label": "rainforest",
+      "target_label": "forest",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "rainforest -> forest (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1033",
+      "target_id": "Q404",
+      "source_label": "sustainable development goal 15",
+      "target_label": "terrestrial risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "sustainable development goal 15 -> terrestrial risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1033",
+      "target_id": "Q1008",
+      "source_label": "sustainable development goal 15",
+      "target_label": "terrestrial biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "sustainable development goal 15 -> terrestrial biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1033",
+      "target_id": "Q787",
+      "source_label": "sustainable development goal 15",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "sustainable development goal 15 -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1033",
+      "target_id": "Q786",
+      "source_label": "sustainable development goal 15",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "sustainable development goal 15 -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q131",
+      "target_id": "Q139",
+      "source_label": "Agriculture and land management technologies",
+      "target_label": "Biodiversity management systems",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Agriculture and land management technologies -> Biodiversity management systems (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q131",
+      "target_id": "Q786",
+      "source_label": "Agriculture and land management technologies",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Agriculture and land management technologies -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q131",
+      "target_id": "Q787",
+      "source_label": "Agriculture and land management technologies",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Agriculture and land management technologies -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q949",
+      "source_label": "terrestrial risk",
+      "target_label": "environmental risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "terrestrial risk -> environmental risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q408",
+      "source_label": "terrestrial risk",
+      "target_label": "landslide",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> landslide (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q422",
+      "source_label": "terrestrial risk",
+      "target_label": "wildfire",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> wildfire (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q415",
+      "source_label": "terrestrial risk",
+      "target_label": "land degradation",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> land degradation (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q16",
+      "source_label": "terrestrial risk",
+      "target_label": "forest degradation",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> forest degradation (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q4",
+      "source_label": "terrestrial risk",
+      "target_label": "deforestation",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> deforestation (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q432",
+      "source_label": "terrestrial risk",
+      "target_label": "desertification",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> desertification (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q418",
+      "source_label": "terrestrial risk",
+      "target_label": "salinization",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> salinization (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q1008",
+      "source_label": "terrestrial risk",
+      "target_label": "terrestrial biodiversity loss",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> terrestrial biodiversity loss (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q420",
+      "source_label": "terrestrial risk",
+      "target_label": "invasive species",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> invasive species (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q1004",
+      "source_label": "terrestrial risk",
+      "target_label": "biome shift",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> biome shift (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q1011",
+      "source_label": "terrestrial risk",
+      "target_label": "acidification",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "terrestrial risk -> acidification (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q741",
+      "source_label": "terrestrial risk",
+      "target_label": "biodiversity",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial risk -> biodiversity (RELATED_TO)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q1514",
+      "source_label": "terrestrial risk",
+      "target_label": "exposed community",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial risk -> exposed community (RELATED_TO)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q1033",
+      "source_label": "terrestrial risk",
+      "target_label": "sustainable development goal 15",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial risk -> sustainable development goal 15 (RELATED_TO)"
+    },
+    {
+      "source_id": "Q404",
+      "target_id": "Q1408",
+      "source_label": "terrestrial risk",
+      "target_label": "terrestrial protected area",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial risk -> terrestrial protected area (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q973",
+      "source_label": "land degradation",
+      "target_label": "slow onset events",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "land degradation -> slow onset events (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q404",
+      "source_label": "land degradation",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "land degradation -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q1008",
+      "source_label": "land degradation",
+      "target_label": "terrestrial biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> terrestrial biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q432",
+      "source_label": "land degradation",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q757",
+      "source_label": "land degradation",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q786",
+      "source_label": "land degradation",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q788",
+      "source_label": "land degradation",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q787",
+      "source_label": "land degradation",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q767",
+      "source_label": "land degradation",
+      "target_label": "hospitality sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> hospitality sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q818",
+      "source_label": "land degradation",
+      "target_label": "water management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> water management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q415",
+      "target_id": "Q419",
+      "source_label": "land degradation",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "land degradation -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q818",
+      "target_id": "Q418",
+      "source_label": "water management sector",
+      "target_label": "salinization",
+      "relationship_type": "RELATED_TO",
+      "formatted": "water management sector -> salinization (RELATED_TO)"
+    },
+    {
+      "source_id": "Q818",
+      "target_id": "Q415",
+      "source_label": "water management sector",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "water management sector -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q818",
+      "target_id": "Q16",
+      "source_label": "water management sector",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "water management sector -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q818",
+      "target_id": "Q419",
+      "source_label": "water management sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "water management sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q818",
+      "target_id": "Q432",
+      "source_label": "water management sector",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "water management sector -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q223",
+      "target_id": "Q5",
+      "source_label": "carbon dioxide",
+      "target_label": "forest",
+      "relationship_type": "RELATED_TO",
+      "formatted": "carbon dioxide -> forest (RELATED_TO)"
+    },
+    {
+      "source_id": "Q741",
+      "target_id": "Q139",
+      "source_label": "biodiversity",
+      "target_label": "Biodiversity management systems",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity -> Biodiversity management systems (RELATED_TO)"
+    },
+    {
+      "source_id": "Q741",
+      "target_id": "Q419",
+      "source_label": "biodiversity",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q741",
+      "target_id": "Q404",
+      "source_label": "biodiversity",
+      "target_label": "terrestrial risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity -> terrestrial risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q741",
+      "target_id": "Q420",
+      "source_label": "biodiversity",
+      "target_label": "invasive species",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity -> invasive species (RELATED_TO)"
+    },
+    {
+      "source_id": "Q741",
+      "target_id": "Q5",
+      "source_label": "biodiversity",
+      "target_label": "forest",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity -> forest (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1011",
+      "target_id": "Q404",
+      "source_label": "acidification",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "acidification -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q7",
+      "target_id": "Q5",
+      "source_label": "forestry",
+      "target_label": "forest",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "forestry -> forest (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q7",
+      "target_id": "Q787",
+      "source_label": "forestry",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q767",
+      "target_id": "Q415",
+      "source_label": "hospitality sector",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "hospitality sector -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q767",
+      "target_id": "Q16",
+      "source_label": "hospitality sector",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "hospitality sector -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q767",
+      "target_id": "Q419",
+      "source_label": "hospitality sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "hospitality sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q767",
+      "target_id": "Q432",
+      "source_label": "hospitality sector",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "hospitality sector -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q404",
+      "source_label": "deforestation",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "deforestation -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q5",
+      "source_label": "deforestation",
+      "target_label": "forest",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> forest (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q16",
+      "source_label": "deforestation",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q16",
+      "source_label": "deforestation",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q786",
+      "source_label": "deforestation",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q787",
+      "source_label": "deforestation",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q432",
+      "source_label": "deforestation",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q1008",
+      "source_label": "deforestation",
+      "target_label": "terrestrial biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> terrestrial biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q4",
+      "target_id": "Q419",
+      "source_label": "deforestation",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "deforestation -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q949",
+      "target_id": "Q404",
+      "source_label": "environmental risk",
+      "target_label": "terrestrial risk",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "environmental risk -> terrestrial risk (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q7",
+      "source_label": "forestry sector",
+      "target_label": "forestry",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> forestry (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q5",
+      "source_label": "forestry sector",
+      "target_label": "forest",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> forest (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q4",
+      "source_label": "forestry sector",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q418",
+      "source_label": "forestry sector",
+      "target_label": "salinization",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> salinization (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q415",
+      "source_label": "forestry sector",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q16",
+      "source_label": "forestry sector",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q419",
+      "source_label": "forestry sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q432",
+      "source_label": "forestry sector",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q131",
+      "source_label": "forestry sector",
+      "target_label": "Agriculture and land management technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> Agriculture and land management technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q422",
+      "source_label": "forestry sector",
+      "target_label": "wildfire",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> wildfire (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q1033",
+      "source_label": "forestry sector",
+      "target_label": "sustainable development goal 15",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> sustainable development goal 15 (RELATED_TO)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q139",
+      "source_label": "Adaptation technologies",
+      "target_label": "Biodiversity management systems",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Biodiversity management systems (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q914",
+      "target_id": "Q419",
+      "source_label": "ecological justice",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "ecological justice -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q973",
+      "source_label": "biodiversity loss",
+      "target_label": "slow onset events",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "biodiversity loss -> slow onset events (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q1007",
+      "source_label": "biodiversity loss",
+      "target_label": "marine biodiversity loss",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "biodiversity loss -> marine biodiversity loss (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q1008",
+      "source_label": "biodiversity loss",
+      "target_label": "terrestrial biodiversity loss",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "biodiversity loss -> terrestrial biodiversity loss (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q4",
+      "source_label": "biodiversity loss",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q415",
+      "source_label": "biodiversity loss",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q741",
+      "source_label": "biodiversity loss",
+      "target_label": "biodiversity",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> biodiversity (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q757",
+      "source_label": "biodiversity loss",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q758",
+      "source_label": "biodiversity loss",
+      "target_label": "third sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> third sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q765",
+      "source_label": "biodiversity loss",
+      "target_label": "trade sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> trade sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q767",
+      "source_label": "biodiversity loss",
+      "target_label": "hospitality sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> hospitality sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q856",
+      "source_label": "biodiversity loss",
+      "target_label": "healthcare sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> healthcare sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q786",
+      "source_label": "biodiversity loss",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q787",
+      "source_label": "biodiversity loss",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q788",
+      "source_label": "biodiversity loss",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q818",
+      "source_label": "biodiversity loss",
+      "target_label": "water management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> water management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q914",
+      "source_label": "biodiversity loss",
+      "target_label": "ecological justice",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> ecological justice (RELATED_TO)"
+    },
+    {
+      "source_id": "Q419",
+      "target_id": "Q420",
+      "source_label": "biodiversity loss",
+      "target_label": "invasive species",
+      "relationship_type": "RELATED_TO",
+      "formatted": "biodiversity loss -> invasive species (RELATED_TO)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q973",
+      "source_label": "salinization",
+      "target_label": "slow onset events",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "salinization -> slow onset events (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q404",
+      "source_label": "salinization",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "salinization -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q786",
+      "source_label": "salinization",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "salinization -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q757",
+      "source_label": "salinization",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "salinization -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q787",
+      "source_label": "salinization",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "salinization -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q788",
+      "source_label": "salinization",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "salinization -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q818",
+      "source_label": "salinization",
+      "target_label": "water management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "salinization -> water management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q418",
+      "target_id": "Q856",
+      "source_label": "salinization",
+      "target_label": "healthcare sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "salinization -> healthcare sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q408",
+      "target_id": "Q404",
+      "source_label": "landslide",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "landslide -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q8",
+      "target_id": "Q5",
+      "source_label": "woodland",
+      "target_label": "forest",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "woodland -> forest (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1408",
+      "target_id": "Q404",
+      "source_label": "terrestrial protected area",
+      "target_label": "terrestrial risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "terrestrial protected area -> terrestrial risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q788",
+      "target_id": "Q418",
+      "source_label": "fishing sector",
+      "target_label": "salinization",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fishing sector -> salinization (RELATED_TO)"
+    },
+    {
+      "source_id": "Q788",
+      "target_id": "Q415",
+      "source_label": "fishing sector",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fishing sector -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q788",
+      "target_id": "Q419",
+      "source_label": "fishing sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fishing sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q788",
+      "target_id": "Q432",
+      "source_label": "fishing sector",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fishing sector -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q788",
+      "target_id": "Q786",
+      "source_label": "fishing sector",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fishing sector -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q418",
+      "source_label": "slow onset events",
+      "target_label": "salinization",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "slow onset events -> salinization (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q415",
+      "source_label": "slow onset events",
+      "target_label": "land degradation",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "slow onset events -> land degradation (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q16",
+      "source_label": "slow onset events",
+      "target_label": "forest degradation",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "slow onset events -> forest degradation (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q419",
+      "source_label": "slow onset events",
+      "target_label": "biodiversity loss",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "slow onset events -> biodiversity loss (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q432",
+      "source_label": "slow onset events",
+      "target_label": "desertification",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "slow onset events -> desertification (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q1514",
+      "source_label": "slow onset events",
+      "target_label": "exposed community",
+      "relationship_type": "RELATED_TO",
+      "formatted": "slow onset events -> exposed community (RELATED_TO)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q973",
+      "source_label": "forest degradation",
+      "target_label": "slow onset events",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "forest degradation -> slow onset events (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q404",
+      "source_label": "forest degradation",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "forest degradation -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q4",
+      "source_label": "forest degradation",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest degradation -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q787",
+      "source_label": "forest degradation",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest degradation -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q818",
+      "source_label": "forest degradation",
+      "target_label": "water management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest degradation -> water management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q786",
+      "source_label": "forest degradation",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest degradation -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q757",
+      "source_label": "forest degradation",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest degradation -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q856",
+      "source_label": "forest degradation",
+      "target_label": "healthcare sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest degradation -> healthcare sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q16",
+      "target_id": "Q767",
+      "source_label": "forest degradation",
+      "target_label": "hospitality sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest degradation -> hospitality sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q420",
+      "target_id": "Q404",
+      "source_label": "invasive species",
+      "target_label": "terrestrial risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "invasive species -> terrestrial risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q420",
+      "target_id": "Q741",
+      "source_label": "invasive species",
+      "target_label": "biodiversity",
+      "relationship_type": "RELATED_TO",
+      "formatted": "invasive species -> biodiversity (RELATED_TO)"
+    },
+    {
+      "source_id": "Q420",
+      "target_id": "Q419",
+      "source_label": "invasive species",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "invasive species -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1514",
+      "target_id": "Q404",
+      "source_label": "exposed community",
+      "target_label": "terrestrial risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "exposed community -> terrestrial risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1514",
+      "target_id": "Q973",
+      "source_label": "exposed community",
+      "target_label": "slow onset events",
+      "relationship_type": "RELATED_TO",
+      "formatted": "exposed community -> slow onset events (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q4",
+      "source_label": "agriculture sector",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q757",
+      "source_label": "agriculture sector",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q418",
+      "source_label": "agriculture sector",
+      "target_label": "salinization",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> salinization (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q415",
+      "source_label": "agriculture sector",
+      "target_label": "land degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> land degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q16",
+      "source_label": "agriculture sector",
+      "target_label": "forest degradation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> forest degradation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q419",
+      "source_label": "agriculture sector",
+      "target_label": "biodiversity loss",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> biodiversity loss (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q432",
+      "source_label": "agriculture sector",
+      "target_label": "desertification",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> desertification (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q131",
+      "source_label": "agriculture sector",
+      "target_label": "Agriculture and land management technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> Agriculture and land management technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q788",
+      "source_label": "agriculture sector",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q1033",
+      "source_label": "agriculture sector",
+      "target_label": "sustainable development goal 15",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> sustainable development goal 15 (RELATED_TO)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q7",
+      "source_label": "forest",
+      "target_label": "forestry",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "forest -> forestry (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q10",
+      "source_label": "forest",
+      "target_label": "tropical forests",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "forest -> tropical forests (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q12",
+      "source_label": "forest",
+      "target_label": "rainforest",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "forest -> rainforest (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q8",
+      "source_label": "forest",
+      "target_label": "woodland",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "forest -> woodland (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q223",
+      "source_label": "forest",
+      "target_label": "carbon dioxide",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest -> carbon dioxide (RELATED_TO)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q741",
+      "source_label": "forest",
+      "target_label": "biodiversity",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest -> biodiversity (RELATED_TO)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q787",
+      "source_label": "forest",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q4",
+      "source_label": "forest",
+      "target_label": "deforestation",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest -> deforestation (RELATED_TO)"
+    },
+    {
+      "source_id": "Q5",
+      "target_id": "Q422",
+      "source_label": "forest",
+      "target_label": "wildfire",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forest -> wildfire (RELATED_TO)"
+    }
+  ],
+  "query": "Who are the top three companies that are harming biodiversity?",
+  "extraction_method": "query_and_mcp_enhanced",
+  "query_concepts_count": 1,
+  "mcp_concepts_count": 0,
+  "total_concepts_found": 1,
+  "mcp_concepts": [],
+  "links": [
+    {
+      "source": "Q139",
+      "target": "Q131",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q139",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q139",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1004",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1004",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q1004",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q432",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q419",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1008",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q758",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q10",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q422",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q422",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q422",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q765",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1007",
+      "target": "Q419",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q12",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1033",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q131",
+      "target": "Q139",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q131",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q131",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q949",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q408",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q422",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q415",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q16",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q4",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q432",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q418",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1008",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q420",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1004",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1011",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q404",
+      "target": "Q1408",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q415",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q223",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q139",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q420",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q741",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1011",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q7",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q7",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q1008",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q4",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q949",
+      "target": "Q404",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q7",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q5",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q131",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q422",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q139",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q914",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q1007",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q1008",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q758",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q765",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q914",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q419",
+      "target": "Q420",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q418",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q408",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q8",
+      "target": "Q5",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1408",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q418",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q415",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q16",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q419",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q432",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q973",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q16",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q420",
+      "target": "Q404",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q420",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q420",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q404",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q973",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q418",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q415",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q16",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q419",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q432",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q131",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q1033",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q7",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q10",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q12",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q8",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q223",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q741",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q4",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q5",
+      "target": "Q422",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ]
+};
+        
+        // Drawing area
+        const width = 1000;   // increased for breathing room
+        const height = 1200;  // increased for breathing room
+        
+        const svg = d3.select("#kg-graph")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`);
+            
+        const g = svg.append("g");
+        
+        // Data
+        const nodes = kgData.nodes || [];
+        const links = kgData.links || [];
+
+        // Small initial jitter so nodes don't stack at same start pos
+        nodes.forEach(n => {
+            if (n.x == null || n.y == null) {
+                n.x = (width / 2) + (Math.random() - 0.5) * 50;
+                n.y = (height / 2) + (Math.random() - 0.5) * 50;
+            }
+        });
+
+        // Color mapping
+        const nodeColors = {
+            'Concept': '#1f77b4',
+            'Dataset': '#ff7f0e', 
+            'Passage': '#2ca02c',
+            'Document': '#d62728',
+            'Unknown': '#7f7f7f'
+        };
+
+        // Reusable node radius (kept in sync with circle r)
+        function nodeRadius(d) {
+            return Math.max(5, Math.min(15, (d.importance || 1) * 8));
+        }
+
+        // Build degree map for smarter link distances
+        const degree = {};
+        links.forEach(l => {
+            const sid = (typeof l.source === 'object') ? l.source.id : l.source;
+            const tid = (typeof l.target === 'object') ? l.target.id : l.target;
+            degree[sid] = (degree[sid] || 0) + 1;
+            degree[tid] = (degree[tid] || 0) + 1;
+        });
+
+        // Create links
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link");
+        
+        // Create nodes
+        const node = g.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", d => nodeRadius(d))
+            .attr("fill", d => nodeColors[d.type] || nodeColors['Unknown'])
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+        
+        // Add labels (dy uses node radius to keep text just above the circle)
+        const label = g.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("class", "node-label")
+            .attr("dy", d => -(nodeRadius(d) + 3))
+            .text(d => d.label || d.id);
+
+        // Zoom (we call svg.call(zoom) AFTER label exists so we can toggle it)
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+                const k = event.transform.k;
+                // Hide labels when zoomed far out; show as we zoom in
+                label.style("display", k < 0.6 ? "none" : null);
+                // Optional: scale label font a bit with zoom for readability
+                const baseFont = 10;
+                label.attr("font-size", `${Math.max(8, Math.min(16, baseFont * Math.sqrt(k)))}px`);
+            });
+        
+        // Physics simulation with collision + stronger repulsion + degree-aware link distance
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links)
+                .id(d => d.id)
+                .distance(d => {
+                    const sid = d.source.id || d.source, tid = d.target.id || d.target;
+                    const sdeg = degree[sid] || 0, tdeg = degree[tid] || 0;
+                    return 70 + 12 * Math.max(sdeg, tdeg);
+                })
+                .strength(0.7)
+                )
+
+            // Make charge depend on degree: isolates repel less, hubs repel more
+            .force("charge", d3.forceManyBody().strength(d => (degree[d.id] || 0) === 0 ? -120 : -400))
+            .force("collide", d3.forceCollide().radius(d => nodeRadius(d) + 6).iterations(2))
+            .force("x", d3.forceX(width / 2).strength(0.03))   // gentle pull to center
+            .force("y", d3.forceY(height / 2).strength(0.03))  // gentle pull to center
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .velocityDecay(0.35)
+            .alpha(1)
+            .alphaDecay(0.02);
+
+        const isolateRadius = Math.min(width, height) * 0.38;
+            simulation.force("isolateRadial", d3.forceRadial(
+            isolateRadius,
+            width / 2,
+            height / 2
+            ).strength(d => (degree[d.id] || 0) === 0 ? 0.08 : 0));
+
+
+        // Tooltip
+        //const tooltip = d3.select("#tooltip");
+        
+        //node.on("mouseover", function(event, d) {
+        //   tooltip.transition().duration(200).style("opacity", .9);
+        //  tooltip.html(`<strong>${d.label || d.id}</strong><br/>Type: ${d.type}<br/>Importance: ${d.importance || 'N/A'}`)
+        //        .style("left", (event.pageX + 10) + "px")
+        //        .style("top", (event.pageY - 28) + "px");
+        //})
+        //.on("mouseout", function() {
+        //    tooltip.transition().duration(500).style("opacity", 0);
+        //});
+        
+        // Update positions on simulation tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+            
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("dy", d => -(nodeRadius(d) + 3)); // keep label above node as it moves
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Enable zoom after elements (esp. labels) exist
+        svg.call(zoom);
+    </script>
+</body>
+</html>

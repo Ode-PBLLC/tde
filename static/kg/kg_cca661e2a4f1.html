@@ -1,0 +1,4929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph: What are the companies most exposed to flood risk?</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
+        .container { width: 100%; height: 1200px; border: 1px solid #ddd; position: relative; }
+        .graph { width: 100%; height: 100%; }
+        .tooltip { 
+            position: absolute; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            pointer-events: none; 
+            opacity: 0;
+        }
+        .query-title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            color: #333;
+        }
+        .node { cursor: pointer; }
+        .link { stroke: #999; stroke-opacity: 0.6; stroke-width: 1.5px; }
+        .node-label {
+            font-size: 10px;
+            fill: #333;
+            text-anchor: middle;
+            pointer-events: none;
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="query-title">Knowledge Graph: What are the companies most exposed to flood risk?</div>
+    <div class="container">
+        <svg class="graph" id="kg-graph"></svg>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <script>
+        // Embedded KG data
+        const kgData = {
+  "nodes": [
+    {
+      "id": "Q92",
+      "kind": "Concept",
+      "label": "cyclone early warning system",
+      "description": ""
+    },
+    {
+      "id": "Q979",
+      "kind": "Concept",
+      "label": "precipitation extremes",
+      "description": "Precipitation refers to any form of weather where substances fall from the sky, including rain, snow, sleet, or hail. Additionally, in chemistry, precipitation describes the process where a solid forms and settles out of a solution."
+    },
+    {
+      "id": "Q374",
+      "kind": "Concept",
+      "label": "extreme weather",
+      "description": "Extreme weather refers to events where a weather variable exceeds (or falls below) a threshold. Meaning it is significantly different from the average or usual weather pattern."
+    },
+    {
+      "id": "Q981",
+      "kind": "Concept",
+      "label": "coastal flood",
+      "description": "Coastal flooding often results from storm surges and high winds during high tides, with water levels rising due to low pressure and geographic factors."
+    },
+    {
+      "id": "Q107",
+      "kind": "Concept",
+      "label": "flow-through dam",
+      "description": "The flow-through dam is designed for the sole purpose of flood control, just one of the many possible functions of dams. An opening (spillway) is designed into the dam at about the same height as the river bed, so the structure is intended to let water flow through during normal times."
+    },
+    {
+      "id": "Q106",
+      "kind": "Concept",
+      "label": "Riverine flood protection",
+      "description": "A fluvial (riverine) flood is a rise, usually brief, in the water level of a stream or water body to a peak from which the water level recedes at a slower rate. Riverine flood protection refers to a set of measures and strategies designed to prevent or mitigate the impacts of flooding in areas adjacent to rivers."
+    },
+    {
+      "id": "Q975",
+      "kind": "Concept",
+      "label": "risk",
+      "description": "Risk is the potential for adverse consequences resulting from the dynamic interplay between (climate-related) hazards, exposure, and vulnerability of affected human or ecological systems."
+    },
+    {
+      "id": "Q1000",
+      "kind": "Concept",
+      "label": "sea overwash",
+      "description": "Overwash is the flow of water and sediment over a coastal dune or beach crest during storm events. This process can cause significant coastal changes in the landscape of beaches and dunes."
+    },
+    {
+      "id": "Q995",
+      "kind": "Concept",
+      "label": "extraterrestrial hazard",
+      "description": "Extraterrestrial hazards are caused by asteroids, meteoroids, and comets as they pass near to the Earth, enter the Earth\u2019s atmosphere, and/or strike the Earth, and by changes in interplanetary conditions that effect the Earth\u2019s magnetosphere, ionosphere, and thermosphere."
+    },
+    {
+      "id": "Q111",
+      "kind": "Concept",
+      "label": "Storm drains",
+      "description": "A storm drain is part of the urban storm management system. It is an infrastructure designed to drain excess rain and ground water from impermeable surfaces and prevent or minimise flooding events."
+    },
+    {
+      "id": "Q77",
+      "kind": "Concept",
+      "label": "elevated buildings",
+      "description": "An elevated building, with regards to flooding, is a building that is raised on columns (or stilts) so that the floor level is higher than the potential level of the flood water."
+    },
+    {
+      "id": "Q113",
+      "kind": "Concept",
+      "label": "Permeable parking lots",
+      "description": "Permeable pavements and parking lots are often constructed in urban settings to facilitate storm water runoff and mitigate urban flooding and storm water overflow risks. The permeable surfaces provide greater water uptake. The water is infiltrated, and to an extent purified, before recharging the groundwater. The resulting retention decreases runoff rates and reduces pressures on urban storm water systems."
+    },
+    {
+      "id": "Q83",
+      "kind": "Concept",
+      "label": "Hazard management technologies",
+      "description": ""
+    },
+    {
+      "id": "Q762",
+      "kind": "Concept",
+      "label": "energy supply sector",
+      "description": "The activities of industries involved in the production, distribution, and sale of energy, including electricity, gas, and renewables."
+    },
+    {
+      "id": "Q766",
+      "kind": "Concept",
+      "label": "transportation sector",
+      "description": "This sector involves activities to move goods and people, alongside the storage of products."
+    },
+    {
+      "id": "Q763",
+      "kind": "Concept",
+      "label": "environmental management sector",
+      "description": "This sector involves managing waste treatment, sanitation, pollution control and environmental cleanup."
+    },
+    {
+      "id": "Q982",
+      "kind": "Concept",
+      "label": "riverine flood",
+      "description": ""
+    },
+    {
+      "id": "Q856",
+      "kind": "Concept",
+      "label": "healthcare sector",
+      "description": "This sector provides medical services, manufactures medical equipment, and develops pharmaceuticals to maintain and improve health."
+    },
+    {
+      "id": "Q1198",
+      "kind": "Concept",
+      "label": "flooding waste",
+      "description": "Damage caused by floods to the built environment."
+    },
+    {
+      "id": "Q385",
+      "kind": "Concept",
+      "label": "drought",
+      "description": "A drought is an extended period of unusually dry weather marked by a significant and sustained lack of precipitation, falling below a specific threshold over a large area for more than a month"
+    },
+    {
+      "id": "Q767",
+      "kind": "Concept",
+      "label": "hospitality sector",
+      "description": "Activities that provide lodging, food, and entertainment services to guests, including hotels, restaurants, and resorts."
+    },
+    {
+      "id": "Q1515",
+      "kind": "Concept",
+      "label": "coastal community",
+      "description": "A population living on the coast"
+    },
+    {
+      "id": "Q818",
+      "kind": "Concept",
+      "label": "water management sector",
+      "description": "This sector involves the distribution, treatment, and conservation of water resources."
+    },
+    {
+      "id": "Q101",
+      "kind": "Concept",
+      "label": "Flood hazard mapping",
+      "description": "Flood hazard assessment and mapping is used to identify areas at risk of flooding, and consequently to improve flood risk management and disaster preparedness. Flood Hazard Mapping is a vital component for appropriate land use planning in flood-prone areas. It creates easily-read, rapidly-accessible charts and maps which facilitate the identification of areas at risk of flooding."
+    },
+    {
+      "id": "Q74",
+      "kind": "Concept",
+      "label": "Buildings technologies",
+      "description": ""
+    },
+    {
+      "id": "Q1580",
+      "kind": "Concept",
+      "label": "public emergency management",
+      "description": "Process of coordinating and integrating all activities necessary to build, sustain, and improve the capability to mitigate against, prepare for, respond to, and recover from threatened or actual natural disasters, acts of terrorism, or other man-made disasters"
+    },
+    {
+      "id": "Q765",
+      "kind": "Concept",
+      "label": "trade sector",
+      "description": "This sector involves the wholesale and retail selling of goods."
+    },
+    {
+      "id": "Q1619",
+      "kind": "Concept",
+      "label": "climate-risk early warning system",
+      "description": "Early warning system for specific climate-risks, such as extreme weather events like storms or floods."
+    },
+    {
+      "id": "Q949",
+      "kind": "Concept",
+      "label": "environmental risk",
+      "description": "Environmental risk refers to adverse impacts on terrestrial, marine, and cryospheric systems from climate-related hazards, exposure, and vulnerability, and the risks related to air-pollution."
+    },
+    {
+      "id": "Q848",
+      "kind": "Concept",
+      "label": "environmental consultancy services",
+      "description": "The provision of environmental expertise and support services."
+    },
+    {
+      "id": "Q779",
+      "kind": "Concept",
+      "label": "finance and insurance sector",
+      "description": "Activities of businesses and institutions that provide financial services and products to individuals and organisations."
+    },
+    {
+      "id": "Q750",
+      "kind": "Concept",
+      "label": "disaster waste impact",
+      "description": "Disaster waste is waste generated by the impact of a disaster, both from the disaster itself and from poor waste management in the aftermath."
+    },
+    {
+      "id": "Q91",
+      "kind": "Concept",
+      "label": "Flood forecasting systems",
+      "description": "A flood warning system is a way of detecting threatening events in advance. This enables the public to be alerted in advance and can undertake appropriate responses to minimise the impact of the events."
+    },
+    {
+      "id": "Q157",
+      "kind": "Concept",
+      "label": "Water management and conservation technologies",
+      "description": ""
+    },
+    {
+      "id": "Q786",
+      "kind": "Concept",
+      "label": "agriculture sector",
+      "description": "Activities that involve the cultivation of crops and raising of livestock for food, fibre, and other products essential for human life and industry."
+    },
+    {
+      "id": "Q986",
+      "kind": "Concept",
+      "label": "geohazard",
+      "description": "Geohazards are adverse geological phenomenon's that are capable of causing widespread damage or loss to property, life and the environment, such as earthquakes, volcano eruptions and tsunamis."
+    },
+    {
+      "id": "Q973",
+      "kind": "Concept",
+      "label": "slow onset events",
+      "description": "Slow onset events evolve gradually from incremental changes over many years or from increased frequency or intensity of recurring events. As defined in the Cancun Adaptation Framework (2010), slow onset events include risks and impacts from rising temperatures, desertification, biodiversity loss, land and forest degradation, glacial retreat, ocean acidification, sea level rise, and salinization."
+    },
+    {
+      "id": "Q382",
+      "kind": "Concept",
+      "label": "flood",
+      "description": "Floods are the inundation of normally dry land, resulting from a mix of hydrology, climate, and human factors, varying by type and region."
+    },
+    {
+      "id": "Q82",
+      "kind": "Concept",
+      "label": "Flood and cyclone shelters",
+      "description": ""
+    },
+    {
+      "id": "Q757",
+      "kind": "Concept",
+      "label": "informal sector",
+      "description": "Households employing domestic workers, for activities like cooking, cleaning and subsistence farming, for their own use."
+    },
+    {
+      "id": "Q168",
+      "kind": "Concept",
+      "label": "Flood-proof sanitary latrines",
+      "description": "Overflowing of sanitary latrines during flood events poses a serious health risk to communities in flood prone areas. The contaminated water may infiltrate surface or groundwater sources, causing pollution and disease. Improved construction design and planning of latrines can minimize these risks. Measures include elevating latrines or lining latrine pits to reduce waste infiltration and increase stability."
+    },
+    {
+      "id": "Q443",
+      "kind": "Concept",
+      "label": "health impact",
+      "description": "Climate change contributes to global disease and premature deaths. People are directly affected by changing weather patterns like temperature shifts, sea-level rise, and more frequent extreme events. Indirect impacts include changes in water, air, and food quality, as well as disruptions to ecosystems, agriculture, industry, settlements, and the economy. These effects are expected to increase."
+    },
+    {
+      "id": "Q956",
+      "kind": "Concept",
+      "label": "societal impact",
+      "description": "Climate change impacts our society by disrupting the natural, economic and social systems we depend on. Physical hazards and underlying vulnerabilities can lead to increased resource competition for food and water, which can heighten the risk of conflict."
+    },
+    {
+      "id": "Q1514",
+      "kind": "Concept",
+      "label": "exposed community",
+      "description": "Communities that are significantly exposed to climate impacts due to their physical location"
+    },
+    {
+      "id": "Q1599",
+      "kind": "Concept",
+      "label": "insurance activities",
+      "description": "This area covers risk management through insurance products, including life, health, property, and casualty insurance"
+    },
+    {
+      "id": "Q787",
+      "kind": "Concept",
+      "label": "forestry sector",
+      "description": "Activities that relate to the production of goods and services from forests."
+    },
+    {
+      "id": "Q955",
+      "kind": "Concept",
+      "label": "chemical impact",
+      "description": "Any substance with chemical properties that can cause physical harm to people or damage the environment, including ammonia, carbon monoxide, phosphine, chlorine, arsenic, cadmium, mercury, pesticides, dioxins, microplastics, benzene, asbestos, aflatoxins, fluoride, methanol, and toxins from marine sources."
+    },
+    {
+      "id": "Q788",
+      "kind": "Concept",
+      "label": "fishing sector",
+      "description": "Activities involving the catching, processing, and selling of fish for food, recreation, and industry."
+    },
+    {
+      "id": "Q954",
+      "kind": "Concept",
+      "label": "technological impact",
+      "description": "Climate change can have a range of impacts on technological system. Extreme weather events can cause infrastructure failures like power outages or damage to roads and bridges, as well as the impacts from waste following natural disasters. Human activities also cause technological impacts, such as the risks posed by oil spillage and leaks."
+    },
+    {
+      "id": "Q1286",
+      "kind": "Concept",
+      "label": "early warning system",
+      "description": "An integrated single-hazard monitoring system that warns for impending extreme weather events and climate conditions, reducing the losses and damages and saving lives."
+    },
+    {
+      "id": "Q1583",
+      "kind": "Concept",
+      "label": "climate change governance",
+      "description": "Development and implementation of strategies, regulations, and initiatives to mitigate, adapt, administrate risks, or deal with the transition from the impacts of climate change."
+    },
+    {
+      "id": "Q73",
+      "kind": "Concept",
+      "label": "Adaptation technologies",
+      "description": "Adaptation technologies are systems, tools, processes and innovations that facilitate the process of adjusting to and managing the current and future effects of climate change."
+    },
+    {
+      "id": "Q770",
+      "kind": "Concept",
+      "label": "anthropogenic climate change",
+      "description": "that human activity (e.g. burning fossil fuels such as coal, oil, and natural gas) is the dominant driver of the current changes to the climate and the environment"
+    },
+    {
+      "id": "Q398",
+      "kind": "Concept",
+      "label": "Squalls",
+      "description": ""
+    },
+    {
+      "id": "Q980",
+      "kind": "Concept",
+      "label": "temperature extremes",
+      "description": "Increases in the intensity, frequency, and duration of warm extremes and the decrease in those of cold extremes."
+    },
+    {
+      "id": "Q1523",
+      "kind": "Concept",
+      "label": "flood early warning system",
+      "description": ""
+    },
+    {
+      "id": "Q112",
+      "kind": "Concept",
+      "label": "Runoff control structures",
+      "description": "Runoff control structures are designed to capture runoff during peak flows, and can function as temporary storage sites. These structures are typically built with a discharge component to slowly release water into the nearby waterway to avoid it overflowing from the storage basin. It can be artificially built, for example by excavating a large area so that it is lower than the surrounding land."
+    },
+    {
+      "id": "Q399",
+      "kind": "Concept",
+      "label": "storms",
+      "description": "Storms are intense weather events with strong winds that can cause significant damage to infrastructure and ecosystems."
+    }
+  ],
+  "edges": [
+    {
+      "source": "Q92",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q92",
+      "target": "Q1619",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q92",
+      "target": "Q399",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q92",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q979",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q979",
+      "target": "Q982",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q399",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q980",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q385",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q979",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q382",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q1000",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q398",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q765",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q765",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q766",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q766",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q779",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q779",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q1286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q981",
+      "target": "Q382",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q981",
+      "target": "Q1515",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q107",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q107",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q107",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q106",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q106",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q106",
+      "target": "Q982",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q973",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q374",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q949",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q954",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q956",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q955",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q986",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q443",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q995",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q763",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q1580",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q1583",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q848",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q1599",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1000",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q995",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q111",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q111",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q111",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q77",
+      "target": "Q74",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q77",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q77",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q113",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q113",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q113",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q91",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q92",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q101",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q106",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q107",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q111",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q112",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q113",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q1523",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q73",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q949",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q1286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q766",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q763",
+      "target": "Q848",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q763",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q982",
+      "target": "Q382",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q982",
+      "target": "Q979",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q982",
+      "target": "Q106",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1198",
+      "target": "Q750",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1198",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q385",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q385",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1515",
+      "target": "Q1514",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1515",
+      "target": "Q981",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q157",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q1523",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q91",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q74",
+      "target": "Q77",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q74",
+      "target": "Q82",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1580",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q765",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1619",
+      "target": "Q1286",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1619",
+      "target": "Q92",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1619",
+      "target": "Q1523",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q949",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q949",
+      "target": "Q83",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q848",
+      "target": "Q763",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q848",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q779",
+      "target": "Q1599",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q779",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q750",
+      "target": "Q954",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q750",
+      "target": "Q1198",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q101",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q157",
+      "target": "Q168",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q157",
+      "target": "Q73",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q157",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q385",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q986",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q981",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q982",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q1198",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q107",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q1523",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q168",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q77",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q91",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q112",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q111",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q113",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q74",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q91",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q399",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q92",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q168",
+      "target": "Q157",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q168",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q168",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q443",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q956",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q1515",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q973",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1599",
+      "target": "Q779",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1599",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q955",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q954",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q954",
+      "target": "Q750",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q1619",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q83",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1583",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q77",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q168",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q91",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q101",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q106",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q107",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q111",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q112",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q113",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q1286",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q82",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q83",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q157",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q973",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q398",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q980",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q1619",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q101",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q112",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q112",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q112",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q399",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q399",
+      "target": "Q92",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q399",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ],
+  "query_concepts": [
+    "Q382",
+    "Q975"
+  ],
+  "query_concept_labels": [
+    "flood",
+    "risk"
+  ],
+  "total_found": 58,
+  "concepts": [
+    {
+      "id": "Q92",
+      "label": "cyclone early warning system"
+    },
+    {
+      "id": "Q979",
+      "label": "precipitation extremes"
+    },
+    {
+      "id": "Q374",
+      "label": "extreme weather"
+    },
+    {
+      "id": "Q981",
+      "label": "coastal flood"
+    },
+    {
+      "id": "Q107",
+      "label": "flow-through dam"
+    },
+    {
+      "id": "Q106",
+      "label": "Riverine flood protection"
+    },
+    {
+      "id": "Q975",
+      "label": "risk"
+    },
+    {
+      "id": "Q1000",
+      "label": "sea overwash"
+    },
+    {
+      "id": "Q995",
+      "label": "extraterrestrial hazard"
+    },
+    {
+      "id": "Q111",
+      "label": "Storm drains"
+    },
+    {
+      "id": "Q77",
+      "label": "elevated buildings"
+    },
+    {
+      "id": "Q113",
+      "label": "Permeable parking lots"
+    },
+    {
+      "id": "Q83",
+      "label": "Hazard management technologies"
+    },
+    {
+      "id": "Q762",
+      "label": "energy supply sector"
+    },
+    {
+      "id": "Q766",
+      "label": "transportation sector"
+    },
+    {
+      "id": "Q763",
+      "label": "environmental management sector"
+    },
+    {
+      "id": "Q982",
+      "label": "riverine flood"
+    },
+    {
+      "id": "Q856",
+      "label": "healthcare sector"
+    },
+    {
+      "id": "Q1198",
+      "label": "flooding waste"
+    },
+    {
+      "id": "Q385",
+      "label": "drought"
+    },
+    {
+      "id": "Q767",
+      "label": "hospitality sector"
+    },
+    {
+      "id": "Q1515",
+      "label": "coastal community"
+    },
+    {
+      "id": "Q818",
+      "label": "water management sector"
+    },
+    {
+      "id": "Q101",
+      "label": "Flood hazard mapping"
+    },
+    {
+      "id": "Q74",
+      "label": "Buildings technologies"
+    },
+    {
+      "id": "Q1580",
+      "label": "public emergency management"
+    },
+    {
+      "id": "Q765",
+      "label": "trade sector"
+    },
+    {
+      "id": "Q1619",
+      "label": "climate-risk early warning system"
+    },
+    {
+      "id": "Q949",
+      "label": "environmental risk"
+    },
+    {
+      "id": "Q848",
+      "label": "environmental consultancy services"
+    },
+    {
+      "id": "Q779",
+      "label": "finance and insurance sector"
+    },
+    {
+      "id": "Q750",
+      "label": "disaster waste impact"
+    },
+    {
+      "id": "Q91",
+      "label": "Flood forecasting systems"
+    },
+    {
+      "id": "Q157",
+      "label": "Water management and conservation technologies"
+    },
+    {
+      "id": "Q786",
+      "label": "agriculture sector"
+    },
+    {
+      "id": "Q986",
+      "label": "geohazard"
+    },
+    {
+      "id": "Q973",
+      "label": "slow onset events"
+    },
+    {
+      "id": "Q382",
+      "label": "flood"
+    },
+    {
+      "id": "Q82",
+      "label": "Flood and cyclone shelters"
+    },
+    {
+      "id": "Q757",
+      "label": "informal sector"
+    },
+    {
+      "id": "Q168",
+      "label": "Flood-proof sanitary latrines"
+    },
+    {
+      "id": "Q443",
+      "label": "health impact"
+    },
+    {
+      "id": "Q956",
+      "label": "societal impact"
+    },
+    {
+      "id": "Q1514",
+      "label": "exposed community"
+    },
+    {
+      "id": "Q1599",
+      "label": "insurance activities"
+    },
+    {
+      "id": "Q787",
+      "label": "forestry sector"
+    },
+    {
+      "id": "Q955",
+      "label": "chemical impact"
+    },
+    {
+      "id": "Q788",
+      "label": "fishing sector"
+    },
+    {
+      "id": "Q954",
+      "label": "technological impact"
+    },
+    {
+      "id": "Q1286",
+      "label": "early warning system"
+    },
+    {
+      "id": "Q1583",
+      "label": "climate change governance"
+    },
+    {
+      "id": "Q73",
+      "label": "Adaptation technologies"
+    },
+    {
+      "id": "Q770",
+      "label": "anthropogenic climate change"
+    },
+    {
+      "id": "Q398",
+      "label": "Squalls"
+    },
+    {
+      "id": "Q980",
+      "label": "temperature extremes"
+    },
+    {
+      "id": "Q1523",
+      "label": "flood early warning system"
+    },
+    {
+      "id": "Q112",
+      "label": "Runoff control structures"
+    },
+    {
+      "id": "Q399",
+      "label": "storms"
+    }
+  ],
+  "relationships": [
+    {
+      "source_id": "Q92",
+      "target_id": "Q83",
+      "source_label": "cyclone early warning system",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "cyclone early warning system -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q92",
+      "target_id": "Q1619",
+      "source_label": "cyclone early warning system",
+      "target_label": "climate-risk early warning system",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "cyclone early warning system -> climate-risk early warning system (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q92",
+      "target_id": "Q399",
+      "source_label": "cyclone early warning system",
+      "target_label": "storms",
+      "relationship_type": "RELATED_TO",
+      "formatted": "cyclone early warning system -> storms (RELATED_TO)"
+    },
+    {
+      "source_id": "Q92",
+      "target_id": "Q82",
+      "source_label": "cyclone early warning system",
+      "target_label": "Flood and cyclone shelters",
+      "relationship_type": "RELATED_TO",
+      "formatted": "cyclone early warning system -> Flood and cyclone shelters (RELATED_TO)"
+    },
+    {
+      "source_id": "Q979",
+      "target_id": "Q374",
+      "source_label": "precipitation extremes",
+      "target_label": "extreme weather",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "precipitation extremes -> extreme weather (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q979",
+      "target_id": "Q982",
+      "source_label": "precipitation extremes",
+      "target_label": "riverine flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "precipitation extremes -> riverine flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q975",
+      "source_label": "extreme weather",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "extreme weather -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q399",
+      "source_label": "extreme weather",
+      "target_label": "storms",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "extreme weather -> storms (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q980",
+      "source_label": "extreme weather",
+      "target_label": "temperature extremes",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "extreme weather -> temperature extremes (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q385",
+      "source_label": "extreme weather",
+      "target_label": "drought",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "extreme weather -> drought (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q979",
+      "source_label": "extreme weather",
+      "target_label": "precipitation extremes",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "extreme weather -> precipitation extremes (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q382",
+      "source_label": "extreme weather",
+      "target_label": "flood",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "extreme weather -> flood (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q1000",
+      "source_label": "extreme weather",
+      "target_label": "sea overwash",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "extreme weather -> sea overwash (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q398",
+      "source_label": "extreme weather",
+      "target_label": "Squalls",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "extreme weather -> Squalls (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q770",
+      "source_label": "extreme weather",
+      "target_label": "anthropogenic climate change",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> anthropogenic climate change (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q1514",
+      "source_label": "extreme weather",
+      "target_label": "exposed community",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> exposed community (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q757",
+      "source_label": "extreme weather",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q757",
+      "source_label": "extreme weather",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q762",
+      "source_label": "extreme weather",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q762",
+      "source_label": "extreme weather",
+      "target_label": "energy supply sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> energy supply sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q765",
+      "source_label": "extreme weather",
+      "target_label": "trade sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> trade sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q765",
+      "source_label": "extreme weather",
+      "target_label": "trade sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> trade sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q766",
+      "source_label": "extreme weather",
+      "target_label": "transportation sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> transportation sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q766",
+      "source_label": "extreme weather",
+      "target_label": "transportation sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> transportation sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q767",
+      "source_label": "extreme weather",
+      "target_label": "hospitality sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> hospitality sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q767",
+      "source_label": "extreme weather",
+      "target_label": "hospitality sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> hospitality sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q374",
+      "source_label": "extreme weather",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q779",
+      "source_label": "extreme weather",
+      "target_label": "finance and insurance sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> finance and insurance sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q779",
+      "source_label": "extreme weather",
+      "target_label": "finance and insurance sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> finance and insurance sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q856",
+      "source_label": "extreme weather",
+      "target_label": "healthcare sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> healthcare sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q856",
+      "source_label": "extreme weather",
+      "target_label": "healthcare sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> healthcare sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q786",
+      "source_label": "extreme weather",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q786",
+      "source_label": "extreme weather",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q787",
+      "source_label": "extreme weather",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q787",
+      "source_label": "extreme weather",
+      "target_label": "forestry sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> forestry sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q788",
+      "source_label": "extreme weather",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q788",
+      "source_label": "extreme weather",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q818",
+      "source_label": "extreme weather",
+      "target_label": "water management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> water management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q374",
+      "target_id": "Q1286",
+      "source_label": "extreme weather",
+      "target_label": "early warning system",
+      "relationship_type": "RELATED_TO",
+      "formatted": "extreme weather -> early warning system (RELATED_TO)"
+    },
+    {
+      "source_id": "Q981",
+      "target_id": "Q382",
+      "source_label": "coastal flood",
+      "target_label": "flood",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "coastal flood -> flood (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q981",
+      "target_id": "Q1515",
+      "source_label": "coastal flood",
+      "target_label": "coastal community",
+      "relationship_type": "RELATED_TO",
+      "formatted": "coastal flood -> coastal community (RELATED_TO)"
+    },
+    {
+      "source_id": "Q107",
+      "target_id": "Q83",
+      "source_label": "flow-through dam",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "flow-through dam -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q107",
+      "target_id": "Q73",
+      "source_label": "flow-through dam",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "flow-through dam -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q107",
+      "target_id": "Q382",
+      "source_label": "flow-through dam",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flow-through dam -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q106",
+      "target_id": "Q83",
+      "source_label": "Riverine flood protection",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Riverine flood protection -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q106",
+      "target_id": "Q73",
+      "source_label": "Riverine flood protection",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Riverine flood protection -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q106",
+      "target_id": "Q982",
+      "source_label": "Riverine flood protection",
+      "target_label": "riverine flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Riverine flood protection -> riverine flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q973",
+      "source_label": "risk",
+      "target_label": "slow onset events",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> slow onset events (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q374",
+      "source_label": "risk",
+      "target_label": "extreme weather",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> extreme weather (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q949",
+      "source_label": "risk",
+      "target_label": "environmental risk",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> environmental risk (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q954",
+      "source_label": "risk",
+      "target_label": "technological impact",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> technological impact (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q956",
+      "source_label": "risk",
+      "target_label": "societal impact",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> societal impact (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q955",
+      "source_label": "risk",
+      "target_label": "chemical impact",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> chemical impact (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q986",
+      "source_label": "risk",
+      "target_label": "geohazard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> geohazard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q443",
+      "source_label": "risk",
+      "target_label": "health impact",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> health impact (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q995",
+      "source_label": "risk",
+      "target_label": "extraterrestrial hazard",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "risk -> extraterrestrial hazard (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q763",
+      "source_label": "risk",
+      "target_label": "environmental management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "risk -> environmental management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q1580",
+      "source_label": "risk",
+      "target_label": "public emergency management",
+      "relationship_type": "RELATED_TO",
+      "formatted": "risk -> public emergency management (RELATED_TO)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q1583",
+      "source_label": "risk",
+      "target_label": "climate change governance",
+      "relationship_type": "RELATED_TO",
+      "formatted": "risk -> climate change governance (RELATED_TO)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q848",
+      "source_label": "risk",
+      "target_label": "environmental consultancy services",
+      "relationship_type": "RELATED_TO",
+      "formatted": "risk -> environmental consultancy services (RELATED_TO)"
+    },
+    {
+      "source_id": "Q975",
+      "target_id": "Q1599",
+      "source_label": "risk",
+      "target_label": "insurance activities",
+      "relationship_type": "RELATED_TO",
+      "formatted": "risk -> insurance activities (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1000",
+      "target_id": "Q374",
+      "source_label": "sea overwash",
+      "target_label": "extreme weather",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "sea overwash -> extreme weather (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q995",
+      "target_id": "Q975",
+      "source_label": "extraterrestrial hazard",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "extraterrestrial hazard -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q111",
+      "target_id": "Q83",
+      "source_label": "Storm drains",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Storm drains -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q111",
+      "target_id": "Q73",
+      "source_label": "Storm drains",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Storm drains -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q111",
+      "target_id": "Q382",
+      "source_label": "Storm drains",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Storm drains -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q77",
+      "target_id": "Q74",
+      "source_label": "elevated buildings",
+      "target_label": "Buildings technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "elevated buildings -> Buildings technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q77",
+      "target_id": "Q73",
+      "source_label": "elevated buildings",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "elevated buildings -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q77",
+      "target_id": "Q382",
+      "source_label": "elevated buildings",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "elevated buildings -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q113",
+      "target_id": "Q83",
+      "source_label": "Permeable parking lots",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Permeable parking lots -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q113",
+      "target_id": "Q73",
+      "source_label": "Permeable parking lots",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Permeable parking lots -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q113",
+      "target_id": "Q382",
+      "source_label": "Permeable parking lots",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Permeable parking lots -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q91",
+      "source_label": "Hazard management technologies",
+      "target_label": "Flood forecasting systems",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> Flood forecasting systems (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q92",
+      "source_label": "Hazard management technologies",
+      "target_label": "cyclone early warning system",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> cyclone early warning system (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q101",
+      "source_label": "Hazard management technologies",
+      "target_label": "Flood hazard mapping",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> Flood hazard mapping (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q106",
+      "source_label": "Hazard management technologies",
+      "target_label": "Riverine flood protection",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> Riverine flood protection (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q107",
+      "source_label": "Hazard management technologies",
+      "target_label": "flow-through dam",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> flow-through dam (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q111",
+      "source_label": "Hazard management technologies",
+      "target_label": "Storm drains",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> Storm drains (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q112",
+      "source_label": "Hazard management technologies",
+      "target_label": "Runoff control structures",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> Runoff control structures (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q113",
+      "source_label": "Hazard management technologies",
+      "target_label": "Permeable parking lots",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> Permeable parking lots (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q1523",
+      "source_label": "Hazard management technologies",
+      "target_label": "flood early warning system",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Hazard management technologies -> flood early warning system (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q73",
+      "source_label": "Hazard management technologies",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Hazard management technologies -> Adaptation technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q949",
+      "source_label": "Hazard management technologies",
+      "target_label": "environmental risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Hazard management technologies -> environmental risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q83",
+      "target_id": "Q1286",
+      "source_label": "Hazard management technologies",
+      "target_label": "early warning system",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Hazard management technologies -> early warning system (RELATED_TO)"
+    },
+    {
+      "source_id": "Q762",
+      "target_id": "Q374",
+      "source_label": "energy supply sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "energy supply sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q766",
+      "target_id": "Q374",
+      "source_label": "transportation sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "transportation sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q763",
+      "target_id": "Q848",
+      "source_label": "environmental management sector",
+      "target_label": "environmental consultancy services",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "environmental management sector -> environmental consultancy services (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q763",
+      "target_id": "Q975",
+      "source_label": "environmental management sector",
+      "target_label": "risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "environmental management sector -> risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q982",
+      "target_id": "Q382",
+      "source_label": "riverine flood",
+      "target_label": "flood",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "riverine flood -> flood (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q982",
+      "target_id": "Q979",
+      "source_label": "riverine flood",
+      "target_label": "precipitation extremes",
+      "relationship_type": "RELATED_TO",
+      "formatted": "riverine flood -> precipitation extremes (RELATED_TO)"
+    },
+    {
+      "source_id": "Q982",
+      "target_id": "Q106",
+      "source_label": "riverine flood",
+      "target_label": "Riverine flood protection",
+      "relationship_type": "RELATED_TO",
+      "formatted": "riverine flood -> Riverine flood protection (RELATED_TO)"
+    },
+    {
+      "source_id": "Q856",
+      "target_id": "Q374",
+      "source_label": "healthcare sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "healthcare sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1198",
+      "target_id": "Q750",
+      "source_label": "flooding waste",
+      "target_label": "disaster waste impact",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "flooding waste -> disaster waste impact (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1198",
+      "target_id": "Q382",
+      "source_label": "flooding waste",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flooding waste -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q385",
+      "target_id": "Q374",
+      "source_label": "drought",
+      "target_label": "extreme weather",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "drought -> extreme weather (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q385",
+      "target_id": "Q786",
+      "source_label": "drought",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "drought -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q767",
+      "target_id": "Q374",
+      "source_label": "hospitality sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "hospitality sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1515",
+      "target_id": "Q1514",
+      "source_label": "coastal community",
+      "target_label": "exposed community",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "coastal community -> exposed community (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1515",
+      "target_id": "Q981",
+      "source_label": "coastal community",
+      "target_label": "coastal flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "coastal community -> coastal flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q818",
+      "target_id": "Q374",
+      "source_label": "water management sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "water management sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q818",
+      "target_id": "Q157",
+      "source_label": "water management sector",
+      "target_label": "Water management and conservation technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "water management sector -> Water management and conservation technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q101",
+      "target_id": "Q83",
+      "source_label": "Flood hazard mapping",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood hazard mapping -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q101",
+      "target_id": "Q73",
+      "source_label": "Flood hazard mapping",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood hazard mapping -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q101",
+      "target_id": "Q1523",
+      "source_label": "Flood hazard mapping",
+      "target_label": "flood early warning system",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood hazard mapping -> flood early warning system (RELATED_TO)"
+    },
+    {
+      "source_id": "Q101",
+      "target_id": "Q91",
+      "source_label": "Flood hazard mapping",
+      "target_label": "Flood forecasting systems",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood hazard mapping -> Flood forecasting systems (RELATED_TO)"
+    },
+    {
+      "source_id": "Q74",
+      "target_id": "Q77",
+      "source_label": "Buildings technologies",
+      "target_label": "elevated buildings",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Buildings technologies -> elevated buildings (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q74",
+      "target_id": "Q82",
+      "source_label": "Buildings technologies",
+      "target_label": "Flood and cyclone shelters",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Buildings technologies -> Flood and cyclone shelters (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1580",
+      "target_id": "Q975",
+      "source_label": "public emergency management",
+      "target_label": "risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "public emergency management -> risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q765",
+      "target_id": "Q374",
+      "source_label": "trade sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "trade sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1619",
+      "target_id": "Q1286",
+      "source_label": "climate-risk early warning system",
+      "target_label": "early warning system",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "climate-risk early warning system -> early warning system (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1619",
+      "target_id": "Q92",
+      "source_label": "climate-risk early warning system",
+      "target_label": "cyclone early warning system",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "climate-risk early warning system -> cyclone early warning system (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1619",
+      "target_id": "Q1523",
+      "source_label": "climate-risk early warning system",
+      "target_label": "flood early warning system",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "climate-risk early warning system -> flood early warning system (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q949",
+      "target_id": "Q975",
+      "source_label": "environmental risk",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "environmental risk -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q949",
+      "target_id": "Q83",
+      "source_label": "environmental risk",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "environmental risk -> Hazard management technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q848",
+      "target_id": "Q763",
+      "source_label": "environmental consultancy services",
+      "target_label": "environmental management sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "environmental consultancy services -> environmental management sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q848",
+      "target_id": "Q975",
+      "source_label": "environmental consultancy services",
+      "target_label": "risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "environmental consultancy services -> risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q779",
+      "target_id": "Q1599",
+      "source_label": "finance and insurance sector",
+      "target_label": "insurance activities",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "finance and insurance sector -> insurance activities (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q779",
+      "target_id": "Q374",
+      "source_label": "finance and insurance sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "finance and insurance sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q750",
+      "target_id": "Q954",
+      "source_label": "disaster waste impact",
+      "target_label": "technological impact",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "disaster waste impact -> technological impact (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q750",
+      "target_id": "Q1198",
+      "source_label": "disaster waste impact",
+      "target_label": "flooding waste",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "disaster waste impact -> flooding waste (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q91",
+      "target_id": "Q83",
+      "source_label": "Flood forecasting systems",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood forecasting systems -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q91",
+      "target_id": "Q73",
+      "source_label": "Flood forecasting systems",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood forecasting systems -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q91",
+      "target_id": "Q382",
+      "source_label": "Flood forecasting systems",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood forecasting systems -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q91",
+      "target_id": "Q101",
+      "source_label": "Flood forecasting systems",
+      "target_label": "Flood hazard mapping",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood forecasting systems -> Flood hazard mapping (RELATED_TO)"
+    },
+    {
+      "source_id": "Q91",
+      "target_id": "Q82",
+      "source_label": "Flood forecasting systems",
+      "target_label": "Flood and cyclone shelters",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood forecasting systems -> Flood and cyclone shelters (RELATED_TO)"
+    },
+    {
+      "source_id": "Q157",
+      "target_id": "Q168",
+      "source_label": "Water management and conservation technologies",
+      "target_label": "Flood-proof sanitary latrines",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Water management and conservation technologies -> Flood-proof sanitary latrines (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q157",
+      "target_id": "Q73",
+      "source_label": "Water management and conservation technologies",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Water management and conservation technologies -> Adaptation technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q157",
+      "target_id": "Q818",
+      "source_label": "Water management and conservation technologies",
+      "target_label": "water management sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Water management and conservation technologies -> water management sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q757",
+      "source_label": "agriculture sector",
+      "target_label": "informal sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> informal sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q374",
+      "source_label": "agriculture sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q788",
+      "source_label": "agriculture sector",
+      "target_label": "fishing sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> fishing sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q786",
+      "target_id": "Q385",
+      "source_label": "agriculture sector",
+      "target_label": "drought",
+      "relationship_type": "RELATED_TO",
+      "formatted": "agriculture sector -> drought (RELATED_TO)"
+    },
+    {
+      "source_id": "Q986",
+      "target_id": "Q975",
+      "source_label": "geohazard",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "geohazard -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q975",
+      "source_label": "slow onset events",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "slow onset events -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q770",
+      "source_label": "slow onset events",
+      "target_label": "anthropogenic climate change",
+      "relationship_type": "RELATED_TO",
+      "formatted": "slow onset events -> anthropogenic climate change (RELATED_TO)"
+    },
+    {
+      "source_id": "Q973",
+      "target_id": "Q1514",
+      "source_label": "slow onset events",
+      "target_label": "exposed community",
+      "relationship_type": "RELATED_TO",
+      "formatted": "slow onset events -> exposed community (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q374",
+      "source_label": "flood",
+      "target_label": "extreme weather",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "flood -> extreme weather (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q981",
+      "source_label": "flood",
+      "target_label": "coastal flood",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "flood -> coastal flood (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q982",
+      "source_label": "flood",
+      "target_label": "riverine flood",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "flood -> riverine flood (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q1198",
+      "source_label": "flood",
+      "target_label": "flooding waste",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> flooding waste (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q107",
+      "source_label": "flood",
+      "target_label": "flow-through dam",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> flow-through dam (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q1523",
+      "source_label": "flood",
+      "target_label": "flood early warning system",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> flood early warning system (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q168",
+      "source_label": "flood",
+      "target_label": "Flood-proof sanitary latrines",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> Flood-proof sanitary latrines (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q77",
+      "source_label": "flood",
+      "target_label": "elevated buildings",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> elevated buildings (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q82",
+      "source_label": "flood",
+      "target_label": "Flood and cyclone shelters",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> Flood and cyclone shelters (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q91",
+      "source_label": "flood",
+      "target_label": "Flood forecasting systems",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> Flood forecasting systems (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q112",
+      "source_label": "flood",
+      "target_label": "Runoff control structures",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> Runoff control structures (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q111",
+      "source_label": "flood",
+      "target_label": "Storm drains",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> Storm drains (RELATED_TO)"
+    },
+    {
+      "source_id": "Q382",
+      "target_id": "Q113",
+      "source_label": "flood",
+      "target_label": "Permeable parking lots",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood -> Permeable parking lots (RELATED_TO)"
+    },
+    {
+      "source_id": "Q82",
+      "target_id": "Q74",
+      "source_label": "Flood and cyclone shelters",
+      "target_label": "Buildings technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood and cyclone shelters -> Buildings technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q82",
+      "target_id": "Q73",
+      "source_label": "Flood and cyclone shelters",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood and cyclone shelters -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q82",
+      "target_id": "Q382",
+      "source_label": "Flood and cyclone shelters",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood and cyclone shelters -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q82",
+      "target_id": "Q91",
+      "source_label": "Flood and cyclone shelters",
+      "target_label": "Flood forecasting systems",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood and cyclone shelters -> Flood forecasting systems (RELATED_TO)"
+    },
+    {
+      "source_id": "Q82",
+      "target_id": "Q399",
+      "source_label": "Flood and cyclone shelters",
+      "target_label": "storms",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood and cyclone shelters -> storms (RELATED_TO)"
+    },
+    {
+      "source_id": "Q82",
+      "target_id": "Q92",
+      "source_label": "Flood and cyclone shelters",
+      "target_label": "cyclone early warning system",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood and cyclone shelters -> cyclone early warning system (RELATED_TO)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q786",
+      "source_label": "informal sector",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q757",
+      "target_id": "Q374",
+      "source_label": "informal sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "informal sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q168",
+      "target_id": "Q157",
+      "source_label": "Flood-proof sanitary latrines",
+      "target_label": "Water management and conservation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood-proof sanitary latrines -> Water management and conservation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q168",
+      "target_id": "Q73",
+      "source_label": "Flood-proof sanitary latrines",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Flood-proof sanitary latrines -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q168",
+      "target_id": "Q382",
+      "source_label": "Flood-proof sanitary latrines",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Flood-proof sanitary latrines -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q443",
+      "target_id": "Q975",
+      "source_label": "health impact",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "health impact -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q956",
+      "target_id": "Q975",
+      "source_label": "societal impact",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "societal impact -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1514",
+      "target_id": "Q1515",
+      "source_label": "exposed community",
+      "target_label": "coastal community",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "exposed community -> coastal community (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1514",
+      "target_id": "Q374",
+      "source_label": "exposed community",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "exposed community -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1514",
+      "target_id": "Q973",
+      "source_label": "exposed community",
+      "target_label": "slow onset events",
+      "relationship_type": "RELATED_TO",
+      "formatted": "exposed community -> slow onset events (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1599",
+      "target_id": "Q779",
+      "source_label": "insurance activities",
+      "target_label": "finance and insurance sector",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "insurance activities -> finance and insurance sector (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1599",
+      "target_id": "Q975",
+      "source_label": "insurance activities",
+      "target_label": "risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "insurance activities -> risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q787",
+      "target_id": "Q374",
+      "source_label": "forestry sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "forestry sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q955",
+      "target_id": "Q975",
+      "source_label": "chemical impact",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "chemical impact -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q788",
+      "target_id": "Q786",
+      "source_label": "fishing sector",
+      "target_label": "agriculture sector",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fishing sector -> agriculture sector (RELATED_TO)"
+    },
+    {
+      "source_id": "Q788",
+      "target_id": "Q374",
+      "source_label": "fishing sector",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "fishing sector -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q954",
+      "target_id": "Q975",
+      "source_label": "technological impact",
+      "target_label": "risk",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "technological impact -> risk (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q954",
+      "target_id": "Q750",
+      "source_label": "technological impact",
+      "target_label": "disaster waste impact",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "technological impact -> disaster waste impact (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1286",
+      "target_id": "Q73",
+      "source_label": "early warning system",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "early warning system -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1286",
+      "target_id": "Q1619",
+      "source_label": "early warning system",
+      "target_label": "climate-risk early warning system",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "early warning system -> climate-risk early warning system (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q1286",
+      "target_id": "Q83",
+      "source_label": "early warning system",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "early warning system -> Hazard management technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1286",
+      "target_id": "Q374",
+      "source_label": "early warning system",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "early warning system -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1583",
+      "target_id": "Q975",
+      "source_label": "climate change governance",
+      "target_label": "risk",
+      "relationship_type": "RELATED_TO",
+      "formatted": "climate change governance -> risk (RELATED_TO)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q77",
+      "source_label": "Adaptation technologies",
+      "target_label": "elevated buildings",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> elevated buildings (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q168",
+      "source_label": "Adaptation technologies",
+      "target_label": "Flood-proof sanitary latrines",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Flood-proof sanitary latrines (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q91",
+      "source_label": "Adaptation technologies",
+      "target_label": "Flood forecasting systems",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Flood forecasting systems (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q101",
+      "source_label": "Adaptation technologies",
+      "target_label": "Flood hazard mapping",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Flood hazard mapping (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q106",
+      "source_label": "Adaptation technologies",
+      "target_label": "Riverine flood protection",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Riverine flood protection (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q107",
+      "source_label": "Adaptation technologies",
+      "target_label": "flow-through dam",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> flow-through dam (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q111",
+      "source_label": "Adaptation technologies",
+      "target_label": "Storm drains",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Storm drains (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q112",
+      "source_label": "Adaptation technologies",
+      "target_label": "Runoff control structures",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Runoff control structures (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q113",
+      "source_label": "Adaptation technologies",
+      "target_label": "Permeable parking lots",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Permeable parking lots (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q1286",
+      "source_label": "Adaptation technologies",
+      "target_label": "early warning system",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> early warning system (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q82",
+      "source_label": "Adaptation technologies",
+      "target_label": "Flood and cyclone shelters",
+      "relationship_type": "HAS_SUBCONCEPT",
+      "formatted": "Adaptation technologies -> Flood and cyclone shelters (HAS_SUBCONCEPT)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q83",
+      "source_label": "Adaptation technologies",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Adaptation technologies -> Hazard management technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q73",
+      "target_id": "Q157",
+      "source_label": "Adaptation technologies",
+      "target_label": "Water management and conservation technologies",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Adaptation technologies -> Water management and conservation technologies (RELATED_TO)"
+    },
+    {
+      "source_id": "Q770",
+      "target_id": "Q973",
+      "source_label": "anthropogenic climate change",
+      "target_label": "slow onset events",
+      "relationship_type": "RELATED_TO",
+      "formatted": "anthropogenic climate change -> slow onset events (RELATED_TO)"
+    },
+    {
+      "source_id": "Q770",
+      "target_id": "Q374",
+      "source_label": "anthropogenic climate change",
+      "target_label": "extreme weather",
+      "relationship_type": "RELATED_TO",
+      "formatted": "anthropogenic climate change -> extreme weather (RELATED_TO)"
+    },
+    {
+      "source_id": "Q398",
+      "target_id": "Q374",
+      "source_label": "Squalls",
+      "target_label": "extreme weather",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Squalls -> extreme weather (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q980",
+      "target_id": "Q374",
+      "source_label": "temperature extremes",
+      "target_label": "extreme weather",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "temperature extremes -> extreme weather (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1523",
+      "target_id": "Q1619",
+      "source_label": "flood early warning system",
+      "target_label": "climate-risk early warning system",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "flood early warning system -> climate-risk early warning system (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1523",
+      "target_id": "Q83",
+      "source_label": "flood early warning system",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "flood early warning system -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q1523",
+      "target_id": "Q382",
+      "source_label": "flood early warning system",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood early warning system -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q1523",
+      "target_id": "Q101",
+      "source_label": "flood early warning system",
+      "target_label": "Flood hazard mapping",
+      "relationship_type": "RELATED_TO",
+      "formatted": "flood early warning system -> Flood hazard mapping (RELATED_TO)"
+    },
+    {
+      "source_id": "Q112",
+      "target_id": "Q83",
+      "source_label": "Runoff control structures",
+      "target_label": "Hazard management technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Runoff control structures -> Hazard management technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q112",
+      "target_id": "Q73",
+      "source_label": "Runoff control structures",
+      "target_label": "Adaptation technologies",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "Runoff control structures -> Adaptation technologies (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q112",
+      "target_id": "Q382",
+      "source_label": "Runoff control structures",
+      "target_label": "flood",
+      "relationship_type": "RELATED_TO",
+      "formatted": "Runoff control structures -> flood (RELATED_TO)"
+    },
+    {
+      "source_id": "Q399",
+      "target_id": "Q374",
+      "source_label": "storms",
+      "target_label": "extreme weather",
+      "relationship_type": "SUBCONCEPT_OF",
+      "formatted": "storms -> extreme weather (SUBCONCEPT_OF)"
+    },
+    {
+      "source_id": "Q399",
+      "target_id": "Q92",
+      "source_label": "storms",
+      "target_label": "cyclone early warning system",
+      "relationship_type": "RELATED_TO",
+      "formatted": "storms -> cyclone early warning system (RELATED_TO)"
+    },
+    {
+      "source_id": "Q399",
+      "target_id": "Q82",
+      "source_label": "storms",
+      "target_label": "Flood and cyclone shelters",
+      "relationship_type": "RELATED_TO",
+      "formatted": "storms -> Flood and cyclone shelters (RELATED_TO)"
+    }
+  ],
+  "query": "What are the companies most exposed to flood risk?",
+  "extraction_method": "query_and_mcp_enhanced",
+  "query_concepts_count": 2,
+  "mcp_concepts_count": 0,
+  "total_concepts_found": 2,
+  "mcp_concepts": [],
+  "links": [
+    {
+      "source": "Q92",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q92",
+      "target": "Q1619",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q92",
+      "target": "Q399",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q92",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q979",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q979",
+      "target": "Q982",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q399",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q980",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q385",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q979",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q382",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q1000",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q398",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q762",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q765",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q765",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q766",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q766",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q767",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q779",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q779",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q856",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q787",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q374",
+      "target": "Q1286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q981",
+      "target": "Q382",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q981",
+      "target": "Q1515",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q107",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q107",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q107",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q106",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q106",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q106",
+      "target": "Q982",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q973",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q374",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q949",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q954",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q956",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q955",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q986",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q443",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q995",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q763",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q1580",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q1583",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q848",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q975",
+      "target": "Q1599",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1000",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q995",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q111",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q111",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q111",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q77",
+      "target": "Q74",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q77",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q77",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q113",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q113",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q113",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q91",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q92",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q101",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q106",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q107",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q111",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q112",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q113",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q1523",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q73",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q949",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q83",
+      "target": "Q1286",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q762",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q766",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q763",
+      "target": "Q848",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q763",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q982",
+      "target": "Q382",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q982",
+      "target": "Q979",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q982",
+      "target": "Q106",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q856",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1198",
+      "target": "Q750",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1198",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q385",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q385",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q767",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1515",
+      "target": "Q1514",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1515",
+      "target": "Q981",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q818",
+      "target": "Q157",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q1523",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q101",
+      "target": "Q91",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q74",
+      "target": "Q77",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q74",
+      "target": "Q82",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1580",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q765",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1619",
+      "target": "Q1286",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1619",
+      "target": "Q92",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1619",
+      "target": "Q1523",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q949",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q949",
+      "target": "Q83",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q848",
+      "target": "Q763",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q848",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q779",
+      "target": "Q1599",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q779",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q750",
+      "target": "Q954",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q750",
+      "target": "Q1198",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q101",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q91",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q157",
+      "target": "Q168",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q157",
+      "target": "Q73",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q157",
+      "target": "Q818",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q757",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q788",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q786",
+      "target": "Q385",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q986",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q770",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q973",
+      "target": "Q1514",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q981",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q982",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q1198",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q107",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q1523",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q168",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q77",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q91",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q112",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q111",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q382",
+      "target": "Q113",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q74",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q91",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q399",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q82",
+      "target": "Q92",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q757",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q168",
+      "target": "Q157",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q168",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q168",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q443",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q956",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q1515",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1514",
+      "target": "Q973",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1599",
+      "target": "Q779",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1599",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q787",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q955",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q786",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q788",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q954",
+      "target": "Q975",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q954",
+      "target": "Q750",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q1619",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q83",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1286",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1583",
+      "target": "Q975",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q77",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q168",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q91",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q101",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q106",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q107",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q111",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q112",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q113",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q1286",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q82",
+      "type": "HAS_SUBCONCEPT",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q83",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q73",
+      "target": "Q157",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q973",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q770",
+      "target": "Q374",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q398",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q980",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q1619",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q1523",
+      "target": "Q101",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q112",
+      "target": "Q83",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q112",
+      "target": "Q73",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q112",
+      "target": "Q382",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q399",
+      "target": "Q374",
+      "type": "SUBCONCEPT_OF",
+      "weight": 1.0
+    },
+    {
+      "source": "Q399",
+      "target": "Q92",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    },
+    {
+      "source": "Q399",
+      "target": "Q82",
+      "type": "RELATED_TO",
+      "weight": 1.0
+    }
+  ]
+};
+        
+        // Drawing area
+        const width = 1000;   // increased for breathing room
+        const height = 1200;  // increased for breathing room
+        
+        const svg = d3.select("#kg-graph")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`);
+            
+        const g = svg.append("g");
+        
+        // Data
+        const nodes = kgData.nodes || [];
+        const links = kgData.links || [];
+
+        // Small initial jitter so nodes don't stack at same start pos
+        nodes.forEach(n => {
+            if (n.x == null || n.y == null) {
+                n.x = (width / 2) + (Math.random() - 0.5) * 50;
+                n.y = (height / 2) + (Math.random() - 0.5) * 50;
+            }
+        });
+
+        // Color mapping
+        const nodeColors = {
+            'Concept': '#1f77b4',
+            'Dataset': '#ff7f0e', 
+            'Passage': '#2ca02c',
+            'Document': '#d62728',
+            'Unknown': '#7f7f7f'
+        };
+
+        // Reusable node radius (kept in sync with circle r)
+        function nodeRadius(d) {
+            return Math.max(5, Math.min(15, (d.importance || 1) * 8));
+        }
+
+        // Build degree map for smarter link distances
+        const degree = {};
+        links.forEach(l => {
+            const sid = (typeof l.source === 'object') ? l.source.id : l.source;
+            const tid = (typeof l.target === 'object') ? l.target.id : l.target;
+            degree[sid] = (degree[sid] || 0) + 1;
+            degree[tid] = (degree[tid] || 0) + 1;
+        });
+
+        // Create links
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link");
+        
+        // Create nodes
+        const node = g.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", d => nodeRadius(d))
+            .attr("fill", d => nodeColors[d.type] || nodeColors['Unknown'])
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+        
+        // Add labels (dy uses node radius to keep text just above the circle)
+        const label = g.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("class", "node-label")
+            .attr("dy", d => -(nodeRadius(d) + 3))
+            .text(d => d.label || d.id);
+
+        // Zoom (we call svg.call(zoom) AFTER label exists so we can toggle it)
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+                const k = event.transform.k;
+                // Hide labels when zoomed far out; show as we zoom in
+                label.style("display", k < 0.6 ? "none" : null);
+                // Optional: scale label font a bit with zoom for readability
+                const baseFont = 10;
+                label.attr("font-size", `${Math.max(8, Math.min(16, baseFont * Math.sqrt(k)))}px`);
+            });
+        
+        // Physics simulation with collision + stronger repulsion + degree-aware link distance
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links)
+                .id(d => d.id)
+                .distance(d => {
+                    const sid = d.source.id || d.source, tid = d.target.id || d.target;
+                    const sdeg = degree[sid] || 0, tdeg = degree[tid] || 0;
+                    return 70 + 12 * Math.max(sdeg, tdeg);
+                })
+                .strength(0.7)
+                )
+
+            // Make charge depend on degree: isolates repel less, hubs repel more
+            .force("charge", d3.forceManyBody().strength(d => (degree[d.id] || 0) === 0 ? -120 : -400))
+            .force("collide", d3.forceCollide().radius(d => nodeRadius(d) + 6).iterations(2))
+            .force("x", d3.forceX(width / 2).strength(0.03))   // gentle pull to center
+            .force("y", d3.forceY(height / 2).strength(0.03))  // gentle pull to center
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .velocityDecay(0.35)
+            .alpha(1)
+            .alphaDecay(0.02);
+
+        const isolateRadius = Math.min(width, height) * 0.38;
+            simulation.force("isolateRadial", d3.forceRadial(
+            isolateRadius,
+            width / 2,
+            height / 2
+            ).strength(d => (degree[d.id] || 0) === 0 ? 0.08 : 0));
+
+
+        // Tooltip
+        //const tooltip = d3.select("#tooltip");
+        
+        //node.on("mouseover", function(event, d) {
+        //   tooltip.transition().duration(200).style("opacity", .9);
+        //  tooltip.html(`<strong>${d.label || d.id}</strong><br/>Type: ${d.type}<br/>Importance: ${d.importance || 'N/A'}`)
+        //        .style("left", (event.pageX + 10) + "px")
+        //        .style("top", (event.pageY - 28) + "px");
+        //})
+        //.on("mouseout", function() {
+        //    tooltip.transition().duration(500).style("opacity", 0);
+        //});
+        
+        // Update positions on simulation tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+            
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("dy", d => -(nodeRadius(d) + 3)); // keep label above node as it moves
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Enable zoom after elements (esp. labels) exist
+        svg.call(zoom);
+    </script>
+</body>
+</html>

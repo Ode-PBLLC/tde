@@ -8,6 +8,7 @@ Uses FastMCP for consistent server architecture.
 
 import json
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from fastmcp import FastMCP
 import hashlib
@@ -27,56 +28,89 @@ except ImportError:
     GEOSPATIAL_AVAILABLE = False
     print("Warning: GeoPandas not available. Install with: pip install geopandas shapely")
 
-# Load deforestation polygons - try parquet first, then GeoJSON fallback
-PARQUET_PATH = os.path.join(os.path.dirname(__file__), "../data/deforestation/deforestation.parquet")
-GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "../data/brazil_deforestation.geojson")
+# Load deforestation polygons - automatically detect available datasets
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = BASE_DIR / "data" / "deforestation"
+PARQUET_PATH = DATA_DIR / "deforestation.parquet"
+GEOJSON_PATH = BASE_DIR / "data" / "brazil_deforestation.geojson"
+FALLBACK_DATASETS = [
+    # Skip the large 520MB parquet file for now as it might be causing timeout
+    # ("parquet", PARQUET_PATH),
+    ("parquet", DATA_DIR / "deforestation_old.parquet"),
+    ("geojson", GEOJSON_PATH),
+]
 
 # Initialize empty GeoDataFrame
 deforestation_gdf = None
 
+def _load_deforestation_data():
+    """Attempt to load the deforestation dataset from known locations."""
+    for fmt, path in FALLBACK_DATASETS:
+        try:
+            if not path.exists():
+                continue
+
+            # Check file size
+            file_size_mb = path.stat().st_size / (1024 * 1024)
+            print(f"Found {fmt} file at {path} ({file_size_mb:.1f} MB)")
+
+            if fmt == "parquet":
+                print(f"Loading deforestation data from parquet: {path}")
+                import time
+                start = time.time()
+                gdf = gpd.read_parquet(path)
+                elapsed = time.time() - start
+                print(f"Loaded {len(gdf)} polygons in {elapsed:.1f} seconds")
+            else:
+                print(f"Loading deforestation data from GeoJSON: {path}")
+                gdf = gpd.read_file(path)
+            return gdf, path
+        except Exception as exc:
+            print(f"Failed to load deforestation data from {path}: {exc}")
+            import traceback
+            traceback.print_exc()
+            continue
+    return None, None
+
+
 if GEOSPATIAL_AVAILABLE:
     try:
-        # Try loading from parquet file first
-        if os.path.exists(PARQUET_PATH):
-            print(f"Loading deforestation data from parquet: {PARQUET_PATH}")
-            deforestation_gdf = gpd.read_parquet(PARQUET_PATH)
-            print(f"Loaded {len(deforestation_gdf)} deforestation polygons from parquet")
-            
-            # Check what columns we have
-            print(f"Available columns: {list(deforestation_gdf.columns)}")
-            
+        loaded_gdf, source_path = _load_deforestation_data()
+        if loaded_gdf is not None:
+            deforestation_gdf = loaded_gdf
+            print(f"Loaded {len(deforestation_gdf)} deforestation polygons from {source_path}")
             # Ensure CRS is set (parquet should preserve it)
             if deforestation_gdf.crs is None:
                 deforestation_gdf.set_crs(epsg=4326, inplace=True)
                 print("Set CRS to EPSG:4326")
-            else:
-                print(f"CRS already set: {deforestation_gdf.crs}")
-            
+            elif str(deforestation_gdf.crs).lower() not in {"epsg:4326", "ogc:crs84"}:
+                original_crs = deforestation_gdf.crs
+                deforestation_gdf = deforestation_gdf.to_crs('EPSG:4326')
+                print(f"Reprojected dataset from {original_crs} to EPSG:4326")
+            print(f"Available columns: {list(deforestation_gdf.columns)}")
             # Calculate area if not present
             if 'area_hectares' not in deforestation_gdf.columns:
                 print("Calculating area in hectares...")
-                # Project to equal area for accurate calculation
-                deforestation_projected = deforestation_gdf.to_crs('EPSG:5880')  # Brazil Polyconic
-                deforestation_gdf['area_hectares'] = deforestation_projected.geometry.area / 10000
-                print(f"Calculated areas ranging from {deforestation_gdf['area_hectares'].min():.2f} to {deforestation_gdf['area_hectares'].max():.2f} hectares")
-                
-        # Fall back to GeoJSON if parquet doesn't exist
-        elif os.path.exists(GEOJSON_PATH):
-            print(f"Parquet not found, loading from GeoJSON: {GEOJSON_PATH}")
-            deforestation_gdf = gpd.read_file(GEOJSON_PATH)
-            # Ensure CRS is set
-            if deforestation_gdf.crs is None:
-                deforestation_gdf.set_crs(epsg=4326, inplace=True)
-            print(f"Loaded {len(deforestation_gdf)} deforestation polygons from GeoJSON")
-            
-            # Calculate area if not present
-            if 'area_hectares' not in deforestation_gdf.columns:
-                # Project to equal area for accurate calculation
-                deforestation_projected = deforestation_gdf.to_crs('EPSG:5880')  # Brazil Polyconic
-                deforestation_gdf['area_hectares'] = deforestation_projected.geometry.area / 10000
+                try:
+                    deforestation_projected = deforestation_gdf.to_crs('EPSG:5880')  # Brazil Polyconic
+                    deforestation_gdf['area_hectares'] = (
+                        deforestation_projected.geometry.area / 10000
+                    )
+                    print(
+                        f"Calculated areas ranging from {deforestation_gdf['area_hectares'].min():.2f} "
+                        f"to {deforestation_gdf['area_hectares'].max():.2f} hectares"
+                    )
+                except Exception as area_exc:
+                    print(f"Warning: failed to compute area_hectares: {area_exc}")
+                    deforestation_gdf['area_hectares'] = 0.0
+            # Provide temporal context if missing
+            if 'year' not in deforestation_gdf.columns:
+                deforestation_gdf['year'] = None
         else:
-            print(f"Warning: No deforestation data found at {PARQUET_PATH} or {GEOJSON_PATH}")
-            # Create empty GeoDataFrame with correct structure
+            print(
+                "Warning: No deforestation data found in expected locations. "
+                "Proceeding with empty dataset."
+            )
             deforestation_gdf = gpd.GeoDataFrame(columns=['geometry', 'area_hectares', 'year'])
             deforestation_gdf.set_crs(epsg=4326, inplace=True)
     except Exception as e:
@@ -391,12 +425,9 @@ def GetDeforestationWithMap(
     }
     
     print(f"Generated deforestation map: {filename}")
-    
+
     return result
 
-
-if __name__ == "__main__":
-    mcp.run()
 
 @mcp.tool()
 def DescribeServer() -> Dict[str, Any]:
@@ -444,3 +475,7 @@ def DescribeServer() -> Dict[str, Any]:
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+if __name__ == "__main__":
+    mcp.run()

@@ -1,0 +1,19 @@
+{
+  "query": "Can you show me a map of Brazilian solar assets?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "solar_energy",
+        "label": "solar energy",
+        "type": "Concept",
+        "importance": 1.0,
+        "source_server": "solar"
+      }
+    ],
+    "links": [],
+    "edges": [],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "9359.639"
+}

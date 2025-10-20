@@ -11,9 +11,8 @@ from pathlib import Path
 
 # Add parent directory to path to import mcp modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, str(Path(__file__).parent.parent / "mcp"))
 
-from mcp_chat_redo import MCPChatSystem, initialize_mcp_client
+from mcp.mcp_chat_redo import MCPChatSystem, initialize_mcp_client
 
 async def test_ndc_query():
     """Test that NDC queries get focused policy responses without facility counts."""

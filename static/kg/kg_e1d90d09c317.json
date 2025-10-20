@@ -1,0 +1,132 @@
+{
+  "query": "Help me understand Brazil's NDC commitments related to energy",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q1219",
+        "type": "Concept",
+        "label": "data security-related hazards",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "energy supply sector",
+        "type": "Concept",
+        "label": "energy supply sector",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "cyber impact",
+        "type": "Concept",
+        "label": "cyber impact",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1194",
+        "type": "Concept",
+        "label": "fire related technological incidents",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1396",
+        "type": "Concept",
+        "label": "energy efficiency standard",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1222",
+        "type": "Concept",
+        "label": "Internet of Things-related hazards",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1477",
+        "type": "Concept",
+        "label": "energy market",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "industrial failure",
+        "type": "Concept",
+        "label": "industrial failure",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "codes and standards",
+        "type": "Concept",
+        "label": "codes and standards",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1477",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1194",
+        "target": "industrial failure",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1219",
+        "target": "cyber impact",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1222",
+        "target": "cyber impact",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1396",
+        "target": "codes and standards",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1477",
+        "target": "energy supply sector",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1194",
+        "target": "industrial failure",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1219",
+        "target": "cyber impact",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1222",
+        "target": "cyber impact",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1396",
+        "target": "codes and standards",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "2363119.859"
+}
