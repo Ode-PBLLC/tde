@@ -1,4 +1,3 @@
-streamlit
 anthropic
 fastmcp
 python-dotenv
@@ -9,8 +8,11 @@ openai
 networkx
 plotly
 folium
-streamlit-folium
 geopandas
 chromadb
 pypdf
 rapidfuzz
+fastapi
+uvicorn
+aiohttp
+pydantic
