@@ -27,20 +27,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-# Allow switching orchestrators via env var ORCHESTRATOR={redo|plan}
-# Default stays on the modern 3‑phase orchestrator (mcp_chat_redo)
-_orch = os.getenv("ORCHESTRATOR", "v2").lower()
-if _orch in ("plan", "plan_execute", "plan-execute"):
-    from mcp.mcp_chat_plan_execute import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
-    print("Using mcp_chat_plan_execute orchestrator")
-elif _orch in ("v2", "simple", "simple_v2"):
-    from mcp.mcp_chat_v2 import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
-    print("Using mcp_chat_v2 orchestrator")
-else:
-    from mcp.mcp_chat_redo import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client  # type: ignore
-    print("Using mcp_chat_redo orchestrator")
+# Using mcp_chat_v2 orchestrator (v2 architecture)
+from mcp.mcp_chat_v2 import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client
+print("Using mcp_chat_v2 orchestrator")
 
-app = FastAPI(title="Climate Policy Radar API", version="1.0.0")
+app = FastAPI(title="Climate Policy Radar API", version="2.0.0")
 
 # Initialize KG embed generator - will use environment variable or default
 kg_generator = KGEmbedGenerator()
