@@ -17,7 +17,13 @@ mcp/__pycache__/
 aggregated/
 aggregated.tar.gz
 
+# Generated static assets
+static/kg/
+static/maps/
+static/cache/
+
 # Logs and temporary files
+logs/
 *.log
 *response*.json
 test_*.json
