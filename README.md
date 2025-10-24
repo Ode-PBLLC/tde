@@ -191,7 +191,7 @@ This section contains essential information for containerizing and deploying the
 
 **Resource Requirements**:
 - **CPU**: 2+ vCPUs recommended (handles concurrent MCP server processes)
-- **Memory**: 8GB minimum, 16GB recommended (for semantic search indexes)
+- **Memory**: 16GB minimum (semantic search indexes can cause OOM with 8GB under load)
 - **Disk**: 10GB minimum (code + dependencies ~2GB, datasets ~2.8GB)
 - **Network**: Outbound HTTPS to Anthropic API (api.anthropic.com)
 
@@ -248,8 +248,8 @@ PYTHONUNBUFFERED=1  # For proper log streaming
 **Option 1: ECS Fargate** (Recommended for simplicity)
 ```yaml
 # Task Definition essentials:
-CPU: 2048 (2 vCPU)
-Memory: 8192 (8 GB)
+CPU: 4096 (4 vCPU)
+Memory: 16384 (16 GB)
 Port Mapping: 8098:8098
 Environment Variables:
   - ANTHROPIC_API_KEY (from Secrets Manager)
@@ -261,7 +261,8 @@ Health Check:
 ```
 
 **Option 2: EC2 with Docker Compose** (Current production setup)
-- Use `t3.large` or larger (2 vCPU, 8GB RAM)
+- Use `t3.xlarge` or larger (4 vCPU, 16GB RAM minimum)
+- Avoid `t3.large` (8GB) - can cause OOM under load
 - Docker Compose for orchestration
 - EBS volume for data persistence
 - Application Load Balancer for SSL termination
