@@ -26,6 +26,15 @@ from .url_utils import ensure_absolute_url
 # Model/provider configuration (override here instead of env vars if desired)
 # ---------------------------------------------------------------------------
 
+# Sonnet 4.5 Name
+# claude-sonnet-4-5-20250929
+
+# Sonnet 4 Name
+# claude-sonnet-4-20250514
+
+# Sonnet Haiku
+# claude-3-5-haiku-20241022
+
 FACT_ORDERER_PROVIDER = "openai"  # options: anthropic, openai, auto
 FACT_ORDERER_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 FACT_ORDERER_OPENAI_MODEL = "gpt-5.0"
@@ -38,11 +47,11 @@ NARRATIVE_SYNTH_OPENAI_MODEL = "gpt-4.1-2025-04-14"
 QUERY_ENRICHMENT_ENABLED = True  # options: True, False
 QUERY_ENRICHMENT_MODEL = "claude-3-5-haiku-20241022"
 NARRATIVE_SYNTH_MAX_ATTEMPTS = 3
-NARRATIVE_SYNTH_TIMEOUT_SECONDS = 60
+NARRATIVE_SYNTH_TIMEOUT_SECONDS = 180
 NARRATIVE_SYNTH_BASE_RETRY_DELAY = 0.5
 
 # Governance summary configuration
-ENABLE_GOVERNANCE_SUMMARY = True
+ENABLE_GOVERNANCE_SUMMARY = False
 GOVERNANCE_SUMMARY_OPENAI_MODEL = "gpt-4.1-mini"
 GOVERNANCE_SUMMARY_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
 
@@ -59,6 +68,8 @@ def _ensure_evidence_markers(paragraphs: List[str], sequence: List[str]) -> List
     present = set(_MARKER_PATTERN.findall(combined))
     missing = [fid for fid in sequence if fid not in present]
     if not missing:
+        return paragraphs
+    elif len(missing) > 0.5*len(present): # only add fallback citations if more than half are missing
         return paragraphs
 
     updated = list(paragraphs)
@@ -531,13 +542,14 @@ LLM_ROUTING_CONFIG: Dict[str, Dict[str, Any]] = {
     },
     "lse": {
         "detailed": (
-            "Comprehensive climate policy database including NDC commitments (targets, "
-            "net-zero years, renewable energy goals), domestic policy comparisons, "
-            "institutional frameworks, implementation tracking, and TPI emissions "
-            "pathways. Use for questions about national or subnational climate policy "
-            "details, targets, and governance structures."
+            "Comprehensive climate policy database covering NDC commitments (targets, "
+            "net-zero years), sectoral policies (energy, transport, agriculture, land use, "
+            "forestry/deforestation, REDD+), institutional frameworks, implementation tracking, "
+            "subnational state governance, and TPI emissions pathways. Use for questions about "
+            "Brazil's climate policy details, governance structures, forest conservation measures, "
+            "sectoral mitigation plans, or state-level climate action."
         ),
-        "always_include": False,
+        "always_include": True,
     },
     # "viz": {
     #     "detailed": (
@@ -735,6 +747,7 @@ class LLMRelevanceClassifier:
             f"Capabilities: {description}\n\n"
             "Does this data source seem like it has information that would help answer the query?\n\n"
             "Answer YES if the dataset is likely to help answer the question. Answer NO if it is unlikely to help."
+            "This is predominantly a tool for policy makers and analysts. We should almost always choose YES for the 'lse' dataset." # PROMPT ADDITION
         )
 
         try:
@@ -1136,6 +1149,7 @@ class NarrativeSynthesizer:
 
     def _choose_provider(self) -> str:
         providers = self._candidate_providers()
+        print(f"[KGDEBUG] available providers: {providers}")
         if providers:
             return providers[0]
         raise RuntimeError("No LLM client configured for NarrativeSynthesizer")
@@ -1175,6 +1189,7 @@ class NarrativeSynthesizer:
             )
 
         if not self.available:
+            print("[KGDEBUG] using fallback result")
             return _build_fallback_result()
 
         evidence_lines = []
@@ -1183,30 +1198,79 @@ class NarrativeSynthesizer:
             evidence_lines.append(f"{item.id}: {item.text} (Source: {meta})")
 
         evidence_blob = "\n".join(evidence_lines)
+        print(f"[KGDEBUG] evidence blob built, length={len(evidence_blob)}")
         order_instruction = " -> ".join(ordered_sequence)
         current_date = datetime.datetime.utcnow().strftime("%Y-%m-%d")
-        prompt = (
-            "The current date is " + current_date + ".\n\n"
-            "You are writing an analyst-grade summary for the given query.\n"
-            "Assume each question is about Brazil. This is a Brazil-focused assistant. We will add support for other countries in the future.\n"
-            "Don't say you're going to answer the question; just answer it.\n"
-            "Use the provided evidence items to respond to the user's query. Each item has an ID like F1.\n"
-            "Present the evidence in this order: "
-            f"{order_instruction}.\n"
-            "Open with a single paragraph that directly answers the question, weaving the key takeaway from the strongest evidence and including at least one citation marker (e.g., [[F1]]).\n"
-            "Follow with additional paragraphs that expand on each major aspect or module, adding engaging but fact-based detail while keeping the flow cohesive.\n"
-            "You must provide the information in an engaging, coherent narrative.\n"
-            "Every sentence that uses evidence must include citation markers using the syntax [[F1]] immediately after the relevant clause.\n"
-            "If multiple evidence items support a sentence, include multiple markers, e.g., [[F1]][[F3]].\n"
-            "Avoid repeating tool scaffolding or status bullet text verbatim—integrate those ideas into polished prose instead of copying headings like 'NDC Overview & Domestic Comparison'.\n"
-            "Do NOT write about methodologies, datasets, analysis approaches, or what 'enables' or 'makes possible' any findings.\n"
-            "If evidence describes datasets or analytical methods, DO NOT include this information in your response, unless you are asked. Focus only on substantive findings and facts.\n"
-            "Do NOT write information ABOUT your data (NDCAlign has these tables, 'I am going to write about this data', etc). Just write the narrative.\n"
-            "You have a wealth of information present within your general knowledge and through tools. You are in charge of making this information engaging and compelling. Stay humble but state known facts confidently.\n"
-            "Do not start answers with phrases like 'Based on the provided evidence...' OR similar phrasing.\n"
-            "Don't mention the names or ids of documents or data sources (e.g., 'According to document F1...'). Instead, just use the citation markers [[F1]].\n"
-            "Don't include phrases like 'In this document, we will discuss...' or 'This report provides an analysis of...'. Just present the information directly.\n"
-        )
+        # prompt = f"""CONTEXT:
+        # - The current date is {current_date}.
+        # - You are writing an analyst-grade summary for the given query.
+        # - Assume each question is about Brazil. This is a Brazil-focused assistant. We will add support for other countries in the future.
+        # - Use the provided evidence items to respond. Each item has an ID like F1.
+        # - Present the evidence in this order: {order_instruction}.
+        # - This is predominantly a tool for policy makers and analysts. Heavily favor incorporating facts about governance, sourced from the LSE - NDC Align dataset in your response.
+
+        # TONE & OBJECTIVITY:
+        # - Maintain a strictly objective tone. Do not offer value judgements, prescriptions, or 'best policy' recommendations.
+        # - Draw on verifiable sources and well-established domain knowledge. Use widely recognized facts without special labeling, and flag any assumptions or uncertainties explicitly.
+        # - Don't say you're going to answer the question; just answer it.
+        # - Stay humble but state well-established facts confidently, making the information engaging and compelling.
+
+        # LIMITATIONS & DATA GAPS:
+        # - Before drafting, check whether the evidence omits any topic, metric, geography, or timeframe the user explicitly requested.
+        # - If something is missing, begin the Key Takeaways section with a brief sentence such as "Unfortunately, we don't have information on {missing_topic}." Do not speculate beyond the available evidence.
+        # - When possible, steer the reader toward domains where you do have evidence (e.g., solar facilities, heat exposure, deforestation, governance commitments) while staying factual.
+
+        # VISUALS & STRUCTURED DATA:
+        # - Prefer to leverage multimodal evidence through tool calls (maps, charts, tables) whenever it clarifies the user's question; only skip visuals when they would be redundant or unsupported.
+        # - Reference insights drawn from those visuals directly in the narrative, focusing on what the data shows rather than describing the tooling.
+        # - If a relevant visual is unavailable, continue with text but do not invent or imply the existence of one.
+
+        # FORMAT & MARKDOWN:
+        # - Use Markdown headings. Start with "## Key Takeaways" followed by a tight paragraph (2-3 sentences) that captures the main answer and includes at least one citation.
+        # - After the Key Takeaways, create additional "##" sections whose titles reflect the major themes or evidence clusters. Adjust the number of sections to match the query complexity and available information.
+        # - Within each section, use Markdown bullets to enumerate concrete findings, reserving short connective sentences for context. Only include tables when they are provided by tools.
+
+        # STRUCTURE & FLOW:
+        # - Ensure the Key Takeaways paragraph directly answers the question using the strongest evidence and includes at least one citation marker (e.g., [[F1]]).
+        # - Follow with additional sections that elaborate on each major aspect or module, keeping the narrative cohesive and aligned to the evidence order.
+        # - Deliver an engaging, coherent narrative that reads fluidly without copying scaffold headings like 'NDC Overview & Domestic Comparison'.
+        # - Do not start the answer with phrases like 'Based on the provided evidence...' or other throat-clearing language; jump straight into the substance.
+
+        # CITATIONS & SOURCE HANDLING:
+        # - Every sentence that uses evidence must include citation markers using the syntax [[F1]] immediately after the relevant clause.
+        # - If multiple evidence items support a sentence, include multiple markers, e.g., [[F1]][[F3]].
+        # - Don't mention the names or IDs of documents or data sources (e.g., 'According to document F1...'); use citation markers instead.
+        # - Don't include phrases like 'In this document, we will discuss...' or 'This report provides an analysis of...'; present the information directly.
+
+        # CONTENT RESTRICTIONS:
+        # - Do NOT write about methodologies, datasets, analysis approaches, or what 'enables' or 'makes possible' any findings unless the user explicitly requested that detail.
+        # - If evidence describes datasets or analytical methods, omit those references unless asked; focus on substantive findings and facts.
+        # - Do NOT write information about your data (e.g., 'NDCAlign has these tables'); just present the findings.
+        # """
+
+        prompt = """CONTEXT:
+            - Summarize the evidence in this order: {order_instruction}. Focus on Brazil unless the user explicitly requests comparisons.
+            - This is predominantly a tool for policy makers and analysts. Heavily favor incorporating facts about governance, sourced from the LSE - NDC Align dataset in your response if available.
+
+            TONE & OBJECTIVITY:
+            - Remain objective; avoid prescriptions or “best policy” language. Use established facts confidently and flag assumptions or gaps.
+
+            LIMITATIONS & DATA GAPS:
+            - If requested information is missing, open Key Takeaways with “Unfortunately, we don't have information on {missing_topic}.” Do not
+            speculate beyond the evidence.
+
+            VISUALS & STRUCTURED DATA:
+            - Create and reference maps, charts, or tables through tools when they clarify the answer; otherwise explain available evidence succinctly.
+
+            FORMAT & MARKDOWN:
+            - Start with “## Key Takeaways” and a tight two-sentence paragraph including at least one citation.
+            - Add downstream “##” sections named for the major themes; use bullet lists for concrete findings and include tables only when tools provide
+            them.
+
+            CITATIONS & SOURCE HANDLING:
+            - Place citation markers like [[F1]] immediately after each supported sentence before the period; list multiple markers like [[F1]][[F2]] when multiple items apply.
+            - Do NOT create a References section. We handle that elsewhere.
+            """
 
         user_message = (
             f"Query: {query}\n\n"
@@ -1214,7 +1278,11 @@ class NarrativeSynthesizer:
             "Return the paragraphs as plain text separated by blank lines."
         )
 
-        system_prompt = "You are a helpful, precise analyst who follows instructions exactly."
+        system_prompt = (
+            "You are a helpful, precise analyst who follows instructions exactly.\n"
+            "Maintain a strictly objective tone. Do not offer value judgements, prescriptions, or 'best policy' recommendations.\n"
+            "Draw on verifiable sources and well-established domain knowledge. Use widely recognized facts without special labeling, and flag any assumptions or uncertainties explicitly."
+        )
 
         full_system_prompt = f"{system_prompt}\n\n{prompt}"
 
@@ -1226,7 +1294,7 @@ class NarrativeSynthesizer:
                     print("[KGDEBUG] anthropic call start", flush=True)
                     response = self._anthropic_client.messages.create(  # type: ignore[union-attr]
                         model=NARRATIVE_SYNTH_ANTHROPIC_MODEL,
-                        max_tokens=1200,
+                        max_tokens=2000,
                         temperature=0.2,
                         system=full_system_prompt,
                         messages=[{"role": "user", "content": user_message}],
@@ -1261,6 +1329,7 @@ class NarrativeSynthesizer:
                 raise
             return _extract_openai_text(response)
 
+        print(f"[KGDEBUG] about to call _candidate_providers()")
         providers = self._candidate_providers()
         if not providers:
             print(
@@ -2224,7 +2293,7 @@ class SimpleOrchestrator:
         if len(text) > max_chars:
             text = text[: max_chars - 3].rstrip() + "..."
 
-        return f'🔍 Considering the following passage "{text}"'
+        return f'🔍 Considering the following information "{text}"'
 
     async def _emit_fact_thinking_events(
         self,
@@ -2716,6 +2785,7 @@ class SimpleOrchestrator:
         await self._emit_fact_thinking_events(responses, emit)
 
         await emit("🧠 Pulling everything together...", "synthesis")
+
         evidences, evidence_map = self._collect_evidences(responses)
         print(
             f"[KGDEBUG] collected evidences: {len(evidences)} items from {len(responses)} responses",
@@ -2739,13 +2809,39 @@ class SimpleOrchestrator:
             f"[KGDEBUG] entering narrative.generate with {len(ordered_evidences)} evidences",
             flush=True,
         )
-        narrative_result = await self._narrative.generate(
-            query, ordered_evidences, ordered_ids
-        )
-        print(
-            f"[KGDEBUG] narrative.generate finished: paragraphs={len(narrative_result.paragraphs)}",
-            flush=True,
-        )
+
+        synthesis_done = asyncio.Event()
+
+        async def _synthesis_heartbeat() -> None:
+            try:
+                while not synthesis_done.is_set():
+                    await asyncio.sleep(15)
+                    if synthesis_done.is_set():
+                        break
+                    await emit("⏳ Still synthesizing…", "synthesis")
+            except asyncio.CancelledError:
+                raise
+
+        heartbeat_task: Optional[asyncio.Task] = None
+        if progress_callback:
+            heartbeat_task = asyncio.create_task(_synthesis_heartbeat())
+
+        try:
+            narrative_result = await self._narrative.generate(
+                query, ordered_evidences, ordered_ids
+            )
+            print(
+                f"[KGDEBUG] narrative.generate finished: paragraphs={len(narrative_result.paragraphs)}",
+                flush=True,
+            )
+        finally:
+            synthesis_done.set()
+            if heartbeat_task:
+                heartbeat_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await heartbeat_task
+
+        # narrative_result and ordered_evidences now available from synthesis block above
 
         governance_module: Optional[Dict[str, Any]] = None
         if narrative_result.paragraphs:
@@ -2990,6 +3086,59 @@ class SimpleOrchestrator:
             "metadata": {"facts": metadata_items},
         }
 
+    # def _build_narrative_summary_module(
+    #     self,
+    #     paragraphs: List[str],
+    #     sequence: List[str],
+    #     evidence_map: Dict[str, NarrativeEvidence],
+    #     registry: CitationRegistry,
+    # ) -> Dict[str, Any]:
+    #     pattern = re.compile(r"\[\[(F\d+)\]\]")
+
+    #      # Fix grouped pattern like [[F1][F2][F7]]
+    #     grouped_pattern = re.compile(r"\[\[(F\d+(?:\]\[F\d+)+)\]\]")
+
+    #     def expand_grouped_refs(text: str) -> str:
+    #         """
+    #         Expands malformed grouped citations like [[F1][F2][F7]]
+    #         into [[F1]][[F2]][[F7]].
+    #         """
+    #         def expand(match: re.Match[str]) -> str:
+    #             inner = match.group(1)  # e.g. "F1][F2][F7"
+    #             # Extract all F# inside it
+    #             fids = re.findall(r"F\d+", inner)
+    #             # Rebuild properly spaced [[F#]] sequence
+    #             return "".join(f"[[{fid}]]" for fid in fids)
+            
+    #         return grouped_pattern.sub(expand, text)
+
+    #     def replace_marker(match: re.Match[str]) -> str:
+    #         fid = match.group(1)
+    #         evidence = evidence_map.get(fid)
+    #         if not evidence:
+    #             return ""
+    #         try:
+    #             number = registry.number_for(evidence.citation)
+    #         except KeyError:
+    #             return ""
+    #         return f"^{number}^"
+
+    #     rendered: List[str] = []
+    #     for paragraph in paragraphs:
+    #         paragraph = expand_grouped_refs(paragraph)
+
+    #         rendered.append(pattern.sub(replace_marker, paragraph))
+
+    #     if not rendered:
+    #         rendered = ["No supporting facts were returned."]
+
+    #     return {
+    #         "type": "text",
+    #         "heading": "Summary",
+    #         "texts": rendered,
+    #         "metadata": {"citations": self._build_citation_metadata(sequence, evidence_map, registry)},
+    #     }
+
     def _build_narrative_summary_module(
         self,
         paragraphs: List[str],
@@ -2998,6 +3147,23 @@ class SimpleOrchestrator:
         registry: CitationRegistry,
     ) -> Dict[str, Any]:
         pattern = re.compile(r"\[\[(F\d+)\]\]")
+
+        # Fix grouped pattern like [[F1][F2][F7]]
+        grouped_pattern = re.compile(r"\[\[(F\d+(?:\]\[F\d+)+)\]\]")
+
+        def expand_grouped_refs(text: str) -> str:
+            """
+            Expands malformed grouped citations like [[F1][F2][F7]]
+            into [[F1]][[F2]][[F7]].
+            """
+            def expand(match: re.Match[str]) -> str:
+                inner = match.group(1)  # e.g. "F1][F2][F7"
+                # Extract all F# inside it
+                fids = re.findall(r"F\d+", inner)
+                # Rebuild properly spaced [[F#]] sequence
+                return "".join(f"[[{fid}]]" for fid in fids)
+            
+            return grouped_pattern.sub(expand, text)
 
         def replace_marker(match: re.Match[str]) -> str:
             fid = match.group(1)
@@ -3009,10 +3175,48 @@ class SimpleOrchestrator:
             except KeyError:
                 return ""
             return f"^{number}^"
+        
+        def collapse_repeated_refs(text: str) -> str:
+            """
+            Collapses repeated citation markers like:
+            ^1^^1^^1^  → ^1^
+            ^2^ ^2^    → ^2^
+            ^3^   ^3^  → ^3^
+            Works for any number.
+            """
+            # (\^\d+\^) captures a ^number^ group
+            # (?:\s*\1)+ matches one or more repeats of the same marker,
+            # possibly separated by spaces
+            pattern = re.compile(r'(\^\d+\^)(?:\s*\1)+(?!\s*\^)')
+            return pattern.sub(r'\1', text)
+
+        def reorder_citation_groups(text: str) -> str:
+            """
+            Reorders any run of ^n^ markers (with optional internal spaces) into ascending order,
+            preserving spacing/punctuation and working at end-of-line too.
+            """
+            # Match ≥2 markers possibly separated by spaces, stop before space/punct/EOL
+            pattern = re.compile(r'(?P<group>(?:\^\d+\^\s*){2,})(?=(?:\s|\W|$))')
+
+            def sort_group(match: re.Match[str]) -> str:
+                group = match.group("group")
+                # Extract, deduplicate, sort
+                numbers = sorted({int(n) for n in re.findall(r"\^(\d+)\^", group)})
+                # Rebuild normalized group
+                return "".join(f"^{n}^" for n in numbers)
+
+            return pattern.sub(sort_group, text)
 
         rendered: List[str] = []
         for paragraph in paragraphs:
-            rendered.append(pattern.sub(replace_marker, paragraph))
+            print(paragraph)
+            paragraph = expand_grouped_refs(paragraph)
+            text = pattern.sub(replace_marker, paragraph)
+            print(text)
+            text = collapse_repeated_refs(text)
+            print(text)
+            text = reorder_citation_groups(text)
+            rendered.append(text)
 
         if not rendered:
             rendered = ["No supporting facts were returned."]

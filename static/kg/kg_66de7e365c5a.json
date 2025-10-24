@@ -1,0 +1,229 @@
+{
+  "query": "what are some of the regulations and actions the brazilian governemnt has taken?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "extreme weather",
+        "type": "Concept",
+        "label": "extreme weather",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q399",
+        "type": "Concept",
+        "label": "storms",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "cyclone early warning system",
+        "type": "Concept",
+        "label": "cyclone early warning system",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "just transition",
+        "type": "Concept",
+        "label": "just transition",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q59",
+        "type": "Concept",
+        "label": "trade unions",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "reforestation",
+        "type": "Concept",
+        "label": "reforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "storm damage",
+        "type": "Concept",
+        "label": "storm damage",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "typhoon waste",
+        "type": "Concept",
+        "label": "typhoon waste",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Flood and cyclone shelters",
+        "type": "Concept",
+        "label": "Flood and cyclone shelters",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q23",
+        "type": "Concept",
+        "label": "Revegetation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1360",
+        "type": "Concept",
+        "label": "government ministries",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "afforestation",
+        "type": "Concept",
+        "label": "afforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "finance actor",
+        "type": "Concept",
+        "label": "finance actor",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1259",
+        "type": "Concept",
+        "label": "smoke",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "air pollution risk",
+        "type": "Concept",
+        "label": "air pollution risk",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1360",
+        "target": "finance actor",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1259",
+        "target": "air pollution risk",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q399",
+        "target": "extreme weather",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q399",
+        "target": "typhoon waste",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q399",
+        "target": "storm damage",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q399",
+        "target": "cyclone early warning system",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q399",
+        "target": "Flood and cyclone shelters",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q23",
+        "target": "reforestation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q23",
+        "target": "afforestation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q59",
+        "target": "just transition",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1360",
+        "target": "finance actor",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1259",
+        "target": "air pollution risk",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q399",
+        "target": "extreme weather",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q399",
+        "target": "typhoon waste",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q399",
+        "target": "storm damage",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q399",
+        "target": "cyclone early warning system",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q399",
+        "target": "Flood and cyclone shelters",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q23",
+        "target": "reforestation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q23",
+        "target": "afforestation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q59",
+        "target": "just transition",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "21845.453"
+}

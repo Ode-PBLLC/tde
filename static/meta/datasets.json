@@ -5,6 +5,7 @@
     {
       "id": "solar_facilities",
       "title": "TransitionZero Solar Asset Mapper (TZ-SAM)",
+      "Organization": "TransitionZero",
       "description": "TZ-SAM is an open access, asset-level dataset of solar facilities, powered by machine learning. It contains both footprints and capacity estimates.",
       "source": "https://www.transitionzero.org/products/solar-asset-mapper/download",
       "last_updated": "Q1 2025",
@@ -13,6 +14,7 @@
     {
       "id": "brazil_deforestation",
       "title": "PRODES Deforestation Polygons Since 2008",
+      "Organization": "PRODES",
       "description": "GeoJSON/Parquet polygons used in deforestation analyses.",
       "source": "https://terrabrasilis.dpi.inpe.br/downloads/",
       "last_updated": "2024",
@@ -21,6 +23,7 @@
     {
       "id": "gist_multi_dataset",
       "title": "GIST Impact Datasets",
+      "Organization": "GIST Impact",
       "short_description": "Company and asset-level sustainability metrics.",
       "long_description": "This dataset contains comprehensive biodiversity and environmental impact metrics of companies and their assets. It includes the counts of assets in proximity to various stressors including deforestation, urbanization, and climate change impacts. The data also includes risk levels for many of these features, company-wide impacts on biodiversity, and summaries of Scope 3 Emissions from each company.",
       "source": "https://www.gistimpact.com/",
@@ -30,6 +33,7 @@
         {
       "id": "climate_policy_radar_concept_store",
       "title": "Climate Policy Radar Concept Store",
+      "Organization": "Climate Policy Radar",
       "description": "Concepts found within the Climate Policy Radar Knowledge Graph.",
       "source": "https://www.climatepolicyradar.org/",
       "last_updated": "9/15/2025"
@@ -37,6 +41,7 @@
             {
       "id": "climate_policy_radar",
       "title": "Climate Policy Radar Passage Library",
+      "Organization": "Climate Policy Radar",
       "description": "Passages of policies and laws found within the Climate Policy Radar Knowledge Graph.",
       "source": "https://www.climatepolicyradar.org/",
       "last_updated": "9/15/2025",
@@ -45,6 +50,7 @@
         {
       "id": "admin",
       "title": "Brazilian Administrative Boundaries",
+      "Organization": "Instituto Brasileiro de Geografia e Estatística (IBGE)",
       "description": "Geospatial data for Brazilian administrative districts (Municipalities and States).",
       "source": "https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2024/Brasil/",
       "license": "Publicly Available (Per Website)",
@@ -54,6 +60,7 @@
         {
       "id": "lse",
       "title": "NDC Align",
+      "Organization": "TKTKTKTKTKTKTKTK",
       "description": "A detailed country profile of Brazil’s climate policy response, revealing how far the country is progressing in implementing its targets — and where key gaps remain.",
       "source": "https://governance.transitiondigital.org/en/tabs/ndc-overview",
       "last_updated": "November 13th, 2024",
@@ -62,6 +69,7 @@
         {
       "id": "meta",
       "title": "Meta Dataset",
+      "Organization": "Transition Digital",
       "description": "Metadata and information about various datasets.",
       "source": "https://transitiondigital.org/",
       "last_updated": "UNKNOWN"
@@ -69,6 +77,7 @@
         {
       "id": "spa",
       "title": "Science Panel for the Amazon (SPA) 2021 Report",
+      "Organization": "Science Panel for the Amazon",
       "description": "The Science Panel for the Amazon released the Amazon Assessment Report 2021 at COP26, which has been called an “encyclopedia” of the Amazon region. This landmark report is unprecedented for its scientific and geographic scope, the inclusion of Indigenous scientists, and its transparency, having undergone peer review and public consultation.",
       "source": "https://www.sp-amazon.org/publications/#ar2021",
       "citation": "Science Panel for the Amazon. 2021. Amazon Assessment Report 2021. Nobre C, Encalada A, Anderson E, Roca Alcazar FH, Bustamante M, Mena C, Peña-Claros M, Poveda G, Rodriguez JP, Saleska S, Trumbore S, Val AL, Villa Nova L, Abramovay R, Alencar A, Rodríguez Alzza C, Armenteras D, Artaxo P, Athayde S, Barretto Filho HT, Barlow J, Berenguer E, Bortolotto F, Costa FA, Costa MH, Cuvi N, Fearnside PM, Ferreira J, Flores BM, Frieri S, Gatti LV, Guayasamin JM, Hecht S, Hirota M, Hoorn C, Josse C, Lapola DM, Larrea C, Larrea-Alcazar DM, Lehm Ardaya Z, Malhi Y, Marengo JA, Melack J, Moraes R M, Moutinho P, Murmis MR, Neves EG, Paez B, Painter L, Ramos A, Rosero-Peña MC, Schmink M, Sist P, ter Steege H, Val P, van der Voort H, Varese M, Zapata-Ríos G (Eds). United Nations Sustainable Development Solutions Network, New York, USA. Available from https://www.theamazonwewant.org/spa-reports/. DOI: 10.55161/RWSX6527",
@@ -77,6 +86,7 @@
         {
       "id": "wmo_ipcc_climate_assessments",
       "title": "WMO State of the Climate in Latin America and the Caribbean 2024",
+      "Organization": "World Meteorological Organization (WMO)",
       "description": "The report shows that Latin America and the Caribbean experienced record-breaking hurricanes, floods, droughts, and wildfires in 2024, severely impacting lives, livelihoods, food supplies, and long-term water security via glacier retreat (including the complete loss of Venezuela’s Humboldt Glacier).",
       "source": "https://wmo.int/publication-series/state-of-climate-latin-america-and-caribbean-2024",
       "last_updated": "2024",
@@ -85,6 +95,7 @@
         {
       "id": "ipcc_chapter_11",
       "title": "IPCC WG1 Chapter 11: Weather and Climate Extreme Events in a Changing Climate",
+      "Organization": "Intergovernmental Panel on Climate Change (IPCC)",
       "description": "Reviews observed and projected changes in extreme events—like heatwaves, heavy precipitation, droughts, and tropical cyclones—linking many of them with human influence and providing regional breakdowns of expected trends.",
       "source": "https://wmo.int/publication-series/state-of-climate-latin-america-and-caribbean-2024",
       "last_updated": "August 2021",
@@ -93,6 +104,7 @@
             {
       "id": "ipcc_chapter_12",
       "title": "IPCC WG1 Chapter 12: Climate Change Information for Regional Impact and for Risk Assessment",
+      "Organization": "Intergovernmental Panel on Climate Change (IPCC)",
       "description": "Explains how global climate findings translate into regional climate information, assessing uncertainties and methods for tailoring projections to inform risk assessments, adaptation planning, and decision-making.",
       "source": "https://wmo.int/publication-series/state-of-climate-latin-america-and-caribbean-2024",
       "last_updated": "August 2021",
@@ -101,6 +113,7 @@
         {
       "id": "mapbiomas_rad_2024",
       "title": "MapBiomas Annual Deforestation Report 2024",
+      "Organization": "MapBiomas",
       "description": "MapBiomas RAD 2024 (Relatório Anual de Desmatamento) dataset of Brazil deforestation findings.",
       "source": "https://alerta.mapbiomas.org/wp-content/uploads/sites/17/2025/05/RAD2024_15.05.pdf",
       "last_updated": "2024",
@@ -109,6 +122,7 @@
         {
       "id": "heat",
       "title": "Extreme Heat Indices Derived from ERA5-Land Daily Aggregated – ECMWF Climate Reanalysis",
+      "Organization": "PlanetSapling",
       "description": "Extreme Heat indices derived from ERA5-Land measurements. This data represents quintiles of the multi-year mean of the daily land surface temperature temperature over the last five years. This data was prepared by PlanetSapling.",
       "last_updated": "9/15/2025",
       "citation": "PlanetSapling. (2025). Extreme Heat Geospatial Layer (derived from ERA-5) [Private dataset]. PlanetSapling. Derived from Hersbach, H., et al. (2017–present). ERA-5 reanalysis. Copernicus Climate Data Store. https://doi.org/10.24381/cds.adbb2d47"

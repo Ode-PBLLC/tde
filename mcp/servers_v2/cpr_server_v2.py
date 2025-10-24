@@ -372,14 +372,37 @@ class CPRServerV2(RunQueryMixin):
         passage_id = str(metadata.get("passage_id") or passage.get("id") or "unknown")
         document_id = str(metadata.get("document_id") or "unknown")
         citation_id = f"passage_{document_id}_{passage_id}"
+
+        # Build citation title with family context
+        family_title = metadata.get("family_title")
+        if family_title:
+            title = f"Climate Policy Radar via {family_title}"
+        else:
+            title = f"CPR passage {document_id}"
+
         description = f"Passage {passage_id} in document {document_id} mentioning {concept_label}."
+
+        # Build CPR URL from slug metadata
+        url = None
+        slug = metadata.get("slug")
+        family_slug = metadata.get("family_slug")
+        page_number = metadata.get("page_number")
+
+        if slug and family_slug and page_number is not None:
+            try:
+                page_num = int(float(page_number))
+                url = f"https://app.climatepolicyradar.org/documents/{slug}?page={page_num}&id={family_slug}"
+            except (ValueError, TypeError):
+                pass  # Leave url as None if conversion fails
+
         return CitationPayload(
             id=citation_id,
             server="cpr",
             tool="run_query",
-            title=f"CPR passage {document_id}",
+            title=title,
             source_type="Policy Document",
             description=_dataset_citation(DATASET_ID) or description,
+            url=url,
             metadata={
                 "document_id": document_id,
                 "passage_id": passage_id,

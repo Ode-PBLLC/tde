@@ -76,6 +76,7 @@ DEFAULT_LIMIT = 2000
 DEFAULT_QUINTILES = [5]
 DATASET_SERVER_NAME = "extreme_heat"
 DATASET_SOURCE_TYPE = "Dataset"
+Y_AXIS_LABEL = "Area Experiencing Top-Quintile Heat (km²)"
 
 SOURCE_DATASET_INFO: Dict[str, Dict[str, Any]] = {
     "Heat_Index": {
@@ -1172,6 +1173,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
                     f"#{idx}: {state_label} has {area:,} km² of land in the extreme-heat top quintile."
                 )
 
+            axis_label = Y_AXIS_LABEL
             artifact = {
                 "type": "chart",
                 "title": "Extreme heat exposure by state",
@@ -1179,6 +1181,13 @@ class ExtremeHeatServerV2(RunQueryMixin):
                     "chartType": "bar",
                     "dataset_id": DATASET_ID,
                     "top_n": min(top_n_int, len(limited_stats)),
+                    "options": {
+                        "scales": {
+                            "y": {
+                                "title": {"display": True, "text": axis_label},
+                            }
+                        }
+                    },
                 },
                 "data": {
                     "labels": chart_payload["labels"],
@@ -1257,6 +1266,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
                     f"#{idx}: {label} has {area:,} km² exposed to top-quintile extreme heat."
                 )
 
+            axis_label = Y_AXIS_LABEL
             return {
                 "summary": summary,
                 "facts": facts,
@@ -1268,6 +1278,13 @@ class ExtremeHeatServerV2(RunQueryMixin):
                             "chartType": "bar",
                             "dataset_id": DATASET_ID,
                             "top_n": min(top_n_int, len(limited_stats)),
+                            "options": {
+                                "scales": {
+                                    "y": {
+                                        "title": {"display": True, "text": axis_label},
+                                    }
+                                }
+                            },
                         },
                         "data": {
                             "labels": chart_payload["labels"],
@@ -1488,13 +1505,24 @@ class ExtremeHeatServerV2(RunQueryMixin):
 
             chart_payload = self._build_state_chart_module(self._state_heat_stats, limit=10)
             if chart_payload:
+                axis_label = Y_AXIS_LABEL
                 artifacts.append(
                     ArtifactPayload(
                         id="extreme_heat_states_chart",
                         type="chart",
                         title="Top States by Extreme Heat Area",
                         data=chart_payload,
-                        metadata={"chartType": "bar", "datasetLabel": "Extreme Heat Area (km^2)"},
+                        metadata={
+                            "chartType": "bar",
+                            "datasetLabel": "Extreme Heat Area (km^2)",
+                            "options": {
+                                "scales": {
+                                    "y": {
+                                        "title": {"display": True, "text": axis_label},
+                                    }
+                                }
+                            },
+                        },
                     )
                 )
 

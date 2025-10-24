@@ -9,6 +9,7 @@ the legacy module to keep the new server self-contained.
 import json
 import os
 import re
+import string
 import sys
 import time
 import unicodedata
@@ -120,6 +121,15 @@ def sanitize_record(record: Dict[str, Any]) -> Dict[str, Any]:
     """Sanitize each value in a record."""
 
     return {key: sanitize_value(val) for key, val in record.items()}
+
+
+def is_url(value: str) -> bool:
+    """Return True if the string looks like an HTTP(S) URL."""
+
+    if not isinstance(value, str):
+        return False
+    lowered = value.strip().lower()
+    return lowered.startswith("http://") or lowered.startswith("https://")
 
 
 def collect_sources(row: Dict[str, Any]) -> List[Dict[str, Optional[str]]]:
@@ -918,8 +928,9 @@ class LSEServerV2(RunQueryMixin):
         return {
             "name": "lse",
             "description": (
-                "Brazil's NDC Align catalog with governance institutions, plans and policies,"
-                " subnational implementation, and Transition Pathway Initiative pathways."
+                "Brazil's NDC Align catalog covering climate governance, NDC targets, sectoral policies "
+                "(energy, transport, agriculture, land use, forestry), deforestation/REDD+ measures, "
+                "institutional frameworks, subnational state-level implementation, and TPI emissions pathways."
             ),
             "version": "2.0.0",
             "dataset": DATASET_INFO.get("title", "NDC Align"),
@@ -930,6 +941,11 @@ class LSEServerV2(RunQueryMixin):
                 "policy",
                 "governance",
                 "subnational",
+                "deforestation",
+                "redd+",
+                "land_use",
+                "forestry",
+                "sectoral",
             ],
             "modules": module_summary,
             "tools": [
@@ -989,8 +1005,10 @@ class LSEServerV2(RunQueryMixin):
         if self._anthropic_client:
             try:
                 prompt = (
-                    "Decide if the Brazil-focused NDC Align governance dataset should answer the question."
-                    " Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
+                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question. "
+                    "This dataset covers climate governance, NDC targets, sectoral policies (including "
+                    "land use, forestry, deforestation, REDD+, energy, transport), institutional frameworks, "
+                    "and subnational state implementation. Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
                     f"Dataset summary: {self._capability_summary()}\n"
                     f"Question: {query}"
                 )
@@ -1011,8 +1029,10 @@ class LSEServerV2(RunQueryMixin):
         if self._openai_client:
             try:
                 prompt = (
-                    "Decide if the Brazil-focused NDC Align governance dataset should answer the question."
-                    " Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
+                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question. "
+                    "This dataset covers climate governance, NDC targets, sectoral policies (including "
+                    "land use, forestry, deforestation, REDD+, energy, transport), institutional frameworks, "
+                    "and subnational state implementation. Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
                     f"Dataset summary: {self._capability_summary()}\n"
                     f"Question: {query}"
                 )
@@ -1549,22 +1569,60 @@ class LSEServerV2(RunQueryMixin):
             module_type: Optional[str] = None,
             limit: int = 10,
         ) -> Dict[str, Any]:  # type: ignore[misc]
-            """Search across normalized LSE content."""
+            """Search across normalized LSE content using combined semantic and token-based matching.
+
+            This tool uses a dual search strategy:
+            1. Semantic search: Finds conceptually related content using embeddings
+            2. Token-based search: Finds literal keyword matches using n-grams
+
+            Results are combined with semantic matches first, then token matches that
+            weren't already found by semantic search, providing comprehensive coverage.
+            """
 
             if not self.catalog.sheets:
                 return {"error": "LSE data not available"}
             term = search_term or query
             if not term:
                 return {"error": "Missing search term"}
-            semantic_hits = self._semantic_search(term, limit=limit)
-            if semantic_hits:
+
+            # Run both search methods
+            semantic_results = self._semantic_search(term, limit=limit)
+            token_results = self._token_search(term, limit=limit)
+
+            # Combine: semantic first, then unique token results
+            seen_slugs = set()
+            combined_results = []
+
+            # Add all semantic results
+            for result in semantic_results:
+                combined_results.append(result)
+                seen_slugs.add(result["slug"])
+
+            # Add token results that weren't in semantic results
+            for result in token_results:
+                if result["slug"] not in seen_slugs:
+                    combined_results.append(result)
+                    seen_slugs.add(result["slug"])
+
+            # Limit to requested size
+            final_results = combined_results[:limit]
+
+            if final_results:
+                # Determine which methods contributed
+                methods_used = []
+                if semantic_results:
+                    methods_used.append("semantic")
+                if any(r["slug"] not in [s["slug"] for s in semantic_results] for r in final_results):
+                    methods_used.append("token")
+
                 return {
                     "term": term,
-                    "results": semantic_hits,
-                    "count": len(semantic_hits),
-                    "method": "semantic",
+                    "results": final_results,
+                    "count": len(final_results),
+                    "method": "+".join(methods_used) if methods_used else "combined",
                 }
 
+            # Fallback to old catalog search if both methods return nothing
             result = self.catalog.search(term, module=module_type, limit=limit)
             if not result.get("results"):
                 result["guidance"] = (
@@ -2091,7 +2149,191 @@ class LSEServerV2(RunQueryMixin):
         citations: List[CitationPayload],
         citation_lookup: Dict[str, str],
     ) -> str:
-        return "lse-dataset"
+        # Capture descriptor phrases for subnational source_document columns
+        descriptor_map: Dict[int, str] = {}
+        doc_field_pattern = re.compile(r"source_document_(\d+)")
+        for field, value in record.items():
+            if not isinstance(value, str):
+                continue
+            match = doc_field_pattern.fullmatch(field)
+            if not match:
+                continue
+            text = value.strip()
+            if not text or is_url(text):
+                continue
+            index = int(match.group(1))
+            descriptor_map[index] = string.capwords(text)
+
+        candidates: List[Dict[str, Any]] = []
+        seen_pairs: Set[Tuple[str, Optional[str]]] = set()
+
+        sources_list = record.get("sources")
+        if isinstance(sources_list, list):
+            for item in sources_list:
+                source_value = sanitize_value(item.get("source"))
+                if not source_value:
+                    continue
+                value_str = str(source_value)
+                source_type = sanitize_value(item.get("source_type"))
+                label = None
+                if isinstance(source_type, str) and source_type.strip():
+                    label = source_type.strip()
+                key = (value_str, source_type if isinstance(source_type, str) else None)
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
+                candidates.append(
+                    {
+                        "value": value_str,
+                        "type": source_type if isinstance(source_type, str) else None,
+                        "field": str(item.get("kind") or "source"),
+                        "label": label,
+                        "metadata": {"kind": item.get("kind")},
+                    }
+                )
+
+        # Explicit source fields in order of preference
+        ordered_fields = [
+            "ndc_source",
+            "primary_source",
+            "secondary_source",
+            "tertiary_source",
+            "quaternary_source",
+            "domestic_source",
+            "source",
+        ]
+        for field in ordered_fields:
+            value = sanitize_value(record.get(field))
+            if not value:
+                continue
+            value_str = str(value)
+            source_type = sanitize_value(record.get(f"{field}_type"))
+            key = (value_str, source_type if isinstance(source_type, str) else None)
+            if key in seen_pairs:
+                continue
+            label = None
+            if isinstance(source_type, str) and source_type.strip():
+                label = source_type.strip()
+            if field.startswith("source_document_"):
+                match = doc_field_pattern.fullmatch(field)
+                if match:
+                    idx = int(match.group(1))
+                    descriptor = descriptor_map.get(idx) or descriptor_map.get(idx + 1)
+                    if descriptor:
+                        label = descriptor
+            seen_pairs.add(key)
+            candidates.append(
+                {
+                    "value": value_str,
+                    "type": source_type if isinstance(source_type, str) else None,
+                    "field": field,
+                    "label": label,
+                    "metadata": {},
+                }
+            )
+
+        # Capture numbered document/source fields (e.g., source_document_1)
+        for field, value in record.items():
+            if not isinstance(value, str):
+                continue
+            lower = field.lower()
+            if "source" not in lower or lower.endswith("_type") or field in {"sources"}:
+                continue
+            if field in ordered_fields:
+                continue
+            value_str = value.strip()
+            if not value_str:
+                continue
+            if not is_url(value_str):
+                continue
+            source_type = sanitize_value(record.get(f"{field}_type"))
+            key = (value_str, source_type if isinstance(source_type, str) else None)
+            if key in seen_pairs:
+                continue
+            seen_pairs.add(key)
+            label = None
+            if isinstance(source_type, str) and source_type.strip():
+                label = source_type.strip()
+            if field.startswith("source_document_"):
+                match = doc_field_pattern.fullmatch(field)
+                if match:
+                    idx = int(match.group(1))
+                    descriptor = descriptor_map.get(idx) or descriptor_map.get(idx + 1)
+                    if descriptor:
+                        label = descriptor
+            metadata = {}
+            if "document" in lower and not source_type:
+                source_type = "Document"
+            candidates.append(
+                {
+                    "value": value_str,
+                    "type": source_type if isinstance(source_type, str) else None,
+                    "field": field,
+                    "label": label,
+                    "metadata": metadata,
+                }
+            )
+
+        if not candidates:
+            return "lse-dataset"
+
+        record_label = str(record.get("label") or record.get("question") or "").strip()
+        dataset_citation_text = DATASET_INFO.get("citation")
+
+        def ensure_citation(entry: Dict[str, Any]) -> str:
+            value = entry["value"]
+            source_type = entry.get("type")
+            field = entry.get("field")
+            label = entry.get("label")
+            key = (value, source_type or "")
+            if key in citation_lookup:
+                return citation_lookup[key]
+
+            citation_id = f"lse-src-{len(citations) + 1}"
+            citation_lookup[key] = citation_id
+
+            if isinstance(label, str) and label.strip():
+                label_text = label.strip()
+            elif isinstance(source_type, str) and source_type.strip():
+                label_text = source_type.strip()
+            elif isinstance(field, str):
+                label_text = field.replace("_", " ").title()
+            else:
+                label_text = "Document"
+
+            title = f"NDC Align via {label_text}"
+            url = value if is_url(value) else None
+            description = dataset_citation_text or (value if not url else None)
+            metadata = {
+                "module": sheet.module,
+                "group": sheet.group,
+                "sheet": sheet.slug,
+                "field": field,
+                "record_label": record_label,
+                "source_label": label_text,
+            }
+            metadata.update(entry.get("metadata") or {})
+
+            citation = CitationPayload(
+                id=citation_id,
+                server="lse",
+                tool="run_query",
+                title=title,
+                source_type=source_type or "Source",
+                description=description,
+                url=url,
+                metadata=metadata,
+            )
+            citations.append(citation)
+            return citation_id
+
+        # Prefer citations that include a resolvable URL
+        for entry in candidates:
+            if is_url(entry["value"]):
+                return ensure_citation(entry)
+
+        # Fall back to the first available non-URL source
+        return ensure_citation(candidates[0])
 
     @staticmethod
     def _format_record_text(sheet: ProcessedSheet, record: Dict[str, Any]) -> Optional[str]:
@@ -2293,6 +2535,200 @@ class LSEServerV2(RunQueryMixin):
                 }
             )
         return results
+
+    @staticmethod
+    def _tokenize(text: str) -> List[str]:
+        """Tokenize text into normalized words for n-gram matching."""
+        if not text:
+            return []
+        # Normalize unicode, remove accents, lowercase, keep only alphanumeric and spaces
+        normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+        normalized = re.sub(r"[^a-z0-9\s]", " ", normalized.lower())
+        tokens = [tok for tok in normalized.split() if tok and len(tok) >= 3]
+        return tokens
+
+    @staticmethod
+    def _make_ngrams(tokens: List[str]) -> List[str]:
+        """Generate unigrams and bigrams from token list."""
+        if not tokens:
+            return []
+        # Unigrams (all single tokens)
+        grams = tokens[:]
+        # Bigrams (all two-word phrases)
+        if len(tokens) > 1:
+            grams += [" ".join(tokens[i:i+2]) for i in range(len(tokens) - 1)]
+        return grams
+
+    def _token_search(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Search records using n-gram token matching with lightweight scoring."""
+        if not query or not self.catalog.sheets:
+            return []
+
+        query_tokens = self._tokenize(query)
+        query_token_set = set(query_tokens)
+        query_ngrams = self._make_ngrams(query_tokens)
+        query_ngram_set = set(query_ngrams)
+
+        if not query_ngram_set:
+            return []
+
+        scored_results: List[Dict[str, Any]] = []
+
+        for slug, sheet in self.catalog.sheets.items():
+            for record_idx, record in enumerate(sheet.records):
+                text_parts: List[str] = []
+                for value in record.values():
+                    if isinstance(value, str):
+                        text_parts.append(value)
+                    elif isinstance(value, list):
+                        for item in value:
+                            if isinstance(item, dict):
+                                text_parts.extend(str(v) for v in item.values() if isinstance(v, str))
+                            elif isinstance(item, str):
+                                text_parts.append(item)
+
+                record_text = " ".join(text_parts)
+                record_tokens = self._tokenize(record_text)
+                if not record_tokens:
+                    continue
+
+                record_ngrams = self._make_ngrams(record_tokens)
+                record_ngram_set = set(record_ngrams)
+                matches = record_ngram_set & query_ngram_set
+                if not matches:
+                    continue
+
+                score = sum(len(match.split()) for match in matches)  # bigrams score higher than unigrams
+
+                # Boost when the record explicitly covers the queried sector/topic
+                sector = str(record.get("sector") or "").strip()
+                if sector:
+                    sector_tokens = set(self._tokenize(sector))
+                    if sector_tokens & query_token_set:
+                        score += 6
+                        if sheet.module == "plans_policies":
+                            score += 2
+
+                topic = str(record.get("topic") or "").strip()
+                if topic:
+                    topic_tokens = set(self._tokenize(topic))
+                    if topic_tokens & query_token_set:
+                        score += 2
+
+                label = str(record.get("label") or record.get("question") or "").strip()
+                if label:
+                    label_tokens = set(self._tokenize(label))
+                    if label_tokens & query_token_set:
+                        score += 1
+
+                if score <= 0:
+                    continue
+
+                snippet = self._format_record_text(sheet, record) or record_text[:280]
+                scored_results.append(
+                    {
+                        "slug": sheet.slug,
+                        "title": sheet.title,
+                        "module": sheet.module,
+                        "group": sheet.group,
+                        "snippet": snippet,
+                        "record": record,
+                        "score": float(score),
+                    }
+                )
+
+        scored_results.sort(key=lambda item: item.get("score", 0.0), reverse=True)
+        return scored_results[:limit]
+
+    def _score_result_for_query(self, query: str, item: Dict[str, Any]) -> float:
+        """Compute a relevance score for a result given the query."""
+
+        base_score = float(item.get("score") or 0.0)
+        record = item.get("record") or {}
+        module = item.get("module")
+
+        text_parts: List[str] = []
+        snippet = item.get("snippet")
+        if isinstance(snippet, str):
+            text_parts.append(snippet)
+        label = record.get("label") or record.get("question")
+        if isinstance(label, str):
+            text_parts.append(label)
+        for key in (
+            "summary",
+            "ndc_summary",
+            "domestic_summary",
+            "response",
+            "status",
+            "implementation_information",
+            "implementation_information_2",
+        ):
+            value = record.get(key)
+            if isinstance(value, str):
+                text_parts.append(value)
+
+        sources_list = record.get("sources")
+        if isinstance(sources_list, list):
+            for entry in sources_list:
+                source = entry.get("source")
+                if isinstance(source, str):
+                    text_parts.append(source)
+        for key in ("primary_source", "secondary_source", "tertiary_source", "source"):
+            value = record.get(key)
+            if isinstance(value, str):
+                text_parts.append(value)
+
+        text = " ".join(text_parts).lower()
+        query_lower = query.lower()
+        query_tokens = set(self._tokenize(query))
+
+        score = base_score
+
+        if "energy" in query_lower or "electric" in query_lower or "renewable" in query_lower:
+            contains_energy = "energy" in text
+            if contains_energy:
+                score += 8.0
+            else:
+                score -= 4.0
+
+            energy_keywords = [
+                "electric",
+                "electricity",
+                "renewable",
+                "solar",
+                "wind",
+                "biofuel",
+                "hydropower",
+                "hydroelectric",
+                "power sector",
+                "fuel",
+                "grid",
+                "oil",
+                "gas",
+            ]
+            for keyword in energy_keywords:
+                if keyword in text:
+                    score += 1.5
+
+            sector = record.get("sector")
+            if isinstance(sector, str) and "energy" in sector.lower():
+                score += 6.0
+            topic = record.get("topic")
+            if isinstance(topic, str) and "energy" in topic.lower():
+                score += 4.0
+
+            if module in {"plans_policies", "ndc_overview"}:
+                score += 1.5
+
+            # Penalize results that lack any overlap besides generic country tokens
+            record_tokens = set(self._tokenize(text))
+            overlap = query_tokens & record_tokens
+            generic_tokens = {"brazil", "ndc", "nationally", "determined", "contribution", "commitments"}
+            effective_overlap = overlap - generic_tokens
+            if not effective_overlap:
+                score -= 1.5
+
+        return score
 
     @staticmethod
     def _summarize_record(sheet: ProcessedSheet, record: Dict[str, Any]) -> Optional[str]:
@@ -2497,8 +2933,35 @@ class LSEServerV2(RunQueryMixin):
                 )
             )
 
-        search_results = self.catalog.search(query, limit=5)
-        results = search_results.get("results", [])
+        # Use combined semantic + token search for better coverage
+        # Cast a wider net to capture relevant sectoral content
+        semantic_results = self._semantic_search(query, limit=20)
+        token_results = self._token_search(query, limit=20)
+
+        # Combine: semantic first, then unique token results
+        seen_slugs = set()
+        combined_results = []
+
+        for result in semantic_results:
+            combined_results.append(result)
+            seen_slugs.add(result["slug"])
+
+        for result in token_results:
+            if result["slug"] not in seen_slugs:
+                combined_results.append(result)
+                seen_slugs.add(result["slug"])
+
+        # Re-rank results against the original query so energy-focused asks surface sector content
+        scored_results = sorted(
+            combined_results,
+            key=lambda item: self._score_result_for_query(query, item),
+            reverse=True,
+        )
+
+        # Return top results as facts
+        # Use more results to ensure sectoral/specific content isn't missed by general targets
+        results = scored_results[:15]
+
         citation_lookup: Dict[str, str] = {}
         seen_record_keys: Set[Tuple[str, str]] = set()
         for idx, item in enumerate(results, start=1):

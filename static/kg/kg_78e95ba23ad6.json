@@ -1,0 +1,395 @@
+{
+  "query": "Help me understand Brazil's NDC",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "Q1651",
+        "type": "Concept",
+        "label": "target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "congestion charge",
+        "type": "Concept",
+        "label": "congestion charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "REDD+",
+        "type": "Concept",
+        "label": "REDD+",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "forest-risk commodities",
+        "type": "Concept",
+        "label": "forest-risk commodities",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1379",
+        "type": "Concept",
+        "label": "charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "pollution charge",
+        "type": "Concept",
+        "label": "pollution charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "terrestrial risk",
+        "type": "Concept",
+        "label": "terrestrial risk",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emission charge",
+        "type": "Concept",
+        "label": "emission charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "greenhouse gas emissions",
+        "type": "Concept",
+        "label": "greenhouse gas emissions",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q4",
+        "type": "Concept",
+        "label": "deforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "forest",
+        "type": "Concept",
+        "label": "forest",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "emissions reduction target",
+        "type": "Concept",
+        "label": "emissions reduction target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "afforestation",
+        "type": "Concept",
+        "label": "afforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "user charge",
+        "type": "Concept",
+        "label": "user charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "REDD",
+        "type": "Concept",
+        "label": "REDD",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1432",
+        "type": "Concept",
+        "label": "licenses",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "policy instruments",
+        "type": "Concept",
+        "label": "policy instruments",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "permits and licenses",
+        "type": "Concept",
+        "label": "permits and licenses",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "forest degradation",
+        "type": "Concept",
+        "label": "forest degradation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "imbalance charge",
+        "type": "Concept",
+        "label": "imbalance charge",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Illegal logging",
+        "type": "Concept",
+        "label": "Illegal logging",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q12",
+        "type": "Concept",
+        "label": "rainforest",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fees and charges",
+        "type": "Concept",
+        "label": "fees and charges",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q4",
+        "target": "terrestrial risk",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q4",
+        "target": "Illegal logging",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q4",
+        "target": "forest-risk commodities",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q4",
+        "target": "forest",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "forest degradation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "forest degradation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "REDD",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "REDD+",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "afforestation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "greenhouse gas emissions",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1651",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "emissions reduction target",
+        "type": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1432",
+        "target": "permits and licenses",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q12",
+        "target": "forest",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q4",
+        "target": "terrestrial risk",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q4",
+        "target": "Illegal logging",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q4",
+        "target": "forest-risk commodities",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q4",
+        "target": "forest",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "forest degradation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "forest degradation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "REDD",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "REDD+",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "afforestation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q4",
+        "target": "greenhouse gas emissions",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1379",
+        "target": "fees and charges",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1379",
+        "target": "pollution charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "user charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "congestion charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "imbalance charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1379",
+        "target": "emission charge",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1651",
+        "target": "policy instruments",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1651",
+        "target": "emissions reduction target",
+        "type": "HAS_SUBCONCEPT",
+        "label": "HAS_SUBCONCEPT"
+      },
+      {
+        "source": "Q1432",
+        "target": "permits and licenses",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q12",
+        "target": "forest",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "69363.209"
+}

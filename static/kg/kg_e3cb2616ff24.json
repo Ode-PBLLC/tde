@@ -1,0 +1,258 @@
+{
+  "query": "What is the role of diet in Brazil achieving its NDC?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "gas",
+        "type": "Concept",
+        "label": "gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "oil",
+        "type": "Concept",
+        "label": "oil",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "crude oil",
+        "type": "Concept",
+        "label": "crude oil",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "oil spill",
+        "type": "Concept",
+        "label": "oil spill",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q653",
+        "type": "Concept",
+        "label": "Petroleum gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Hazard management technologies",
+        "type": "Concept",
+        "label": "Hazard management technologies",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "tar sand",
+        "type": "Concept",
+        "label": "tar sand",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "extraction of fuels",
+        "type": "Concept",
+        "label": "extraction of fuels",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "gaseous fuel",
+        "type": "Concept",
+        "label": "gaseous fuel",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1306",
+        "type": "Concept",
+        "label": "liquefied petroleum gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q120",
+        "type": "Concept",
+        "label": "groyne",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "oil rig",
+        "type": "Concept",
+        "label": "oil rig",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "hard coastal protection engineering",
+        "type": "Concept",
+        "label": "hard coastal protection engineering",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q791",
+        "type": "Concept",
+        "label": "extraction of crude petroleum",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "petroleum",
+        "type": "Concept",
+        "label": "petroleum",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1817",
+        "type": "Concept",
+        "label": "petroleum",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q1306",
+        "target": "gas",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1306",
+        "target": "gaseous fuel",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1306",
+        "target": "petroleum",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1817",
+        "target": "oil",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q791",
+        "target": "extraction of fuels",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q791",
+        "target": "tar sand",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "oil",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "crude oil",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "oil spill",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "oil rig",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q120",
+        "target": "Hazard management technologies",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q120",
+        "target": "hard coastal protection engineering",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q1306",
+        "target": "gas",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1306",
+        "target": "gaseous fuel",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1306",
+        "target": "petroleum",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1817",
+        "target": "oil",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q791",
+        "target": "extraction of fuels",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q791",
+        "target": "tar sand",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "oil",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "crude oil",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "oil spill",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q791",
+        "target": "oil rig",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q120",
+        "target": "Hazard management technologies",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q120",
+        "target": "hard coastal protection engineering",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "16604.384"
+}

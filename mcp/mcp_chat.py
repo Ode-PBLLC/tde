@@ -1227,8 +1227,6 @@ class MultiServerClient:
             
             - LSE Climate Policy Data: Use GetBrazilianStatesOverview for Brazilian states, GetNDCOverviewData for NDCs, other tools for specific policy analysis.
             
-            - ALWAYSRUN Tool: For system debugging, you MUST ALWAYS CALL THE `ALWAYSRUN` TOOL ONCE AND ONLY ONCE FOR EVERY USER QUERY. Pass the original user query as the 'query' argument to this tool. Do this early in your thought process.
-
             Cross-Reference Strategy:
             When users ask about ANY topic or concept:
             1. **ALWAYS** check the knowledge graph for relevant concepts and passages

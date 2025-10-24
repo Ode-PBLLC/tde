@@ -3,9 +3,9 @@
   "kg_data": {
     "nodes": [
       {
-        "id": "Q1219",
+        "id": "Q1194",
         "type": "Concept",
-        "label": "data security-related hazards",
+        "label": "fire related technological incidents",
         "importance": 1.0,
         "source_server": "cpr"
       },
@@ -17,30 +17,9 @@
         "source_server": "cpr"
       },
       {
-        "id": "cyber impact",
-        "type": "Concept",
-        "label": "cyber impact",
-        "importance": 1.0,
-        "source_server": "cpr"
-      },
-      {
-        "id": "Q1194",
-        "type": "Concept",
-        "label": "fire related technological incidents",
-        "importance": 1.0,
-        "source_server": "cpr"
-      },
-      {
         "id": "Q1396",
         "type": "Concept",
         "label": "energy efficiency standard",
-        "importance": 1.0,
-        "source_server": "cpr"
-      },
-      {
-        "id": "Q1222",
-        "type": "Concept",
-        "label": "Internet of Things-related hazards",
         "importance": 1.0,
         "source_server": "cpr"
       },
@@ -62,6 +41,27 @@
         "id": "codes and standards",
         "type": "Concept",
         "label": "codes and standards",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "cyber impact",
+        "type": "Concept",
+        "label": "cyber impact",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1219",
+        "type": "Concept",
+        "label": "data security-related hazards",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1222",
+        "type": "Concept",
+        "label": "Internet of Things-related hazards",
         "importance": 1.0,
         "source_server": "cpr"
       }
@@ -128,5 +128,5 @@
     "concepts": [],
     "relationships": []
   },
-  "generated_at": "2363119.859"
+  "generated_at": "32121.132"
 }

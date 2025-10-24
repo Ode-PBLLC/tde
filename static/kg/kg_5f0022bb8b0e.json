@@ -1,0 +1,438 @@
+{
+  "query": "What are the socio-economic benefits of Brazil cutting its emissions to be in line with the Paris Agreement?",
+  "kg_data": {
+    "nodes": [
+      {
+        "id": "emissions reduction target",
+        "type": "Concept",
+        "label": "emissions reduction target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "food insecurity",
+        "type": "Concept",
+        "label": "food insecurity",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "water insecurity",
+        "type": "Concept",
+        "label": "water insecurity",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1169",
+        "type": "Concept",
+        "label": "people with limited formal education",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q221",
+        "type": "Concept",
+        "label": "greenhouse gas emissions",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "United Nations Framework Convention on Climate Change",
+        "type": "Concept",
+        "label": "United Nations Framework Convention on Climate Change",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "fossil fuel",
+        "type": "Concept",
+        "label": "fossil fuel",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "greenhouse gas emissions",
+        "type": "Concept",
+        "label": "greenhouse gas emissions",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "people with limited assets",
+        "type": "Concept",
+        "label": "people with limited assets",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "oil",
+        "type": "Concept",
+        "label": "oil",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "restorative justice",
+        "type": "Concept",
+        "label": "restorative justice",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "methane",
+        "type": "Concept",
+        "label": "methane",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "enhanced greenhouse effect",
+        "type": "Concept",
+        "label": "enhanced greenhouse effect",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "impacted group",
+        "type": "Concept",
+        "label": "impacted group",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "carbon tax",
+        "type": "Concept",
+        "label": "carbon tax",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "anthropogenic climate change",
+        "type": "Concept",
+        "label": "anthropogenic climate change",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "target",
+        "type": "Concept",
+        "label": "target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q744",
+        "type": "Concept",
+        "label": "Paris Agreement",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Global Goal on Adaptation",
+        "type": "Concept",
+        "label": "Global Goal on Adaptation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "greenhouse gas",
+        "type": "Concept",
+        "label": "greenhouse gas",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1167",
+        "type": "Concept",
+        "label": "people with limited assets",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "response measures",
+        "type": "Concept",
+        "label": "response measures",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "deforestation",
+        "type": "Concept",
+        "label": "deforestation",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "Q1652",
+        "type": "Concept",
+        "label": "emissions reduction target",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "common but differentiated responsibility",
+        "type": "Concept",
+        "label": "common but differentiated responsibility",
+        "importance": 1.0,
+        "source_server": "cpr"
+      },
+      {
+        "id": "coal",
+        "type": "Concept",
+        "label": "coal",
+        "importance": 1.0,
+        "source_server": "cpr"
+      }
+    ],
+    "links": [
+      {
+        "source": "Q744",
+        "target": "United Nations Framework Convention on Climate Change",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q744",
+        "target": "common but differentiated responsibility",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q744",
+        "target": "Global Goal on Adaptation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q744",
+        "target": "response measures",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1652",
+        "target": "target",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1652",
+        "target": "greenhouse gas",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1652",
+        "target": "greenhouse gas emissions",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "greenhouse gas",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q221",
+        "target": "anthropogenic climate change",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "enhanced greenhouse effect",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "fossil fuel",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "deforestation",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "oil",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "coal",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "carbon tax",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "emissions reduction target",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "methane",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "impacted group",
+        "type": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1167",
+        "target": "restorative justice",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "food insecurity",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "water insecurity",
+        "type": "RELATED_TO"
+      },
+      {
+        "source": "Q1169",
+        "target": "people with limited assets",
+        "type": "SUBCONCEPT_OF"
+      }
+    ],
+    "edges": [
+      {
+        "source": "Q744",
+        "target": "United Nations Framework Convention on Climate Change",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q744",
+        "target": "common but differentiated responsibility",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q744",
+        "target": "Global Goal on Adaptation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q744",
+        "target": "response measures",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1652",
+        "target": "target",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1652",
+        "target": "greenhouse gas",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1652",
+        "target": "greenhouse gas emissions",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "greenhouse gas",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q221",
+        "target": "anthropogenic climate change",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "enhanced greenhouse effect",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "fossil fuel",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "deforestation",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "oil",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "coal",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "carbon tax",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "emissions reduction target",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q221",
+        "target": "methane",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "impacted group",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      },
+      {
+        "source": "Q1167",
+        "target": "restorative justice",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "food insecurity",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1167",
+        "target": "water insecurity",
+        "type": "RELATED_TO",
+        "label": "RELATED_TO"
+      },
+      {
+        "source": "Q1169",
+        "target": "people with limited assets",
+        "type": "SUBCONCEPT_OF",
+        "label": "SUBCONCEPT_OF"
+      }
+    ],
+    "concepts": [],
+    "relationships": []
+  },
+  "generated_at": "31340.154"
+}
