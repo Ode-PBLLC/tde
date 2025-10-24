@@ -235,13 +235,61 @@ API_PORT=8098
 PYTHONUNBUFFERED=1  # For proper log streaming
 ```
 
-**Data Volume Considerations**:
-- The `data/` directory (~2.8GB) is **not** in the repo (gitignored)
-- Options:
-  1. **Bake into image**: Copy datasets during build (increases image size to ~4GB)
-  2. **EFS/EBS volume**: Mount `data/` from persistent storage
-  3. **S3 + init**: Download datasets on container startup (slower start, smaller image)
-- See `data/README.md` for regeneration scripts if datasets are missing
+**Data Acquisition Strategy**:
+
+The `data/` directory (~2.8GB) is **not** in the repo (gitignored). You have 3 options:
+
+**Option 1: Copy from Existing Server (Recommended for initial setup)**
+```bash
+# On your current production server
+cd /home/ubuntu/tde
+tar -czf tde-data.tar.gz data/
+
+# Download to local machine
+scp ubuntu@your-server:/home/ubuntu/tde/tde-data.tar.gz .
+
+# Use in Docker build or upload to S3 (see below)
+```
+
+**Option 2: Bake into Docker Image** (Simplest, but larger image)
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+# Copy your extracted data directory
+COPY data/ /app/data/
+# Image size: ~4GB (code + deps + data)
+```
+
+**Option 3: Mount from S3/EFS** (Production recommended)
+```bash
+# 1. Upload data to S3
+aws s3 sync ./data/ s3://your-bucket/tde-data/
+
+# 2. In your container entrypoint or init script:
+#!/bin/bash
+if [ ! -d "/app/data/solar_facilities.db" ]; then
+  echo "Downloading datasets from S3..."
+  aws s3 sync s3://your-bucket/tde-data/ /app/data/
+fi
+python api_server.py
+
+# OR use EFS mount:
+# Mount EFS volume at /app/data in ECS task definition
+```
+
+**Option 4: Generate from Source** (Advanced, requires source data)
+```bash
+# If you have source data files, regenerate datasets
+python scripts/migrate_solar_to_db.py
+python scripts/precompute_deforestation_overlays.py
+# See data/README.md for full regeneration guide
+```
+
+**Recommended Approach for Production**:
+- **Development**: Copy data/ into Docker image (Option 2)
+- **Production**: Use S3 + EFS or persistent EBS volume (Option 3)
+- **Benefits**: Smaller images, easier updates, shared across instances
 
 #### AWS Deployment Options
 
@@ -337,7 +385,44 @@ The application uses **file-based storage** (no external database required):
 
 #### Deployment Workflow
 
-**Recommended CI/CD**:
+**Step-by-Step First Deployment**:
+
+```bash
+# 1. Get the data from your current server
+ssh ubuntu@your-current-server
+cd /home/ubuntu/tde
+tar -czf tde-data.tar.gz data/
+exit
+
+scp ubuntu@your-current-server:/home/ubuntu/tde/tde-data.tar.gz .
+tar -xzf tde-data.tar.gz  # Extract locally
+
+# 2. Upload data to S3 (one-time setup)
+aws s3 mb s3://your-company-tde-data
+aws s3 sync ./data/ s3://your-company-tde-data/
+
+# 3. Build Docker image with init script
+# (Use Dockerfile that downloads from S3 on startup - see Data Acquisition above)
+docker build -t tde-api:v2.0.0 .
+
+# 4. Test locally with data volume
+docker run -v $(pwd)/data:/app/data \
+  -e ANTHROPIC_API_KEY=your_key \
+  -p 8098:8098 \
+  tde-api:v2.0.0
+
+# 5. Verify it works
+curl http://localhost:8098/health
+
+# 6. Push to ECR
+aws ecr create-repository --repository-name tde-api
+docker tag tde-api:v2.0.0 <account>.dkr.ecr.<region>.amazonaws.com/tde-api:v2.0.0
+docker push <account>.dkr.ecr.<region>.amazonaws.com/tde-api:v2.0.0
+
+# 7. Deploy to ECS/Fargate with S3 data sync or EFS mount
+```
+
+**Ongoing CI/CD** (after initial setup):
 ```bash
 1. Build Docker image
 2. Run smoke tests: docker run <image> ./scripts/smoke_test.sh

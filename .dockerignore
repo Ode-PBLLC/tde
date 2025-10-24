@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Data (downloaded from S3 on startup)
+data/
+
+# Generated assets (created at runtime)
+static/kg/
+static/maps/
+static/cache/
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment
+.env
+.env.*
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Documentation (not needed in container)
+docs/archived/
+*.md
+!README.md
+
+# Tests (not needed in production)
+tests/
+test_scripts/
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store
