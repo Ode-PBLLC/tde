@@ -191,7 +191,7 @@ This section contains essential information for containerizing and deploying the
 
 **Resource Requirements**:
 - **CPU**: 2+ vCPUs recommended (handles concurrent MCP server processes)
-- **Memory**: 4GB minimum, 8GB recommended (for semantic search indexes)
+- **Memory**: 8GB minimum, 16GB recommended (for semantic search indexes)
 - **Disk**: 10GB minimum (code + dependencies ~2GB, datasets ~2.8GB)
 - **Network**: Outbound HTTPS to Anthropic API (api.anthropic.com)
 
