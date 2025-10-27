@@ -1,0 +1,515 @@
+name: Build and Push
+
+on:
+  push:
+    branches: 
+      - tde__ode__aws__dev__app
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build on matching branch
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+      
+      - name: Parse branch components with __ separators
+        id: parse
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          echo "Branch: $BRANCH"
+          
+          # Use sed and cut instead of IFS which has issues with __
+          # Replace __ with | temporarily for easier parsing
+          TEMP_BRANCH=$(echo "$BRANCH" | sed 's/__/|/g')
+          echo "Temp branch: $TEMP_BRANCH"
+          
+          # Count segments
+          COUNT=$(echo "$TEMP_BRANCH" | tr -cd '|' | wc -c)
+          COUNT=$((COUNT + 1))  # Add 1 since | count is one less than segments
+          
+          echo "Segment count: $COUNT"
+          
+          if [[ $COUNT -eq 4 ]]; then
+            # Format: project|client|provider|workflow_key (no environment)
+            PROJECT_NAME=$(echo "$TEMP_BRANCH" | cut -d'|' -f1)
+            CLIENT=$(echo "$TEMP_BRANCH" | cut -d'|' -f2)
+            PROVIDER=$(echo "$TEMP_BRANCH" | cut -d'|' -f3)
+            ENVIRONMENT=""
+            WORKFLOW_KEY=$(echo "$TEMP_BRANCH" | cut -d'|' -f4)
+          elif [[ $COUNT -eq 5 ]]; then
+            # Format: project|client|provider|environment|workflow_key
+            PROJECT_NAME=$(echo "$TEMP_BRANCH" | cut -d'|' -f1)
+            CLIENT=$(echo "$TEMP_BRANCH" | cut -d'|' -f2)
+            PROVIDER=$(echo "$TEMP_BRANCH" | cut -d'|' -f3)
+            ENVIRONMENT=$(echo "$TEMP_BRANCH" | cut -d'|' -f4)
+            WORKFLOW_KEY=$(echo "$TEMP_BRANCH" | cut -d'|' -f5)
+          else
+            echo "❌ Expected 4 or 5 segments separated by __, got $COUNT segments. Branch: $BRANCH"
+            exit 1
+          fi
+          
+          echo "Project: $PROJECT_NAME"
+          echo "Client: $CLIENT"
+          echo "Provider: $PROVIDER"
+          echo "Environment: $ENVIRONMENT"
+          echo "Workflow: $WORKFLOW_KEY"
+          
+          # Build configurations
+          WORKFLOW_KEY_UPPER=$(echo "$WORKFLOW_KEY" | tr '[:lower:]-' '[:upper:]_')
+          if [[ -n "$ENVIRONMENT" ]]; then
+            ENVIRONMENT_UPPER=$(echo "$ENVIRONMENT" | tr '[:lower:]-' '[:upper:]_')
+            SECRET_PREFIX="${WORKFLOW_KEY_UPPER}_${ENVIRONMENT_UPPER}_"
+          else
+            SECRET_PREFIX="${WORKFLOW_KEY_UPPER}_"
+          fi
+
+          DOPPLER_CONFIG="$CLIENT-$PROVIDER"
+          
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "client=$CLIENT" >> $GITHUB_OUTPUT
+          echo "provider=$PROVIDER" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "workflow_key=$WORKFLOW_KEY" >> $GITHUB_OUTPUT
+          echo "doppler_config=$DOPPLER_CONFIG" >> $GITHUB_OUTPUT
+          echo "secret_prefix=$SECRET_PREFIX" >> $GITHUB_OUTPUT
+      
+      - name: Prepare GitHub secret token name
+        id: token
+        run: |
+          PROJECT_NAME="${{ steps.parse.outputs.project_name }}"
+          CLIENT="${{ steps.parse.outputs.client }}"
+          PROVIDER="${{ steps.parse.outputs.provider }}"
+          
+          # Build token name: PROJECT_CLIENT_PROVIDER
+          PROJECT_CLEAN=$(echo "${PROJECT_NAME}" | tr '[:lower:]-' '[:upper:]_')
+          CLIENT_CLEAN=$(echo "${CLIENT}" | tr '[:lower:]-' '[:upper:]_')
+          PROVIDER_CLEAN=$(echo "${PROVIDER}" | tr '[:lower:]-' '[:upper:]_')
+          TOKEN_NAME="${PROJECT_CLEAN}_${CLIENT_CLEAN}_${PROVIDER_CLEAN}"
+          
+          echo "token_name=$TOKEN_NAME" >> $GITHUB_OUTPUT
+      
+      - name: Detect and configure secrets provider
+        run: |
+          TOKEN_NAME="${{ steps.token.outputs.token_name }}"
+          TOKEN_VALUE="${{ secrets[steps.token.outputs.token_name] }}"
+          
+          if [[ -z "$TOKEN_VALUE" ]]; then
+            echo "❌ GitHub Secret '$TOKEN_NAME' not found"
+            exit 1
+          fi
+          
+          echo "🔍 Detecting secrets provider for: $TOKEN_NAME"
+          
+          # Detection logic: Doppler (dp.st.) vs AWS (access_key_id) vs Azure (client_id)
+          if [[ "$TOKEN_VALUE" =~ ^dp\.st\. ]]; then
+            echo "🔧 Using Doppler"
+            echo "SECRETS_PROVIDER=doppler" >> $GITHUB_ENV
+            echo "DOPPLER_TOKEN=$TOKEN_VALUE" >> $GITHUB_ENV
+            
+          elif echo "$TOKEN_VALUE" | grep -q "access_key_id"; then
+            echo "🔧 Using AWS Secrets Manager"
+            echo "SECRETS_PROVIDER=aws" >> $GITHUB_ENV
+            
+            # Parse AWS credentials
+            if echo "$TOKEN_VALUE" | jq . >/dev/null 2>&1; then
+              # JSON format
+              AWS_ACCESS_KEY_ID=$(echo "$TOKEN_VALUE" | jq -r '.access_key_id')
+              AWS_SECRET_ACCESS_KEY=$(echo "$TOKEN_VALUE" | jq -r '.secret_access_key')
+              AWS_DEFAULT_REGION=$(echo "$TOKEN_VALUE" | jq -r '.region')
+            else
+              # Plain text format
+              AWS_ACCESS_KEY_ID=$(echo "$TOKEN_VALUE" | grep -o 'access_key_id[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+              AWS_SECRET_ACCESS_KEY=$(echo "$TOKEN_VALUE" | grep -o 'secret_access_key[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+              AWS_DEFAULT_REGION=$(echo "$TOKEN_VALUE" | grep -o 'region[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+            fi
+            
+            echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
+            echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
+            echo "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION" >> $GITHUB_ENV
+            
+            # Validate AWS credentials
+            if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+              echo "❌ Missing required AWS credentials"
+              exit 1
+            fi
+            
+            echo "✅ AWS credentials loaded for region: $AWS_DEFAULT_REGION"
+            
+          elif echo "$TOKEN_VALUE" | grep -q "client_id"; then
+            echo "🔧 Using Azure Key Vault"
+            echo "SECRETS_PROVIDER=azure" >> $GITHUB_ENV
+            
+            # Parse Azure credentials
+            if echo "$TOKEN_VALUE" | jq . >/dev/null 2>&1; then
+              # JSON format
+              AZURE_CLIENT_ID=$(echo "$TOKEN_VALUE" | jq -r '.client_id')
+              AZURE_CLIENT_SECRET=$(echo "$TOKEN_VALUE" | jq -r '.client_secret')
+              AZURE_TENANT_ID=$(echo "$TOKEN_VALUE" | jq -r '.tenant_id')
+              AZURE_KEYVAULT_NAME=$(echo "$TOKEN_VALUE" | jq -r '.keyvault_name')
+              AZURE_REGION=$(echo "$TOKEN_VALUE" | jq -r '.region // "eastus"')
+            else
+              # Plain text format
+              AZURE_CLIENT_ID=$(echo "$TOKEN_VALUE" | grep -o 'client_id[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+              AZURE_CLIENT_SECRET=$(echo "$TOKEN_VALUE" | grep -o 'client_secret[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+              AZURE_TENANT_ID=$(echo "$TOKEN_VALUE" | grep -o 'tenant_id[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+              AZURE_KEYVAULT_NAME=$(echo "$TOKEN_VALUE" | grep -o 'keyvault_name[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+              AZURE_REGION=$(echo "$TOKEN_VALUE" | grep -o 'region[^,}]*' | sed 's/[^:]*:[[:space:]]*//' | tr -d '"' | xargs)
+            fi
+            
+            echo "AZURE_CLIENT_ID=$AZURE_CLIENT_ID" >> $GITHUB_ENV
+            echo "AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET" >> $GITHUB_ENV
+            echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> $GITHUB_ENV
+            echo "AZURE_KEYVAULT_NAME=$AZURE_KEYVAULT_NAME" >> $GITHUB_ENV
+            echo "AZURE_REGION=${AZURE_REGION:-eastus}" >> $GITHUB_ENV
+            
+            # Validate Azure credentials
+            if [[ -z "$AZURE_CLIENT_ID" || -z "$AZURE_CLIENT_SECRET" || -z "$AZURE_TENANT_ID" || -z "$AZURE_KEYVAULT_NAME" ]]; then
+              echo "❌ Missing required Azure credentials"
+              exit 1
+            fi
+            
+            echo "✅ Azure credentials loaded for Key Vault: $AZURE_KEYVAULT_NAME"
+            
+          else
+            echo "❌ Unknown secret format"
+            echo "Expected: Doppler (dp.st.xxx), AWS (access_key_id), or Azure (client_id)"
+            exit 1
+          fi
+      
+      - name: Load secrets from provider
+        run: |
+          SECRET_PREFIX="${{ steps.parse.outputs.secret_prefix }}"
+          
+          case "$SECRETS_PROVIDER" in
+            "doppler")
+              echo "📦 Loading secrets from Doppler..."
+              DOPPLER_PROJECT="${{ steps.parse.outputs.project_name }}"
+              DOPPLER_CONFIG="${{ steps.parse.outputs.doppler_config }}"
+              
+              echo "=== Debug Doppler Configuration ==="
+              echo "DOPPLER_PROJECT: $DOPPLER_PROJECT"
+              echo "DOPPLER_CONFIG: $DOPPLER_CONFIG"
+              echo "SECRET_PREFIX: $SECRET_PREFIX"
+              
+              # Download all secrets
+              doppler secrets download --project "$DOPPLER_PROJECT" --config "$DOPPLER_CONFIG" --no-file --format env > .env.all
+              
+              echo "=== All secrets from Doppler (keys only) ==="
+              grep -E '^[A-Z_][A-Z0-9_]*=' .env.all | cut -d= -f1 | sort
+              echo "=== End of all Doppler secrets ==="
+              
+              # Filter secrets
+              > .env
+              
+              # Add global secrets
+              echo "=== Adding global secrets ==="
+              grep -E '^(AWS_|AZURE_|GCP_|DOPPLER_)' .env.all >> .env || true
+              
+              # Add application-specific secrets and remove prefix
+              if [[ -n "$SECRET_PREFIX" ]]; then
+                echo "=== Looking for secrets with prefix: $SECRET_PREFIX ==="
+                grep "^${SECRET_PREFIX}" .env.all | head -5 || echo "No secrets found with prefix $SECRET_PREFIX"
+                grep "^${SECRET_PREFIX}" .env.all | sed "s/^${SECRET_PREFIX}//" >> .env || true
+              fi
+              ;;
+              
+            "aws")
+              echo "📦 Loading secrets from AWS Secrets Manager..."
+              PROJECT_NAME="${{ steps.parse.outputs.project_name }}"
+              CLIENT="${{ steps.parse.outputs.client }}"
+              PROVIDER="${{ steps.parse.outputs.provider }}"
+              
+              AWS_SECRET_NAME="${PROJECT_NAME}-${CLIENT}-${PROVIDER}"
+              
+              echo "Secret: $AWS_SECRET_NAME"
+              echo "Region: $AWS_DEFAULT_REGION"
+              echo "Prefix: $SECRET_PREFIX"
+              
+              # Get the application secret
+              SECRET_JSON=$(aws secretsmanager get-secret-value \
+                --secret-id "$AWS_SECRET_NAME" \
+                --region "$AWS_DEFAULT_REGION" \
+                --query 'SecretString' \
+                --output text 2>/dev/null)
+              
+              if [[ $? -ne 0 || -z "$SECRET_JSON" ]]; then
+                echo "⚠️ No application secret found: $AWS_SECRET_NAME"
+                echo "This is normal if no app-specific secrets are needed"
+                > .env
+              else
+                echo "✅ Retrieved application secret from AWS Secrets Manager"
+                
+                # Parse JSON and create .env file
+                > .env
+                
+                # Add global secrets (AWS_, AZURE_, GCP_)
+                echo "=== Adding global secrets ==="
+                echo "$SECRET_JSON" | jq -r 'to_entries | .[] | select(.key | test("^(AWS_|AZURE_|GCP_)")) | "\(.key)=\(.value)"' >> .env || true
+                
+                # Add application-specific secrets with prefix filtering
+                if [[ -n "$SECRET_PREFIX" ]]; then
+                  echo "=== Looking for secrets with prefix: $SECRET_PREFIX ==="
+                  echo "$SECRET_JSON" | jq -r --arg prefix "$SECRET_PREFIX" '
+                    to_entries | .[] | 
+                    select(.key | startswith($prefix)) | 
+                    "\(.key | sub($prefix; ""))=\(.value)"
+                  ' >> .env || true
+                fi
+              fi
+              ;;
+              
+            "azure")
+              echo "📦 Loading secrets from Azure Key Vault..."
+              
+              # Install Azure CLI if not available
+              if ! command -v az &> /dev/null; then
+                echo "Installing Azure CLI..."
+                curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+              fi
+              
+              # Login to Azure
+              echo "🔐 Logging in to Azure..."
+              az login --service-principal \
+                --username "$AZURE_CLIENT_ID" \
+                --password="$AZURE_CLIENT_SECRET" \
+                --tenant "$AZURE_TENANT_ID"
+              
+              echo "🔧 Getting all secrets from Key Vault: $AZURE_KEYVAULT_NAME"
+              
+              # Get all secrets from Key Vault
+              SECRET_NAMES=$(az keyvault secret list --vault-name "$AZURE_KEYVAULT_NAME" --query '[].name' --output tsv)
+              
+              > .env
+              
+              if [[ -n "$SECRET_NAMES" ]]; then
+                echo "=== Processing Azure Key Vault secrets ==="
+                
+                while IFS= read -r secret_name; do
+                  if [[ -n "$secret_name" ]]; then
+                    # Get secret value
+                    SECRET_VALUE=$(az keyvault secret show \
+                      --vault-name "$AZURE_KEYVAULT_NAME" \
+                      --name "$secret_name" \
+                      --query 'value' \
+                      --output tsv 2>/dev/null)
+                    
+                    if [[ $? -eq 0 && -n "$SECRET_VALUE" ]]; then
+                      # Convert secret name to environment variable format (replace - with _)
+                      ENV_VAR_NAME="${secret_name//-/_}"
+                      
+                      # Add global secrets (AWS_, AZURE_, GCP_)
+                      if [[ "$ENV_VAR_NAME" =~ ^(AWS_|AZURE_|GCP_) ]]; then
+                        echo "${ENV_VAR_NAME}=${SECRET_VALUE}" >> .env
+                        echo "✅ Added global: $ENV_VAR_NAME"
+                      
+                      # Add application-specific secrets with prefix filtering
+                      elif [[ -n "$SECRET_PREFIX" && "$ENV_VAR_NAME" =~ ^${SECRET_PREFIX} ]]; then
+                        # Remove prefix from variable name
+                        CLEAN_VAR_NAME="${ENV_VAR_NAME#$SECRET_PREFIX}"
+                        echo "${CLEAN_VAR_NAME}=${SECRET_VALUE}" >> .env
+                        echo "✅ Added prefixed: $CLEAN_VAR_NAME (from $ENV_VAR_NAME)"
+                      
+                      # Add other secrets as-is
+                      else
+                        echo "${ENV_VAR_NAME}=${SECRET_VALUE}" >> .env
+                        echo "✅ Added: $ENV_VAR_NAME"
+                      fi
+                    else
+                      echo "⚠️ Failed to get: $secret_name"
+                    fi
+                  fi
+                done <<< "$SECRET_NAMES"
+              else
+                echo "⚠️ No secrets found in Azure Key Vault"
+              fi
+              ;;
+              
+            *)
+              echo "❌ Unknown secrets provider: $SECRETS_PROVIDER"
+              exit 1
+              ;;
+          esac
+          
+          echo "=== Final .env file (keys only) ==="
+          grep -E '^[A-Z_][A-Z0-9_]*=' .env | cut -d= -f1 | sort || echo "No variables in .env"
+          echo "=== End of final .env ==="
+      
+      - name: Load secrets into environment
+        run: |
+          if [[ -f .env ]]; then
+            while read -r line || [[ -n "$line" ]]; do
+              if [[ "$line" =~ ^[A-Z_][A-Z0-9_]*= ]]; then
+                key=$(echo "$line" | cut -d= -f1)
+                val=$(echo "$line" | cut -d= -f2-)
+                val="${val%\"}"
+                val="${val#\"}"
+                echo "${key}=${val}" >> $GITHUB_ENV
+              fi
+            done < .env
+            echo "✅ Loaded secrets into environment"
+          else
+            echo "⚠️ No .env file to load"
+          fi
+      
+      - name: Set deployment prefix
+        run: |
+          PROJECT_NAME="${{ github.event.repository.name }}"
+          CLIENT="${{ steps.parse.outputs.client }}"
+          PREFIX="${PROJECT_NAME}-${CLIENT}"
+          echo "PREFIX=$PREFIX" >> $GITHUB_ENV
+      
+      - name: Set up deployment names
+        run: |
+          PROJECT_NAME="${{ steps.parse.outputs.project_name }}"
+          CLIENT="${{ steps.parse.outputs.client }}"
+          WORKFLOW_KEY="${{ steps.parse.outputs.workflow_key }}"
+          ENVIRONMENT="${{ steps.parse.outputs.environment }}"
+          
+          # Build ECR and ECS names to match Terraform naming
+          if [[ -n "$ENVIRONMENT" ]]; then
+            # Environment-specific: project-environment-workflow-ecr
+            ECR_NAME="${PROJECT_NAME}-${ENVIRONMENT}-${WORKFLOW_KEY}-ecr"
+            ECS_CLUSTER="${PROJECT_NAME}-${ENVIRONMENT}-${WORKFLOW_KEY}-cluster"
+            ECS_SERVICE="${PROJECT_NAME}-${ENVIRONMENT}-${WORKFLOW_KEY}-service"
+          else
+            # Global component: project-workflow-ecr
+            ECR_NAME="${PROJECT_NAME}-${WORKFLOW_KEY}-ecr"
+            ECS_CLUSTER="${PROJECT_NAME}-${WORKFLOW_KEY}-cluster"
+            ECS_SERVICE="${PROJECT_NAME}-${WORKFLOW_KEY}-service"
+          fi
+          
+          echo "ECR_NAME=$ECR_NAME" >> $GITHUB_ENV
+          echo "ECS_CLUSTER=$ECS_CLUSTER" >> $GITHUB_ENV
+          echo "ECS_SERVICE=$ECS_SERVICE" >> $GITHUB_ENV
+          
+          echo "Deployment names:"
+          echo "  ECR: $ECR_NAME"
+          echo "  ECS Cluster: $ECS_CLUSTER"
+          echo "  ECS Service: $ECS_SERVICE"
+      
+      - name: Configure AWS credentials
+        if: ${{ steps.parse.outputs.provider == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.AWS_ROLE_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+      
+      - name: Login to Amazon ECR
+        if: ${{ steps.parse.outputs.provider == 'aws' }}
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Set up Docker Buildx
+        if: ${{ steps.parse.outputs.provider == 'aws' }}
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build and push Docker image
+        if: ${{ steps.parse.outputs.provider == 'aws' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_NAME }}:latest
+          no-cache: true
+          build-args: |
+            
+      
+      - name: Update ECS service
+        if: ${{ steps.parse.outputs.provider == 'aws' }}
+        run: |
+          echo "🚀 Starting ECS deployment..."
+          echo "Cluster: ${ECS_CLUSTER}"
+          echo "Service: ${ECS_SERVICE}"
+          
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "✅ ECS deployment initiated - service will update in background"
+      
+      - name: Set up deployment names
+        run: |
+          PROJECT_NAME="${{ steps.parse.outputs.project_name }}"
+          CLIENT="${{ steps.parse.outputs.client }}"
+          WORKFLOW_KEY="${{ steps.parse.outputs.workflow_key }}"
+          ENVIRONMENT="${{ steps.parse.outputs.environment }}"
+          
+          # Build ACR and ACA names to match Terraform naming convention
+          if [[ -n "$ENVIRONMENT" ]]; then
+            # Environment-specific deployment: project-environment-workflow
+            ACR_NAME="${PROJECT_NAME}${ENVIRONMENT}${WORKFLOW_KEY}acr"  # ACR names must be alphanumeric only
+            ACA_NAME="${PROJECT_NAME}-${ENVIRONMENT}-${WORKFLOW_KEY}"
+            RESOURCE_GROUP="${PROJECT_NAME}-rg"
+          else
+            # Global component deployment: project-workflow
+            ACR_NAME="${PROJECT_NAME}${WORKFLOW_KEY}acr"
+            ACA_NAME="${PROJECT_NAME}-${WORKFLOW_KEY}"
+            RESOURCE_GROUP="${PROJECT_NAME}-rg"
+          fi
+          
+          echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
+          echo "ACA_NAME=$ACA_NAME" >> $GITHUB_ENV
+          echo "RESOURCE_GROUP=$RESOURCE_GROUP" >> $GITHUB_ENV
+          
+          echo "Deployment names:"
+          echo "  ACR: $ACR_NAME"
+          echo "  Container App: $ACA_NAME"
+          echo "  Resource Group: $RESOURCE_GROUP"
+      
+      - name: Login to Azure CLI
+        if: ${{ steps.parse.outputs.provider == 'azure' }}
+        run: |
+          az login --service-principal \
+            --username ${{ env.AZURE_CLIENT_ID }} \
+            --password ${{ env.AZURE_CLIENT_SECRET }} \
+            --tenant ${{ env.AZURE_TENANT_ID }}
+          
+          az account set --subscription ${{ env.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Login to Azure Container Registry
+        if: ${{ steps.parse.outputs.provider == 'azure' }}
+        run: |
+          az acr login --name $ACR_NAME
+      
+      - name: Build Docker image
+        if: ${{ steps.parse.outputs.provider == 'azure' }}
+        run: |
+          docker build --no-cache --platform linux/amd64  -t "${ACR_NAME}" .
+      
+      - name: Tag Docker image for Azure
+        if: ${{ steps.parse.outputs.provider == 'azure' }}
+        run: |
+          docker tag "${ACR_NAME}":latest $ACR_NAME.azurecr.io/${{ steps.parse.outputs.workflow_key }}:latest
+      
+      - name: Push Docker image to Azure ACR
+        if: ${{ steps.parse.outputs.provider == 'azure' }}
+        run: |
+          docker push $ACR_NAME.azurecr.io/${{ steps.parse.outputs.workflow_key }}:latest
+      
+      - name: Force new revision of Azure Container App
+        if: ${{ steps.parse.outputs.provider == 'azure' }}
+        run: |
+          TIMESTAMP=$(date +%s)
+          echo "Forcing new deployment with timestamp: $TIMESTAMP"
+          az containerapp update \
+            --name "${ACA_NAME}" \
+            --resource-group "${RESOURCE_GROUP}" \
+            --image "$ACR_NAME.azurecr.io/${{ steps.parse.outputs.workflow_key }}:latest" \
+            --set-env-vars REVISION_TRIGGER=$TIMESTAMP
