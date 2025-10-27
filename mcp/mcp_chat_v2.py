@@ -429,6 +429,11 @@ async def get_v2_client() -> MultiServerClient:
                     print(f"Warning: Failed to connect to gist server: {e}")
 
                 try:
+                    await client.connect_to_server("solar_clay", os.path.join(script_dir, "solar_clay_server.py"))
+                except Exception as e:
+                    print(f"Warning: Failed to connect to solar_clay server: {e}")
+
+                try:
                     await client.connect_to_server("spa", os.path.join(servers_v2_dir, "spa_server_v2.py"))
                 except Exception as e:
                     print(f"Warning: Failed to connect to spa server: {e}")
@@ -550,6 +555,16 @@ LLM_ROUTING_CONFIG: Dict[str, Dict[str, Any]] = {
             "sectoral mitigation plans, or state-level climate action."
         ),
         "always_include": True,
+    },
+    "solar_clay": {
+        "detailed": (
+            "Top potential sites for solar farm installation in Brazil based on Clay "
+            "embeddings and PVGIS yield data. Provides geometry-level data including "
+            "specific_yield_kwh_per_kwp_yr, location, state assignments, and area calculations. "
+            "Use for questions about optimal solar farm locations, solar potential by state, "
+            "or geographic analysis of solar installation opportunities."
+        ),
+        "always_include": False,
     },
     # "viz": {
     #     "detailed": (
@@ -2691,6 +2706,7 @@ class SimpleOrchestrator:
         pretty_print = {
             "cpr": "Climate Policy Radar Passage Library",
             "solar": "TZ-SAM Database",
+            "solar_clay": "Solar Site Potential (Clay)",
             "brazil_admin": "Brazil Administrative Boundaries and Metadata",
             "gist": "GIST Impact",
             "spa": "Science Panel for the Amazon",
