@@ -424,9 +424,9 @@ class CPRServerV2(RunQueryMixin):
         else:
             description = f"Passage {passage_id} in document {document_id}. Available from Climate Policy Radar."
 
-        # Prefer source_url (original document) over CPR app URL
-        url = source_url
-        if not url and slug and family_slug and page_number is not None:
+        # Build CPR app URL from slug metadata
+        url = None
+        if slug and family_slug and page_number is not None:
             try:
                 page_num = int(float(page_number))
                 url = f"https://app.climatepolicyradar.org/documents/{slug}?page={page_num}&id={family_slug}"
