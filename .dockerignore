@@ -5,6 +5,9 @@
 # Data (downloaded from S3 on startup)
 data/
 
+# Extras (CPR data now in data/ directory, synced from S3)
+extras/
+
 # Generated assets (created at runtime)
 static/kg/
 static/maps/
