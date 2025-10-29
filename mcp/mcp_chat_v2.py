@@ -1254,6 +1254,7 @@ class NarrativeSynthesizer:
 
             TONE & OBJECTIVITY:
             - Remain objective; avoid prescriptions or “best policy” language. Use established facts confidently and flag assumptions or gaps.
+            - If a source describes something in a subjective way, clearly attribute that perspective (e.g., “According to X, ...”).
 
             LIMITATIONS & DATA GAPS:
             - If requested information is missing, open Key Takeaways with “Unfortunately, we don't have information on {missing_topic}.” Do not
@@ -1266,6 +1267,7 @@ class NarrativeSynthesizer:
             - Start with “## Key Takeaways” and a tight two-sentence paragraph including at least one citation.
             - Add downstream “##” sections named for the major themes; use bullet lists for concrete findings and include tables only when tools provide
             them.
+            - Do not create a Summary Table at the end of the document. These don't end up formatted well on our front end.
 
             CITATIONS & SOURCE HANDLING:
             - Place citation markers like [[F1]] immediately after each supported sentence before the period; list multiple markers like [[F1]][[F2]] when multiple items apply.
