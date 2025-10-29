@@ -592,14 +592,15 @@ class CPRServerV2(RunQueryMixin):
                     document_id = self._as_str(metadata.get("document_id") or "unknown") or "unknown"
                     passage_id = self._as_str(metadata.get("passage_id") or "unknown") or "unknown"
 
-                    print(
-                        "[cpr] context snippet:",
-                        f"concept={label!r}",
-                        f"document={document_id}",
-                        f"passage={passage_id}",
-                        passage_text,
-                        flush=True,
-                    )
+                    # Debug logging disabled - print() interferes with MCP JSONRPC protocol
+                    # print(
+                    #     "[cpr] context snippet:",
+                    #     f"concept={label!r}",
+                    #     f"document={document_id}",
+                    #     f"passage={passage_id}",
+                    #     passage_text,
+                    #     flush=True,
+                    # )
 
                     snippet = self._fact_snippet(passage_text)
                     fact_id = f"{citation_id}_fact"
