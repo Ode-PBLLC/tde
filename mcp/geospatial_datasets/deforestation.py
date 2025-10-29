@@ -55,8 +55,10 @@ class DeforestationPolygonProvider:
 
     def _load_dataset(self) -> "gpd.GeoDataFrame":
         candidates = self.DATASET_CANDIDATES
+        print(f"[DeforestationPolygonProvider] Root directory: {self.root}")
         for fmt, relative_path in candidates:
             path = (self.root / relative_path).resolve()
+            print(f"[DeforestationPolygonProvider] Checking path: {path} (exists={path.exists()})")
             if not path.exists():
                 continue
             try:
