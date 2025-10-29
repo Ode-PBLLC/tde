@@ -373,22 +373,60 @@ class CPRServerV2(RunQueryMixin):
         document_id = str(metadata.get("document_id") or "unknown")
         citation_id = f"passage_{document_id}_{passage_id}"
 
-        # Build citation title with family context
-        family_title = metadata.get("family_title")
-        if family_title:
-            title = f"Climate Policy Radar via {family_title}"
-        else:
-            title = f"CPR passage {document_id}"
+        # NEW: Title is now "CPR Passage Library" (source of information)
+        title = "CPR Passage Library"
 
-        description = f"Passage {passage_id} in document {document_id} mentioning {concept_label}."
-
-        # Build CPR URL from slug metadata
-        url = None
+        # Extract all available metadata fields for enhanced citations
+        source = metadata.get("source", "").strip() or None
+        document_title = metadata.get("document_title", "").strip() or None
+        family_title = metadata.get("family_title", "").strip() or None
+        document_type = metadata.get("document_type", "").strip() or None
+        page_number = metadata.get("page_number")
+        publication_ts = metadata.get("publication_ts", "").strip() or None
+        source_url = metadata.get("source_url", "").strip() or None
         slug = metadata.get("slug")
         family_slug = metadata.get("family_slug")
-        page_number = metadata.get("page_number")
 
-        if slug and family_slug and page_number is not None:
+        # Extract year from publication_ts (e.g., "2024-04-30T00:00:00Z" -> "2024")
+        year = None
+        if publication_ts:
+            try:
+                year = publication_ts.split("-")[0]
+            except (IndexError, AttributeError):
+                pass
+
+        # Build citation following Option 2 format:
+        # [Source]. ([Year]). [Document Title]. [Document Type], p. [page]. Available from Climate Policy Radar.
+
+        # Use document_title, fallback to family_title
+        doc_name = document_title or family_title
+
+        if doc_name and year and document_type and page_number is not None:
+            try:
+                page_num = int(float(page_number))
+                description = f"{source}. ({year}). {doc_name}. {document_type}, p. {page_num}. Available from Climate Policy Radar."
+            except (ValueError, TypeError):
+                description = f"{source}. ({year}). {doc_name}. {document_type}. Available from Climate Policy Radar."
+        elif doc_name and year and page_number is not None:
+            try:
+                page_num = int(float(page_number))
+                description = f"{source}. ({year}). {doc_name}, p. {page_num}. Available from Climate Policy Radar."
+            except (ValueError, TypeError):
+                description = f"{source}. ({year}). {doc_name}. Available from Climate Policy Radar."
+        elif doc_name and page_number is not None:
+            try:
+                page_num = int(float(page_number))
+                description = f"{doc_name}, p. {page_num}. Available from Climate Policy Radar."
+            except (ValueError, TypeError):
+                description = f"{doc_name}. Available from Climate Policy Radar."
+        elif doc_name:
+            description = f"{doc_name}. Available from Climate Policy Radar."
+        else:
+            description = f"Passage {passage_id} in document {document_id}. Available from Climate Policy Radar."
+
+        # Prefer source_url (original document) over CPR app URL
+        url = source_url
+        if not url and slug and family_slug and page_number is not None:
             try:
                 page_num = int(float(page_number))
                 url = f"https://app.climatepolicyradar.org/documents/{slug}?page={page_num}&id={family_slug}"
@@ -400,13 +438,19 @@ class CPRServerV2(RunQueryMixin):
             server="cpr",
             tool="run_query",
             title=title,
-            source_type="Policy Document",
-            description=_dataset_citation(DATASET_ID) or description,
+            source_type=document_type or "Policy Document",
+            description=description,
             url=url,
             metadata={
                 "document_id": document_id,
                 "passage_id": passage_id,
                 "concept": concept_label,
+                "family_title": family_title,
+                "document_title": document_title,
+                "page_number": page_number,
+                "source": source,
+                "year": year,
+                "document_type": document_type,
             },
         )
 
