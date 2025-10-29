@@ -2738,7 +2738,11 @@ class SimpleOrchestrator:
                     "routing",
                 )
 
-        await emit("🧭 Confirming the relevance of servers...", "routing")
+        # await emit("🧭 Confirming the relevance of servers...", "routing")
+        await emit(
+            "**Step 1: Selecting relevant datasets**\n\nDetermining which curated datasets are most relevant to your question. We are in the constant process of expanding the range and depth of datasets across regions and topics, ensuring comprehensive coverage and interoperability.",
+            "routing"
+        )
         supports = await self._router.route(query, context, progress_callback=router_progress)
         if not supports:
             raise ContractValidationError("No servers accepted the query")
@@ -2774,7 +2778,11 @@ class SimpleOrchestrator:
                     "execution",
                 )
 
-        await emit("📥 Gathering passages and data from servers...", "execution")
+        # await emit("📥 Gathering passages and data from servers...", "execution")
+        await emit(
+            "**Step 2: Retrieving source data**\n\nBringing together evidence from the selected datasets, verifying accuracy, and preparing to synthesise your answer.",
+            "execution"
+        )
         responses = await self._execute_with_planning(
             supports, context, progress_callback=executor_progress
         )
@@ -2784,7 +2792,11 @@ class SimpleOrchestrator:
 
         await self._emit_fact_thinking_events(responses, emit)
 
-        await emit("🧠 Pulling everything together...", "synthesis")
+        # await emit("🧠 Pulling everything together...", "synthesis")
+        await emit(
+            "**Step 3: Synthesising the answer**\n\nCombining verified evidence into a coherent, cited response.",
+            "synthesis"
+        )
 
         evidences, evidence_map = self._collect_evidences(responses)
         print(
