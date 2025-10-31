@@ -105,7 +105,14 @@ class DeforestationServerV2(RunQueryMixin):
 
     def __init__(self) -> None:
         self.mcp = FastMCP("deforestation-server-v2")
-        self.provider = DeforestationPolygonProvider()
+        try:
+            self.provider = DeforestationPolygonProvider()
+            print(f"[deforestation-server] Successfully loaded dataset: {self.provider.dataset_name}")
+        except Exception as exc:
+            print(f"[deforestation-server] FATAL: Failed to load deforestation data: {exc}")
+            import traceback
+            print(f"[deforestation-server] Traceback: {traceback.format_exc()}")
+            raise
         self._anthropic_client = None
         if anthropic and os.getenv("ANTHROPIC_API_KEY"):
             try:

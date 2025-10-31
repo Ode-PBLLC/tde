@@ -1254,6 +1254,7 @@ class NarrativeSynthesizer:
 
             TONE & OBJECTIVITY:
             - Remain objective; avoid prescriptions or “best policy” language. Use established facts confidently and flag assumptions or gaps.
+            - If a source describes something in a subjective way, clearly attribute that perspective (e.g., “According to X, ...”).
 
             LIMITATIONS & DATA GAPS:
             - If requested information is missing, open Key Takeaways with “Unfortunately, we don't have information on {missing_topic}.” Do not
@@ -1266,6 +1267,7 @@ class NarrativeSynthesizer:
             - Start with “## Key Takeaways” and a tight two-sentence paragraph including at least one citation.
             - Add downstream “##” sections named for the major themes; use bullet lists for concrete findings and include tables only when tools provide
             them.
+            - Do not create a Summary Table at the end of the document. These don't end up formatted well on our front end.
 
             CITATIONS & SOURCE HANDLING:
             - Place citation markers like [[F1]] immediately after each supported sentence before the period; list multiple markers like [[F1]][[F2]] when multiple items apply.
@@ -2575,6 +2577,19 @@ class SimpleOrchestrator:
                 }
             )
 
+        async def emit_logos(server_name: str) -> None:
+            """Emit a logos event for the given server if it has associated logos."""
+            if not progress_callback:
+                return
+            logos = _get_server_logos(server_name)
+            if logos:
+                await progress_callback(
+                    {
+                        "type": "logos",
+                        "data": {"message": logos},
+                    }
+                )
+
         previous_user_message: Optional[str] = None
         previous_assistant_message: Optional[str] = None
         previous_response_modules: Optional[List[Dict[str, Any]]] = None
@@ -2701,9 +2716,25 @@ class SimpleOrchestrator:
             "extreme_heat": "Extreme Heat Index"
         }
 
+        # Map server names to logo identifiers for the frontend
+        # Format: server_name -> comma-separated list of logo identifiers
+        server_logos = {
+            "cpr": "radar",
+            "solar": "transition digital",
+            "gist": "gist",
+            "deforestation": "prodes",
+            "lse": "ndc",
+            "wmo_cli": "wmo, ipcc",  # Multiple logos for this server
+            "ecmwf": "ecmwf",
+        }
+
         def _pretty_server_name(server_name: str) -> str:
             """Return a human-friendly server name for progress messages."""
             return pretty_print.get(server_name, server_name)
+
+        def _get_server_logos(server_name: str) -> Optional[str]:
+            """Return comma-separated logo identifiers for a server, or None if no logos."""
+            return server_logos.get(server_name)
 
         async def router_progress(
             server_name: str, stage: str, payload: Mapping[str, Any]
@@ -2723,22 +2754,30 @@ class SimpleOrchestrator:
                     message = (
                         f"🚫 {_pretty_server_name(server_name)} does not seem relevant."
                     )
-                
+
                 await emit(message, "routing")
+                # Emit logo event after the organization mention
+                await emit_logos(server_name)
             elif stage == "query_support_error":
                 error = payload.get("error")
                 await emit(
                     f"⚠️ {_pretty_server_name(server_name)}: invalid query_support payload ({error})",
                     "routing",
                 )
+                await emit_logos(server_name)
             elif stage == "query_support_failure":
                 error = payload.get("error")
                 await emit(
                     f"❌ {_pretty_server_name(server_name)}: query_support failed ({error})",
                     "routing",
                 )
+                await emit_logos(server_name)
 
-        await emit("🧭 Confirming the relevance of servers...", "routing")
+        # await emit("🧭 Confirming the relevance of servers...", "routing")
+        await emit(
+            "**Step 1: Selecting relevant datasets**\n\nDetermining which curated datasets are most relevant to your question. We are in the constant process of expanding the range and depth of datasets across regions and topics, ensuring comprehensive coverage and interoperability.",
+            "routing"
+        )
         supports = await self._router.route(query, context, progress_callback=router_progress)
         if not supports:
             raise ContractValidationError("No servers accepted the query")
@@ -2755,26 +2794,35 @@ class SimpleOrchestrator:
                     f"and {len(response.artifacts)} visuals"
                 )
                 await emit(message, "execution")
+                # Emit logo event after the organization mention
+                await emit_logos(server_name)
             elif stage == "run_query_error":
                 error = payload.get("error")
                 await emit(
                     f"⚠️ {_pretty_server_name(server_name)}: invalid run_query payload ({error})",
                     "execution",
                 )
+                await emit_logos(server_name)
             elif stage == "run_query_failure":
                 error = payload.get("error")
                 await emit(
                     f"❌ {_pretty_server_name(server_name)}: run_query failed ({error})",
                     "execution",
                 )
+                await emit_logos(server_name)
             elif stage == "run_query_timeout":
                 error = payload.get("error")
                 await emit(
                     f"⏱️ {_pretty_server_name(server_name)}: run_query timed out ({error})",
                     "execution",
                 )
+                await emit_logos(server_name)
 
-        await emit("📥 Gathering passages and data from servers...", "execution")
+        # await emit("📥 Gathering passages and data from servers...", "execution")
+        await emit(
+            "**Step 2: Retrieving source data**\n\nBringing together evidence from the selected datasets, verifying accuracy, and preparing to synthesise your answer.",
+            "execution"
+        )
         responses = await self._execute_with_planning(
             supports, context, progress_callback=executor_progress
         )
@@ -2784,7 +2832,11 @@ class SimpleOrchestrator:
 
         await self._emit_fact_thinking_events(responses, emit)
 
-        await emit("🧠 Pulling everything together...", "synthesis")
+        # await emit("🧠 Pulling everything together...", "synthesis")
+        await emit(
+            "**Step 3: Synthesising the answer**\n\nCombining verified evidence into a coherent, cited response.",
+            "synthesis"
+        )
 
         evidences, evidence_map = self._collect_evidences(responses)
         print(

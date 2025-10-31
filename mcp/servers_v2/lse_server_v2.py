@@ -928,9 +928,10 @@ class LSEServerV2(RunQueryMixin):
         return {
             "name": "lse",
             "description": (
-                "Brazil's NDC Align catalog covering climate governance, NDC targets, sectoral policies "
-                "(energy, transport, agriculture, land use, forestry), deforestation/REDD+ measures, "
-                "institutional frameworks, subnational state-level implementation, and TPI emissions pathways."
+                "Brazil's NDC Align: Specializes in NDC-domestic alignment analysis, institutional governance frameworks, "
+                "subnational climate governance (all 27 Brazilian states), transparency mechanisms, implementation status tracking, "
+                "and TPI emissions pathways (2005-2023 historical data, NDC targets, Paris 1.5°C alignment). "
+                "Covers sectoral policies (energy, transport, agriculture, land use, forestry, deforestation/REDD+)."
             ),
             "version": "2.0.0",
             "dataset": DATASET_INFO.get("title", "NDC Align"),
@@ -1005,12 +1006,36 @@ class LSEServerV2(RunQueryMixin):
         if self._anthropic_client:
             try:
                 prompt = (
-                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question. "
-                    "This dataset covers climate governance, NDC targets, sectoral policies (including "
-                    "land use, forestry, deforestation, REDD+, energy, transport), institutional frameworks, "
-                    "and subnational state implementation. Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
-                    f"Dataset summary: {self._capability_summary()}\n"
-                    f"Question: {query}"
+                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question.\n\n"
+
+                    "NDC ALIGN SPECIALIZES IN:\n"
+                    "• NDC-domestic alignment analysis - Comparing Brazil's international NDC commitments to national law implementation\n"
+                    "• Institutional governance frameworks - Which bodies coordinate climate policy, their roles and mandates\n"
+                    "• Subnational climate governance - All 27 Brazilian states' climate laws, policies, and transparency mechanisms\n"
+                    "• Implementation status tracking - What's in law vs. policy vs. under development\n"
+                    "• TPI emissions pathways - Historical emissions (2005-2023), NDC targets, Paris 1.5°C alignment assessment\n"
+                    "• Transparency mechanisms - Public participation, stakeholder engagement, monitoring systems (embedded in governance data)\n\n"
+
+                    "DETAILED STATE-LEVEL DATA:\n"
+                    "• Each of 27 Brazilian states has governance questionnaire with implementation details\n"
+                    "• Transparency information is embedded in public participation and monitoring questions\n"
+                    "• State climate laws, institutions, coordination mechanisms, and accountability systems\n\n"
+
+                    "USE NDC ALIGN FOR:\n"
+                    "• 'How does Brazil's NDC compare to its domestic law?' ✓\n"
+                    "• 'What institutions coordinate Brazil's climate policy?' ✓\n"
+                    "• 'What transparency does [State] have for climate policy?' ✓\n"
+                    "• 'Is Brazil's 2030 target aligned with Paris Agreement?' ✓\n"
+                    "• 'What were Brazil's emissions in 2020?' ✓\n\n"
+
+                    "DON'T USE NDC ALIGN FOR (use other sources):\n"
+                    "• Primary policy documents or full law text → Use CPR (Climate Policy Radar)\n"
+                    "• Real-time emissions statistics or deforestation data → Use PRODES or KG\n"
+                    "• Climate science projections or impacts → Use IPCC or SPA\n\n"
+
+                    f"Dataset summary: {self._capability_summary()}\n\n"
+                    f"Question: {query}\n\n"
+                    "Respond with JSON keys 'supported' (true/false) and 'reason'."
                 )
                 response = self._anthropic_client.messages.create(
                     model=os.getenv("LSE_ROUTER_MODEL", "claude-3-5-haiku-20241022"),
@@ -1029,12 +1054,36 @@ class LSEServerV2(RunQueryMixin):
         if self._openai_client:
             try:
                 prompt = (
-                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question. "
-                    "This dataset covers climate governance, NDC targets, sectoral policies (including "
-                    "land use, forestry, deforestation, REDD+, energy, transport), institutional frameworks, "
-                    "and subnational state implementation. Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
-                    f"Dataset summary: {self._capability_summary()}\n"
-                    f"Question: {query}"
+                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question.\n\n"
+
+                    "NDC ALIGN SPECIALIZES IN:\n"
+                    "• NDC-domestic alignment analysis - Comparing Brazil's international NDC commitments to national law implementation\n"
+                    "• Institutional governance frameworks - Which bodies coordinate climate policy, their roles and mandates\n"
+                    "• Subnational climate governance - All 27 Brazilian states' climate laws, policies, and transparency mechanisms\n"
+                    "• Implementation status tracking - What's in law vs. policy vs. under development\n"
+                    "• TPI emissions pathways - Historical emissions (2005-2023), NDC targets, Paris 1.5°C alignment assessment\n"
+                    "• Transparency mechanisms - Public participation, stakeholder engagement, monitoring systems (embedded in governance data)\n\n"
+
+                    "DETAILED STATE-LEVEL DATA:\n"
+                    "• Each of 27 Brazilian states has governance questionnaire with implementation details\n"
+                    "• Transparency information is embedded in public participation and monitoring questions\n"
+                    "• State climate laws, institutions, coordination mechanisms, and accountability systems\n\n"
+
+                    "USE NDC ALIGN FOR:\n"
+                    "• 'How does Brazil's NDC compare to its domestic law?' ✓\n"
+                    "• 'What institutions coordinate Brazil's climate policy?' ✓\n"
+                    "• 'What transparency does [State] have for climate policy?' ✓\n"
+                    "• 'Is Brazil's 2030 target aligned with Paris Agreement?' ✓\n"
+                    "• 'What were Brazil's emissions in 2020?' ✓\n\n"
+
+                    "DON'T USE NDC ALIGN FOR (use other sources):\n"
+                    "• Primary policy documents or full law text → Use CPR (Climate Policy Radar)\n"
+                    "• Real-time emissions statistics or deforestation data → Use PRODES or KG\n"
+                    "• Climate science projections or impacts → Use IPCC or SPA\n\n"
+
+                    f"Dataset summary: {self._capability_summary()}\n\n"
+                    f"Question: {query}\n\n"
+                    "Respond with JSON keys 'supported' (true/false) and 'reason'."
                 )
                 response = self._openai_client.responses.create(
                     model=os.getenv("LSE_ROUTER_MODEL", "gpt-4.1-mini"),
@@ -1109,10 +1158,36 @@ class LSEServerV2(RunQueryMixin):
                 return {"error": f"Tab '{slug}' not found"}
             return sheet.to_dict(include_records=include_records)
 
+    def _load_tpi_structured(self) -> Optional[Dict[str, Any]]:
+        """Load the structured TPI pathways data."""
+        tpi_file = PROJECT_ROOT / "data" / "lse_processed" / "tpi_graphs" / "tpi-pathways-structured.json"
+        if not tpi_file.exists():
+            return None
+        try:
+            with open(tpi_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return None
+
     def _register_tool_tpi_graph(self) -> None:
         @self.mcp.tool()
         def GetTPIGraphData() -> Dict[str, Any]:  # type: ignore[misc]
-            """Return Transition Pathway Initiative emissions data."""
+            """
+            Return Transition Pathway Initiative emissions data (RAW FORMAT).
+
+            DON'T USE FOR specific queries about:
+            ❌ Emissions for a specific year
+            ❌ Comparing scenarios
+            ❌ Paris alignment assessment
+
+            USE FOR:
+            • Getting raw tabular TPI data structure
+            • Understanding data source format
+
+            For querying emissions pathways, use:
+            → GetTPIEmissionsPathway - Query specific years/scenarios
+            → GetTPIAlignmentAssessment - Check Paris 1.5°C alignment
+            """
 
             slugs = self.catalog.module_index.get("tpi_graphs", [])
             if not slugs:
@@ -1125,6 +1200,204 @@ class LSEServerV2(RunQueryMixin):
                 "columns": sheet.columns,
                 "summary": sheet.summary,
                 "records": sheet.records,
+            }
+
+        @self.mcp.tool()
+        def GetTPIEmissionsPathway(
+            scenario: Optional[str] = None,
+            year: Optional[int] = None
+        ) -> Dict[str, Any]:  # type: ignore[misc]
+            """
+            Get Brazil's emissions pathways from TPI (Transition Pathway Initiative) analysis.
+
+            USE FOR queries about:
+            • Brazil's historical emissions (2005-2023)
+            • NDC target trajectory (2023-2035)
+            • High ambition scenario
+            • Paris Agreement 1.5°C pathways
+            • Comparing different emissions scenarios
+            • Specific year emissions projections
+
+            SCENARIOS:
+            - "historical" - Observed emissions 2005-2023
+            - "ndc" or "ndc_target" - Brazil's official NDC trajectory
+            - "high_ambition" - Aggressive end of NDC target range (67% reduction)
+            - "fair_share" or "1.5c_fair_share" - Brazil's fair share for 1.5°C
+            - "benchmark" or "1.5c_benchmark" - General 1.5°C alignment path
+            - None (default) - Returns all scenarios
+
+            PARAMETERS:
+            - scenario (str, optional): Filter by specific scenario name
+            - year (int, optional): Get emissions for specific year (2005-2035)
+
+            EXAMPLES:
+            • "What were Brazil's emissions in 2020?"
+              → GetTPIEmissionsPathway(scenario="historical", year=2020)
+
+            • "What is Brazil's NDC target for 2030?"
+              → GetTPIEmissionsPathway(scenario="ndc", year=2030)
+
+            • "Show all emissions pathways for 2035"
+              → GetTPIEmissionsPathway(year=2035)
+
+            • "What is the 1.5°C fair share pathway?"
+              → GetTPIEmissionsPathway(scenario="fair_share")
+
+            RETURNS: Structured emissions data with timeseries, key years, and metadata.
+            Units are MtCO2e (million tonnes CO2 equivalent).
+            """
+            tpi_data = self._load_tpi_structured()
+            if not tpi_data:
+                return {"error": "Structured TPI data not available"}
+
+            scenarios_data = tpi_data.get("scenarios", {})
+
+            # Map scenario aliases
+            scenario_map = {
+                "ndc": "ndc_target_pathway",
+                "ndc_target": "ndc_target_pathway",
+                "fair_share": "paris_1_5c_fair_share",
+                "1.5c_fair_share": "paris_1_5c_fair_share",
+                "1_5c_fair_share": "paris_1_5c_fair_share",
+                "benchmark": "paris_1_5c_benchmark",
+                "1.5c_benchmark": "paris_1_5c_benchmark",
+                "1_5c_benchmark": "paris_1_5c_benchmark",
+            }
+
+            if scenario:
+                scenario_key = scenario_map.get(scenario.lower(), scenario.lower())
+                if scenario_key not in scenarios_data:
+                    available = list(scenarios_data.keys())
+                    return {
+                        "error": f"Scenario '{scenario}' not found",
+                        "available_scenarios": available
+                    }
+
+                scenario_info = scenarios_data[scenario_key]
+
+                if year:
+                    # Find specific year in timeseries
+                    timeseries = scenario_info.get("timeseries", [])
+                    year_data = next((entry for entry in timeseries if entry["year"] == year), None)
+
+                    if not year_data:
+                        available_years = [entry["year"] for entry in timeseries]
+                        return {
+                            "error": f"Year {year} not available for scenario '{scenario}'",
+                            "available_years": available_years
+                        }
+
+                    return {
+                        "scenario": scenario_info["name"],
+                        "year": year,
+                        "emissions_mtco2e": year_data["emissions_mtco2e"],
+                        "scenario_type": scenario_info.get("type"),
+                        "description": scenario_info.get("description"),
+                        "citation": tpi_data.get("metadata", {}).get("citation")
+                    }
+
+                # Return full scenario
+                return {
+                    "scenario": scenario_info["name"],
+                    "type": scenario_info.get("type"),
+                    "description": scenario_info.get("description"),
+                    "start_year": scenario_info.get("start_year"),
+                    "end_year": scenario_info.get("end_year"),
+                    "timeseries": scenario_info.get("timeseries"),
+                    "key_years": scenario_info.get("key_years"),
+                    "summary": scenario_info.get("summary"),
+                    "citation": tpi_data.get("metadata", {}).get("citation")
+                }
+
+            # No scenario specified - return overview or specific year
+            if year:
+                # Get all scenarios for this year
+                year_comparison = {"year": year, "scenarios": {}}
+
+                for scenario_key, scenario_info in scenarios_data.items():
+                    timeseries = scenario_info.get("timeseries", [])
+                    year_data = next((entry for entry in timeseries if entry["year"] == year), None)
+
+                    if year_data:
+                        year_comparison["scenarios"][scenario_info["name"]] = {
+                            "emissions_mtco2e": year_data["emissions_mtco2e"],
+                            "type": scenario_info.get("type")
+                        }
+
+                year_comparison["citation"] = tpi_data.get("metadata", {}).get("citation")
+                return year_comparison
+
+            # Return overview of all scenarios
+            overview = {
+                "country": tpi_data.get("country"),
+                "description": tpi_data.get("description"),
+                "scenarios": {}
+            }
+
+            for scenario_key, scenario_info in scenarios_data.items():
+                overview["scenarios"][scenario_info["name"]] = {
+                    "type": scenario_info.get("type"),
+                    "description": scenario_info.get("description"),
+                    "start_year": scenario_info.get("start_year"),
+                    "end_year": scenario_info.get("end_year"),
+                    "key_years": scenario_info.get("key_years")
+                }
+
+            overview["metadata"] = tpi_data.get("metadata")
+            return overview
+
+        @self.mcp.tool()
+        def GetTPIAlignmentAssessment() -> Dict[str, Any]:  # type: ignore[misc]
+            """
+            Check if Brazil's NDC targets align with Paris Agreement 1.5°C pathways.
+
+            USE FOR queries about:
+            • Whether Brazil's targets meet Paris Agreement goals
+            • Gap between NDC and 1.5°C pathways
+            • Comparison of Brazil's commitment vs. what science requires
+            • Paris alignment assessment for 2030 and 2035
+
+            ASSESSMENT INCLUDES:
+            • 2030 target vs. 1.5°C fair share allocation
+            • 2030 target vs. 1.5°C benchmark pathway
+            • 2035 target vs. 1.5°C pathways
+            • Emission gaps in MtCO2e and percentages
+            • Alignment status (aligned/not aligned)
+
+            EXAMPLES:
+            • "Is Brazil's NDC aligned with the Paris Agreement?"
+              → GetTPIAlignmentAssessment()
+
+            • "What is the gap between Brazil's 2030 target and 1.5°C?"
+              → GetTPIAlignmentAssessment()
+
+            • "Does Brazil's climate target meet its fair share?"
+              → GetTPIAlignmentAssessment()
+
+            KEY FINDING: Brazil's 2030 NDC target (998 MtCO2e) is NOT aligned with
+            1.5°C pathways. The gap is 753 MtCO2e vs. fair share and 272 MtCO2e vs.
+            benchmark. However, the high ambition 2035 target is close to 1.5°C benchmark.
+
+            RETURNS: Alignment assessment with gaps, percentages, and TPI analysis.
+            """
+            tpi_data = self._load_tpi_structured()
+            if not tpi_data:
+                return {"error": "Structured TPI data not available"}
+
+            alignment = tpi_data.get("alignment_assessment", {})
+            comparison_table = tpi_data.get("comparison_table", {})
+
+            return {
+                "country": tpi_data.get("country"),
+                "summary": alignment.get("summary"),
+                "2030_assessment": alignment.get("2030"),
+                "2035_assessment": alignment.get("2035"),
+                "comparison_table": comparison_table,
+                "metadata": {
+                    "source": tpi_data.get("source"),
+                    "citation": tpi_data.get("metadata", {}).get("citation"),
+                    "units": tpi_data.get("metadata", {}).get("units")
+                }
             }
 
     def _register_tool_institutional_framework(self) -> None:
@@ -2302,8 +2575,12 @@ class LSEServerV2(RunQueryMixin):
                 label_text = "Document"
 
             title = f"NDC Align via {label_text}"
-            url = value if is_url(value) else None
-            description = dataset_citation_text or (value if not url else None)
+            # underlying_source should contain the URL from source fields (primary_source, etc.)
+            underlying_source_url = value if is_url(value) else None
+            # url remains the static NDC Align dataset URL
+            dataset_url = DATASET_INFO.get("source")
+            # description shows non-URL source text or the dataset citation
+            description = dataset_citation_text or (value if not underlying_source_url else None)
             metadata = {
                 "module": sheet.module,
                 "group": sheet.group,
@@ -2321,7 +2598,8 @@ class LSEServerV2(RunQueryMixin):
                 title=title,
                 source_type=source_type or "Source",
                 description=description,
-                url=url,
+                url=dataset_url,
+                underlying_source=underlying_source_url,
                 metadata=metadata,
             )
             citations.append(citation)
@@ -3036,10 +3314,12 @@ class LSEServerV2(RunQueryMixin):
                 )
             )
 
-        if include_overview:
-            module_artifact = self._module_artifact()
-            if module_artifact:
-                artifacts.append(module_artifact)
+        # Disabled: Shows metadata "about" the data rather than actual data
+        # User preference: "We have a principle to not talk 'about' the data but show the data"
+        # if include_overview:
+        #     module_artifact = self._module_artifact()
+        #     if module_artifact:
+        #         artifacts.append(module_artifact)
         state_artifact = self._state_artifact(query)
         if state_artifact:
             artifacts.append(state_artifact)
