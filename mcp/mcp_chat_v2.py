@@ -1602,6 +1602,7 @@ class CitationRegistry:
                     citation.source_type,
                     citation.description or "",
                     citation.url or "",
+                    getattr(citation, "underlying_source", None) or "",
                 ]
             )
         return rows
@@ -3023,7 +3024,7 @@ class SimpleOrchestrator:
         citation_module = {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL", "UnderlyingSource"],
             "rows": [],
             "allow_empty": True,
         }
@@ -3084,7 +3085,7 @@ class SimpleOrchestrator:
         citation_module = {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL", "UnderlyingSource"],
             "rows": [],
             "allow_empty": True,
         }
@@ -4106,6 +4107,7 @@ class SimpleOrchestrator:
                 "Type",
                 "Description",
                 "SourceURL",
+                "UnderlyingSource",
             ],
             "rows": rows,
         }
