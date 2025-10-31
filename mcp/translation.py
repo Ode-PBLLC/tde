@@ -15,6 +15,8 @@ except Exception:
     # Allow importing module without OpenAI installed; callers should handle fallback
     _HAS_OPENAI = False
 
+from utils.llm_retry import call_llm_with_retries
+
 
 def _collect_translatable_strings(modules: List[Dict[str, Any]]) -> Tuple[List[str], List[Tuple[str, int, List[str]]]]:
     """
@@ -99,13 +101,17 @@ async def translate_strings(strings: List[str], target_lang: str) -> List[str]:
     )
 
     try:
-        resp = await client.chat.completions.create(
-            model=os.getenv("OPENAI_TRANSLATION_MODEL", "gpt-4o-mini"),
-            temperature=0,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
+        resp = await call_llm_with_retries(
+            lambda: client.chat.completions.create(
+                model=os.getenv("OPENAI_TRANSLATION_MODEL", "gpt-4o-mini"),
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            ),
+            is_async=True,
+            provider="openai.translation",
         )
         content = resp.choices[0].message.content if resp.choices else None
         if not content:

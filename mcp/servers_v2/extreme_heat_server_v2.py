@@ -34,6 +34,7 @@ except Exception:  # pragma: no cover - optional dependency
     pd = None  # type: ignore
 
 from fastmcp import FastMCP
+from utils.llm_retry import call_llm_with_retries_sync
 
 if load_dotenv:  # pragma: no cover - best-effort env loading
     try:
@@ -431,12 +432,15 @@ class ExtremeHeatServerV2(RunQueryMixin):
         )
 
         try:
-            response = self._anthropic_client.messages.create(  # type: ignore[no-untyped-call]
-                model="claude-3-5-haiku-20241022",
-                max_tokens=128,
-                temperature=0,
-                system="Respond with valid JSON only.",
-                messages=[{"role": "user", "content": prompt}],
+            response = call_llm_with_retries_sync(
+                lambda: self._anthropic_client.messages.create(  # type: ignore[no-untyped-call]
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
+                ),
+                provider="anthropic.extreme_heat_router",
             )
             text = response.content[0].text.strip()
         except Exception as exc:  # pragma: no cover - API/network issues

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from fastmcp import FastMCP
+from utils.llm_retry import call_llm_with_retries_sync
 
 try:  # pragma: no cover - optional dependency
     import anthropic  # type: ignore
@@ -147,12 +148,15 @@ class MBDeforestServerV2(RunQueryMixin):
                     f"Dataset capabilities: {self._capability_summary()}\n"
                     f"Question: {query}"
                 )
-                response = self._anthropic_client.messages.create(
-                    model="claude-3-5-haiku-20241022",
-                    max_tokens=128,
-                    temperature=0,
-                    system="Respond with valid JSON only.",
-                    messages=[{"role": "user", "content": prompt}],
+                response = call_llm_with_retries_sync(
+                    lambda: self._anthropic_client.messages.create(
+                        model="claude-3-5-haiku-20241022",
+                        max_tokens=128,
+                        temperature=0,
+                        system="Respond with valid JSON only.",
+                        messages=[{"role": "user", "content": prompt}],
+                    ),
+                    provider="anthropic.mb_deforest_router",
                 )
                 text = response.content[0].text.strip()
                 intent = self._parse_support_intent(text)
@@ -172,17 +176,20 @@ class MBDeforestServerV2(RunQueryMixin):
                 f"Dataset capabilities: {self._capability_summary()}\n"
                 f"Question: {query}"
             )
-            completion = self.openai.chat.completions.create(
-                model=DEFAULT_CHAT_MODEL,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "Respond with JSON containing keys supported (true/false) and reason (string).",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=80,
-                temperature=0,
+            completion = call_llm_with_retries_sync(
+                lambda: self.openai.chat.completions.create(
+                    model=DEFAULT_CHAT_MODEL,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "Respond with JSON containing keys supported (true/false) and reason (string).",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=80,
+                    temperature=0,
+                ),
+                provider="openai.mb_deforest_router",
             )
             text = completion.choices[0].message.content.strip()
             intent = self._parse_support_intent(text)

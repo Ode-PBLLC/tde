@@ -23,6 +23,7 @@ except Exception:  # pragma: no cover
     anthropic = None  # type: ignore
 
 from fastmcp import FastMCP
+from utils.llm_retry import call_llm_with_retries_sync
 from shapely import wkt as shapely_wkt
 from shapely.geometry import Point, shape, mapping, box
 from shapely.ops import transform
@@ -983,12 +984,15 @@ class SolarServerV2(RunQueryMixin):
         )
 
         try:
-            response = self._anthropic_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=128,
-                temperature=0,
-                system="Respond with valid JSON only.",
-                messages=[{"role": "user", "content": prompt}],
+            response = call_llm_with_retries_sync(
+                lambda: self._anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
+                ),
+                provider="anthropic.solar_router",
             )
             text = response.content[0].text.strip()
         except Exception as exc:  # pragma: no cover - network failures

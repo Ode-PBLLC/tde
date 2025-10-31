@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastmcp import FastMCP
+from utils.llm_retry import call_llm_with_retries_sync
 
 try:  # pragma: no cover - optional dependency
     from dotenv import load_dotenv  # type: ignore
@@ -376,12 +377,15 @@ class MetaServerV2(RunQueryMixin):
         )
 
         try:
-            response = self._anthropic_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=512,
-                temperature=0,
-                system="Respond with valid JSON only.",
-                messages=[{"role": "user", "content": prompt}],
+            response = call_llm_with_retries_sync(
+                lambda: self._anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=512,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
+                ),
+                provider="anthropic.meta_router",
             )
             text = response.content[0].text.strip()
         except Exception as exc:  # pragma: no cover - network failures

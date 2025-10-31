@@ -18,6 +18,7 @@ except Exception:  # pragma: no cover
 from fastmcp import FastMCP
 from shapely import wkt as shapely_wkt
 from shapely.geometry import mapping
+from utils.llm_retry import call_llm_with_retries_sync
 
 if __package__ in {None, ""}:
     import sys
@@ -333,12 +334,15 @@ class DeforestationServerV2(RunQueryMixin):
         )
 
         try:
-            response = self._anthropic_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=128,
-                temperature=0,
-                system="Respond with valid JSON only.",
-                messages=[{"role": "user", "content": prompt}],
+            response = call_llm_with_retries_sync(
+                lambda: self._anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
+                ),
+                provider="anthropic.deforestation_router",
             )
             text = response.content[0].text.strip()
         except Exception as exc:  # pragma: no cover - network failures
