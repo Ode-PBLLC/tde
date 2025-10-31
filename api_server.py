@@ -13,6 +13,7 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     FileResponse,
+    Response,
 )
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, AsyncGenerator
@@ -1497,20 +1498,66 @@ async def proxy_kg_visualization(query: Optional[str] = None):
             )
 
 
-@app.get("/api/kg/{path:path}")
+@app.api_route(
+    "/api/kg/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
 async def proxy_kg_api(path: str, request: Request):
-    """Proxy API requests to KG visualization server."""
+    """Proxy API requests of any method to the KG visualization server."""
     kg_url = f"http://localhost:8100/api/kg/{path}"
+    method = request.method.upper()
 
-    # Forward query parameters
-    if request.query_params:
-        kg_url += f"?{str(request.query_params)}"
+    # Prepare query parameters and request payload if needed
+    params = request.query_params.multi_items()
+    json_payload = None
+    data_payload = None
 
+    if method in {"POST", "PUT", "PATCH"}:
+        content_type = request.headers.get("content-type", "").lower()
+        if "application/json" in content_type:
+            json_payload = await request.json()
+        else:
+            data_payload = await request.body()
+
+    if method == "OPTIONS":
+        # Short-circuit preflight checks
+        return Response(status_code=200)
+
+    # Forward the request
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(kg_url) as response:
-                content = await response.json()
-                return JSONResponse(content=content, status_code=response.status)
+            async with session.request(
+                method,
+                kg_url,
+                params=params,
+                json=json_payload,
+                data=data_payload,
+                headers={
+                    key: value
+                    for key, value in request.headers.items()
+                    if key.lower() not in {"host", "content-length"}
+                },
+            ) as response:
+                response_body = await response.read()
+                # Preserve Content-Type if present
+                media_type = response.headers.get("Content-Type")
+
+                return Response(
+                    content=response_body,
+                    status_code=response.status,
+                    media_type=media_type,
+                    headers={
+                        key: value
+                        for key, value in response.headers.items()
+                        if key.lower()
+                        not in {
+                            "content-length",
+                            "transfer-encoding",
+                            "content-encoding",
+                            "connection",
+                        }
+                    },
+                )
         except Exception as e:
             raise HTTPException(
                 status_code=503, detail=f"KG server unavailable: {str(e)}"

@@ -1285,7 +1285,7 @@ class SolarServerV2(RunQueryMixin):
         legend_items = legend.setdefault("items", [])
         legend_items.append(
             {
-                "label": facility_label,
+                "label": facility_key,
                 "color": FACILITY_BUFFER_COLOR,
                 "description": f"{plotted_count} facilities",
             }
