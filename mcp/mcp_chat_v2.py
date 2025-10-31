@@ -21,7 +21,6 @@ from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Seq
 from urllib.parse import urlparse
 
 from .url_utils import ensure_absolute_url
-from utils.llm_retry import call_llm_with_retries, call_llm_with_retries_sync
 
 # ---------------------------------------------------------------------------
 # Model/provider configuration (override here instead of env vars if desired)
@@ -216,15 +215,12 @@ TERMS: [comma-separated list of additional technical terms, synonyms, acronyms]
 Keep the enhanced query focused and comprehensive."""
 
         try:
-            response = call_llm_with_retries_sync(
-                lambda: self._anthropic_client.messages.create(
-                    model=QUERY_ENRICHMENT_MODEL,
-                    max_tokens=300,
-                    temperature=0.2,
-                    system=enrichment_prompt,
-                    messages=[{"role": "user", "content": query}],
-                ),
-                provider="anthropic.query_enrich",
+            response = self._anthropic_client.messages.create(
+                model=QUERY_ENRICHMENT_MODEL,
+                max_tokens=300,
+                temperature=0.2,
+                system=enrichment_prompt,
+                messages=[{"role": "user", "content": query}]
             )
             
             # Extract text from response
@@ -841,10 +837,8 @@ class LLMRelevanceClassifier:
                     messages=[{"role": "user", "content": prompt}],
                 )
                 return response.content[0].text
-            return await call_llm_with_retries(
-                _run_anthropic,
-                provider="anthropic.router",
-            )
+
+            return await asyncio.to_thread(_run_anthropic)
 
         if self._openai_client is not None:
             def _run_openai() -> str:
@@ -857,10 +851,8 @@ class LLMRelevanceClassifier:
                 if hasattr(first, "text"):
                     return first.text
                 raise RuntimeError("OpenAI response missing text output")
-            return await call_llm_with_retries(
-                _run_openai,
-                provider="openai.router",
-            )
+
+            return await asyncio.to_thread(_run_openai)
 
         raise RuntimeError("No LLM client configured")
 
@@ -974,10 +966,8 @@ class OutOfScopeResponder:
                     messages=[{"role": "user", "content": prompt}],
                 )
                 return response.content[0].text
-            return await call_llm_with_retries(
-                _run_anthropic,
-                provider="anthropic.out_of_scope",
-            )
+
+            return await asyncio.to_thread(_run_anthropic)
 
         if self._openai_client is not None:
             def _run_openai() -> str:
@@ -990,10 +980,8 @@ class OutOfScopeResponder:
                 if hasattr(first, "text"):
                     return first.text
                 raise RuntimeError("OpenAI response missing text output")
-            return await call_llm_with_retries(
-                _run_openai,
-                provider="openai.out_of_scope",
-            )
+
+            return await asyncio.to_thread(_run_openai)
 
         raise RuntimeError("No LLM client configured")
 
@@ -1069,47 +1057,34 @@ class FactOrderer:
             "Return JSON only."
         )
 
-        async def _invoke() -> str:
+        def _invoke() -> str:
             provider = self._choose_provider()
 
             if provider == "anthropic":
-                def _call_anthropic() -> str:
-                    response = self._anthropic_client.messages.create(  # type: ignore[union-attr]
-                        model=FACT_ORDERER_ANTHROPIC_MODEL,
-                        max_tokens=300,
-                        temperature=0.1,
-                        system=prompt,
-                        messages=[{"role": "user", "content": user_message}],
-                    )
-                    parts: List[str] = []
-                    for block in getattr(response, "content", []) or []:
-                        if hasattr(block, "text"):
-                            parts.append(block.text)
-                    return "\n".join(parts)
-
-                return await call_llm_with_retries(
-                    _call_anthropic,
-                    provider="anthropic.fact_orderer",
+                response = self._anthropic_client.messages.create(  # type: ignore[union-attr]
+                    model=FACT_ORDERER_ANTHROPIC_MODEL,
+                    max_tokens=300,
+                    temperature=0.1,
+                    system=prompt,
+                    messages=[{"role": "user", "content": user_message}],
                 )
+                parts: List[str] = []
+                for block in getattr(response, "content", []) or []:
+                    if hasattr(block, "text"):
+                        parts.append(block.text)
+                return "\n".join(parts)
 
             combined_prompt = f"{prompt}\n\n{user_message}"
-
-            def _call_openai() -> str:
-                response = self._openai_client.responses.create(  # type: ignore[union-attr]
-                    model=FACT_ORDERER_OPENAI_MODEL,
-                    input=combined_prompt,
-                    max_output_tokens=600,
-                    temperature=0.1,
-                )
-                return _extract_openai_text(response)
-
-            return await call_llm_with_retries(
-                _call_openai,
-                provider="openai.fact_orderer",
+            response = self._openai_client.responses.create(  # type: ignore[union-attr]
+                model=FACT_ORDERER_OPENAI_MODEL,
+                input=combined_prompt,
+                max_output_tokens=600,
+                temperature=0.1,
             )
+            return _extract_openai_text(response)
 
         try:
-            raw = await _invoke()
+            raw = await asyncio.to_thread(_invoke)
             data = json.loads(raw)
             ordered = [fid for fid in data.get("ordered_ids", []) if fid in default_order]
             if not ordered:
@@ -1313,11 +1288,11 @@ class NarrativeSynthesizer:
 
         full_system_prompt = f"{system_prompt}\n\n{prompt}"
 
-        async def _invoke_with_provider(provider: str) -> str:
+        def _invoke_with_provider(provider: str) -> str:
             print(f"[KGDEBUG] narrative provider={provider}", flush=True)
 
             if provider == "anthropic":
-                def _call_anthropic() -> str:
+                try:
                     print("[KGDEBUG] anthropic call start", flush=True)
                     response = self._anthropic_client.messages.create(  # type: ignore[union-attr]
                         model=NARRATIVE_SYNTH_ANTHROPIC_MODEL,
@@ -1330,24 +1305,16 @@ class NarrativeSynthesizer:
                         f"[KGDEBUG] anthropic call success content_blocks={len(getattr(response, 'content', []) or [])}",
                         flush=True,
                     )
-                    parts: List[str] = []
-                    for block in getattr(response, "content", []) or []:
-                        if hasattr(block, "text"):
-                            parts.append(block.text)
-                    return "\n".join(parts)
-
-                try:
-                    return await call_llm_with_retries(
-                        _call_anthropic,
-                        provider="anthropic.narrative",
-                        max_attempts=3,
-                        base_delay=NARRATIVE_SYNTH_BASE_RETRY_DELAY,
-                    )
                 except Exception as anthropic_error:
                     print(f"[KGDEBUG] anthropic call error: {anthropic_error}", flush=True)
                     raise
+                parts: List[str] = []
+                for block in getattr(response, "content", []) or []:
+                    if hasattr(block, "text"):
+                        parts.append(block.text)
+                return "\n".join(parts)
 
-            def _call_openai() -> str:
+            try:
                 print("[KGDEBUG] openai call start", flush=True)
                 response = self._openai_client.responses.create(  # type: ignore[union-attr]
                     model=NARRATIVE_SYNTH_OPENAI_MODEL,
@@ -1359,18 +1326,10 @@ class NarrativeSynthesizer:
                     temperature=0.2,
                 )
                 print("[KGDEBUG] openai call success", flush=True)
-                return _extract_openai_text(response)
-
-            try:
-                return await call_llm_with_retries(
-                    _call_openai,
-                    provider="openai.narrative",
-                    max_attempts=3,
-                    base_delay=NARRATIVE_SYNTH_BASE_RETRY_DELAY,
-                )
             except Exception as openai_error:
                 print(f"[KGDEBUG] openai call error: {openai_error}", flush=True)
                 raise
+            return _extract_openai_text(response)
 
         print(f"[KGDEBUG] about to call _candidate_providers()")
         providers = self._candidate_providers()
@@ -1391,7 +1350,7 @@ class NarrativeSynthesizer:
             )
             try:
                 raw = await asyncio.wait_for(
-                    _invoke_with_provider(provider),
+                    asyncio.to_thread(_invoke_with_provider, provider),
                     timeout=NARRATIVE_SYNTH_TIMEOUT_SECONDS,
                 )
                 print(
@@ -1643,7 +1602,6 @@ class CitationRegistry:
                     citation.source_type,
                     citation.description or "",
                     citation.url or "",
-                    getattr(citation, "underlying_source", None) or "",
                 ]
             )
         return rows
@@ -1816,10 +1774,7 @@ class ServerToolPlanner:
                     return self._anthropic_client.messages.create(**kwargs)
 
             try:
-                response = await call_llm_with_retries(
-                    _invoke_anthropic,
-                    provider="anthropic.tool_planner",
-                )
+                response = await asyncio.to_thread(_invoke_anthropic)
                 plan_payload = self._extract_payload_from_anthropic(response)
             except Exception:
                 plan_payload = None
@@ -1838,10 +1793,7 @@ class ServerToolPlanner:
                 return _extract_openai_text(response)
 
             try:
-                raw_text = await call_llm_with_retries(
-                    _invoke_openai,
-                    provider="openai.tool_planner",
-                )
+                raw_text = await asyncio.to_thread(_invoke_openai)
                 if raw_text:
                     plan_payload = json.loads(raw_text)
             except Exception:
@@ -3071,7 +3023,7 @@ class SimpleOrchestrator:
         citation_module = {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL", "UnderlyingSource"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
             "rows": [],
             "allow_empty": True,
         }
@@ -3132,7 +3084,7 @@ class SimpleOrchestrator:
         citation_module = {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL", "UnderlyingSource"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
             "rows": [],
             "allow_empty": True,
         }
@@ -3621,10 +3573,7 @@ class SimpleOrchestrator:
                 )
                 return _extract_openai_text(response)
 
-            return await call_llm_with_retries(
-                _run_openai,
-                provider="openai.governance",
-            )
+            return await asyncio.to_thread(_run_openai)
 
         if self._governance_anthropic_client is not None:
             def _run_anthropic() -> str:
@@ -3637,10 +3586,7 @@ class SimpleOrchestrator:
                 )
                 return response.content[0].text
 
-            return await call_llm_with_retries(
-                _run_anthropic,
-                provider="anthropic.governance",
-            )
+            return await asyncio.to_thread(_run_anthropic)
 
         logger.info("No LLM client configured for governance summary")
         return None
@@ -4160,7 +4106,6 @@ class SimpleOrchestrator:
                 "Type",
                 "Description",
                 "SourceURL",
-                "UnderlyingSource",
             ],
             "rows": rows,
         }

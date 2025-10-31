@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from fastmcp import FastMCP
-from utils.llm_retry import call_llm_with_retries_sync
 
 try:  # pragma: no cover - optional dependency
     import anthropic  # type: ignore
@@ -199,15 +198,12 @@ class WmoCliServerV2(RunQueryMixin):
                     f"Dataset capabilities: {self._capability_summary()}\n"
                     f"Question: {query}"
                 )
-                response = call_llm_with_retries_sync(
-                    lambda: self._anthropic_client.messages.create(
-                        model="claude-3-5-haiku-20241022",
-                        max_tokens=128,
-                        temperature=0,
-                        system="Respond with valid JSON only.",
-                        messages=[{"role": "user", "content": prompt}],
-                    ),
-                    provider="anthropic.wmo_router",
+                response = self._anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
                 )
                 text = response.content[0].text.strip()
                 intent = self._parse_support_intent(text)
@@ -227,20 +223,17 @@ class WmoCliServerV2(RunQueryMixin):
                 f"Dataset capabilities: {self._capability_summary()}\n"
                 f"Question: {query}"
             )
-            completion = call_llm_with_retries_sync(
-                lambda: self.openai.chat.completions.create(
-                    model=CHAT_MODEL,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "Respond with JSON containing keys supported (true/false) and reason (string).",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    max_tokens=80,
-                    temperature=0,
-                ),
-                provider="openai.wmo_router",
+            completion = self.openai.chat.completions.create(
+                model=CHAT_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Respond with JSON containing keys supported (true/false) and reason (string).",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=80,
+                temperature=0,
             )
             text = completion.choices[0].message.content.strip()
             intent = self._parse_support_intent(text)
@@ -325,17 +318,14 @@ class WmoCliServerV2(RunQueryMixin):
         return f"[{file_name}{page}] {snippet.text}"
 
     def _call_chat(self, *, system_prompt: str, user_prompt: str, max_tokens: int) -> str:
-        completion = call_llm_with_retries_sync(
-            lambda: self.openai.chat.completions.create(
-                model=CHAT_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.2,
-                max_tokens=max_tokens,
-            ),
-            provider="openai.wmo_answer",
+        completion = self.openai.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=max_tokens,
         )
         return completion.choices[0].message.content.strip()
 

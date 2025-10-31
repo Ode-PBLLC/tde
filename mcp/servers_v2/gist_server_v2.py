@@ -58,8 +58,6 @@ else:  # pragma: no cover - package execution
     from ..servers_v2.base import RunQueryMixin
     from ..support_intent import SupportIntent
 
-from utils.llm_retry import call_llm_with_retries_sync
-
 load_dotenv(ROOT / ".env")
 
 GIST_FILE_PATH = ROOT / "data" / "gist" / "gist.xlsx"
@@ -313,15 +311,12 @@ class GistServerV2(RunQueryMixin):
                     f"Dataset capabilities: {self._capability_summary()}\n"
                     f"Question: {query}"
                 )
-                response = call_llm_with_retries_sync(
-                    lambda: self._anthropic_client.messages.create(
-                        model="claude-3-5-haiku-20241022",
-                        max_tokens=128,
-                        temperature=0,
-                        system="Respond with valid JSON only.",
-                        messages=[{"role": "user", "content": prompt}],
-                    ),
-                    provider="anthropic.gist_router",
+                response = self._anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
                 )
                 text = response.content[0].text.strip()
                 intent = self._parse_support_intent(text)
@@ -342,14 +337,11 @@ class GistServerV2(RunQueryMixin):
                     f"Dataset capabilities: {self._capability_summary()}\n"
                     f"Question: {query}"
                 )
-                response = call_llm_with_retries_sync(
-                    lambda: self._openai_client.responses.create(
-                        model=os.getenv("GIST_ROUTER_MODEL", "gpt-4.1-mini"),
-                        input=prompt,
-                        temperature=0,
-                        max_output_tokens=128,
-                    ),
-                    provider="openai.gist_router",
+                response = self._openai_client.responses.create(
+                    model=os.getenv("GIST_ROUTER_MODEL", "gpt-4.1-mini"),
+                    input=prompt,
+                    temperature=0,
+                    max_output_tokens=128,
                 )
                 text = "".join(part.text for part in response.output if hasattr(part, "text"))
                 intent = self._parse_support_intent(text)

@@ -37,7 +37,6 @@ import numpy as np
 import pandas as pd
 from fastmcp import FastMCP
 from sklearn.metrics.pairwise import cosine_similarity
-from utils.llm_retry import call_llm_with_retries_sync
 
 ROOT = Path(__file__).resolve().parents[2]
 if __package__ in {None, ""} and str(ROOT) not in sys.path:
@@ -1038,15 +1037,12 @@ class LSEServerV2(RunQueryMixin):
                     f"Question: {query}\n\n"
                     "Respond with JSON keys 'supported' (true/false) and 'reason'."
                 )
-                response = call_llm_with_retries_sync(
-                    lambda: self._anthropic_client.messages.create(
-                        model=os.getenv("LSE_ROUTER_MODEL", "claude-3-5-haiku-20241022"),
-                        max_tokens=128,
-                        temperature=0,
-                        system="Respond with strict JSON only.",
-                        messages=[{"role": "user", "content": prompt}],
-                    ),
-                    provider="anthropic.lse_router",
+                response = self._anthropic_client.messages.create(
+                    model=os.getenv("LSE_ROUTER_MODEL", "claude-3-5-haiku-20241022"),
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with strict JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
                 )
                 text = response.content[0].text.strip()
                 intent = self._parse_support_intent(text)
@@ -1089,14 +1085,11 @@ class LSEServerV2(RunQueryMixin):
                     f"Question: {query}\n\n"
                     "Respond with JSON keys 'supported' (true/false) and 'reason'."
                 )
-                response = call_llm_with_retries_sync(
-                    lambda: self._openai_client.responses.create(
-                        model=os.getenv("LSE_ROUTER_MODEL", "gpt-4.1-mini"),
-                        input=prompt,
-                        temperature=0,
-                        max_output_tokens=128,
-                    ),
-                    provider="openai.lse_router",
+                response = self._openai_client.responses.create(
+                    model=os.getenv("LSE_ROUTER_MODEL", "gpt-4.1-mini"),
+                    input=prompt,
+                    temperature=0,
+                    max_output_tokens=128,
                 )
                 text = "".join(
                     part.text for part in response.output if hasattr(part, "text") and part.text
@@ -2581,7 +2574,7 @@ class LSEServerV2(RunQueryMixin):
             else:
                 label_text = "Document"
 
-            title = f"NDC Align"
+            title = f"NDC Align via {label_text}"
             # underlying_source should contain the URL from source fields (primary_source, etc.)
             underlying_source_url = value if is_url(value) else None
             # url remains the static NDC Align dataset URL

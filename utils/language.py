@@ -9,8 +9,6 @@ except Exception:
     # Allow running without the OpenAI client installed; callers should handle fallback.
     _HAS_OPENAI = False
 
-from .llm_retry import call_llm_with_retries
-
 _PORTUGUESE_REQUEST_PHRASES = (
     "brazilian portuguese",
     "brazilian-portuguese",
@@ -76,17 +74,13 @@ async def should_respond_in_portuguese(text: Optional[str]) -> bool:
                 f"{candidate}\n\n"
                 "Respond with either 'pt-br' or 'en' only."
             )
-            response = await call_llm_with_retries(
-                lambda: client.chat.completions.create(
-                    model=model_name,
-                    temperature=0,
-                    messages=[
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
-                ),
-                is_async=True,
-                provider="openai.language-detect",
+            response = await client.chat.completions.create(
+                model=model_name,
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
             )
             content = ""
             if response.choices:

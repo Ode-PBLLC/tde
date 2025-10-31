@@ -39,8 +39,6 @@ except Exception:  # noqa: BLE001 - broad catch to keep optional deps optional
     STRtree = None  # type: ignore
     GEOSPATIAL_AVAILABLE = False
 
-from utils.llm_retry import call_llm_with_retries_sync
-
 from fastmcp import FastMCP
 
 if __package__ in {None, ""}:
@@ -1315,15 +1313,12 @@ class BrazilianAdminServerV2(RunQueryMixin):
         if self._anthropic_client:
             prompt = self._intent_prompt(query)
             try:
-                response = call_llm_with_retries_sync(
-                    lambda: self._anthropic_client.messages.create(
-                        model="claude-3-5-haiku-20241022",
-                        max_tokens=128,
-                        temperature=0,
-                        system="Respond with valid JSON only.",
-                        messages=[{"role": "user", "content": prompt}],
-                    ),
-                    provider="anthropic.brazil_admin_router",
+                response = self._anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
                 )
                 text = response.content[0].text.strip()
                 data = self._parse_json_response(text)

@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from fastmcp import FastMCP
-from utils.llm_retry import call_llm_with_retries_sync
 
 # Optional anthropic client for routing
 try:  # pragma: no cover - optional dependency
@@ -193,15 +192,12 @@ class SpaServerV2(RunQueryMixin):
                     f"Dataset capabilities: {self._capability_summary()}\n"
                     f"Question: {query}"
                 )
-                response = call_llm_with_retries_sync(
-                    lambda: self._anthropic_client.messages.create(
-                        model="claude-3-5-haiku-20241022",
-                        max_tokens=128,
-                        temperature=0,
-                        system="Respond with valid JSON only.",
-                        messages=[{"role": "user", "content": prompt}],
-                    ),
-                    provider="anthropic.spa_router",
+                response = self._anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=128,
+                    temperature=0,
+                    system="Respond with valid JSON only.",
+                    messages=[{"role": "user", "content": prompt}],
                 )
                 text = response.content[0].text.strip()
                 intent = self._parse_support_intent(text)
@@ -221,20 +217,17 @@ class SpaServerV2(RunQueryMixin):
                 f"Dataset capabilities: {self._capability_summary()}\n"
                 f"Question: {query}"
             )
-            completion = call_llm_with_retries_sync(
-                lambda: self.openai.chat.completions.create(
-                    model=DEFAULT_CHAT_MODEL,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "Respond with JSON containing keys supported (true/false) and reason (string).",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    max_tokens=100,
-                    temperature=0,
-                ),
-                provider="openai.spa_router",
+            completion = self.openai.chat.completions.create(
+                model=DEFAULT_CHAT_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Respond with JSON containing keys supported (true/false) and reason (string).",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=100,
+                temperature=0,
             )
             text = completion.choices[0].message.content.strip()
             intent = self._parse_support_intent(text)
@@ -319,17 +312,14 @@ class SpaServerV2(RunQueryMixin):
         return f"[{file_name}{page}] {snippet.text}"
 
     def _call_chat_model(self, *, system_prompt: str, user_prompt: str, max_tokens: int = 800) -> str:
-        response = call_llm_with_retries_sync(
-            lambda: self.openai.chat.completions.create(
-                model=DEFAULT_CHAT_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.2,
-                max_tokens=max_tokens,
-            ),
-            provider="openai.spa_answer",
+        response = self.openai.chat.completions.create(
+            model=DEFAULT_CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=max_tokens,
         )
         return response.choices[0].message.content.strip()
 
