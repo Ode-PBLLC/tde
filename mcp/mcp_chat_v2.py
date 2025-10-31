@@ -35,11 +35,11 @@ from .url_utils import ensure_absolute_url
 # Sonnet Haiku
 # claude-3-5-haiku-20241022
 
-FACT_ORDERER_PROVIDER = "openai"  # options: anthropic, openai, auto
+FACT_ORDERER_PROVIDER = "anthropic"  # options: anthropic, openai, auto
 FACT_ORDERER_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 FACT_ORDERER_OPENAI_MODEL = "gpt-5.0"
 
-NARRATIVE_SYNTH_PROVIDER = "openai"  # options: anthropic, openai, auto
+NARRATIVE_SYNTH_PROVIDER = "anthropic"  # options: anthropic, openai, auto
 NARRATIVE_SYNTH_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 NARRATIVE_SYNTH_OPENAI_MODEL = "gpt-4.1-2025-04-14"
 
@@ -48,7 +48,7 @@ QUERY_ENRICHMENT_ENABLED = True  # options: True, False
 QUERY_ENRICHMENT_MODEL = "claude-3-5-haiku-20241022"
 NARRATIVE_SYNTH_MAX_ATTEMPTS = 3
 NARRATIVE_SYNTH_TIMEOUT_SECONDS = 180
-NARRATIVE_SYNTH_BASE_RETRY_DELAY = 0.5
+NARRATIVE_SYNTH_BASE_RETRY_DELAY = 2
 
 # Governance summary configuration
 ENABLE_GOVERNANCE_SUMMARY = False
@@ -3263,12 +3263,9 @@ class SimpleOrchestrator:
 
         rendered: List[str] = []
         for paragraph in paragraphs:
-            print(paragraph)
             paragraph = expand_grouped_refs(paragraph)
             text = pattern.sub(replace_marker, paragraph)
-            print(text)
             text = collapse_repeated_refs(text)
-            print(text)
             text = reorder_citation_groups(text)
             rendered.append(text)
 
