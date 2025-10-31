@@ -1101,10 +1101,10 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 "tool": "GetHeatQuintilesMap",
                 "title": dataset_info.get("title") or dataset_entry.get("title") or "Extreme Heat Indices",
                 "source_type": "Dataset",
-                "description": dataset_info.get("citation")
-                or dataset_info.get("description")
-                or dataset_entry.get("citation")
-                or dataset_entry.get("description"),
+                "description": dataset_entry.get("citation")
+                or dataset_entry.get("description")
+                or dataset_info.get("citation")
+                or dataset_info.get("description"),
                 "metadata": {
                     "dataset_id": DATASET_ID,
                     "source": source_to_use,

@@ -128,6 +128,14 @@
       "last_updated": "9/15/2025",
       "citation": "PlanetSapling. (2025). Extreme Heat Geospatial Layer (derived from ERA-5) [Private dataset]. PlanetSapling. Derived from Hersbach, H., et al. (2017–present). ERA-5 reanalysis. Copernicus Climate Data Store. https://doi.org/10.24381/cds.adbb2d47"
     },
+            {
+      "id": "clay",
+      "title": "Clay - Earth Observation Foundation Model",
+      "Organization": "Clay",
+      "description": "Locations similar to current solar assets based on Earth Observation data processed through Clay's Foundation Model.",
+      "last_updated": "10/27/2025",
+      "citation": "Clay. (2025). Clay Earth Observation Foundation Model (Version 1.5) [Foundation model]. Radiant Earth Foundation (Fiscal Sponsor). https://madewithclay.org/"
+    },
     { 
 
     }
