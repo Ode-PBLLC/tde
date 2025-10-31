@@ -2577,6 +2577,19 @@ class SimpleOrchestrator:
                 }
             )
 
+        async def emit_logos(server_name: str) -> None:
+            """Emit a logos event for the given server if it has associated logos."""
+            if not progress_callback:
+                return
+            logos = _get_server_logos(server_name)
+            if logos:
+                await progress_callback(
+                    {
+                        "type": "logos",
+                        "data": {"message": logos},
+                    }
+                )
+
         previous_user_message: Optional[str] = None
         previous_assistant_message: Optional[str] = None
         previous_response_modules: Optional[List[Dict[str, Any]]] = None
@@ -2703,9 +2716,25 @@ class SimpleOrchestrator:
             "extreme_heat": "Extreme Heat Index"
         }
 
+        # Map server names to logo identifiers for the frontend
+        # Format: server_name -> comma-separated list of logo identifiers
+        server_logos = {
+            "cpr": "radar",
+            "solar": "transition digital",
+            "gist": "gist",
+            "deforestation": "prodes",
+            "lse": "ndc",
+            "wmo_cli": "wmo, ipcc",  # Multiple logos for this server
+            "ecmwf": "ecmwf",
+        }
+
         def _pretty_server_name(server_name: str) -> str:
             """Return a human-friendly server name for progress messages."""
             return pretty_print.get(server_name, server_name)
+
+        def _get_server_logos(server_name: str) -> Optional[str]:
+            """Return comma-separated logo identifiers for a server, or None if no logos."""
+            return server_logos.get(server_name)
 
         async def router_progress(
             server_name: str, stage: str, payload: Mapping[str, Any]
@@ -2725,20 +2754,24 @@ class SimpleOrchestrator:
                     message = (
                         f"🚫 {_pretty_server_name(server_name)} does not seem relevant."
                     )
-                
+
                 await emit(message, "routing")
+                # Emit logo event after the organization mention
+                await emit_logos(server_name)
             elif stage == "query_support_error":
                 error = payload.get("error")
                 await emit(
                     f"⚠️ {_pretty_server_name(server_name)}: invalid query_support payload ({error})",
                     "routing",
                 )
+                await emit_logos(server_name)
             elif stage == "query_support_failure":
                 error = payload.get("error")
                 await emit(
                     f"❌ {_pretty_server_name(server_name)}: query_support failed ({error})",
                     "routing",
                 )
+                await emit_logos(server_name)
 
         # await emit("🧭 Confirming the relevance of servers...", "routing")
         await emit(
@@ -2761,24 +2794,29 @@ class SimpleOrchestrator:
                     f"and {len(response.artifacts)} visuals"
                 )
                 await emit(message, "execution")
+                # Emit logo event after the organization mention
+                await emit_logos(server_name)
             elif stage == "run_query_error":
                 error = payload.get("error")
                 await emit(
                     f"⚠️ {_pretty_server_name(server_name)}: invalid run_query payload ({error})",
                     "execution",
                 )
+                await emit_logos(server_name)
             elif stage == "run_query_failure":
                 error = payload.get("error")
                 await emit(
                     f"❌ {_pretty_server_name(server_name)}: run_query failed ({error})",
                     "execution",
                 )
+                await emit_logos(server_name)
             elif stage == "run_query_timeout":
                 error = payload.get("error")
                 await emit(
                     f"⏱️ {_pretty_server_name(server_name)}: run_query timed out ({error})",
                     "execution",
                 )
+                await emit_logos(server_name)
 
         # await emit("📥 Gathering passages and data from servers...", "execution")
         await emit(

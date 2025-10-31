@@ -2575,8 +2575,12 @@ class LSEServerV2(RunQueryMixin):
                 label_text = "Document"
 
             title = f"NDC Align via {label_text}"
-            url = value if is_url(value) else None
-            description = dataset_citation_text or (value if not url else None)
+            # underlying_source should contain the URL from source fields (primary_source, etc.)
+            underlying_source_url = value if is_url(value) else None
+            # url remains the static NDC Align dataset URL
+            dataset_url = DATASET_INFO.get("source")
+            # description shows non-URL source text or the dataset citation
+            description = dataset_citation_text or (value if not underlying_source_url else None)
             metadata = {
                 "module": sheet.module,
                 "group": sheet.group,
@@ -2594,7 +2598,8 @@ class LSEServerV2(RunQueryMixin):
                 title=title,
                 source_type=source_type or "Source",
                 description=description,
-                url=url,
+                url=dataset_url,
+                underlying_source=underlying_source_url,
                 metadata=metadata,
             )
             citations.append(citation)

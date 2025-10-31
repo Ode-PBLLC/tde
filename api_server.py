@@ -1390,6 +1390,14 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                     yield f"data: {json.dumps(thinking_payload, ensure_ascii=False)}\n\n"
                     continue
 
+                if event_type == "logos":
+                    data = event.get("data")
+                    if data is None or not isinstance(data, dict):
+                        data = {"message": event.get("message", "")}
+                    logos_payload = {"type": "logos", "data": data}
+                    yield f"data: {json.dumps(logos_payload, ensure_ascii=False)}\n\n"
+                    continue
+
                 if event_type == "content":
                     data = event.get("data")
                     if data is None or not isinstance(data, dict):
