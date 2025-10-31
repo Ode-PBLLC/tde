@@ -1616,6 +1616,7 @@ class CitationRegistry:
                     "source_type": citation.source_type,
                     "description": citation.description,
                     "url": citation.url,
+                    "underlying_source": getattr(citation, "underlying_source", None),
                 }
                 for number, citation in self._lookup.items()
             }

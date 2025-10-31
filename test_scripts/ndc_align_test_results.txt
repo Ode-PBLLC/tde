@@ -1,0 +1,130 @@
+================================================================================
+NDC ALIGN (LSE SERVER) DATASET TEST RESULTS
+================================================================================
+
+SUMMARY
+--------------------------------------------------------------------------------
+Total Tests: 12
+✅ PASSED:   0 (0.0%)
+⚠️  PARTIAL:  0 (0.0%)
+❌ FAILED:   0 (0.0%)
+🚫 NO DATA:  12 (100.0%)
+
+⚠️  CRITICAL: Over 50% of queries did not use LSE data!
+This suggests the LSE server is not being invoked properly.
+
+DETAILED RESULTS BY DATASET
+--------------------------------------------------------------------------------
+
+
+NDC Overview & Domestic Comparison
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Question 1.1: NO_DATA
+Query: What is Brazil's long-term climate neutrality target according to its NDC?
+Found: 0/5 components
+  ✗ Missing: climate neutrality by 2050, all greenhouse gases, Resolution 3, CIM, Interministerial Committee
+  Notes: LSE server not invoked
+  Response: 
+
+Question 1.2: NO_DATA
+Query: What are Brazil's interim emissions reduction targets for 2035?
+Found: 0/5 components
+  ✗ Missing: 59-67%, 2005 levels, 2035, CO2, CH4
+  Notes: LSE server not invoked
+  Response: 
+
+Question 1.3: NO_DATA
+Query: Does Brazil have a formal emissions reduction target for 2030?
+Found: 0/5 components
+  ✗ Missing: no formal, 2030, under development, Plano Clima, Resolution CIM
+  Notes: LSE server not invoked
+  Response: 
+
+Institutions - Coordination
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Question 2.1: NO_DATA
+Query: What is Brazil's main institutional body for coordinating climate policy?
+Found: 0/4 components
+  ✗ Missing: Interministerial Committee, CIM, climate change, coordinate
+  Notes: LSE server not invoked
+  Response: 
+
+Plans & Policies - Cross-Cutting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Question 3.1: NO_DATA
+Query: What is Brazil's main cross-cutting climate policy framework?
+Found: 0/4 components
+  ✗ Missing: National Policy on Climate Change, PNMC, Law 12.187, 2009
+  Notes: LSE server not invoked
+  Response: 
+
+Question 3.2: NO_DATA
+Query: What is the Plano Clima and what does it include?
+Found: 0/5 components
+  ✗ Missing: Plano Clima, National Plan, Mitigation, Adaptation, 2030
+  Notes: LSE server not invoked
+  Response: 
+
+Plans & Policies - Sectoral Mitigation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Question 5.1: NO_DATA
+Query: What are Brazil's policies for reducing emissions from deforestation?
+Found: 0/4 components
+  ✗ Missing: deforestation, forest, Amazon, emission
+  Notes: LSE server not invoked
+  Response: 
+
+Subnational - São Paulo
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Question 6.1: NO_DATA
+Query: Does São Paulo state have its own climate change law?
+Found: 0/5 components
+  ✗ Missing: São Paulo, State Policy, PEMC, Law 13.798, 2009
+  Notes: LSE server not invoked
+  Response: 
+
+Question 6.3: NO_DATA
+Query: How does São Paulo state coordinate its climate policies?
+Found: 0/4 components
+  ✗ Missing: São Paulo, state, coordinate, climate
+  Notes: LSE server not invoked
+  Response: 
+
+Subnational - Amazonas
+~~~~~~~~~~~~~~~~~~~~~~
+
+Question 7.1: NO_DATA
+Query: What climate policies does Amazonas state have?
+Found: 0/4 components
+  ✗ Missing: Amazonas, state, climate, policy
+  Notes: LSE server not invoked
+  Response: 
+
+Institutions - Knowledge & Evidence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Question 9.3: NO_DATA
+Query: How does Brazil monitor deforestation?
+Found: 0/4 components
+  ✗ Missing: PRODES, INPE, satellite, deforestation
+  Notes: LSE server not invoked
+  Response: 
+
+TPI Transition Pathways
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Question 12.1: NO_DATA
+Query: What are the emissions pathway scenarios for Brazil according to TPI data?
+Found: 0/4 components
+  ✗ Missing: pathway, emissions, scenario, TPI
+  Notes: LSE server not invoked
+  Response: 
+
+================================================================================
+END OF REPORT
+================================================================================
