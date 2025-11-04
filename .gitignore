@@ -41,3 +41,4 @@ conversation_logs.csv
 test_output*.txt
 debug_*.py
 *_debug.py
+test_scripts/
