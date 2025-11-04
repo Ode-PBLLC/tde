@@ -2574,7 +2574,7 @@ class LSEServerV2(RunQueryMixin):
             else:
                 label_text = "Document"
 
-            title = f"NDC Align via {label_text}"
+            title = f"NDC Align"
             # underlying_source should contain the URL from source fields (primary_source, etc.)
             underlying_source_url = value if is_url(value) else None
             # url remains the static NDC Align dataset URL

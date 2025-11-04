@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import datetime
+import hashlib
 import json
 import inspect
 import logging
@@ -35,11 +36,11 @@ from .url_utils import ensure_absolute_url
 # Sonnet Haiku
 # claude-3-5-haiku-20241022
 
-FACT_ORDERER_PROVIDER = "openai"  # options: anthropic, openai, auto
+FACT_ORDERER_PROVIDER = "anthropic"  # options: anthropic, openai, auto
 FACT_ORDERER_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 FACT_ORDERER_OPENAI_MODEL = "gpt-5.0"
 
-NARRATIVE_SYNTH_PROVIDER = "openai"  # options: anthropic, openai, auto
+NARRATIVE_SYNTH_PROVIDER = "anthropic"  # options: anthropic, openai, auto
 NARRATIVE_SYNTH_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 NARRATIVE_SYNTH_OPENAI_MODEL = "gpt-4.1-2025-04-14"
 
@@ -48,7 +49,7 @@ QUERY_ENRICHMENT_ENABLED = True  # options: True, False
 QUERY_ENRICHMENT_MODEL = "claude-3-5-haiku-20241022"
 NARRATIVE_SYNTH_MAX_ATTEMPTS = 3
 NARRATIVE_SYNTH_TIMEOUT_SECONDS = 180
-NARRATIVE_SYNTH_BASE_RETRY_DELAY = 0.5
+NARRATIVE_SYNTH_BASE_RETRY_DELAY = 2
 
 # Governance summary configuration
 ENABLE_GOVERNANCE_SUMMARY = False
@@ -193,31 +194,31 @@ class QueryEnricher:
         
         enrichment_prompt = """You are a query enricher for an environmental and climate data system in Brazil. If the user does not specify the area, assume they are discussing Brazil and the surrounding regions.
 
-Your job is to expand the query with relevant domain context, synonyms, and technical terms to improve search and retrieval.
+        Your job is to expand the query with relevant domain context, synonyms, and technical terms to improve search and retrieval.
 
-Add relevant terms from these domains when applicable:
-- Climate change, impacts, and policies
-- Environmental data and sustainability  
-- Energy systems, renewable energy, and solar facilities
-- Corporate environmental performance and ESG
-- Water resources, biodiversity, and ecosystems
-- Environmental regulations, NDCs, and climate governance
-- Physical climate risks (floods, droughts, heat stress)
-- GHG emissions and carbon footprint
-- Environmental justice and climate adaptation
-- Deforestation and extreme heat
+        Add relevant terms from these domains when applicable:
+        - Climate change, impacts, and policies
+        - Environmental data and sustainability  
+        - Energy systems, renewable energy, and solar facilities
+        - Corporate environmental performance and ESG
+        - Water resources, biodiversity, and ecosystems
+        - Environmental regulations, NDCs, and climate governance
+        - Physical climate risks (floods, droughts, heat stress)
+        - GHG emissions and carbon footprint
+        - Environmental justice and climate adaptation
+        - Deforestation and extreme heat
 
-Return your response in this exact format:
-QUERY: [enhanced query with additional relevant terms and context]
-DOMAINS: [comma-separated list of relevant domains]
-TERMS: [comma-separated list of additional technical terms, synonyms, acronyms]
+        Return your response in this exact format:
+        QUERY: [enhanced query with additional relevant terms and context]
+        DOMAINS: [comma-separated list of relevant domains]
+        TERMS: [comma-separated list of additional technical terms, synonyms, acronyms]
 
-Keep the enhanced query focused and comprehensive."""
+        Keep the enhanced query focused and comprehensive."""
 
         try:
             response = self._anthropic_client.messages.create(
                 model=QUERY_ENRICHMENT_MODEL,
-                max_tokens=300,
+                max_tokens=500,
                 temperature=0.2,
                 system=enrichment_prompt,
                 messages=[{"role": "user", "content": query}]
@@ -429,6 +430,11 @@ async def get_v2_client() -> MultiServerClient:
                     print(f"Warning: Failed to connect to gist server: {e}")
 
                 try:
+                    await client.connect_to_server("solar_clay", os.path.join(servers_v2_dir, "solar_clay_server_v2.py"))
+                except Exception as e:
+                    print(f"Warning: Failed to connect to solar_clay server: {e}")
+
+                try:
                     await client.connect_to_server("spa", os.path.join(servers_v2_dir, "spa_server_v2.py"))
                 except Exception as e:
                     print(f"Warning: Failed to connect to spa server: {e}")
@@ -526,6 +532,16 @@ LLM_ROUTING_CONFIG: Dict[str, Dict[str, Any]] = {
             "region coverage, capacity (MW), construction windows, and facility-level "
             "metadata. Use for questions about solar plants, renewable infrastructure, "
             "facility counts, capacity trends, or geographic distribution of solar assets."
+        ),
+        "always_include": False,
+    },
+    "solar_clay": {
+        "detailed": (
+            "Top potential sites for solar farm installation in Brazil based on Clay "
+            "embeddings and PVGIS yield data. Provides geometry-level data including "
+            "specific_yield_kwh_per_kwp_yr, location, state assignments, and area calculations. "
+            "Use for questions about optimal solar farm locations, solar potential by state, "
+            "or geographic analysis of solar installation opportunities."
         ),
         "always_include": False,
     },
@@ -1250,7 +1266,10 @@ class NarrativeSynthesizer:
 
         prompt = """CONTEXT:
             - Summarize the evidence in this order: {order_instruction}. Focus on Brazil unless the user explicitly requests comparisons.
-            - This is predominantly a tool for policy makers and analysts. Heavily favor incorporating facts about governance, sourced from the LSE - NDC Align dataset in your response if available.
+            - This is predominantly a tool for policy makers and analysts. Heavily favor incorporating facts about governance, sourced from the LSE - NDC Align dataset and the Climate Policy Radar Passage Library (CPR) in your response if available.
+            - Some evidence entries include a `dataset_last_updated` field. Treat it as optional context—reference it when it adds clarity or the user asks about data recency; otherwise feel free to omit it.
+            - The Science Panel for the Amazon is meant to serve as helpful context, but do not prioritize it over policy specific datasets.
+            - Data from CPR will come with a document type tag (e.g., [Law], [Corporate Disclosure]). Use these tags to inform the tone and framing of your summary. Please mention document type in your narrative when relevant.
 
             TONE & OBJECTIVITY:
             - Remain objective; avoid prescriptions or “best policy” language. Use established facts confidently and flag assumptions or gaps.
@@ -1602,6 +1621,7 @@ class CitationRegistry:
                     citation.source_type,
                     citation.description or "",
                     citation.url or "",
+                    getattr(citation, "underlying_source", None) or "",
                 ]
             )
         return rows
@@ -1616,6 +1636,7 @@ class CitationRegistry:
                     "source_type": citation.source_type,
                     "description": citation.description,
                     "url": citation.url,
+                    "underlying_source": getattr(citation, "underlying_source", None),
                 }
                 for number, citation in self._lookup.items()
             }
@@ -2284,7 +2305,9 @@ class SimpleOrchestrator:
         response = validate_run_query_response(raw)
         return response
 
-    def _format_fact_thinking_message(self, fact: FactPayload) -> Optional[str]:
+    def _format_fact_thinking_message(
+        self, fact: FactPayload, language: Optional[str] = None
+    ) -> Optional[str]:
         """Return a truncated thinking message for textual facts."""
 
         text = (fact.text or "").strip()
@@ -2295,12 +2318,16 @@ class SimpleOrchestrator:
         if len(text) > max_chars:
             text = text[: max_chars - 3].rstrip() + "..."
 
+        is_portuguese = bool(language and language.lower().startswith("pt"))
+        if is_portuguese:
+            return f'🔍 Considerando a seguinte informação "{text}"'
         return f'🔍 Considering the following information "{text}"'
 
     async def _emit_fact_thinking_events(
         self,
         responses: List[RunQueryResponse],
         emit_callback: Optional[Callable[[str, str], Awaitable[None]]],
+        language: Optional[str] = None,
     ) -> None:
         if not emit_callback or not responses:
             return
@@ -2318,7 +2345,7 @@ class SimpleOrchestrator:
                 if self._fact_message_counts[server_name] >= self._max_fact_messages_per_server:
                     continue
 
-                message = self._format_fact_thinking_message(fact)
+                message = self._format_fact_thinking_message(fact, language)
                 if not message:
                     continue
 
@@ -2632,22 +2659,52 @@ class SimpleOrchestrator:
         # Store original query for final response
         original_query = query
         processing_query = query
-        
+
+        language_code = (target_language or "").lower()
+        use_portuguese = language_code.startswith("pt")
+
+        def _select_lang(english: str, portuguese: str) -> str:
+            return portuguese if use_portuguese else english
+
         # Enrich query for better internal processing (routing, fact extraction)
         if self._enable_enrichment:
             try:
                 enrichment_data = self._query_enricher.enrich_query_with_llm(query)
                 if "error" not in enrichment_data:
                     enriched_query = enrichment_data.get("enriched_query", query)
-                    # if enriched_query and enriched_query.strip() and enriched_query != query:
-                    #     processing_query = enriched_query
-                    #     await emit("🔍 Query enriched for better processing", "initialization")
-                    # else:
-                    #     await emit("🔍 Query enrichment returned no changes", "initialization")
+                    if enriched_query and enriched_query.strip() and enriched_query != query:
+                        processing_query = enriched_query
+                        await emit(
+                            _select_lang(
+                                "🔍 Query enriched for better processing",
+                                "🔍 Consulta enriquecida para melhor processamento",
+                            ),
+                            "initialization",
+                        )
+                    else:
+                        await emit(
+                            _select_lang(
+                                "🔍 Query enrichment returned no changes",
+                                "🔍 Enriquecimento da consulta não retornou mudanças",
+                            ),
+                            "initialization",
+                        )
                 else:
-                    await emit("⚠️ Query enrichment failed, using original query", "initialization")
+                    await emit(
+                        _select_lang(
+                            "⚠️ Query enrichment failed, using original query",
+                            "⚠️ Falha ao enriquecer a consulta; usando a consulta original",
+                        ),
+                        "initialization",
+                    )
             except Exception as exc:
-                await emit(f"⚠️ Query enrichment error: {exc}, using original query", "initialization")
+                await emit(
+                    _select_lang(
+                        f"⚠️ Query enrichment error: {exc}, using original query",
+                        f"⚠️ Erro ao enriquecer a consulta: {exc}; usando a consulta original",
+                    ),
+                    "initialization",
+                )
 
         language = detect_language(processing_query)
         context = QueryContext(
@@ -2660,7 +2717,13 @@ class SimpleOrchestrator:
             previous_response_modules=previous_response_modules,
         )
 
-        await emit("🔍 Considering which sources are relevant to your query...", "initialization")
+        await emit(
+            _select_lang(
+                "🔍 Considering which sources are relevant to your query...",
+                "🔍 Avaliando quais fontes são relevantes para sua consulta...",
+            ),
+            "initialization",
+        )
 
         scope_level = "IN_SCOPE"
         if self._llm_classifier:
@@ -2673,7 +2736,10 @@ class SimpleOrchestrator:
 
         if scope_level == "OUT_OF_SCOPE":
             await emit(
-                "🙏 This question looks outside the supported domains; offering guidance instead.",
+                _select_lang(
+                    "🙏 This question looks outside the supported domains; offering guidance instead.",
+                    "🙏 Esta pergunta parece estar fora dos domínios atendidos; vou oferecer uma orientação em vez disso.",
+                ),
                 "initialization",
             )
             response = await self._build_out_of_scope_response(
@@ -2689,7 +2755,10 @@ class SimpleOrchestrator:
 
         if scope_level == "NEAR_SCOPE":
             await emit(
-                "ℹ️ Sharing a brief high-level answer, then steering back to core domains",
+                _select_lang(
+                    "ℹ️ Sharing a brief high-level answer, then steering back to core domains",
+                    "ℹ️ Fornecendo uma resposta breve e de alto nível antes de voltarmos aos domínios centrais.",
+                ),
                 "initialization",
             )
             response = await self._build_near_scope_response(
@@ -2706,13 +2775,14 @@ class SimpleOrchestrator:
         pretty_print = {
             "cpr": "Climate Policy Radar Passage Library",
             "solar": "TZ-SAM Database",
+            "solar_clay": "Solar Site Candidates from Clay",
             "brazil_admin": "Brazil Administrative Boundaries and Metadata",
             "gist": "GIST Impact",
-            "spa": "Science Panel for the Amazon",
+            "spa": "Science Panel for the Amazon (SPA)",
             "deforestation": "PRODES",
             "lse": "NDCAlign",
             "wmo_cli": "Scientific Documents for Climate (WMO and IPCC)",
-            "meta": "Project Specific Knowledge",
+            "meta": "Information About this System",
             "extreme_heat": "Extreme Heat Index"
         }
 
@@ -2725,7 +2795,9 @@ class SimpleOrchestrator:
             "deforestation": "prodes",
             "lse": "ndc",
             "wmo_cli": "wmo, ipcc",  # Multiple logos for this server
-            "ecmwf": "ecmwf",
+            "ecmwf": "planet-sappling",
+            "spa": "spa",
+            "solar_clay": "clay"
         }
 
         def _pretty_server_name(server_name: str) -> str:
@@ -2747,12 +2819,14 @@ class SimpleOrchestrator:
                 status = "accepted" if support.supported else "rejected"
 
                 if status == "accepted":
-                    message = (
-                        f"📡 {_pretty_server_name(server_name)} seems helpful here."
+                    message = _select_lang(
+                        f"📡 {_pretty_server_name(server_name)} seems helpful here.",
+                        f"📡 {_pretty_server_name(server_name)} parece útil para esta consulta.",
                     )
                 else:
-                    message = (
-                        f"🚫 {_pretty_server_name(server_name)} does not seem relevant."
+                    message = _select_lang(
+                        f"🚫 {_pretty_server_name(server_name)} does not seem relevant.",
+                        f"🚫 {_pretty_server_name(server_name)} não parece relevante.",
                     )
 
                 await emit(message, "routing")
@@ -2761,22 +2835,31 @@ class SimpleOrchestrator:
             elif stage == "query_support_error":
                 error = payload.get("error")
                 await emit(
-                    f"⚠️ {_pretty_server_name(server_name)}: invalid query_support payload ({error})",
+                    _select_lang(
+                        f"⚠️ {_pretty_server_name(server_name)}: invalid query_support payload ({error})",
+                        f"⚠️ {_pretty_server_name(server_name)}: payload inválido de query_support ({error})",
+                    ),
                     "routing",
                 )
                 await emit_logos(server_name)
             elif stage == "query_support_failure":
                 error = payload.get("error")
                 await emit(
-                    f"❌ {_pretty_server_name(server_name)}: query_support failed ({error})",
+                    _select_lang(
+                        f"❌ {_pretty_server_name(server_name)}: query_support failed ({error})",
+                        f"❌ {_pretty_server_name(server_name)}: query_support falhou ({error})",
+                    ),
                     "routing",
                 )
                 await emit_logos(server_name)
 
         # await emit("🧭 Confirming the relevance of servers...", "routing")
         await emit(
-            "**Step 1: Selecting relevant datasets**\n\nDetermining which curated datasets are most relevant to your question. We are in the constant process of expanding the range and depth of datasets across regions and topics, ensuring comprehensive coverage and interoperability.",
-            "routing"
+            _select_lang(
+                "**Step 1: Selecting relevant datasets**\n\nDetermining which curated datasets are most relevant to your question. We are in the constant process of expanding the range and depth of datasets across regions and topics, ensuring comprehensive coverage and interoperability.",
+                "**Etapa 1: Selecionando conjuntos de dados relevantes**\n\nDeterminando quais conjuntos de dados curados são mais relevantes para sua pergunta. Estamos em um processo contínuo de ampliar a variedade e a profundidade dos conjuntos de dados em diferentes regiões e temas, garantindo cobertura abrangente e interoperabilidade.",
+            ),
+            "routing",
         )
         supports = await self._router.route(query, context, progress_callback=router_progress)
         if not supports:
@@ -2789,9 +2872,11 @@ class SimpleOrchestrator:
                 return
             if stage == "run_query":
                 response: RunQueryResponse = payload["payload"]  # type: ignore[index]
-                message = (
+                message = _select_lang(
                     f"✅ {_pretty_server_name(server_name)} server shared {len(response.facts)} passages "
-                    f"and {len(response.artifacts)} visuals"
+                    f"and {len(response.artifacts)} visuals",
+                    f"✅ O servidor {_pretty_server_name(server_name)} compartilhou {len(response.facts)} trechos "
+                    f"e {len(response.artifacts)} elementos visuais",
                 )
                 await emit(message, "execution")
                 # Emit logo event after the organization mention
@@ -2799,29 +2884,41 @@ class SimpleOrchestrator:
             elif stage == "run_query_error":
                 error = payload.get("error")
                 await emit(
-                    f"⚠️ {_pretty_server_name(server_name)}: invalid run_query payload ({error})",
+                    _select_lang(
+                        f"⚠️ {_pretty_server_name(server_name)}: invalid run_query payload ({error})",
+                        f"⚠️ {_pretty_server_name(server_name)}: payload inválido de run_query ({error})",
+                    ),
                     "execution",
                 )
                 await emit_logos(server_name)
             elif stage == "run_query_failure":
                 error = payload.get("error")
                 await emit(
-                    f"❌ {_pretty_server_name(server_name)}: run_query failed ({error})",
+                    _select_lang(
+                        f"❌ {_pretty_server_name(server_name)}: run_query failed ({error})",
+                        f"❌ {_pretty_server_name(server_name)}: run_query falhou ({error})",
+                    ),
                     "execution",
                 )
                 await emit_logos(server_name)
             elif stage == "run_query_timeout":
                 error = payload.get("error")
                 await emit(
-                    f"⏱️ {_pretty_server_name(server_name)}: run_query timed out ({error})",
+                    _select_lang(
+                        f"⏱️ {_pretty_server_name(server_name)}: run_query timed out ({error})",
+                        f"⏱️ {_pretty_server_name(server_name)}: run_query expirou ({error})",
+                    ),
                     "execution",
                 )
                 await emit_logos(server_name)
 
         # await emit("📥 Gathering passages and data from servers...", "execution")
         await emit(
-            "**Step 2: Retrieving source data**\n\nBringing together evidence from the selected datasets, verifying accuracy, and preparing to synthesise your answer.",
-            "execution"
+            _select_lang(
+                "**Step 2: Retrieving source data**\n\nBringing together evidence from the selected datasets, verifying accuracy, and preparing to synthesise your answer.",
+                "**Etapa 2: Recuperando dados de origem**\n\nReunindo evidências dos conjuntos de dados selecionados, verificando a precisão e preparando-nos para sintetizar sua resposta.",
+            ),
+            "execution",
         )
         responses = await self._execute_with_planning(
             supports, context, progress_callback=executor_progress
@@ -2830,12 +2927,15 @@ class SimpleOrchestrator:
         if not responses:
             raise ContractValidationError("No server produced a response")
 
-        await self._emit_fact_thinking_events(responses, emit)
+        await self._emit_fact_thinking_events(responses, emit, target_language)
 
         # await emit("🧠 Pulling everything together...", "synthesis")
         await emit(
-            "**Step 3: Synthesising the answer**\n\nCombining verified evidence into a coherent, cited response.",
-            "synthesis"
+            _select_lang(
+                "**Step 3: Synthesising the answer**\n\nCombining verified evidence into a coherent, cited response.",
+                "**Etapa 3: Sintetizando a resposta**\n\nCombinando evidências verificadas em uma resposta coerente e citada.",
+            ),
+            "synthesis",
         )
 
         evidences, evidence_map = self._collect_evidences(responses)
@@ -2870,7 +2970,13 @@ class SimpleOrchestrator:
                     await asyncio.sleep(15)
                     if synthesis_done.is_set():
                         break
-                    await emit("⏳ Still synthesizing…", "synthesis")
+                    await emit(
+                        _select_lang(
+                            "⏳ Still synthesizing…",
+                            "⏳ Ainda sintetizando…",
+                        ),
+                        "synthesis",
+                    )
             except asyncio.CancelledError:
                 raise
 
@@ -2920,6 +3026,7 @@ class SimpleOrchestrator:
                 citation_registry=citation_registry,
                 responses=responses,
                 context=context,
+                target_language=target_language,
                 emit=emit,
             )
         else:
@@ -2984,7 +3091,12 @@ class SimpleOrchestrator:
         validate_final_response(final_payload)
 
         await emit(
-            "✅ All set—here's what we found", "synthesis", event_type="thinking_complete"
+            _select_lang(
+                "✅ All set—here's what we found",
+                "✅ Tudo pronto — veja o que encontramos",
+            ),
+            "synthesis",
+            event_type="thinking_complete",
         )
 
         return final_payload
@@ -3022,7 +3134,7 @@ class SimpleOrchestrator:
         citation_module = {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL", "UnderlyingSource"],
             "rows": [],
             "allow_empty": True,
         }
@@ -3083,7 +3195,7 @@ class SimpleOrchestrator:
         citation_module = {
             "type": "numbered_citation_table",
             "heading": "References",
-            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"],
+            "columns": ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL", "UnderlyingSource"],
             "rows": [],
             "allow_empty": True,
         }
@@ -3261,12 +3373,9 @@ class SimpleOrchestrator:
 
         rendered: List[str] = []
         for paragraph in paragraphs:
-            print(paragraph)
             paragraph = expand_grouped_refs(paragraph)
             text = pattern.sub(replace_marker, paragraph)
-            print(text)
             text = collapse_repeated_refs(text)
-            print(text)
             text = reorder_citation_groups(text)
             rendered.append(text)
 
@@ -3406,14 +3515,20 @@ class SimpleOrchestrator:
         citation_registry: CitationRegistry,
         responses: List[RunQueryResponse],
         context: QueryContext,
+        target_language: Optional[str],
         emit: Optional[Callable[[str, str], Awaitable[None]]],
     ) -> Optional[Dict[str, Any]]:
         if not _should_inject_governance(scope_level, bool(narrative_paragraphs)):
             return None
 
+        use_portuguese = bool(target_language and target_language.lower().startswith("pt"))
+
         if emit is not None:
             try:
-                await emit("Considering governance implications...", "synthesis")
+                await emit(
+                    "Considerando implicações de governança..." if use_portuguese else "Considering governance implications...",
+                    "synthesis",
+                )
             except Exception:  # pragma: no cover - thinking is best effort
                 pass
 
@@ -3601,6 +3716,58 @@ class SimpleOrchestrator:
                     modules.append(module)
         return modules
 
+    def _persist_inline_geojson(self, artifact: ArtifactPayload) -> Optional[str]:
+        """Persist inline GeoJSON payloads to static files and return a served URL."""
+
+        data = artifact.data
+        if not isinstance(data, Mapping):
+            return None
+
+        geojson_type = str(data.get("type", "")).lower()
+        if geojson_type not in {"featurecollection", "feature"}:
+            return None
+        if geojson_type == "featurecollection" and not isinstance(
+            data.get("features"), Sequence
+        ):
+            return None
+
+        try:
+            project_root = Path(__file__).resolve().parents[1]
+            static_dir = project_root / "static" / "maps"
+            static_dir.mkdir(parents=True, exist_ok=True)
+
+            # Generate stable filename based on payload hash to avoid duplicates
+            canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+            digest = hashlib.md5(canonical.encode("utf-8")).hexdigest()[:12]
+
+            slug_source = (artifact.title or artifact.id or "map").lower()
+            slug = re.sub(r"[^a-z0-9]+", "-", slug_source).strip("-") or "map"
+            filename = f"artifact_{slug}_{digest}.geojson"
+            file_path = static_dir / filename
+
+            if not file_path.exists():
+                file_path.write_text(canonical, encoding="utf-8")
+                logger.debug(
+                    "Persisted inline GeoJSON for artifact %s -> %s",
+                    artifact.id,
+                    filename,
+                )
+            else:
+                logger.debug(
+                    "Reusing persisted GeoJSON for artifact %s -> %s",
+                    artifact.id,
+                    filename,
+                )
+
+            return f"/static/maps/{filename}"
+        except Exception as exc:  # pragma: no cover - logging-only branch
+            logger.warning(
+                "Failed to persist inline GeoJSON for artifact %s: %s",
+                artifact.id,
+                exc,
+            )
+            return None
+
     def _artifact_to_module(self, artifact: ArtifactPayload) -> Optional[Dict[str, Any]]:
         if artifact.type == "map":
             if artifact.geojson_url:
@@ -3634,13 +3801,23 @@ class SimpleOrchestrator:
                 else:
                     metadata = artifact.metadata or {}
 
-                module = {
-                    "type": "map",
-                    "mapType": "geojson",
-                    "geojson": artifact.data,
-                    "heading": artifact.title,
-                    "metadata": metadata,
-                }
+                persisted_url = self._persist_inline_geojson(artifact)
+                if persisted_url:
+                    module = {
+                        "type": "map",
+                        "mapType": "geojson_url",
+                        "geojson_url": ensure_absolute_url(persisted_url),
+                        "heading": artifact.title,
+                        "metadata": metadata,
+                    }
+                else:
+                    module = {
+                        "type": "map",
+                        "mapType": "geojson",
+                        "geojson": artifact.data,
+                        "heading": artifact.title,
+                        "metadata": metadata,
+                    }
                 view_state = self._derive_map_view_state(metadata)
                 if view_state:
                     module["viewState"] = view_state
@@ -4105,6 +4282,7 @@ class SimpleOrchestrator:
                 "Type",
                 "Description",
                 "SourceURL",
+                "UnderlyingSource",
             ],
             "rows": rows,
         }

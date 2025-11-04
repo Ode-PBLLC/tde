@@ -1345,7 +1345,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
             title=dataset_entry.get("title") or "Extreme Heat Indices",
             source_type=DATASET_SOURCE_TYPE,
             description=dataset_entry.get("description"),
-            url=None,
+            url="https://github.com/Ode-PBLLC/tde",
             metadata={
                 "dataset_id": DATASET_ID,
                 "last_updated": dataset_entry.get("last_updated"),

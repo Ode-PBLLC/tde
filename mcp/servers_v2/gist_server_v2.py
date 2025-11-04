@@ -6,6 +6,7 @@ All tool implementations are inlined here (no runtime dependency on the
 legacy server module) while reusing the shared data loading utilities.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -55,8 +56,8 @@ else:  # pragma: no cover - package execution
         MessagePayload,
         RunQueryResponse,
     )
-    from ..servers_v2.base import RunQueryMixin
-    from ..support_intent import SupportIntent
+    from .base import RunQueryMixin
+    from .support_intent import SupportIntent
 
 load_dotenv(ROOT / ".env")
 
@@ -65,6 +66,16 @@ DATASET_TITLE = "GIST Impact Datasets"
 DATASET_SOURCE = "GIST Environmental Research"
 DATASET_NODE_ID = "GIST_DATASET"
 DATASET_ID = "gist_multi_dataset"
+STATIC_MAPS_DIR = ROOT / "static" / "maps"
+
+
+def _fix_encoding(value: Any) -> Any:
+    if isinstance(value, str) and ("Ã" in value or "�" in value):
+        try:
+            return value.encode("latin-1").decode("utf-8")
+        except Exception:
+            return value
+    return value
 
 
 def _load_dataset_citations() -> Dict[str, str]:
@@ -123,7 +134,12 @@ class GistDataManager:
         try:
             self.excel_file = pd.ExcelFile(self.excel_path)
             for sheet_name in self.excel_file.sheet_names:
-                self.sheets[sheet_name] = pd.read_excel(self.excel_path, sheet_name=sheet_name)
+                df = pd.read_excel(self.excel_path, sheet_name=sheet_name)
+                if not df.empty:
+                    object_cols = df.select_dtypes(include=["object"]).columns
+                    for col in object_cols:
+                        df[col] = df[col].apply(_fix_encoding)
+                self.sheets[sheet_name] = df
             self._build_company_index()
             self._build_asset_index()
         except Exception:
@@ -141,7 +157,7 @@ class GistDataManager:
                 if pd.isna(company_code):
                     continue
                 company_code = str(company_code)
-                company_name = row.get("COMPANY_NAME", "Unknown")
+                company_name = _fix_encoding(row.get("COMPANY_NAME", "Unknown"))
                 entry = self.companies_cache.setdefault(
                     company_code,
                     {
@@ -149,7 +165,9 @@ class GistDataManager:
                         "company_name": company_name,
                         "datasets": [],
                         "sector_code": row.get("SECTOR_CODE", "Unknown"),
-                        "country": row.get("COUNTRY_NAME", row.get("COUNTRY_CODE", "Unknown")),
+                        "country": _fix_encoding(
+                            row.get("COUNTRY_NAME", row.get("COUNTRY_CODE", "Unknown"))
+                        ),
                     },
                 )
                 if sheet_name not in entry["datasets"]:
@@ -721,30 +739,41 @@ class GistServerV2(RunQueryMixin):
             filtered = filtered[
                 filtered["SECTOR_CODE"].astype(str).str.upper() == sector_normalized
             ]
-        results = filtered[[
-            "COMPANY_CODE",
-            "COMPANY_NAME",
-            "SECTOR_CODE",
-            "COUNTRY_NAME",
-            col,
-            "TOTAL_NUMBER_OF_ASSETS_ASSESSED_WITHIN_A_COMPANY",
-        ]]
+        results = filtered[
+            [
+                "COMPANY_CODE",
+                "COMPANY_NAME",
+                "SECTOR_CODE",
+                "COUNTRY_NAME",
+                col,
+                "TOTAL_NUMBER_OF_ASSETS_ASSESSED_WITHIN_A_COMPANY",
+            ]
+        ].copy()
         if results.empty:
             return {"error": "No companies meet the criteria"}
-        results = results.sort_values(col, ascending=False).head(limit)
+        total_col = "TOTAL_NUMBER_OF_ASSETS_ASSESSED_WITHIN_A_COMPANY"
+        results["__high_risk_assets"] = results[col]
+        results["__high_risk_percentage"] = np.where(
+            results[total_col] > 0,
+            (results[col] / results[total_col]) * 100,
+            0.0,
+        )
+        results = results.sort_values("__high_risk_percentage", ascending=False).head(limit)
         companies: List[Dict[str, Any]] = []
         for _, row in results.iterrows():
-            total_assets = row.get("TOTAL_NUMBER_OF_ASSETS_ASSESSED_WITHIN_A_COMPANY", 0)
-            count = row.get(col, 0)
-            percentage = (count / total_assets * 100) if total_assets else 0
+            total_assets = row.get(total_col, 0)
+            count = row.get("__high_risk_assets", 0)
+            percentage = row.get("__high_risk_percentage", 0.0)
             companies.append(
                 {
                     "company_code": row.get("COMPANY_CODE"),
-                    "company_name": row.get("COMPANY_NAME"),
+                    "company_name": _fix_encoding(row.get("COMPANY_NAME")),
                     "sector_code": row.get("SECTOR_CODE"),
-                    "country": row.get("COUNTRY_NAME"),
-                    "high_risk_assets": count,
-                    "high_risk_percentage": round(percentage, 2),
+                    "country": _fix_encoding(row.get("COUNTRY_NAME")),
+                    "high_risk_assets": int(count) if pd.notna(count) else 0,
+                    "high_risk_percentage": round(float(percentage), 2)
+                    if pd.notna(percentage)
+                    else 0.0,
                 }
             )
         return {
@@ -807,31 +836,100 @@ class GistServerV2(RunQueryMixin):
         filtered_df = filtered_df.head(limit)
         if filtered_df.empty:
             return {"error": "No assets found with specified filters"}
-        assets_data = []
+
+        # Build geojson features
+        STATIC_MAPS_DIR.mkdir(parents=True, exist_ok=True)
+
+        features: List[Dict[str, Any]] = []
         for _, row in filtered_df.iterrows():
-            assets_data.append(
+            features.append(
                 {
-                    "asset_id": row.get("ASSET_ID"),
-                    "company_code": row.get("COMPANY_CODE"),
-                    "company_name": row.get("COMPANY_NAME"),
-                    "latitude": float(row.get("LATITUDE")),
-                    "longitude": float(row.get("LONGITUDE")),
-                    "country": row.get("COUNTRY_CODE"),
-                    "asset_type": row.get("ASSET_TYPE_LEVEL_1", "Unknown"),
-                    "msa_risk": row.get("MSA_RISKLEVEL", "Unknown"),
-                    "water_stress_risk": row.get("WATER_STRESS_RISKLEVEL", "Unknown"),
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [float(row.get("LONGITUDE")), float(row.get("LATITUDE"))],
+                    },
+                    "properties": {
+                        "asset_id": row.get("ASSET_ID"),
+                        "company_code": row.get("COMPANY_CODE"),
+                        "company_name": row.get("COMPANY_NAME"),
+                        "country": row.get("COUNTRY_CODE"),
+                        "asset_type": row.get("ASSET_TYPE_LEVEL_1", "Unknown"),
+                        "msa_risk": row.get("MSA_RISKLEVEL", "Unknown"),
+                        "water_stress_risk": row.get("WATER_STRESS_RISKLEVEL", "Unknown"),
+                    },
                 }
             )
+
+        # Compute summary statistics
+        total_assets = len(features)
+        countries = sorted(list(filtered_df["COUNTRY_CODE"].unique()))
+        companies = sorted(list(filtered_df["COMPANY_CODE"].unique()))
+        asset_types = sorted(list(filtered_df.get("ASSET_TYPE_LEVEL_1", pd.Series()).dropna().unique()))
+
+        # Write geojson to file
+        filter_parts = []
+        if company_code:
+            filter_parts.append(company_code)
+        if country:
+            filter_parts.append(country)
+        filter_suffix = "_".join(filter_parts) if filter_parts else "all"
+
+        signature = hashlib.md5(f"gist_assets_{filter_suffix}_{total_assets}".encode()).hexdigest()[:8]
+        filename = f"gist_assets_{filter_suffix}_{signature}.geojson"
+        output_path = STATIC_MAPS_DIR / filename
+
+        geojson_payload = {
+            "type": "FeatureCollection",
+            "features": features,
+        }
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(geojson_payload, handle)
+
+        # Build summary text
+        filter_desc = []
+        if company_code:
+            filter_desc.append(f"company {company_code}")
+        if country:
+            filter_desc.append(f"country {country}")
+        filter_text = f" for {' and '.join(filter_desc)}" if filter_desc else ""
+
+        summary = (
+            f"Found {total_assets} assets{filter_text}. "
+            f"Covering {len(countries)} countries and {len(companies)} companies. "
+            f"Asset types: {', '.join(asset_types[:5])}"
+        )
+
+        # Return v2 contract format
         return {
-            "type": "map",
-            "filters_applied": {"company_code": company_code, "country": country, "limit": limit},
-            "data": assets_data,
-            "metadata": {
-                "total_assets": len(assets_data),
-                "countries": sorted(list(filtered_df["COUNTRY_CODE"].unique())),
-                "companies": sorted(list(filtered_df["COMPANY_CODE"].unique())),
-                "asset_types": sorted(list(filtered_df.get("ASSET_TYPE_LEVEL_1", pd.Series()).dropna().unique())),
+            "citation": {
+                "id": "gist-assets-map",
+                "tool": "GetGistAssetsMapData",
+                "title": "GIST Asset Location Dataset",
+                "source_type": "Dataset",
+                "description": "Geospatial coordinates for corporate assets with environmental risk indicators",
+                "url": "https://gist.transitionzero.org/",
             },
+            "summary": summary,
+            "artifacts": [
+                {
+                    "id": f"gist_map_{signature}",
+                    "type": "map",
+                    "title": f"Asset Locations ({total_assets} points)",
+                    "geojson_url": f"https://api.transitiondigital.org/static/maps/{filename}",
+                    "metadata": {
+                        "total_assets": total_assets,
+                        "countries": countries,
+                        "companies": companies,
+                        "asset_types": asset_types,
+                        "filters_applied": {
+                            "company_code": company_code,
+                            "country": country,
+                            "limit": limit,
+                        },
+                    },
+                }
+            ],
         }
 
     def get_assets_in_radius(
@@ -1933,24 +2031,25 @@ class GistServerV2(RunQueryMixin):
             level_label = str(ranking.get("risk_level", risk_level)).replace("_", " ").lower()
             location_phrase = f" in {country}" if country else ""
 
-            top_name = top_company.get("company_name", "Unknown")
-            top_code = top_company.get("company_code", "Unknown")
+            top_name = _fix_encoding(top_company.get("company_name", "Unknown"))
             top_assets = top_company.get("high_risk_assets", 0)
             top_pct = top_company.get("high_risk_percentage", 0)
 
             summary = (
-                f"{top_name} ({top_code}) shows the highest share of assets at {level_label} "
-                f"{risk_label}{location_phrase}, with {top_assets} assets accounting for "
-                f"{top_pct}% of those assessed."
+                f"{top_name} shows the highest share of assets at {level_label} "
+                f"{risk_label}{location_phrase}, with {top_assets} assets classified as high risk "
+                f"({top_pct}% of assessed assets)."
             )
 
             facts: List[str] = []
             for idx, company in enumerate(companies_native[: min(3, len(companies_native))], start=1):
+                company_name = _fix_encoding(company.get("company_name", "Unknown"))
+                high_risk_assets = company.get("high_risk_assets", 0)
+                high_risk_percentage = company.get("high_risk_percentage", 0)
                 facts.append(
                     (
-                        f"#{idx}: {company.get('company_name', 'Unknown')} ({company.get('company_code', 'Unknown')}) "
-                        f"has {company.get('high_risk_assets', 0)} assets at {risk_label} {level_label} "
-                        f"risk, representing {company.get('high_risk_percentage', 0)}% of assessed assets."
+                        f"#{idx}: {company_name} has {high_risk_assets} assets at {risk_label} {level_label} "
+                        f"risk, representing {high_risk_percentage}% of assessed assets."
                     )
                 )
 
@@ -1959,10 +2058,8 @@ class GistServerV2(RunQueryMixin):
                 table_rows.append(
                     [
                         idx,
-                        company.get("company_name"),
-                        company.get("company_code"),
-                        company.get("sector_code"),
-                        company.get("country"),
+                        _fix_encoding(company.get("company_name", "Unknown")),
+                        _fix_encoding(company.get("country", "Unknown")),
                         company.get("high_risk_assets"),
                         company.get("high_risk_percentage"),
                     ]
@@ -1970,7 +2067,7 @@ class GistServerV2(RunQueryMixin):
 
             artifact = {
                 "type": "table",
-                "title": "Company exposure ranking",
+                "title": "Company Asset Exposure",
                 "metadata": {
                     "risk_type": ranking.get("risk_type", risk_type),
                     "risk_level": ranking.get("risk_level", risk_level),
@@ -1978,13 +2075,11 @@ class GistServerV2(RunQueryMixin):
                     "sector": sector,
                 },
                 "columns": [
-                    "rank",
-                    "company_name",
-                    "company_code",
-                    "sector_code",
-                    "country",
-                    "high_risk_assets",
-                    "high_risk_percentage",
+                    "Rank",
+                    "Company Name",
+                    "Country",
+                    "Count of High Risk Assets",
+                    "Percentage of Assets at High Risk",
                 ],
                 "rows": table_rows,
             }
@@ -2047,7 +2142,11 @@ class GistServerV2(RunQueryMixin):
 
         @self.mcp.tool()
         def GetGistAssetsByCountry() -> Dict[str, Any]:  # type: ignore[misc]
-            """Get asset distribution by country."""
+            """Get asset distribution grouped by country for all countries.
+
+            Returns summary statistics (asset count, company count, geographic bounds)
+            for each country in the dataset. Does not filter to a specific country.
+            """
 
             return self.get_assets_by_country()
 
@@ -2849,12 +2948,16 @@ class GistServerV2(RunQueryMixin):
             return
 
         leader = {key: self._to_native(value) for key, value in raw_leader.items()}
+        leader_name = _fix_encoding(leader.get("company_name", "Unknown"))
+        leader_assets = leader.get("high_risk_assets", 0)
+        leader_percentage = leader.get("high_risk_percentage", 0)
         facts.append(
             FactPayload(
                 id=f"gist-{risk_type.lower()}-leader",
                 text=(
-                    f"{leader['company_name']} ({leader['company_code']}) has the greatest share of assets at {level_label} {risk_label}{location_phrase}, "
-                    f"with {leader['high_risk_assets']} assets representing {leader['high_risk_percentage']}% of those assessed."
+                    f"{leader_name} has the greatest share of assets at {level_label} {risk_label}{location_phrase}, "
+                    f"with {leader_assets} assets classified as high risk "
+                    f"({leader_percentage}% of those assessed)."
                 ),
                 citation_id=citation_id,
                 kind="text",
@@ -2874,14 +2977,15 @@ class GistServerV2(RunQueryMixin):
                 key: self._to_native(value)
                 for key, value in (company.items() if isinstance(company, dict) else [])
             }
+            company_name = _fix_encoding(normalized.get("company_name", "Unknown"))
+            country_name = _fix_encoding(normalized.get("country", "Unknown"))
             rows.append(
                 {
-                    "rank": idx,
-                    "company_name": normalized.get("company_name"),
-                    "company_code": normalized.get("company_code"),
-                    "country": normalized.get("country"),
-                    "high_risk_assets": normalized.get("high_risk_assets"),
-                    "high_risk_percentage": normalized.get("high_risk_percentage"),
+                    "Rank": idx,
+                    "Company Name": company_name,
+                    "Country": country_name,
+                    "Count of High Risk Assets": normalized.get("high_risk_assets"),
+                    "Percentage of Assets at High Risk": normalized.get("high_risk_percentage"),
                 }
             )
 
@@ -2895,12 +2999,11 @@ class GistServerV2(RunQueryMixin):
                 ),
                 data={
                     "columns": [
-                        "rank",
-                        "company_name",
-                        "company_code",
-                        "country",
-                        "high_risk_assets",
-                        "high_risk_percentage",
+                        "Rank",
+                        "Company Name",
+                        "Country",
+                        "Count of High Risk Assets",
+                        "Percentage of Assets at High Risk",
                     ],
                     "rows": rows,
                 },
