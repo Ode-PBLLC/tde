@@ -1,4 +1,4 @@
-"""MapBiomas/PRODES deforestation polygons exposed via the MCP v2 contract."""
+"""MapBiomas/PRODES deforestation polygon centroids exposed via the MCP v2 contract."""
 
 from __future__ import annotations
 
@@ -61,10 +61,8 @@ MUNICIPALITY_STATS_PATH = (
     Path(__file__).resolve().parents[2] / "static" / "meta" / "deforestation_by_municipality.json"
 )
 
-POLYGON_LAYER_COLORS: Dict[str, str] = {
-    "deforestation_polygon": "#D84315",
-    "brazil_state": "#1E88E5",
-    "municipalities": "#3949AB",
+POINT_LAYER_COLORS: Dict[str, str] = {
+    "deforestation_point": "#D84315",
 }
 
 
@@ -101,7 +99,7 @@ class GeoJSONSummary:
         self.url = ensure_absolute_url(self.url)
 
 class DeforestationServerV2(RunQueryMixin):
-    """FastMCP server providing deforestation polygons and v2 run_query."""
+    """FastMCP server providing deforestation polygon centroids and v2 run_query."""
 
     def __init__(self) -> None:
         self.mcp = FastMCP("deforestation-server-v2")
@@ -142,7 +140,7 @@ class DeforestationServerV2(RunQueryMixin):
             overview = self.provider.dataset_overview()
             payload = {
                 "name": "deforestation",
-                "description": "Brazilian deforestation polygons from INPE/PRODES prepared for spatial analytics.",
+                "description": "Brazilian deforestation polygon centroids derived from INPE/PRODES.",
                 "dataset": DATASET_METADATA.get(DATASET_ID, {}).get("title", "PRODES Deforestation"),
                 "polygon_count": overview.get("polygon_count"),
                 "years": overview.get("years"),
@@ -190,7 +188,7 @@ class DeforestationServerV2(RunQueryMixin):
             max_area_hectares: float | None = None,
             limit: int = 200,
         ) -> dict:  # type: ignore[misc]
-            """Retrieve polygons filtered by area thresholds."""
+            """Retrieve centroid points for polygons filtered by area thresholds."""
 
             polygons = self.provider.polygons_by_area(
                 min_area_hectares=min_area_hectares,
@@ -202,7 +200,7 @@ class DeforestationServerV2(RunQueryMixin):
                 "count": len(polygons),
                 "geojson_url": summary.url,
                 "metadata": summary.metadata,
-                "polygons": [self._polygon_to_dict(polygon) for polygon in polygons[:50]],
+                "points": [self._polygon_to_point_dict(polygon) for polygon in polygons[:50]],
             }
 
     def _register_tool_polygons_in_bounds(self) -> None:
@@ -214,7 +212,7 @@ class DeforestationServerV2(RunQueryMixin):
             west: float,
             limit: int = 200,
         ) -> dict:  # type: ignore[misc]
-            """Return polygons intersecting a bounding box."""
+            """Return centroid points for polygons intersecting a bounding box."""
 
             polygons = self.provider.polygons_in_bounds(north=north, south=south, east=east, west=west, limit=limit)
             summary = self._generate_geojson(polygons, identifier="bounds")
@@ -222,7 +220,7 @@ class DeforestationServerV2(RunQueryMixin):
                 "count": len(polygons),
                 "geojson_url": summary.url,
                 "metadata": summary.metadata,
-                "polygons": [self._polygon_to_dict(polygon) for polygon in polygons[:50]],
+                "points": [self._polygon_to_point_dict(polygon) for polygon in polygons[:50]],
             }
 
     def _register_tool_area_by_year(self) -> None:
@@ -425,7 +423,7 @@ class DeforestationServerV2(RunQueryMixin):
                 FactPayload(
                     id="deforest_filter",
                     text=(
-                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} polygons totalling about {round(selected_area, 1)} hectares."
+                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} centroid points representing polygons totalling about {round(selected_area, 1)} hectares."
                     ),
                     citation_id=citation.id,
                     metadata={"min_area_hectares": min_area},
@@ -451,7 +449,7 @@ class DeforestationServerV2(RunQueryMixin):
             facts.append(
                 FactPayload(
                     id="deforest_no_matches",
-                    text=f"No polygons exceeded the minimum area threshold of {min_area} hectares.",
+                    text=f"No polygons (and therefore no centroid points) exceeded the minimum area threshold of {min_area} hectares.",
                     citation_id=citation.id,
                 )
             )
@@ -475,7 +473,7 @@ class DeforestationServerV2(RunQueryMixin):
                 ArtifactPayload(
                     id="deforest_map",
                     type="map",
-                    title="Deforestation polygons",
+                    title="Deforestation centroids",
                     geojson_url=summary.url,
                     metadata=summary.metadata,
                 )
@@ -560,7 +558,7 @@ class DeforestationServerV2(RunQueryMixin):
             messages.append(
                 MessagePayload(
                     level="warning",
-                    text="No polygons matched the requested filters; consider lowering the minimum area threshold.",
+                    text="No centroid points matched the requested filters; consider lowering the minimum area threshold.",
                 )
             )
 
@@ -634,7 +632,14 @@ class DeforestationServerV2(RunQueryMixin):
                 geometry = shapely_wkt.loads(polygon.geometry_wkt)
             except Exception:
                 continue
-            properties = {**polygon.properties, "polygon_id": polygon.polygon_id}
+            centroid = geometry.centroid
+            properties = {
+                **polygon.properties,
+                "polygon_id": polygon.polygon_id,
+                "centroid_lat": centroid.y,
+                "centroid_lon": centroid.x,
+                "geometry_source": "polygon_centroid",
+            }
             properties.setdefault("country", "deforestation")
             area_value = properties.get("area_hectares")
             try:
@@ -648,7 +653,7 @@ class DeforestationServerV2(RunQueryMixin):
             elif isinstance(year_value, str) and year_value.strip():
                 years.add(year_value.strip())
 
-            features.append({"type": "Feature", "geometry": mapping(geometry), "properties": properties})
+            features.append({"type": "Feature", "geometry": mapping(centroid), "properties": properties})
 
             bounds = geometry.bounds
             minx, miny, maxx, maxy = bounds
@@ -665,24 +670,25 @@ class DeforestationServerV2(RunQueryMixin):
             json.dump(payload, handle)
 
         metadata: Dict[str, Any] = {
+            "point_count": len(features),
             "polygon_count": len(features),
             "total_area_hectares": round(total_area, 2),
             "years": sorted(years),
-            "geometry_type": "polygon",
+            "geometry_type": "point",
         }
         metadata["layers"] = {
-            "deforestation_polygon": {
+            "deforestation_point": {
                 "count": len(features),
-                "color": POLYGON_LAYER_COLORS.get("deforestation_polygon", "#D84315"),
+                "color": POINT_LAYER_COLORS.get("deforestation_point", "#D84315"),
             }
         }
         metadata["legend"] = {
             "title": "Layers",
             "items": [
                 {
-                    "label": "Deforestation polygons",
-                    "color": POLYGON_LAYER_COLORS.get("deforestation_polygon", "#D84315"),
-                    "description": f"{len(features)} polygons",
+                    "label": "Deforestation centroids",
+                    "color": POINT_LAYER_COLORS.get("deforestation_point", "#D84315"),
+                    "description": f"{len(features)} points",
                 }
             ],
         }
@@ -709,9 +715,21 @@ class DeforestationServerV2(RunQueryMixin):
         return GeoJSONSummary(url=f"/static/maps/{filename}", metadata=metadata)
 
     @staticmethod
-    def _polygon_to_dict(polygon: Any) -> Dict[str, Any]:
+    def _polygon_to_point_dict(polygon: Any) -> Dict[str, Any]:
+        try:
+            geometry = shapely_wkt.loads(polygon.geometry_wkt)
+        except Exception:
+            return {
+                "point_id": polygon.polygon_id,
+                "source_polygon_id": polygon.polygon_id,
+                "properties": polygon.properties,
+            }
+        centroid = geometry.centroid
         return {
-            "polygon_id": polygon.polygon_id,
+            "point_id": polygon.polygon_id,
+            "source_polygon_id": polygon.polygon_id,
+            "latitude": centroid.y,
+            "longitude": centroid.x,
             "properties": polygon.properties,
         }
 
