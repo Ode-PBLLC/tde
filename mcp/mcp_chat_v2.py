@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import datetime
+import hashlib
 import json
 import inspect
 import logging
@@ -193,31 +194,31 @@ class QueryEnricher:
         
         enrichment_prompt = """You are a query enricher for an environmental and climate data system in Brazil. If the user does not specify the area, assume they are discussing Brazil and the surrounding regions.
 
-Your job is to expand the query with relevant domain context, synonyms, and technical terms to improve search and retrieval.
+        Your job is to expand the query with relevant domain context, synonyms, and technical terms to improve search and retrieval.
 
-Add relevant terms from these domains when applicable:
-- Climate change, impacts, and policies
-- Environmental data and sustainability  
-- Energy systems, renewable energy, and solar facilities
-- Corporate environmental performance and ESG
-- Water resources, biodiversity, and ecosystems
-- Environmental regulations, NDCs, and climate governance
-- Physical climate risks (floods, droughts, heat stress)
-- GHG emissions and carbon footprint
-- Environmental justice and climate adaptation
-- Deforestation and extreme heat
+        Add relevant terms from these domains when applicable:
+        - Climate change, impacts, and policies
+        - Environmental data and sustainability  
+        - Energy systems, renewable energy, and solar facilities
+        - Corporate environmental performance and ESG
+        - Water resources, biodiversity, and ecosystems
+        - Environmental regulations, NDCs, and climate governance
+        - Physical climate risks (floods, droughts, heat stress)
+        - GHG emissions and carbon footprint
+        - Environmental justice and climate adaptation
+        - Deforestation and extreme heat
 
-Return your response in this exact format:
-QUERY: [enhanced query with additional relevant terms and context]
-DOMAINS: [comma-separated list of relevant domains]
-TERMS: [comma-separated list of additional technical terms, synonyms, acronyms]
+        Return your response in this exact format:
+        QUERY: [enhanced query with additional relevant terms and context]
+        DOMAINS: [comma-separated list of relevant domains]
+        TERMS: [comma-separated list of additional technical terms, synonyms, acronyms]
 
-Keep the enhanced query focused and comprehensive."""
+        Keep the enhanced query focused and comprehensive."""
 
         try:
             response = self._anthropic_client.messages.create(
                 model=QUERY_ENRICHMENT_MODEL,
-                max_tokens=300,
+                max_tokens=500,
                 temperature=0.2,
                 system=enrichment_prompt,
                 messages=[{"role": "user", "content": query}]
@@ -429,7 +430,7 @@ async def get_v2_client() -> MultiServerClient:
                     print(f"Warning: Failed to connect to gist server: {e}")
 
                 try:
-                    await client.connect_to_server("solar_clay", os.path.join(script_dir, "solar_clay_server.py"))
+                    await client.connect_to_server("solar_clay", os.path.join(servers_v2_dir, "solar_clay_server_v2.py"))
                 except Exception as e:
                     print(f"Warning: Failed to connect to solar_clay server: {e}")
 
@@ -1265,7 +1266,10 @@ class NarrativeSynthesizer:
 
         prompt = """CONTEXT:
             - Summarize the evidence in this order: {order_instruction}. Focus on Brazil unless the user explicitly requests comparisons.
-            - This is predominantly a tool for policy makers and analysts. Heavily favor incorporating facts about governance, sourced from the LSE - NDC Align dataset in your response if available.
+            - This is predominantly a tool for policy makers and analysts. Heavily favor incorporating facts about governance, sourced from the LSE - NDC Align dataset and the Climate Policy Radar Passage Library (CPR) in your response if available.
+            - Some evidence entries include a `dataset_last_updated` field. Treat it as optional context—reference it when it adds clarity or the user asks about data recency; otherwise feel free to omit it.
+            - The Science Panel for the Amazon is meant to serve as helpful context, but do not prioritize it over policy specific datasets.
+            - Data from CPR will come with a document type tag (e.g., [Law], [Corporate Disclosure]). Use these tags to inform the tone and framing of your summary. Please mention document type in your narrative when relevant.
 
             TONE & OBJECTIVITY:
             - Remain objective; avoid prescriptions or “best policy” language. Use established facts confidently and flag assumptions or gaps.
@@ -2668,11 +2672,23 @@ class SimpleOrchestrator:
                 enrichment_data = self._query_enricher.enrich_query_with_llm(query)
                 if "error" not in enrichment_data:
                     enriched_query = enrichment_data.get("enriched_query", query)
-                    # if enriched_query and enriched_query.strip() and enriched_query != query:
-                    #     processing_query = enriched_query
-                    #     await emit("🔍 Query enriched for better processing", "initialization")
-                    # else:
-                    #     await emit("🔍 Query enrichment returned no changes", "initialization")
+                    if enriched_query and enriched_query.strip() and enriched_query != query:
+                        processing_query = enriched_query
+                        await emit(
+                            _select_lang(
+                                "🔍 Query enriched for better processing",
+                                "🔍 Consulta enriquecida para melhor processamento",
+                            ),
+                            "initialization",
+                        )
+                    else:
+                        await emit(
+                            _select_lang(
+                                "🔍 Query enrichment returned no changes",
+                                "🔍 Enriquecimento da consulta não retornou mudanças",
+                            ),
+                            "initialization",
+                        )
                 else:
                     await emit(
                         _select_lang(
@@ -2759,14 +2775,14 @@ class SimpleOrchestrator:
         pretty_print = {
             "cpr": "Climate Policy Radar Passage Library",
             "solar": "TZ-SAM Database",
-            "solar_clay": "Solar Site Potential (Clay)",
+            "solar_clay": "Solar Site Candidates from Clay",
             "brazil_admin": "Brazil Administrative Boundaries and Metadata",
             "gist": "GIST Impact",
-            "spa": "Science Panel for the Amazon",
+            "spa": "Science Panel for the Amazon (SPA)",
             "deforestation": "PRODES",
             "lse": "NDCAlign",
             "wmo_cli": "Scientific Documents for Climate (WMO and IPCC)",
-            "meta": "Project Specific Knowledge",
+            "meta": "Information About this System",
             "extreme_heat": "Extreme Heat Index"
         }
 
@@ -2779,7 +2795,7 @@ class SimpleOrchestrator:
             "deforestation": "prodes",
             "lse": "ndc",
             "wmo_cli": "wmo, ipcc",  # Multiple logos for this server
-            "ecmwf": "planetsapling",
+            "ecmwf": "planet-sappling",
             "spa": "spa",
             "solar_clay": "clay"
         }
@@ -3700,6 +3716,58 @@ class SimpleOrchestrator:
                     modules.append(module)
         return modules
 
+    def _persist_inline_geojson(self, artifact: ArtifactPayload) -> Optional[str]:
+        """Persist inline GeoJSON payloads to static files and return a served URL."""
+
+        data = artifact.data
+        if not isinstance(data, Mapping):
+            return None
+
+        geojson_type = str(data.get("type", "")).lower()
+        if geojson_type not in {"featurecollection", "feature"}:
+            return None
+        if geojson_type == "featurecollection" and not isinstance(
+            data.get("features"), Sequence
+        ):
+            return None
+
+        try:
+            project_root = Path(__file__).resolve().parents[1]
+            static_dir = project_root / "static" / "maps"
+            static_dir.mkdir(parents=True, exist_ok=True)
+
+            # Generate stable filename based on payload hash to avoid duplicates
+            canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+            digest = hashlib.md5(canonical.encode("utf-8")).hexdigest()[:12]
+
+            slug_source = (artifact.title or artifact.id or "map").lower()
+            slug = re.sub(r"[^a-z0-9]+", "-", slug_source).strip("-") or "map"
+            filename = f"artifact_{slug}_{digest}.geojson"
+            file_path = static_dir / filename
+
+            if not file_path.exists():
+                file_path.write_text(canonical, encoding="utf-8")
+                logger.debug(
+                    "Persisted inline GeoJSON for artifact %s -> %s",
+                    artifact.id,
+                    filename,
+                )
+            else:
+                logger.debug(
+                    "Reusing persisted GeoJSON for artifact %s -> %s",
+                    artifact.id,
+                    filename,
+                )
+
+            return f"/static/maps/{filename}"
+        except Exception as exc:  # pragma: no cover - logging-only branch
+            logger.warning(
+                "Failed to persist inline GeoJSON for artifact %s: %s",
+                artifact.id,
+                exc,
+            )
+            return None
+
     def _artifact_to_module(self, artifact: ArtifactPayload) -> Optional[Dict[str, Any]]:
         if artifact.type == "map":
             if artifact.geojson_url:
@@ -3733,13 +3801,23 @@ class SimpleOrchestrator:
                 else:
                     metadata = artifact.metadata or {}
 
-                module = {
-                    "type": "map",
-                    "mapType": "geojson",
-                    "geojson": artifact.data,
-                    "heading": artifact.title,
-                    "metadata": metadata,
-                }
+                persisted_url = self._persist_inline_geojson(artifact)
+                if persisted_url:
+                    module = {
+                        "type": "map",
+                        "mapType": "geojson_url",
+                        "geojson_url": ensure_absolute_url(persisted_url),
+                        "heading": artifact.title,
+                        "metadata": metadata,
+                    }
+                else:
+                    module = {
+                        "type": "map",
+                        "mapType": "geojson",
+                        "geojson": artifact.data,
+                        "heading": artifact.title,
+                        "metadata": metadata,
+                    }
                 view_state = self._derive_map_view_state(metadata)
                 if view_state:
                     module["viewState"] = view_state
