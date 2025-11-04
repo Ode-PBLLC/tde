@@ -974,8 +974,10 @@ class SolarServerV2(RunQueryMixin):
 
         prompt = (
             "You decide whether to route a question to the TransitionZero Solar Asset Mapper dataset."
-            " The dataset contains global solar facility points with capacity (MW), commissioning windows,"
+            " The dataset contains EXISTING, OPERATIONAL solar facility points with capacity (MW), commissioning windows,"
             " and tools for country summaries, geospatial lookups, and correlations with deforestation activity."
+            " This dataset is for EXISTING facilities only. DO NOT route questions about potential sites, candidate locations,"
+            " where to build solar, good places for solar, or future solar development—those go to the Clay Solar Candidate dataset."
             " Treat questions about the dataset's contents, coverage, provenance, maintainers, data quality, or how to use the tools as supported."
             " Respond only with JSON of the form {\"supported\": true|false, \"reason\": \"short explanation\"}.\n"
             f"Dataset capabilities: {self._capability_summary()}\n"
