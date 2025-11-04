@@ -54,7 +54,7 @@ HEAT_DATASET_INFO = {
         "spatial_coverage": "Brazil",
         "temporal_coverage": "2020-01-01 to 2025-01-01",
         "source": "ERA5-Land Daily Aggregated — ECMWF",
-        "citation": "Muñoz Sabater, J. (2019). ERA5-Land monthly averaged data from 1981 to present. Copernicus C3S. doi:10.24381/cds.68d2bb30",
+        "citation": "Muñoz Sabater, J., 2019. ERA5-Land monthly averaged data from 1981 to present. Copernicus C3S. doi:10.24381/cds.68d2bb30",
         "notes": "ERA5-Land lacks coverage over large water bodies and some coastal margins.",
     },
     "LST": {
@@ -62,7 +62,7 @@ HEAT_DATASET_INFO = {
         "spatial_coverage": "Brazil",
         "temporal_coverage": "2020-01-01 to 2025-01-01",
         "source": "MOD11A1.061 — MODIS/Terra LST & Emissivity, Daily, 1 km",
-        "citation": "Wan, Z., Hook, S., & Hulley, G. (2021). MODIS/Terra LST/Emissivity Daily L3 Global 1km SIN Grid V061. NASA LP DAAC. https://doi.org/10.5067/MODIS/MOD11A1.061",
+        "citation": "Wan, Z., Hook, S., & Hulley, G., 2021. MODIS/Terra LST/Emissivity Daily L3 Global 1km SIN Grid V061. NASA LP DAAC. https://doi.org/10.5067/MODIS/MOD11A1.061",
         "notes": "Daytime LST daily means; southern-summer variants aggregate Nov–Mar seasons.",
     }
 }
