@@ -373,8 +373,7 @@ class CPRServerV2(RunQueryMixin):
         document_id = str(metadata.get("document_id") or "unknown")
         citation_id = f"passage_{document_id}_{passage_id}"
 
-        # NEW: Title is now "CPR Passage Library" (source of information)
-        title = "CPR Passage Library"
+        title = "Climate Policy Radar Passage Library"
 
         # Extract all available metadata fields for enhanced citations
         source = metadata.get("source", "").strip() or None
@@ -404,25 +403,25 @@ class CPRServerV2(RunQueryMixin):
         if doc_name and year and document_type and page_number is not None:
             try:
                 page_num = int(float(page_number))
-                description = f"{source}. ({year}). {doc_name}. {document_type}, p. {page_num}. Available from Climate Policy Radar."
+                description = f"{source}, {year}. {doc_name}. {document_type}, p. {page_num}."
             except (ValueError, TypeError):
-                description = f"{source}. ({year}). {doc_name}. {document_type}. Available from Climate Policy Radar."
+                description = f"{source}, {year}. {doc_name}. {document_type}."
         elif doc_name and year and page_number is not None:
             try:
                 page_num = int(float(page_number))
-                description = f"{source}. ({year}). {doc_name}, p. {page_num}. Available from Climate Policy Radar."
+                description = f"{source}, {year}. {doc_name}, p. {page_num}."
             except (ValueError, TypeError):
-                description = f"{source}. ({year}). {doc_name}. Available from Climate Policy Radar."
+                description = f"{source}, {year}. {doc_name}."
         elif doc_name and page_number is not None:
             try:
                 page_num = int(float(page_number))
-                description = f"{doc_name}, p. {page_num}. Available from Climate Policy Radar."
+                description = f"{doc_name}, p. {page_num}."
             except (ValueError, TypeError):
-                description = f"{doc_name}. Available from Climate Policy Radar."
+                description = f"{doc_name}."
         elif doc_name:
-            description = f"{doc_name}. Available from Climate Policy Radar."
+            description = f"{doc_name}."
         else:
-            description = f"Passage {passage_id} in document {document_id}. Available from Climate Policy Radar."
+            description = f"Passage {passage_id} in document {document_id}."
 
         # Build CPR app URL from slug metadata
         url = None
@@ -432,6 +431,8 @@ class CPRServerV2(RunQueryMixin):
                 url = f"https://app.climatepolicyradar.org/documents/{slug}?page={page_num}&id={family_slug}"
             except (ValueError, TypeError):
                 pass  # Leave url as None if conversion fails
+
+        description = "*From the document:* " + description
 
         return CitationPayload(
             id=citation_id,
@@ -604,15 +605,21 @@ class CPRServerV2(RunQueryMixin):
 
                     snippet = self._fact_snippet(passage_text)
                     fact_id = f"{citation_id}_fact"
+
+                    # Extract document_type for display
+                    doc_type = metadata.get("document_type", "").strip()
+                    fact_text = f"[{doc_type}] {snippet}" if doc_type else snippet
+
                     facts.append(
                         FactPayload(
                             id=fact_id,
-                            text=f"Document {document_id} references {label}: {snippet}",
+                            text=fact_text,
                             citation_id=citation_id,
                             metadata={
                                 "concept": label,
                                 "document_id": document_id,
                                 "passage_id": passage_id,
+                                "document_type": doc_type or None,
                             },
                         )
                     )
