@@ -2606,17 +2606,19 @@ class SimpleOrchestrator:
 
         async def emit_logos(server_name: str) -> None:
             """Emit a logos event for the given server if it has associated logos."""
-            if not progress_callback:
-                return
-            logos = _get_server_logos(server_name)
-            logo_list = _normalise_logos(logos)
-            if logo_list:
-                await progress_callback(
-                    {
-                        "type": "logos",
-                        "data": {"message": ", ".join(logo_list)},
-                    }
-                )
+            # NOTE: Disabled - logos are now inline in thinking messages via _pretty_server_name()
+            # if not progress_callback:
+            #     return
+            # logos = _get_server_logos(server_name)
+            # logo_list = _normalise_logos(logos)
+            # if logo_list:
+            #     await progress_callback(
+            #         {
+            #             "type": "logos",
+            #             "data": {"message": ", ".join(logo_list)},
+            #         }
+            #     )
+            pass
 
         previous_user_message: Optional[str] = None
         previous_assistant_message: Optional[str] = None
@@ -2857,8 +2859,8 @@ class SimpleOrchestrator:
                     )
 
                 await emit(message, "routing")
-                # Emit logo event after the organization mention
-                await emit_logos(server_name)
+                # Logos now inline in thinking messages
+                # await emit_logos(server_name)
             elif stage == "query_support_error":
                 error = payload.get("error")
                 await emit(
@@ -2868,7 +2870,7 @@ class SimpleOrchestrator:
                     ),
                     "routing",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
             elif stage == "query_support_failure":
                 error = payload.get("error")
                 await emit(
@@ -2878,7 +2880,7 @@ class SimpleOrchestrator:
                     ),
                     "routing",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
 
         # await emit("🧭 Confirming the relevance of servers...", "routing")
         await emit(
@@ -2906,8 +2908,8 @@ class SimpleOrchestrator:
                     f"e {len(response.artifacts)} elementos visuais",
                 )
                 await emit(message, "execution")
-                # Emit logo event after the organization mention
-                await emit_logos(server_name)
+                # Logos now inline in thinking messages
+                # await emit_logos(server_name)
             elif stage == "run_query_error":
                 error = payload.get("error")
                 await emit(
@@ -2917,7 +2919,7 @@ class SimpleOrchestrator:
                     ),
                     "execution",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
             elif stage == "run_query_failure":
                 error = payload.get("error")
                 await emit(
@@ -2927,7 +2929,7 @@ class SimpleOrchestrator:
                     ),
                     "execution",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
             elif stage == "run_query_timeout":
                 error = payload.get("error")
                 await emit(
@@ -2937,7 +2939,7 @@ class SimpleOrchestrator:
                     ),
                     "execution",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
 
         # await emit("📥 Gathering passages and data from servers...", "execution")
         await emit(
