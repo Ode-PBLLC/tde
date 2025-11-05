@@ -1316,24 +1316,23 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
 
             # Set API_BASE_URL from request to ensure generated URLs match the request host
             # This handles both direct access and proxied requests (dev-tde.sunship.one, api.transitiondigital.org, etc.)
-            if not os.getenv("API_BASE_URL"):
-                # Check for proxy headers first (X-Forwarded-Proto, X-Forwarded-Host)
-                forwarded_proto = request.headers.get("x-forwarded-proto", "")
-                forwarded_host = request.headers.get("x-forwarded-host", "")
+            # IMPORTANT: Always set this dynamically per-request to ensure correct protocol (HTTP/HTTPS)
+            forwarded_proto = request.headers.get("x-forwarded-proto", "")
+            forwarded_host = request.headers.get("x-forwarded-host", "")
 
-                if forwarded_proto and forwarded_host:
-                    # Behind a proxy - use forwarded headers
-                    # Force HTTPS for production domains to avoid mixed content errors
-                    if "sunship.one" in forwarded_host or "transitiondigital.org" in forwarded_host:
-                        api_base_url = f"https://{forwarded_host}"
-                    else:
-                        api_base_url = f"{forwarded_proto}://{forwarded_host}"
+            if forwarded_proto and forwarded_host:
+                # Behind a proxy - use forwarded headers
+                # Force HTTPS for production domains to avoid mixed content errors
+                if "sunship.one" in forwarded_host or "transitiondigital.org" in forwarded_host:
+                    api_base_url = f"https://{forwarded_host}"
                 else:
-                    # Direct access - use request.base_url
-                    api_base_url = str(request.base_url).rstrip("/")
+                    api_base_url = f"{forwarded_proto}://{forwarded_host}"
+            else:
+                # Direct access - use request.base_url
+                api_base_url = str(request.base_url).rstrip("/")
 
-                os.environ["API_BASE_URL"] = api_base_url
-                print(f"🔗 Set API_BASE_URL={api_base_url}")
+            os.environ["API_BASE_URL"] = api_base_url
+            print(f"🔗 Set API_BASE_URL={api_base_url}")
 
             # Track response content for session history
             response_modules: List[Dict[str, Any]] = []
