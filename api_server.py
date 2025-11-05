@@ -445,6 +445,24 @@ async def _resolve_target_language(
     return None
 
 
+def _ensure_kg_kind(kg_context: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Ensure each KG node exposes the legacy `kind` field expected by the frontend."""
+
+    if not isinstance(kg_context, dict):
+        return kg_context
+
+    nodes = kg_context.get("nodes")
+    if isinstance(nodes, list):
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            node_type = node.get("type")
+            if isinstance(node_type, str) and node_type and not node.get("kind"):
+                node["kind"] = node_type
+
+    return kg_context
+
+
 def _derive_kg_from_context(kg_context: Dict[str, Any]) -> Dict[str, Any]:
     """Build concepts and relationships arrays from a kg_context structure.
     - concepts: [{id, label}]
@@ -784,7 +802,8 @@ async def process_query(req: QueryRequest, request: Request):
             # Extract KG context from full result
             kg_context = None
             if "kg_context" in full_result:
-                kg_context = full_result["kg_context"]
+                kg_context = _ensure_kg_kind(full_result["kg_context"])
+                full_result["kg_context"] = kg_context
                 print(
                     f"🌐 KG context found with {len(kg_context.get('nodes', []))} nodes and {len(kg_context.get('edges', []))} edges"
                 )
@@ -1304,7 +1323,11 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
 
                 if forwarded_proto and forwarded_host:
                     # Behind a proxy - use forwarded headers
-                    api_base_url = f"{forwarded_proto}://{forwarded_host}"
+                    # Force HTTPS for production domains to avoid mixed content errors
+                    if "sunship.one" in forwarded_host or "transitiondigital.org" in forwarded_host:
+                        api_base_url = f"https://{forwarded_host}"
+                    else:
+                        api_base_url = f"{forwarded_proto}://{forwarded_host}"
                 else:
                     # Direct access - use request.base_url
                     api_base_url = str(request.base_url).rstrip("/")
@@ -1337,6 +1360,10 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                         response_modules = response_data.get("modules", [])
                         response_payload = response_data
                         citation_registry = response_data.get("citation_registry")
+                        kg_context = response_data.get("kg_context")
+                        if kg_context:
+                            kg_context = _ensure_kg_kind(kg_context)
+                            response_data["kg_context"] = kg_context
                         # Augment with KG embed URL and KG arrays at top level to match frontend
                         try:
                             import sys as _sys, os as _os
