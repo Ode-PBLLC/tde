@@ -226,7 +226,7 @@ class SessionStore:
                     turn_number,
                     message_type,
                     query,
-                    response_summary[:500] if response_summary else "",
+                    response_summary if response_summary else "",
                     json.dumps(module_types) if module_types else "[]",
                     context_included,
                     round(session_duration, 2),
@@ -1294,6 +1294,23 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
             # Set working directory for MCP servers
             script_dir = os.path.dirname(os.path.abspath(__file__))
             os.chdir(script_dir)
+
+            # Set API_BASE_URL from request to ensure generated URLs match the request host
+            # This handles both direct access and proxied requests (dev-tde.sunship.one, api.transitiondigital.org, etc.)
+            if not os.getenv("API_BASE_URL"):
+                # Check for proxy headers first (X-Forwarded-Proto, X-Forwarded-Host)
+                forwarded_proto = request.headers.get("x-forwarded-proto", "")
+                forwarded_host = request.headers.get("x-forwarded-host", "")
+
+                if forwarded_proto and forwarded_host:
+                    # Behind a proxy - use forwarded headers
+                    api_base_url = f"{forwarded_proto}://{forwarded_host}"
+                else:
+                    # Direct access - use request.base_url
+                    api_base_url = str(request.base_url).rstrip("/")
+
+                os.environ["API_BASE_URL"] = api_base_url
+                print(f"🔗 Set API_BASE_URL={api_base_url}")
 
             # Track response content for session history
             response_modules: List[Dict[str, Any]] = []

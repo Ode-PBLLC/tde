@@ -166,14 +166,8 @@ def _create_map_module(map_data: Dict) -> Optional[Dict]:
         if not geojson_url:
             return None
 
-        # Ensure we have a complete URL for the frontend
-        import os
-        if geojson_url.startswith('/'):
-            # Get base URL from environment or use HTTPS default to avoid mixed content
-            base_url = os.getenv('API_BASE_URL', 'https://api.transitiondigital.org')
-            # Remove trailing slash from base URL if present
-            base_url = base_url.rstrip('/')
-            geojson_url = base_url + geojson_url
+        # Note: URL conversion to absolute is handled by mcp_chat_v2.py
+        # which has access to the correct API_BASE_URL from the request context
 
         # Determine geometry type(s) for downstream renderers
         geom_candidates = []

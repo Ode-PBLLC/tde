@@ -56,7 +56,6 @@ if __package__ in {None, ""}:
         RunQueryResponse,
     )
     from mcp.servers_v2.base import RunQueryMixin  # type: ignore
-    from mcp.url_utils import ensure_absolute_url  # type: ignore
     from mcp.geospatial_datasets import (  # type: ignore
         DeforestationPolygonProvider,
         SolarFacilityProvider,
@@ -74,7 +73,6 @@ else:  # pragma: no cover - import path when used as package
         RunQueryResponse,
     )
     from ..servers_v2.base import RunQueryMixin
-    from ..url_utils import ensure_absolute_url
     from ..geospatial_datasets import DeforestationPolygonProvider, SolarFacilityProvider
     from ..geospatial_bridge import SpatialCorrelation
     from ..solar_db import SolarDatabase
@@ -233,9 +231,6 @@ def _buffer_point_as_circle(lon: float, lat: float, radius_m: float = CIRCLE_BUF
 class GeoJSONSummary:
     url: str
     metadata: Dict[str, Any]
-
-    def __post_init__(self) -> None:
-        self.url = ensure_absolute_url(self.url)
 
 
 class SolarServerV2(RunQueryMixin):
