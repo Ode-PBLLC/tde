@@ -122,7 +122,7 @@
     },
         {
       "id": "heat",
-      "title": "Planet Sapling Extreme Heat Dataset",
+      "title": "PlanetSapling Heat Index",
       "Organization": "PlanetSapling",
       "description": "Extreme Heat indices derived from ERA5-Land measurements. This data represents quintiles of the multi-year mean of the daily land surface temperature temperature over the last five years. This data was prepared by PlanetSapling.",
       "last_updated": "9/15/2025",

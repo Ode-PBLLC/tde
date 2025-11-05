@@ -2606,16 +2606,19 @@ class SimpleOrchestrator:
 
         async def emit_logos(server_name: str) -> None:
             """Emit a logos event for the given server if it has associated logos."""
-            if not progress_callback:
-                return
-            logos = _get_server_logos(server_name)
-            if logos:
-                await progress_callback(
-                    {
-                        "type": "logos",
-                        "data": {"message": logos},
-                    }
-                )
+            # NOTE: Disabled - logos are now inline in thinking messages via _pretty_server_name()
+            # if not progress_callback:
+            #     return
+            # logos = _get_server_logos(server_name)
+            # logo_list = _normalise_logos(logos)
+            # if logo_list:
+            #     await progress_callback(
+            #         {
+            #             "type": "logos",
+            #             "data": {"message": ", ".join(logo_list)},
+            #         }
+            #     )
+            pass
 
         previous_user_message: Optional[str] = None
         previous_assistant_message: Optional[str] = None
@@ -2781,32 +2784,58 @@ class SimpleOrchestrator:
             "spa": "Science Panel for the Amazon (SPA)",
             "deforestation": "PRODES",
             "lse": "NDCAlign",
-            "wmo_cli": "Scientific Documents for Climate (WMO and IPCC)",
+            "wmo_cli": "Scientific Documents for Climate",
             "meta": "Information About this System",
-            "extreme_heat": "Extreme Heat Index"
+            "extreme_heat": "PlanetSapling Heat Index",
+            "ecmwf": "ECMWF Forecast Products",
         }
 
-        # Map server names to logo identifiers for the frontend
-        # Format: server_name -> comma-separated list of logo identifiers
-        server_logos = {
-            "cpr": "radar",
-            "solar": "transition digital",
-            "gist": "gist",
-            "deforestation": "prodes",
-            "lse": "ndc",
-            "wmo_cli": "wmo, ipcc",  # Multiple logos for this server
-            "ecmwf": "planet-sappling",
-            "spa": "spa",
-            "solar_clay": "clay"
+        # Map server names to logo identifiers for the frontend.
+        # Stored as tuples to avoid repeated splitting work.
+        server_logos: Dict[str, Tuple[str, ...]] = {
+            "cpr": ("radar",),
+            "solar": ("transition digital",),
+            "gist": ("gist",),
+            "deforestation": ("prodes",),
+            "lse": ("ndc",),
+            "wmo_cli": ("wmo", "ipcc"),  # Multiple logos for this server
+            "ecmwf": ("planet-sappling",),
+            "spa": ("spa",),
+            "solar_clay": ("clay",),
         }
+
+        def _normalise_logos(logos: Sequence[str]) -> List[str]:
+            """Return a list of trimmed logo identifiers."""
+            return [logo.strip() for logo in logos if logo and logo.strip()]
+
+        def _format_logo_tokens(logos: Sequence[str]) -> str:
+            """Return human-readable logo tokens joined with natural separators."""
+            normalised = _normalise_logos(logos)
+            tokens = [f"[[logo::{logo}]]" for logo in normalised]
+            if not tokens:
+                return ""
+            if len(tokens) == 1:
+                return tokens[0]
+            if len(tokens) == 2:
+                return f"{tokens[0]} and {tokens[1]}"
+            return ", ".join(tokens[:-1]) + f", and {tokens[-1]}"
 
         def _pretty_server_name(server_name: str) -> str:
             """Return a human-friendly server name for progress messages."""
-            return pretty_print.get(server_name, server_name)
+            base_name = pretty_print.get(server_name, server_name)
+            if "[[logo::" in base_name:
+                return base_name
+            logos = server_logos.get(server_name)
+            if not logos:
+                return base_name
+            logo_text = _format_logo_tokens(logos)
+            if not logo_text:
+                return base_name
+            return f"{base_name} ({logo_text})"
 
-        def _get_server_logos(server_name: str) -> Optional[str]:
-            """Return comma-separated logo identifiers for a server, or None if no logos."""
-            return server_logos.get(server_name)
+        def _get_server_logos(server_name: str) -> Sequence[str]:
+            """Return logo identifiers for a server, or an empty tuple if none."""
+            return server_logos.get(server_name, ())
 
         async def router_progress(
             server_name: str, stage: str, payload: Mapping[str, Any]
@@ -2830,8 +2859,8 @@ class SimpleOrchestrator:
                     )
 
                 await emit(message, "routing")
-                # Emit logo event after the organization mention
-                await emit_logos(server_name)
+                # Logos now inline in thinking messages
+                # await emit_logos(server_name)
             elif stage == "query_support_error":
                 error = payload.get("error")
                 await emit(
@@ -2841,7 +2870,7 @@ class SimpleOrchestrator:
                     ),
                     "routing",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
             elif stage == "query_support_failure":
                 error = payload.get("error")
                 await emit(
@@ -2851,7 +2880,7 @@ class SimpleOrchestrator:
                     ),
                     "routing",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
 
         # await emit("🧭 Confirming the relevance of servers...", "routing")
         await emit(
@@ -2879,8 +2908,8 @@ class SimpleOrchestrator:
                     f"e {len(response.artifacts)} elementos visuais",
                 )
                 await emit(message, "execution")
-                # Emit logo event after the organization mention
-                await emit_logos(server_name)
+                # Logos now inline in thinking messages
+                # await emit_logos(server_name)
             elif stage == "run_query_error":
                 error = payload.get("error")
                 await emit(
@@ -2890,7 +2919,7 @@ class SimpleOrchestrator:
                     ),
                     "execution",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
             elif stage == "run_query_failure":
                 error = payload.get("error")
                 await emit(
@@ -2900,7 +2929,7 @@ class SimpleOrchestrator:
                     ),
                     "execution",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
             elif stage == "run_query_timeout":
                 error = payload.get("error")
                 await emit(
@@ -2910,7 +2939,7 @@ class SimpleOrchestrator:
                     ),
                     "execution",
                 )
-                await emit_logos(server_name)
+                # await emit_logos(server_name)
 
         # await emit("📥 Gathering passages and data from servers...", "execution")
         await emit(

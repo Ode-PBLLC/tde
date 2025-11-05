@@ -718,7 +718,7 @@ def _build_geojson_artifact(solar_gdf: gpd.GeoDataFrame) -> Optional[Dict[str, A
         "id": f"clay_map_{signature}",
         "type": "map",
         "title": "Clay Solar Candidate Sites in Brazil",
-        "geojson_url": f"https://api.transitiondigital.org/static/maps/{filename}",
+        "geojson_url": f"/static/maps/{filename}",
         "metadata": {
             "plotted_sites": len(features),
             "countries": ["Brazil"],

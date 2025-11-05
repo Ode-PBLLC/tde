@@ -238,6 +238,21 @@ class GistServerV2(RunQueryMixin):
         "forest": "FOREST_AREA_CHANGE",
         "deforestation": "FOREST_AREA_CHANGE",
     }
+    RISK_DISPLAY_NAMES = {
+        "MSA": "Mean Species Abundance",
+        "WATER_STRESS": "Water Stress",
+        "WATER_DEMAND": "Water Demand",
+        "WATER_VARIABILITY": "Water Variability",
+        "DROUGHT": "Drought",
+        "FLOOD_RIVERINE": "Riverine Flood",
+        "FLOOD_COASTAL": "Coastal Flood",
+        "EXTREME_HEAT": "Extreme Heat",
+        "EXTREME_PRECIPITATION": "Extreme Precipitation",
+        "TEMPERATURE_ANOMALY": "Temperature Anomaly",
+        "URBAN_AREA_CHANGE": "Urban Area Change",
+        "AGRICULTURE_AREA_CHANGE": "Agriculture Area Change",
+        "FOREST_AREA_CHANGE": "Forest Area Change",
+    }
 
     def __init__(self) -> None:
         self.mcp = FastMCP("gist-server-v2")
@@ -697,6 +712,15 @@ class GistServerV2(RunQueryMixin):
                 return canonical
         return value.upper()
 
+    @classmethod
+    def _format_risk_name(cls, canonical: str) -> str:
+        if not canonical:
+            return "Unknown Risk"
+        key = canonical.upper()
+        if key in cls.RISK_DISPLAY_NAMES:
+            return cls.RISK_DISPLAY_NAMES[key]
+        return key.replace("_", " ").title()
+
     def get_risk_by_category(
         self,
         risk_type: str,
@@ -916,7 +940,7 @@ class GistServerV2(RunQueryMixin):
                     "id": f"gist_map_{signature}",
                     "type": "map",
                     "title": f"Asset Locations ({total_assets} points)",
-                    "geojson_url": f"https://api.transitiondigital.org/static/maps/{filename}",
+                    "geojson_url": f"/static/maps/{filename}",
                     "metadata": {
                         "total_assets": total_assets,
                         "countries": countries,
@@ -2027,8 +2051,11 @@ class GistServerV2(RunQueryMixin):
             else:
                 top_company = companies[0]
 
-            risk_label = str(ranking.get("risk_type", risk_type)).replace("_", " ").lower()
-            level_label = str(ranking.get("risk_level", risk_level)).replace("_", " ").lower()
+            risk_type_canonical = str(ranking.get("risk_type", risk_type))
+            risk_level_value = str(ranking.get("risk_level", risk_level))
+            level_label = risk_level_value.replace("_", " ").lower()
+            risk_label_readable = self._format_risk_name(risk_type_canonical)
+            level_label_title = level_label.title()
             location_phrase = f" in {country}" if country else ""
 
             top_name = _fix_encoding(top_company.get("company_name", "Unknown"))
@@ -2036,8 +2063,8 @@ class GistServerV2(RunQueryMixin):
             top_pct = top_company.get("high_risk_percentage", 0)
 
             summary = (
-                f"{top_name} shows the highest share of assets at {level_label} "
-                f"{risk_label}{location_phrase}, with {top_assets} assets classified as high risk "
+                f"{top_name} shows the highest share of assets with {level_label} exposure to "
+                f"{risk_label_readable.lower()}{location_phrase}, with {top_assets} assets classified as high risk "
                 f"({top_pct}% of assessed assets)."
             )
 
@@ -2048,10 +2075,14 @@ class GistServerV2(RunQueryMixin):
                 high_risk_percentage = company.get("high_risk_percentage", 0)
                 facts.append(
                     (
-                        f"#{idx}: {company_name} has {high_risk_assets} assets at {risk_label} {level_label} "
-                        f"risk, representing {high_risk_percentage}% of assessed assets."
+                        f"#{idx}: {company_name} has {high_risk_assets} assets at {level_label} "
+                        f"{risk_label_readable.lower()} risk, representing {high_risk_percentage}% of assessed assets."
                     )
                 )
+
+            table_title = (
+                f"Company Assets with {level_label_title} Exposure to {risk_label_readable}"
+            )
 
             table_rows: List[List[Any]] = []
             for idx, company in enumerate(companies_native, start=1):
@@ -2067,7 +2098,7 @@ class GistServerV2(RunQueryMixin):
 
             artifact = {
                 "type": "table",
-                "title": "Company Asset Exposure",
+                "title": table_title,
                 "metadata": {
                     "risk_type": ranking.get("risk_type", risk_type),
                     "risk_level": ranking.get("risk_level", risk_level),

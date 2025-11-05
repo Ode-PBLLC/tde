@@ -35,7 +35,6 @@ if __package__ in {None, ""}:
         RunQueryResponse,
     )
     from mcp.servers_v2.base import RunQueryMixin  # type: ignore
-    from mcp.url_utils import ensure_absolute_url  # type: ignore
     from mcp.geospatial_datasets import DeforestationPolygonProvider  # type: ignore
     from mcp.servers_v2.support_intent import SupportIntent  # type: ignore
 else:
@@ -48,7 +47,6 @@ else:
         RunQueryResponse,
     )
     from ..servers_v2.base import RunQueryMixin
-    from ..url_utils import ensure_absolute_url
     from ..geospatial_datasets import DeforestationPolygonProvider
     from .support_intent import SupportIntent
 
@@ -94,9 +92,6 @@ DATASET_METADATA = _load_dataset_metadata()
 class GeoJSONSummary:
     url: str
     metadata: Dict[str, Any]
-
-    def __post_init__(self) -> None:
-        self.url = ensure_absolute_url(self.url)
 
 class DeforestationServerV2(RunQueryMixin):
     """FastMCP server providing deforestation polygon centroids and v2 run_query."""
