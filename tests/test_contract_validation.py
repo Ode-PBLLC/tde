@@ -102,6 +102,7 @@ def _sample_final_response() -> dict:
                     "Type",
                     "Description",
                     "SourceURL",
+                    "UnderlyingSource",
                 ],
                 "rows": [
                     [
@@ -111,6 +112,7 @@ def _sample_final_response() -> dict:
                         "Dataset",
                         "Brazilian facility locations and proximity analysis",
                         "https://example.com/solar",
+                        "",
                     ]
                 ],
             },
