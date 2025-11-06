@@ -503,7 +503,7 @@ class CPRServerV2(RunQueryMixin):
         table_rows: List[List[Any]] = []
         processed_labels: set[str] = set()
         total_passages = 0
-        MAX_PASSAGES = 5
+        MAX_PASSAGES = 7
 
         def _consume(batch: List[Dict[str, Any]]) -> None:
             nonlocal total_passages
