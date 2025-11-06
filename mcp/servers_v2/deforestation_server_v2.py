@@ -1,4 +1,4 @@
-"""MapBiomas/PRODES deforestation polygon centroids exposed via the MCP v2 contract."""
+"""MapBiomas/PRODES deforestation point locations (centroids) exposed via the MCP v2 contract."""
 
 from __future__ import annotations
 
@@ -94,7 +94,7 @@ class GeoJSONSummary:
     metadata: Dict[str, Any]
 
 class DeforestationServerV2(RunQueryMixin):
-    """FastMCP server providing deforestation polygon centroids and v2 run_query."""
+    """FastMCP server providing deforestation point locations and v2 run_query."""
 
     def __init__(self) -> None:
         self.mcp = FastMCP("deforestation-server-v2")
@@ -135,7 +135,7 @@ class DeforestationServerV2(RunQueryMixin):
             overview = self.provider.dataset_overview()
             payload = {
                 "name": "deforestation",
-                "description": "Brazilian deforestation polygon centroids derived from INPE/PRODES.",
+                "description": "Brazilian deforestation point locations (polygon centroids) derived from INPE/PRODES.",
                 "dataset": DATASET_METADATA.get(DATASET_ID, {}).get("title", "PRODES Deforestation"),
                 "polygon_count": overview.get("polygon_count"),
                 "years": overview.get("years"),
@@ -183,7 +183,7 @@ class DeforestationServerV2(RunQueryMixin):
             max_area_hectares: float | None = None,
             limit: int = 200,
         ) -> dict:  # type: ignore[misc]
-            """Retrieve centroid points for polygons filtered by area thresholds."""
+            """Retrieve point locations (polygon centroids) for polygons filtered by area thresholds."""
 
             polygons = self.provider.polygons_by_area(
                 min_area_hectares=min_area_hectares,
@@ -207,7 +207,7 @@ class DeforestationServerV2(RunQueryMixin):
             west: float,
             limit: int = 200,
         ) -> dict:  # type: ignore[misc]
-            """Return centroid points for polygons intersecting a bounding box."""
+            """Return point locations (polygon centroids) for polygons intersecting a bounding box."""
 
             polygons = self.provider.polygons_in_bounds(north=north, south=south, east=east, west=west, limit=limit)
             summary = self._generate_geojson(polygons, identifier="bounds")
@@ -386,6 +386,17 @@ class DeforestationServerV2(RunQueryMixin):
 
         polygons = self.provider.polygons_by_area(min_area_hectares=min_area, limit=limit)
         summary = self._generate_geojson(polygons, identifier="run_query") if polygons else None
+        if summary:
+            summary.metadata = dict(summary.metadata)
+            summary.metadata.setdefault("dataset_id", DATASET_ID)
+            summary.metadata["min_area_hectares"] = min_area
+            summary.metadata["title"] = (
+                f"PRODES deforestation point locations (≥ {min_area:g} ha)"
+            )
+            summary.metadata["description"] = (
+                "Each point marks the center of an INPE/PRODES deforestation polygon in Brazil, "
+                f"filtered to areas of at least {min_area:g} hectares."
+            )
         area_by_year = self.provider.area_by_year()
         chart_labels = [entry["year"] for entry in reversed(area_by_year[:30])]
         chart_values = [entry["total_area_hectares"] for entry in reversed(area_by_year[:30])]
@@ -418,7 +429,7 @@ class DeforestationServerV2(RunQueryMixin):
                 FactPayload(
                     id="deforest_filter",
                     text=(
-                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} centroid points representing polygons totalling about {round(selected_area, 1)} hectares."
+                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} point locations representing polygons totalling about {round(selected_area, 1)} hectares."
                     ),
                     citation_id=citation.id,
                     metadata={"min_area_hectares": min_area},
@@ -444,7 +455,7 @@ class DeforestationServerV2(RunQueryMixin):
             facts.append(
                 FactPayload(
                     id="deforest_no_matches",
-                    text=f"No polygons (and therefore no centroid points) exceeded the minimum area threshold of {min_area} hectares.",
+                    text=f"No polygons (and therefore no point locations) exceeded the minimum area threshold of {min_area} hectares.",
                     citation_id=citation.id,
                 )
             )
@@ -464,13 +475,16 @@ class DeforestationServerV2(RunQueryMixin):
 
         artifacts: List[ArtifactPayload] = []
         if summary:
+            map_title = summary.metadata.get("title") if isinstance(summary.metadata, dict) else None
+            map_description = summary.metadata.get("description") if isinstance(summary.metadata, dict) else None
             artifacts.append(
                 ArtifactPayload(
                     id="deforest_map",
                     type="map",
-                    title="Deforestation centroids",
+                    title=map_title or "PRODES deforestation point locations",
                     geojson_url=summary.url,
                     metadata=summary.metadata,
+                    description=map_description,
                 )
             )
 
@@ -553,7 +567,7 @@ class DeforestationServerV2(RunQueryMixin):
             messages.append(
                 MessagePayload(
                     level="warning",
-                    text="No centroid points matched the requested filters; consider lowering the minimum area threshold.",
+                    text="No point locations matched the requested filters; consider lowering the minimum area threshold.",
                 )
             )
 
@@ -682,7 +696,7 @@ class DeforestationServerV2(RunQueryMixin):
             "title": "Layers",
             "items": [
                 {
-                    "label": "Deforestation centroids",
+                    "label": "Deforestation point locations",
                     "color": POINT_LAYER_COLORS.get("deforestation_point", "#D84315"),
                     "description": f"{len(features)} points",
                 }
