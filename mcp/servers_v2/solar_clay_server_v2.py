@@ -332,6 +332,14 @@ def GetClayCandidatePointsByState(
     if avg_yield:
         summary_text += f" with average solar yield of {avg_yield:.1f} kWh/kWp/yr"
 
+    # Generate map artifact for the state
+    artifacts = []
+    map_artifact = _build_geojson_artifact(subset)
+    if map_artifact:
+        # Update map title to be state-specific
+        map_artifact["title"] = f"Clay Solar Candidate Sites in {state}"
+        artifacts.append(map_artifact)
+
     return {
         "citation": {
             "id": "clay-solar-state",
@@ -342,7 +350,7 @@ def GetClayCandidatePointsByState(
             "url": "https://clay-foundation.github.io/model/",
         },
         "summary": summary_text,
-        "artifacts": [],  # Could add a map here if needed
+        "artifacts": artifacts,
     }
 
 
