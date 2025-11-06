@@ -1386,18 +1386,9 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                                 kg_rel = kg_res.get("relative_path")
                                 kg_url = kg_res.get("url_path")
                                 # Build absolute URL using helper to avoid mixed content
+                                # This applies HTTPS enforcement for production domains
                                 if kg_url:
-                                    import os as __os
-
-                                    if kg_url.startswith(
-                                        "http://"
-                                    ) or kg_url.startswith("https://"):
-                                        pass
-                                    else:
-                                        base = __os.getenv("API_BASE_URL")
-                                        if not base:
-                                            base = str(request.base_url)
-                                        kg_url = f"{base.rstrip('/')}{kg_url}"
+                                    kg_url = _absolute_url_for(request, kg_url)
                                 # Attach to top-level of response for frontend
                                 response_data["kg_embed_url"] = kg_url
                                 response_data["kg_embed_path"] = kg_rel
