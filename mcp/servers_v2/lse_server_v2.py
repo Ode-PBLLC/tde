@@ -3023,12 +3023,51 @@ class LSEServerV2(RunQueryMixin):
         )
 
     def _state_artifact(self, query: str) -> Optional[ArtifactPayload]:
-        lowered = query.lower()
-        if not any(keyword in lowered for keyword in ["state", "subnational", "municip", "rio", "sao", "amazon"]):
-            return None
         rows = self._state_coverage_rows()
         if not rows:
             return None
+        lowered = query.lower()
+        normalized_query = unicodedata.normalize("NFKD", query).encode("ascii", "ignore").decode("ascii").lower()
+
+        def _normalize(text: str) -> str:
+            return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii").lower()
+
+        state_name_tokens = {
+            _normalize(str(row.get("state") or ""))
+            for row in rows
+            if row.get("state")
+        }
+        state_name_tokens.discard("")
+        mention_state_name = any(token and token in normalized_query for token in state_name_tokens)
+
+        keyword_phrases = [
+            "subnational",
+            "state-level",
+            "state level",
+            "brazilian states",
+            "governanca estadual",
+            "governanca subnacional",
+            "municipality",
+            "municipalities",
+            "estado",
+            "estados",
+        ]
+        mention_keyword = any(term in normalized_query for term in keyword_phrases)
+        if " state " in normalized_query or normalized_query.startswith("state "):
+            mention_keyword = True
+
+        mention_brazil = any(word in normalized_query for word in ["brazil", "brasil", "brazilian", "brasileira", "brasileiro"])
+
+        if "united states" in normalized_query and not mention_state_name:
+            mention_keyword = False
+
+        if "state of" in normalized_query and not mention_state_name:
+            if not re.search(r"\bstates?\b.*(policy|governance|climate|plan|program|implementation|ndc)", normalized_query):
+                mention_keyword = False
+
+        if not (mention_state_name or (mention_keyword and mention_brazil)):
+            return None
+
         return ArtifactPayload(
             id="lse-state-coverage",
             type="table",
@@ -3164,9 +3203,15 @@ class LSEServerV2(RunQueryMixin):
         # Use more results to ensure sectoral/specific content isn't missed by general targets
         results = scored_results[:15]
 
+        # Limit total passages to prevent overwhelming other servers' data
+        MAX_PASSAGES = 7
+        passage_count = 0
+
         citation_lookup: Dict[str, str] = {}
         seen_record_keys: Set[Tuple[str, str]] = set()
         for idx, item in enumerate(results, start=1):
+            if passage_count >= MAX_PASSAGES:
+                break
             slug = item.get("slug")
             sheet = self.catalog.get_sheet(slug) if slug else None
             if not sheet:
@@ -3198,9 +3243,17 @@ class LSEServerV2(RunQueryMixin):
                     },
                 )
             )
+            passage_count += 1
 
-        ndc_focus = self._ndc_focus_records(query)
+        # Only add NDC focus records if we haven't hit the passage limit
+        if passage_count < MAX_PASSAGES:
+            ndc_focus = self._ndc_focus_records(query)
+        else:
+            ndc_focus = []
+
         for sheet, record, text in ndc_focus:
+            if passage_count >= MAX_PASSAGES:
+                break
             label_key = (
                 sheet.slug,
                 (str(record.get("label") or record.get("question") or "").strip().lower()),
@@ -3225,6 +3278,7 @@ class LSEServerV2(RunQueryMixin):
                     },
                 )
             )
+            passage_count += 1
             seen_record_keys.add(label_key)
 
         if not results:
@@ -3244,10 +3298,6 @@ class LSEServerV2(RunQueryMixin):
         #     module_artifact = self._module_artifact()
         #     if module_artifact:
         #         artifacts.append(module_artifact)
-        state_artifact = self._state_artifact(query)
-        if state_artifact:
-            artifacts.append(state_artifact)
-
         if not facts:
             ndc_sheet = self.catalog.get_ndc_sheet()
             if ndc_sheet:
