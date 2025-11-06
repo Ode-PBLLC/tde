@@ -1459,22 +1459,9 @@ class BrazilianAdminServerV2(RunQueryMixin):
                 )
 
         artifacts: List[ArtifactPayload] = []
-        if matched_municipalities is not None and not matched_municipalities.empty:
-            export = self._export_geojson(
-                matched_municipalities.geometry,
-                identifier="municipalities_focus",
-                legend_label="Municipalities",
-                legend_color="#1E88E5",
-            )
-            artifacts.append(
-                ArtifactPayload(
-                    id="municipality_map",
-                    type="map",
-                    title="Highlighted Brazilian municipalities",
-                    geojson_url=export.url,
-                    metadata=export.metadata,
-                )
-            )
+        # Municipality polygons map disabled; the generated map was rarely useful
+        # and frequently caused noise in responses. Keep the block above commented
+        # out unless we have a concrete use case for the polygons artifact again.
 
         messages: List[MessagePayload] = []
 
