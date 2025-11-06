@@ -1002,56 +1002,8 @@ class LSEServerV2(RunQueryMixin):
             return json.dumps(payload)
 
     def _classify_support(self, query: str) -> SupportIntent:
-        if self._anthropic_client:
-            try:
-                prompt = (
-                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question. "
-                    "This dataset covers climate governance, NDC targets, sectoral policies (including "
-                    "land use, forestry, deforestation, REDD+, energy, transport), institutional frameworks, "
-                    "and subnational state implementation. Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
-                    f"Dataset summary: {self._capability_summary()}\n"
-                    f"Question: {query}"
-                )
-                response = self._anthropic_client.messages.create(
-                    model=os.getenv("LSE_ROUTER_MODEL", "claude-3-5-haiku-20241022"),
-                    max_tokens=128,
-                    temperature=0,
-                    system="Respond with strict JSON only.",
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                text = response.content[0].text.strip()
-                intent = self._parse_support_intent(text)
-                if intent:
-                    return intent
-            except Exception as exc:  # pragma: no cover
-                return SupportIntent(True, 0.3, [f"Anthropic routing unavailable: {exc}"])
-
-        if self._openai_client:
-            try:
-                prompt = (
-                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question. "
-                    "This dataset covers climate governance, NDC targets, sectoral policies (including "
-                    "land use, forestry, deforestation, REDD+, energy, transport), institutional frameworks, "
-                    "and subnational state implementation. Respond with JSON keys 'supported' (true/false) and 'reason'.\n"
-                    f"Dataset summary: {self._capability_summary()}\n"
-                    f"Question: {query}"
-                )
-                response = self._openai_client.responses.create(
-                    model=os.getenv("LSE_ROUTER_MODEL", "gpt-4.1-mini"),
-                    input=prompt,
-                    temperature=0,
-                    max_output_tokens=128,
-                )
-                text = "".join(
-                    part.text for part in response.output if hasattr(part, "text") and part.text
-                ).strip()
-                intent = self._parse_support_intent(text)
-                if intent:
-                    return intent
-            except Exception as exc:  # pragma: no cover
-                return SupportIntent(True, 0.3, [f"OpenAI routing unavailable: {exc}"])
-
-        return SupportIntent(True, 0.3, ["LLM unavailable; defaulting to dataset availability"])
+        # Always opt in so the orchestrator keeps NDC Align in scope.
+        return SupportIntent(True, 1.0, ["Always include per routing policy"])
 
     @staticmethod
     def _parse_support_intent(text: str) -> Optional[SupportIntent]:
