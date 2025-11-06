@@ -692,6 +692,7 @@ def _build_geojson_artifact(solar_gdf: gpd.GeoDataFrame) -> Optional[Dict[str, A
                     "layer": "clay_solar_candidate",
                     "color_value": 1,
                     "color_hex": "#4CAF50",
+                    "color": "#4CAF50",
                 },
             }
         )

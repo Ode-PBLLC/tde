@@ -1179,14 +1179,15 @@ class SolarServerV2(RunQueryMixin):
             properties = {
                 "cluster_id": facility_dict.get("cluster_id"),
                 "name": facility_dict.get("name") or facility_dict.get("cluster_id"),
-                "capacity_mw": capacity,
-                "country": facility_key,
+                "capacity_mw": round(capacity, 2) if capacity else 0,
+                "country": country,
                 "facility_country": country,
                 "constructed_before": facility_dict.get("constructed_before"),
                 "constructed_after": facility_dict.get("constructed_after"),
                 "layer": "solar_facility",
                 "color_value": 1,
                 "color_hex": FACILITY_BUFFER_COLOR,
+                "color": FACILITY_BUFFER_COLOR,
             }
 
             if use_polygon_markers:
@@ -1282,7 +1283,7 @@ class SolarServerV2(RunQueryMixin):
         legend_items = legend.setdefault("items", [])
         legend_items.append(
             {
-                "label": facility_key,
+                "label": facility_label,
                 "color": FACILITY_BUFFER_COLOR,
                 "description": f"{plotted_count} facilities",
             }

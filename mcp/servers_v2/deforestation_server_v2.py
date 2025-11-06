@@ -634,6 +634,7 @@ class DeforestationServerV2(RunQueryMixin):
                 "centroid_lat": centroid.y,
                 "centroid_lon": centroid.x,
                 "geometry_source": "polygon_centroid",
+                "color": "#D84315",
             }
             properties.setdefault("country", "deforestation")
             area_value = properties.get("area_hectares")

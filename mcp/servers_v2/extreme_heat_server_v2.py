@@ -593,6 +593,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 "stroke-width": 0.5,
                 "title": f"Heat zone Q{quintile} - {row.get('source')}",
                 "country": legend_key,
+                "color": QUINTILE_COLORS.get(quintile, "#E31A1C"),
             }
             features.append(
                 {
