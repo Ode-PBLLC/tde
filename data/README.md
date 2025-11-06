@@ -1,3 +1,30 @@
+# Transition Digital AI - Documentation
+
+## Current Status
+
+We are actively developing comprehensive documentation for the Transition Digital AI platform. This work includes verifying usage terms with data providers and ensuring accurate attribution guidelines.
+
+### Why are we being thorough?
+
+We're taking the time to:
+* Verify usage terms directly with data providers
+* Ensure all attribution requirements are clearly documented
+* Create reliable documentation you can trust for compliance
+
+### Need Information Now?
+
+If you have urgent questions about:
+* Specific dataset terms
+* Commercial use permissions
+* Attribution requirements
+* Technical methodology
+
+Please contact: td@climatepolicyradar.org
+
+This repository will be updated regularly as documentation is completed. Star/watch this repo to be notified of updates.
+
+---
+
 # Data Directory
 
 This directory contains datasets used by the MCP servers. Due to size constraints, these files are **not pushed to the repository** (excluded via `.gitignore`).
