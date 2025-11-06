@@ -1610,16 +1610,33 @@ async def proxy_kg_api(path: str, request: Request):
 def _absolute_url_for(request: Request, path: str) -> str:
     """Build an absolute URL for a given absolute or relative path.
     Prefers API_BASE_URL env var when set to avoid mixed content behind proxies.
+    Applies HTTPS enforcement for production domains.
     """
     import os
+    import re
 
     if path.startswith("http://") or path.startswith("https://"):
-        return path
-    base = os.getenv("API_BASE_URL")
-    if base:
-        return f"{base.rstrip('/')}{path}"
-    # Fallback to request base_url (respects ProxyHeadersMiddleware)
-    return f"{str(request.base_url).rstrip('/')}{path}"
+        result_url = path
+    else:
+        base = os.getenv("API_BASE_URL")
+        if base:
+            result_url = f"{base.rstrip('/')}{path}"
+        else:
+            # Fallback to request base_url (respects ProxyHeadersMiddleware)
+            result_url = f"{str(request.base_url).rstrip('/')}{path}"
+
+    # Defensive HTTPS enforcement for production domains to prevent mixed content errors
+    production_patterns = [
+        r'http://([\w\-\.]*\.)?sunship\.one',
+        r'http://([\w\-\.]*\.)?transitiondigital\.org',
+    ]
+
+    for pattern in production_patterns:
+        if re.match(pattern, result_url):
+            result_url = result_url.replace('http://', 'https://', 1)
+            break
+
+    return result_url
 
 
 if __name__ == "__main__":
