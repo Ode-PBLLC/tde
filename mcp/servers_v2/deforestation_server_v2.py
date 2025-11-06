@@ -52,7 +52,7 @@ else:
 
 
 DATASET_ID = "brazil_deforestation"
-DEFAULT_LIMIT = 200
+DEFAULT_LIMIT = 5000
 
 STATE_STATS_PATH = Path(__file__).resolve().parents[2] / "static" / "meta" / "deforestation_by_state.json"
 MUNICIPALITY_STATS_PATH = (
@@ -385,6 +385,8 @@ class DeforestationServerV2(RunQueryMixin):
         limit = int(context.get("limit", DEFAULT_LIMIT)) if isinstance(context.get("limit"), (int, float)) else DEFAULT_LIMIT
 
         polygons = self.provider.polygons_by_area(min_area_hectares=min_area, limit=limit)
+        matching_polygon_count = self.provider.count_polygons_by_area(min_area_hectares=min_area)
+        matching_total_area = self.provider.total_area_by_area(min_area_hectares=min_area)
         summary = self._generate_geojson(polygons, identifier="run_query") if polygons else None
         if summary:
             summary.metadata = dict(summary.metadata)
@@ -393,9 +395,12 @@ class DeforestationServerV2(RunQueryMixin):
             summary.metadata["title"] = (
                 f"PRODES deforestation point locations (≥ {min_area:g} ha)"
             )
+            summary.metadata["matching_polygon_count"] = matching_polygon_count
+            summary.metadata["returned_point_count"] = len(polygons)
+            summary.metadata["matching_total_area_hectares"] = round(matching_total_area, 2)
             summary.metadata["description"] = (
-                "Each point marks the center of an INPE/PRODES deforestation polygon in Brazil, "
-                f"filtered to areas of at least {min_area:g} hectares."
+                f"Each point marks the center of an INPE/PRODES deforestation polygon in Brazil that is at least {min_area:g} hectares. "
+                f"The dataset contains {matching_polygon_count:,} polygons above this threshold; this map shows the top {len(polygons):,} by area."
             )
         area_by_year = self.provider.area_by_year()
         chart_labels = [entry["year"] for entry in reversed(area_by_year[:30])]
@@ -425,16 +430,29 @@ class DeforestationServerV2(RunQueryMixin):
         )
         if polygons:
             selected_area = sum((polygon.properties.get("area_hectares") or 0.0) for polygon in polygons)
+            coverage_note = ""
+            if matching_polygon_count > len(polygons):
+                coverage_note = f" (top {len(polygons):,} of {matching_polygon_count:,} polygons meeting the filter)"
             facts.append(
                 FactPayload(
                     id="deforest_filter",
                     text=(
-                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} point locations representing polygons totalling about {round(selected_area, 1)} hectares."
+                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} point locations{coverage_note} representing polygons totalling about {round(selected_area, 1)} hectares."
                     ),
                     citation_id=citation.id,
                     metadata={"min_area_hectares": min_area},
                 )
             )
+            if matching_polygon_count > len(polygons):
+                facts.append(
+                    FactPayload(
+                        id="deforest_filter_total",
+                        text=(
+                            f"In total, {matching_polygon_count:,} polygons meet this {min_area}-hectare threshold, spanning roughly {matching_total_area:,.0f} hectares across Brazil."
+                        ),
+                        citation_id=citation.id,
+                    )
+                )
         if area_by_year:
             top_year = max(area_by_year, key=lambda row: row["total_area_hectares"])
             top_area = round(float(top_year["total_area_hectares"]), 1)
