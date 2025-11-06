@@ -2092,16 +2092,21 @@ class SolarServerV2(RunQueryMixin):
             if annual:
                 annual_labels = [x["year"] for x in annual]
                 annual_capacity_values = [x["capacity_mw"] for x in annual]
-                annual_chart = {
-                    "labels": annual_labels,
-                    "datasets": [{
-                        "label": "Annual Capacity Additions (MW)",
-                        "data": annual_capacity_values,
-                        "borderColor": "#4CAF50",
-                        "backgroundColor": "rgba(76, 175, 80, 0.35)",
-                        "fill": True,
-                        "yAxisID": "y"
-                    }],
+                artifacts.append({
+                    "type": "chart",
+                    "chartType": "line",
+                    "title": f"Annual Solar Capacity Additions - {target}",
+                    "data": {
+                        "labels": annual_labels,
+                        "datasets": [{
+                            "label": "Annual Capacity Additions (MW)",
+                            "data": annual_capacity_values,
+                            "borderColor": "#4CAF50",
+                            "backgroundColor": "rgba(76, 175, 80, 0.35)",
+                            "fill": True,
+                            "yAxisID": "y"
+                        }]
+                    },
                     "options": {
                         "scales": {
                             "y": {
@@ -2115,28 +2120,27 @@ class SolarServerV2(RunQueryMixin):
                             }
                         }
                     }
-                }
-                artifacts.append({
-                    "type": "chart",
-                    "chartType": "line",
-                    "title": f"Annual Solar Capacity Additions - {target}",
-                    "data": annual_chart
                 })
 
             # Cumulative capacity chart
             if cumulative:
                 cumulative_labels = [x["year"] for x in cumulative]
                 cumulative_capacity_values = [x["total_capacity_mw"] for x in cumulative]
-                cumulative_chart = {
-                    "labels": cumulative_labels,
-                    "datasets": [{
-                        "label": "Total Installed Capacity (MW)",
-                        "data": cumulative_capacity_values,
-                        "borderColor": "#2196F3",
-                        "backgroundColor": "rgba(33, 150, 243, 0.35)",
-                        "fill": True,
-                        "yAxisID": "y"
-                    }],
+                artifacts.append({
+                    "type": "chart",
+                    "chartType": "line",
+                    "title": f"Cumulative Solar Capacity - {target}",
+                    "data": {
+                        "labels": cumulative_labels,
+                        "datasets": [{
+                            "label": "Total Installed Capacity (MW)",
+                            "data": cumulative_capacity_values,
+                            "borderColor": "#2196F3",
+                            "backgroundColor": "rgba(33, 150, 243, 0.35)",
+                            "fill": True,
+                            "yAxisID": "y"
+                        }]
+                    },
                     "options": {
                         "scales": {
                             "y": {
@@ -2150,12 +2154,6 @@ class SolarServerV2(RunQueryMixin):
                             }
                         }
                     }
-                }
-                artifacts.append({
-                    "type": "chart",
-                    "chartType": "line",
-                    "title": f"Cumulative Solar Capacity - {target}",
-                    "data": cumulative_chart
                 })
 
             return {
