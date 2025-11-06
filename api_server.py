@@ -1406,12 +1406,18 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                             print(f"[STREAM] KG embed augmentation failed: {_e}")
 
                         # Also include KG concepts and relationships arrays in the stream payload
+                        # Derive from kg_context if available (like non-streaming endpoint does)
                         try:
-                            kg_arrays = await _fetch_kg_data(stream_req.query)
-                            response_data["concepts"] = kg_arrays.get("concepts", [])
-                            response_data["relationships"] = kg_arrays.get(
-                                "relationships", []
-                            )
+                            if kg_context:
+                                derived = _derive_kg_from_context(kg_context)
+                                response_data["concepts"] = derived["concepts"]
+                                response_data["relationships"] = derived["relationships"]
+                            else:
+                                kg_arrays = await _fetch_kg_data(stream_req.query)
+                                response_data["concepts"] = kg_arrays.get("concepts", [])
+                                response_data["relationships"] = kg_arrays.get(
+                                    "relationships", []
+                                )
                         except Exception as _e2:
                             print(f"[STREAM] KG arrays augmentation failed: {_e2}")
                 if event_type in {"thinking", "thinking_complete"}:
