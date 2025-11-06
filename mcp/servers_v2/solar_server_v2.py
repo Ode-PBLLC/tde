@@ -555,6 +555,16 @@ class SolarServerV2(RunQueryMixin):
         return {
             "labels": labels,
             "datasets": [dataset],
+            "options": {
+                "scales": {
+                    "y": {
+                        "title": {
+                            "display": True,
+                            "text": "Capacity (MW)",
+                        }
+                    }
+                }
+            },
         }
 
     def _build_municipality_capacity_chart(self, *, top_n: int = 10) -> Optional[Dict[str, Any]]:
@@ -573,6 +583,16 @@ class SolarServerV2(RunQueryMixin):
         return {
             "labels": labels,
             "datasets": [dataset],
+            "options": {
+                "scales": {
+                    "y": {
+                        "title": {
+                            "display": True,
+                            "text": "Capacity (MW)",
+                        }
+                    }
+                }
+            },
         }
 
     def _construction_timeline_series(self, country: str) -> List[Tuple[str, int]]:
@@ -1751,6 +1771,16 @@ class SolarServerV2(RunQueryMixin):
                         "backgroundColor": "#43A047",
                     }
                 ],
+                "options": {
+                    "scales": {
+                        "y": {
+                            "title": {
+                                "display": True,
+                                "text": "Capacity (MW)",
+                            }
+                        }
+                    }
+                },
             }
 
             leader = ranked[0] if ranked else {}
@@ -1879,6 +1909,7 @@ class SolarServerV2(RunQueryMixin):
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
+                "options": chart.get("options"),
                 "metadata": {"chartType": "bar"},
                 "items": stats,
                 "summary": summary,
@@ -1945,6 +1976,7 @@ class SolarServerV2(RunQueryMixin):
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
+                "options": chart.get("options"),
                 "metadata": {"chartType": "bar"},
                 "items": stats,
                 "summary": summary,
