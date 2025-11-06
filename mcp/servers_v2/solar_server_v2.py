@@ -2094,7 +2094,6 @@ class SolarServerV2(RunQueryMixin):
                 annual_capacity_values = [x["capacity_mw"] for x in annual]
                 artifacts.append({
                     "type": "chart",
-                    "chartType": "line",
                     "title": f"Annual Solar Capacity Additions - {target}",
                     "data": {
                         "labels": annual_labels,
@@ -2107,15 +2106,18 @@ class SolarServerV2(RunQueryMixin):
                             "yAxisID": "y"
                         }]
                     },
-                    "options": {
-                        "scales": {
-                            "y": {
-                                "type": "linear",
-                                "display": True,
-                                "position": "left",
-                                "title": {
+                    "metadata": {
+                        "chartType": "bar",
+                        "options": {
+                            "scales": {
+                                "y": {
+                                    "type": "linear",
                                     "display": True,
-                                    "text": "Capacity (MW)"
+                                    "position": "left",
+                                    "title": {
+                                        "display": True,
+                                        "text": "Capacity (MW)"
+                                    }
                                 }
                             }
                         }
@@ -2128,7 +2130,6 @@ class SolarServerV2(RunQueryMixin):
                 cumulative_capacity_values = [x["total_capacity_mw"] for x in cumulative]
                 artifacts.append({
                     "type": "chart",
-                    "chartType": "line",
                     "title": f"Cumulative Solar Capacity - {target}",
                     "data": {
                         "labels": cumulative_labels,
@@ -2141,15 +2142,18 @@ class SolarServerV2(RunQueryMixin):
                             "yAxisID": "y"
                         }]
                     },
-                    "options": {
-                        "scales": {
-                            "y": {
-                                "type": "linear",
-                                "display": True,
-                                "position": "left",
-                                "title": {
+                    "metadata": {
+                        "chartType": "bar",
+                        "options": {
+                            "scales": {
+                                "y": {
+                                    "type": "linear",
                                     "display": True,
-                                    "text": "Total Capacity (MW)"
+                                    "position": "left",
+                                    "title": {
+                                        "display": True,
+                                        "text": "Total Capacity (MW)"
+                                    }
                                 }
                             }
                         }
