@@ -1488,13 +1488,30 @@ class LSEServerV2(RunQueryMixin):
 
             artifact = {
                 "type": "chart",
-                "title": "State climate policy coverage",
+                "title": "Top states by NDC Align governance coverage",
                 "metadata": {
                     "chartType": "bar",
                     "metric": "coverage_percent",
                     "limit": max(1, limit),
+                    "description": (
+                        "Ranks Brazilian states by the percentage of 'Yes' answers in the NDC Align subnational governance checklist."
+                    ),
+                    "datasetLabel": "Share of 'Yes' responses (%)",
+                    "options": {
+                        "scales": {
+                            "y": {
+                                "title": {
+                                    "display": True,
+                                    "text": "Share of 'Yes' responses (%)",
+                                }
+                            }
+                        }
+                    },
                 },
                 "data": chart_payload,
+                "description": (
+                    "Highlights which states reported the most complete climate governance coverage in NDC Align's subnational assessment."
+                ),
             }
 
             return {
@@ -3015,12 +3032,15 @@ class LSEServerV2(RunQueryMixin):
         return ArtifactPayload(
             id="lse-state-coverage",
             type="table",
-            title="State-level governance coverage",
+            title="NDC Align state governance coverage",
             data={
                 "columns": ["state", "yes", "no", "other", "coverage_percent"],
                 "rows": rows,
             },
-            description="Comparison of subnational governance responses across Brazilian states",
+            description=(
+                "Share of 'Yes', 'No', and 'Other' answers recorded by NDC Align's subnational governance questionnaire "
+                "for each Brazilian state; coverage_percent reflects the proportion of checklist items answered 'Yes'."
+            ),
         )
 
     @staticmethod
