@@ -502,9 +502,14 @@ class CPRServerV2(RunQueryMixin):
         facts: List[FactPayload] = []
         table_rows: List[List[Any]] = []
         processed_labels: set[str] = set()
+        total_passages = 0
+        MAX_PASSAGES = 5
 
         def _consume(batch: List[Dict[str, Any]]) -> None:
+            nonlocal total_passages
             for concept in batch:
+                if total_passages >= MAX_PASSAGES:
+                    return
                 label = concept.get("label")
                 if not label or label in processed_labels:
                     continue
@@ -513,6 +518,8 @@ class CPRServerV2(RunQueryMixin):
                 if not passages:
                     continue
                 for passage in passages:
+                    if total_passages >= MAX_PASSAGES:
+                        return
                     citation = self._passage_citation(label, passage)
                     if citation.id:
                         citations[citation.id] = citation
@@ -564,6 +571,7 @@ class CPRServerV2(RunQueryMixin):
                             },
                         )
                     )
+                    total_passages += 1
                     table_rows.append([
                         label,
                         document_id,
