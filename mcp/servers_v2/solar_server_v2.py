@@ -1824,8 +1824,15 @@ class SolarServerV2(RunQueryMixin):
                 {
                     "type": "chart",
                     "title": "Top countries by tracked solar capacity",
-                    "data": chart,
-                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                    "data": {
+                        "labels": chart["labels"],
+                        "datasets": chart["datasets"],
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "datasetLabel": "Solar Capacity (MW)",
+                        "options": chart.get("options", {}),
+                    },
                 },
                 {
                     "type": "table",
@@ -1895,8 +1902,15 @@ class SolarServerV2(RunQueryMixin):
                 {
                     "type": "chart",
                     "title": "Top Brazilian states by solar capacity",
-                    "data": chart,
-                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                    "data": {
+                        "labels": chart["labels"],
+                        "datasets": chart["datasets"],
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "datasetLabel": "Solar Capacity (MW)",
+                        "options": chart.get("options", {}),
+                    },
                 },
                 {
                     "type": "table",
@@ -1962,8 +1976,15 @@ class SolarServerV2(RunQueryMixin):
                 {
                     "type": "chart",
                     "title": "Top Brazilian municipalities by solar capacity",
-                    "data": chart,
-                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                    "data": {
+                        "labels": chart["labels"],
+                        "datasets": chart["datasets"],
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "datasetLabel": "Solar Capacity (MW)",
+                        "options": chart.get("options", {}),
+                    },
                 },
                 {
                     "type": "table",
