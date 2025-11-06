@@ -578,6 +578,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
     ) -> Tuple[str, Dict[str, Any]]:
         """Persist a GeoJSON file and return filename plus summary metadata."""
 
+        quintile_list = list(quintiles)
         features: List[Dict[str, Any]] = []
         legend_label = "Extreme Heat Zones"
         legend_key = legend_label.lower()
@@ -611,7 +612,41 @@ class ExtremeHeatServerV2(RunQueryMixin):
         path = self.static_maps_dir / filename
         path.write_text(json.dumps(geojson), encoding="utf-8")
 
+        dataset_entry = self._dataset_entry()
         dataset_info = self._dataset_info_for_source(source or "")
+        variable_label = dataset_info.get("variable") or ""
+        source_text = dataset_info.get("source") or ""
+        temporal_raw = dataset_info.get("temporal_coverage") or dataset_entry.get("temporal_coverage") or ""
+        years = re.findall(r"\d{4}", temporal_raw)
+        if len(years) >= 2:
+            temporal_label = f"{years[0]}-{years[-1]}"
+        elif years:
+            temporal_label = years[0]
+        else:
+            temporal_label = "2020-2025" if temporal_raw == "" else temporal_raw
+        source_short = ""
+        if source_text:
+            upper = source_text.upper()
+            if "ERA5" in upper:
+                source_short = "ERA5-Land"
+            elif "MODIS" in upper:
+                source_short = "MODIS/Terra"
+        if not source_short:
+            source_short = "PlanetSapling"
+        descriptor_parts: List[str] = []
+        if variable_label:
+            descriptor_parts.append(variable_label)
+        if source_short:
+            descriptor_parts.append(source_short)
+        if temporal_label:
+            descriptor_parts.append(temporal_label)
+        descriptor_str = ", ".join(descriptor_parts)
+        summary_description = "Top-quintile (Q5) extreme-heat zones across Brazil derived from the PlanetSapling raster"
+        if descriptor_str:
+            summary_description += f" ({descriptor_str})"
+        summary_description += ". Polygons mark the hottest 20 percent of grid cells based on the multi-year mean values."
+        title_temporal = temporal_label or "2020-2025"
+        summary_title = f"Brazil Extreme Heat Hotspots (Top Quintile, {source_short} {title_temporal}, PlanetSapling)"
         try:
             minx, miny, maxx, maxy = gdf.total_bounds
             bounds = {
@@ -628,13 +663,18 @@ class ExtremeHeatServerV2(RunQueryMixin):
             bounds = None
             center = None
         summary = {
-            "description": f"Extreme heat map (quintiles {quintiles})",
+            "description": summary_description,
             "total_features": len(features),
             "layers": [{"type": "heat_zone", "count": len(features)}],
-            "title": "Extreme Heat Map",
+            "title": summary_title,
             "spatial_coverage": dataset_info.get("spatial_coverage"),
             "temporal_coverage": dataset_info.get("temporal_coverage"),
             "dataset_variable": dataset_info.get("variable"),
+            "dataset_id": DATASET_ID,
+            "source": source,
+            "source_reference": source_text,
+            "quintiles": quintile_list,
+            "dataset_title": dataset_entry.get("title"),
         }
         if bounds:
             summary["bounds"] = bounds
@@ -1046,6 +1086,10 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 for key in ("bounds", "center", "legend", "layers"):
                     if summary.get(key) is not None:
                         artifact_metadata[key] = summary[key]
+                if summary.get("title"):
+                    artifact_metadata["title"] = summary["title"]
+                if summary.get("description"):
+                    artifact_metadata["description"] = summary["description"]
 
             legend_items = []
             layers_payload = artifact_metadata.get("layers")
@@ -1086,13 +1130,19 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 "items": legend_items,
             }
 
+            artifact_description = summary.get("description") if isinstance(summary, dict) else None
+            artifact_metadata["description"] = artifact_description
             artifact = {
                 "type": "map",
-                "title": "Extreme heat quintile map",
+                "title": summary.get("title")
+                if isinstance(summary, dict) and summary.get("title")
+                else "Brazil Extreme Heat Hotspots (Top Quintile, PlanetSapling)",
                 "metadata": artifact_metadata,
                 "geojson_url": f"/static/maps/{filename}",
                 "summary": summary,
             }
+            if artifact_description:
+                artifact["description"] = artifact_description
             facts = [
                 f"Top-quintile extreme heat polygons span {feature_count:,} zones in {source_label}, optimized for mapping."
             ]
@@ -1338,6 +1388,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 auto_selected_source = True
 
         dataset_entry = self._dataset_entry()
+        dataset_info = self._dataset_info_for_source(source or "")
         citation = CitationPayload(
             id="extreme_heat_dataset",
             server=DATASET_SERVER_NAME,
@@ -1385,6 +1436,10 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 messages=messages,
             )
 
+        # Get total zone count from index before filtering
+        total_index_gdf = self._top_quintile_index.get("gdf")
+        total_zone_count = len(total_index_gdf) if total_index_gdf is not None else 0
+
         _, filtered, quintiles_used = self._prepare_filtered_index(
             source=source,
             quintiles=quintiles_value,
@@ -1413,11 +1468,19 @@ class ExtremeHeatServerV2(RunQueryMixin):
         total_area = self._total_area_km2(filtered) or 0.0
         bbox_summary = bbox or {}
 
-        fact_text = (
-            f"Extracted {feature_count} top-quintile extreme heat polygons"
-            f"{' for ' + ', '.join(unique_sources) if unique_sources else ''}"
-            " to characterise persistent heat stress zones in Brazil."
-        )
+        # Distinguish between total zones in dataset and zones displayed on map
+        if total_zone_count > 0 and feature_count < total_zone_count:
+            fact_text = (
+                f"Extreme heat analysis across Brazil for the 2020-2025 period identified {total_zone_count:,} top-quintile zones"
+                f"{' from ' + ', '.join(unique_sources) if unique_sources else ''}. "
+                f"The map displays {feature_count:,} zones, while state-level statistics reflect the complete dataset."
+            )
+        else:
+            fact_text = (
+                f"Extreme heat analysis across Brazil identified {feature_count:,} top-quintile zones"
+                f"{' from ' + ', '.join(unique_sources) if unique_sources else ''}"
+                " to characterise persistent heat stress."
+            )
         facts.append(
             FactPayload(
                 id="F1",
@@ -1458,6 +1521,14 @@ class ExtremeHeatServerV2(RunQueryMixin):
             "source_filter": source,
             "feature_count": feature_count,
             "geometry_type": "polygon",
+            "dataset_id": DATASET_ID,
+            "dataset_title": dataset_entry.get("title"),
+            "dataset_variable": dataset_info.get("variable"),
+            "temporal_coverage": dataset_info.get("temporal_coverage"),
+            "source_reference": dataset_info.get("source"),
+            "quintiles": list(quintiles_used),
+            "description": summary.get("description") if isinstance(summary, dict) else None,
+            "title": summary.get("title") if isinstance(summary, dict) else None,
         }
         if summary.get("bounds"):
             map_metadata["bounds"] = summary["bounds"]
@@ -1479,7 +1550,9 @@ class ExtremeHeatServerV2(RunQueryMixin):
             ArtifactPayload(
                 id="extreme_heat_map",
                 type="map",
-                title=summary.get("title", "Extreme Heat Map"),
+                title=summary.get("title")
+                if isinstance(summary, dict) and summary.get("title")
+                else "Brazil Extreme Heat Hotspots (Top Quintile, PlanetSapling)",
                 url=f"/static/maps/{filename}",
                 geojson_url=f"/static/maps/{filename}",
                 data={"summary": summary, "bbox": bbox_summary, "quintiles": quintiles_used},
