@@ -2961,8 +2961,8 @@ class SimpleOrchestrator:
         # await emit("🧠 Pulling everything together...", "synthesis")
         await emit(
             _select_lang(
-                "**Step 3: Synthesising the answer**\n\nCombining verified evidence into a coherent, cited response.",
-                "**Etapa 3: Sintetizando a resposta**\n\nCombinando evidências verificadas em uma resposta coerente e citada.",
+                "**Step 3: Synthesising the answer**\n\nCombining verified evidence into a coherent, referenced response.",
+                "**Etapa 3: Sintetizando a resposta**\n\nCombinando evidências verificadas em uma resposta coerente e referenciada.",
             ),
             "synthesis",
         )
