@@ -1293,6 +1293,7 @@ class NarrativeSynthesizer:
             - The Science Panel for the Amazon is meant to serve as helpful context, but do not prioritize it over policy specific datasets.
             - Data from CPR will come with a document type tag (e.g., [Law], [Corporate Disclosure]). Use these tags to inform the tone and framing of your summary. Please mention document type in your narrative when relevant and especially when citing a Corporate Disclosure or similar document.
             - Don't include NDC Align coverage statistics unless the user specifically asks for them. They're being brought up alongside other things too often.
+            - If a user asks for a map, you should include a map.
 
             TONE & OBJECTIVITY:
             - Remain objective; avoid prescriptions or “best policy” language. Use established facts confidently and flag assumptions or gaps.
@@ -2826,7 +2827,7 @@ class SimpleOrchestrator:
             "deforestation": ("prodes",),
             "lse": ("ndc",),
             "wmo_cli": ("wmo", "ipcc"),  # Multiple logos for this server
-            "ecmwf": ("planet-sappling",),
+            "extreme_heat": ("planet",),
             "spa": ("spa",),
             "solar_clay": ("clay",),
         }
