@@ -2831,7 +2831,7 @@ class SimpleOrchestrator:
             logo_text = _format_logo_tokens(logos)
             if not logo_text:
                 return base_name
-            return f"{base_name} ({logo_text})"
+            return f"{base_name} {logo_text}"
 
         def _get_server_logos(server_name: str) -> Sequence[str]:
             """Return logo identifiers for a server, or an empty tuple if none."""
@@ -3099,6 +3099,9 @@ class SimpleOrchestrator:
         }
         if has_kg_content and kg_urls:
             kg_context_payload["urls"] = kg_urls
+
+        # Translate modules if Portuguese is requested
+        modules = await translate_modules_if_needed(modules)
 
         final_payload: Dict[str, Any] = {
             "query": original_query,  # Always return original query to user
