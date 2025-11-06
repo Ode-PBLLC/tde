@@ -2570,9 +2570,9 @@ class GistServerV2(RunQueryMixin):
                 )
                 table_rows = [
                     {
-                        "category": item["category"],
-                        "high_risk_assets": item["high_risk_assets"],
-                        "percentage": item["high_risk_percentage"],
+                        "Risk Category": item["category"].replace("_", " ").title(),
+                        "Assets Under High Risk": item["high_risk_assets"],
+                        "Percentage of Assets": item["high_risk_percentage"],
                     }
                     for item in top_risks[:5]
                 ]
@@ -2582,7 +2582,7 @@ class GistServerV2(RunQueryMixin):
                         type="table",
                         title=f"Top risk categories for {company_name}",
                         data={
-                            "columns": ["category", "high_risk_assets", "percentage"],
+                            "columns": ["Risk Category", "Assets Under High Risk", "Percentage of Assets"],
                             "rows": table_rows,
                         },
                     )

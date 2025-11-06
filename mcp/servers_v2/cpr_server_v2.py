@@ -152,67 +152,8 @@ class CPRServerV2(RunQueryMixin):
         )
 
     def _classify_support(self, query: str) -> SupportIntent:
-        if not self._anthropic_client:
-            return SupportIntent(
-                supported=True,
-                score=0.3,
-                reasons=["LLM unavailable; defaulting to dataset summary"],
-            )
-
-        prompt = (
-            "Decide whether the CPR climate policy knowledge graph should be used to answer the question."
-            " The graph spans Brazilian laws, regulations, strategies, and related passages."
-            " Reply with JSON {\"supported\": true|false, \"reason\": \"short explanation\"}.\n"
-            f"Dataset capabilities: {self._capability_summary()}\n"
-            f"Question: {query}"
-        )
-
-        try:
-            response = self._anthropic_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=128,
-                temperature=0,
-                system="Respond with valid JSON only.",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            text = response.content[0].text.strip()
-        except Exception as exc:  # pragma: no cover - network failures
-            return SupportIntent(
-                supported=True,
-                score=0.3,
-                reasons=[f"LLM intent unavailable: {exc}"],
-            )
-
-        def _parse(blob: str) -> Optional[Dict[str, Any]]:
-            try:
-                parsed = json.loads(blob)
-                return parsed if isinstance(parsed, dict) else None
-            except json.JSONDecodeError:
-                return None
-
-        data = _parse(text)
-        if not data:
-            start = text.find("{")
-            end = text.rfind("}")
-            if start != -1 and end != -1 and start < end:
-                data = _parse(text[start : end + 1])
-
-        if not data:
-            return SupportIntent(
-                supported=True,
-                score=0.3,
-                reasons=["LLM returned non-JSON response"],
-            )
-
-        supported = bool(data.get("supported", False))
-        reason = str(data.get("reason")) if data.get("reason") else None
-        score = 0.9 if supported else 0.1
-
-        reasons = [reason] if reason else []
-        if not reasons:
-            reasons.append("LLM classification")
-
-        return SupportIntent(supported=supported, score=score, reasons=reasons)
+        # Always opt in so the orchestrator keeps Climate Policy Radar in scope.
+        return SupportIntent(supported=True, score=1.0, reasons=["Always include per routing policy"])
 
     @staticmethod
     def _as_str(value: Any) -> str:
@@ -561,9 +502,14 @@ class CPRServerV2(RunQueryMixin):
         facts: List[FactPayload] = []
         table_rows: List[List[Any]] = []
         processed_labels: set[str] = set()
+        total_passages = 0
+        MAX_PASSAGES = 5
 
         def _consume(batch: List[Dict[str, Any]]) -> None:
+            nonlocal total_passages
             for concept in batch:
+                if total_passages >= MAX_PASSAGES:
+                    return
                 label = concept.get("label")
                 if not label or label in processed_labels:
                     continue
@@ -572,6 +518,8 @@ class CPRServerV2(RunQueryMixin):
                 if not passages:
                     continue
                 for passage in passages:
+                    if total_passages >= MAX_PASSAGES:
+                        return
                     citation = self._passage_citation(label, passage)
                     if citation.id:
                         citations[citation.id] = citation
@@ -623,6 +571,7 @@ class CPRServerV2(RunQueryMixin):
                             },
                         )
                     )
+                    total_passages += 1
                     table_rows.append([
                         label,
                         document_id,

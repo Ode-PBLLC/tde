@@ -76,7 +76,7 @@ else:  # pragma: no cover - import path when used as package
     from ..geospatial_datasets import DeforestationPolygonProvider, SolarFacilityProvider
     from ..geospatial_bridge import SpatialCorrelation
     from ..solar_db import SolarDatabase
-    from ..support_intent import SupportIntent
+    from ..servers_v2.support_intent import SupportIntent
 
 
 DATASET_NAME = "TransitionZero Solar Asset Mapper (Q1 2025)"
@@ -277,7 +277,7 @@ class SolarServerV2(RunQueryMixin):
         self._register_tool_capacity_by_country()
         self._register_tool_capacity_by_state()
         self._register_tool_capacity_by_municipality()
-        # self._register_tool_construction_timeline()
+        self._register_tool_construction_timeline()
         self._register_tool_largest_facilities()
         self._register_tool_facility_details()
         self._register_tool_facility_location()
@@ -555,6 +555,16 @@ class SolarServerV2(RunQueryMixin):
         return {
             "labels": labels,
             "datasets": [dataset],
+            "options": {
+                "scales": {
+                    "y": {
+                        "title": {
+                            "display": True,
+                            "text": "Capacity (MW)",
+                        }
+                    }
+                }
+            },
         }
 
     def _build_municipality_capacity_chart(self, *, top_n: int = 10) -> Optional[Dict[str, Any]]:
@@ -573,9 +583,32 @@ class SolarServerV2(RunQueryMixin):
         return {
             "labels": labels,
             "datasets": [dataset],
+            "options": {
+                "scales": {
+                    "y": {
+                        "title": {
+                            "display": True,
+                            "text": "Capacity (MW)",
+                        }
+                    }
+                }
+            },
         }
 
     def _construction_timeline_series(self, country: str) -> List[Tuple[str, int]]:
+        """Generate time series of solar facility construction by year for a country.
+
+        Extracts construction years from `constructed_before` or `constructed_after`
+        fields and counts facilities commissioned each year. Results are cached for
+        performance.
+
+        Args:
+            country: Country name (e.g., "Brazil", "United States")
+
+        Returns:
+            List of (year, count) tuples sorted chronologically. Example:
+            [("2017", 44), ("2018", 48), ("2019", 89), ...]
+        """
         key = country.lower()
         if key in self._timeline_cache:
             return self._timeline_cache[key]
@@ -594,8 +627,117 @@ class SolarServerV2(RunQueryMixin):
         self._timeline_cache[key] = timeline
         return timeline
 
+    def _construction_timeline_with_capacity(self, country: str) -> Dict[str, Any]:
+        """Generate comprehensive timeline with annual and cumulative capacity data.
+
+        Tracks both annual additions and running totals of solar facilities and
+        capacity over time. This provides a complete picture of solar deployment
+        growth, showing both installation rate and total accumulated capacity.
+
+        Args:
+            country: Country name (e.g., "Brazil", "United States")
+
+        Returns:
+            Dict with keys:
+            - annual: List[Dict] with year, facility_count, capacity_mw
+            - cumulative: List[Dict] with year, total_facilities, total_capacity_mw
+            - summary: Dict with first_year, last_year, total_facilities, total_capacity
+
+        Example:
+            {
+                "annual": [
+                    {"year": "2017", "facilities": 44, "capacity_mw": 1509.92},
+                    {"year": "2018", "facilities": 48, "capacity_mw": 1184.97},
+                ],
+                "cumulative": [
+                    {"year": "2017", "total_facilities": 44, "total_capacity_mw": 1509.92},
+                    {"year": "2018", "total_facilities": 92, "total_capacity_mw": 2694.89},
+                ],
+                "summary": {
+                    "first_year": "2017",
+                    "last_year": "2025",
+                    "total_facilities": 2273,
+                    "total_capacity_mw": 26022.51
+                }
+            }
+        """
+        facilities = self.db.get_all_facilities()
+        normalized_country = self._normalize_country(country)
+
+        # Aggregate by year
+        annual_data: Dict[str, Dict[str, float]] = {}
+        for facility in facilities:
+            facility_country = self._normalize_country(str(facility.get("country") or ""))
+            if facility_country != normalized_country:
+                continue
+
+            year = self._extract_year(facility.get("constructed_before") or facility.get("constructed_after"))
+            if not year:
+                continue
+
+            if year not in annual_data:
+                annual_data[year] = {"count": 0, "capacity": 0.0}
+
+            annual_data[year]["count"] += 1
+            capacity = facility.get("capacity_mw")
+            if capacity is not None:
+                try:
+                    annual_data[year]["capacity"] += float(capacity)
+                except (TypeError, ValueError):
+                    pass
+
+        # Sort and build cumulative
+        sorted_years = sorted(annual_data.keys())
+        annual_list = []
+        cumulative_list = []
+        cumulative_facilities = 0
+        cumulative_capacity = 0.0
+
+        for year in sorted_years:
+            data = annual_data[year]
+            annual_facilities = data["count"]
+            annual_capacity = data["capacity"]
+
+            cumulative_facilities += annual_facilities
+            cumulative_capacity += annual_capacity
+
+            annual_list.append({
+                "year": year,
+                "facilities": annual_facilities,
+                "capacity_mw": round(annual_capacity, 2)
+            })
+
+            cumulative_list.append({
+                "year": year,
+                "total_facilities": cumulative_facilities,
+                "total_capacity_mw": round(cumulative_capacity, 2)
+            })
+
+        summary = {}
+        if sorted_years:
+            summary = {
+                "first_year": sorted_years[0],
+                "last_year": sorted_years[-1],
+                "total_facilities": cumulative_facilities,
+                "total_capacity_mw": round(cumulative_capacity, 2)
+            }
+
+        return {
+            "annual": annual_list,
+            "cumulative": cumulative_list,
+            "summary": summary
+        }
+
     @staticmethod
     def _extract_year(value: Any) -> Optional[str]:
+        """Extract 4-digit year from date string or timestamp.
+
+        Args:
+            value: Date string, timestamp, or None
+
+        Returns:
+            Four-digit year string (e.g., "2023") or None if unable to parse
+        """
         if value is None:
             return None
         text = str(value)
@@ -605,6 +747,18 @@ class SolarServerV2(RunQueryMixin):
         return year if year.isdigit() else None
 
     def _build_timeline_chart(self, timeline: List[Tuple[str, int]]) -> Optional[Dict[str, Any]]:
+        """Convert timeline series into Chart.js compatible visualization data.
+
+        Creates a line chart configuration showing facility commissioning trends
+        over time with labels and datasets ready for frontend rendering.
+
+        Args:
+            timeline: List of (year, count) tuples from _construction_timeline_series()
+
+        Returns:
+            Chart.js data object with labels and datasets, or None if timeline is empty.
+            Format: {"labels": [...], "datasets": [{"label": ..., "data": ...}]}
+        """
         if not timeline:
             return None
         labels = [year for year, _ in timeline]
@@ -904,9 +1058,9 @@ class SolarServerV2(RunQueryMixin):
 
         return {
             "name": "solar",
-            "description": "Global solar facility records with geospatial coordinates, capacity, and commissioning windows.",
+            "description": "Global solar facility records with geospatial coordinates, capacity, commissioning dates, and temporal deployment analysis.",
             "version": "2.0.0",
-            "tags": ["solar", "facilities", "geospatial", "renewable"],
+            "tags": ["solar", "facilities", "geospatial", "renewable", "timeline", "growth", "deployment", "expansion"],
             "dataset": DATASET_NAME,
             "url": DATASET_URL,
             "tools": [
@@ -938,7 +1092,9 @@ class SolarServerV2(RunQueryMixin):
         metadata = self._capabilities_metadata()
         return (
             f"Dataset: {metadata['dataset']} ({metadata['description']}). "
-            "Provides facility locations, capacities, commissioning windows, and tools for geospatial search, correlation with deforestation, and aggregation by country."
+            "Provides facility locations, capacities, commissioning dates (99% coverage), and tools for: "
+            "geospatial search, temporal deployment analysis (annual & cumulative timelines), growth rate calculations, "
+            "correlation with deforestation, and aggregation by country/state/municipality."
         )
 
     def _country_statistics(self, country: str) -> Optional[Dict[str, Any]]:
@@ -969,8 +1125,11 @@ class SolarServerV2(RunQueryMixin):
 
         prompt = (
             "You decide whether to route a question to the TransitionZero Solar Asset Mapper dataset."
-            " The dataset contains EXISTING, OPERATIONAL solar facility points with capacity (MW), commissioning windows,"
-            " and tools for country summaries, geospatial lookups, and correlations with deforestation activity."
+            " The dataset contains EXISTING, OPERATIONAL solar facility points with capacity (MW), commissioning dates (99% coverage),"
+            " and tools for country summaries, geospatial lookups, temporal deployment analysis, growth trends, expansion rates,"
+            " and correlations with deforestation activity."
+            " This dataset is IDEAL for questions about: solar deployment timelines, capacity expansion over time, growth rates,"
+            " historical installation trends, cumulative capacity analysis, and year-over-year commissioning statistics."
             " This dataset is for EXISTING facilities only. DO NOT route questions about potential sites, candidate locations,"
             " where to build solar, good places for solar, or future solar development—those go to the Clay Solar Candidate dataset."
             " Treat questions about the dataset's contents, coverage, provenance, maintainers, data quality, or how to use the tools as supported."
@@ -1612,6 +1771,16 @@ class SolarServerV2(RunQueryMixin):
                         "backgroundColor": "#43A047",
                     }
                 ],
+                "options": {
+                    "scales": {
+                        "y": {
+                            "title": {
+                                "display": True,
+                                "text": "Capacity (MW)",
+                            }
+                        }
+                    }
+                },
             }
 
             leader = ranked[0] if ranked else {}
@@ -1740,6 +1909,7 @@ class SolarServerV2(RunQueryMixin):
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
+                "options": chart.get("options"),
                 "metadata": {"chartType": "bar"},
                 "items": stats,
                 "summary": summary,
@@ -1806,6 +1976,7 @@ class SolarServerV2(RunQueryMixin):
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
+                "options": chart.get("options"),
                 "metadata": {"chartType": "bar"},
                 "items": stats,
                 "summary": summary,
@@ -1814,60 +1985,188 @@ class SolarServerV2(RunQueryMixin):
                 "citation": self._dataset_citation_dict(),
             }
 
-    # def _register_tool_construction_timeline(self) -> None:
-    #     @self.mcp.tool()
-    #     def get_solar_construction_timeline(country: str | None = None) -> dict:  # type: ignore[misc]
-    #         """Return commissioning counts grouped by year, plus a chart payload.
+    def _register_tool_construction_timeline(self) -> None:
+        @self.mcp.tool()
+        def get_solar_construction_timeline(country: str | None = None) -> dict:  # type: ignore[misc]
+            """Get comprehensive solar deployment timeline with annual and cumulative capacity.
 
-    #         The helper uses the `constructed_before` field (falling back to
-    #         `constructed_after`) to infer the in-service year for each facility
-    #         and aggregates the totals.  The response contains both the raw
-    #         `(year, facility_count)` series and a Chart.js compatible dataset
-    #         so the frontend can render a trendline immediately.
+            Returns year-over-year solar facility commissioning data including both
+            annual additions and running cumulative totals. Shows facility counts and
+            capacity (MW) to track deployment growth over time.
 
-    #         Args:
-    #             country: Optional country name; defaults to ``"Brazil"`` when
-    #                 omitted.
+            Data is derived from construction date fields in the TransitionZero Solar
+            Asset Mapper dataset (99% temporal coverage across 103K+ facilities).
 
-    #         Returns:
-    #             dict: ``{"country": str, "timeline": List[Tuple[str,int]],
-    #             "chart": Dict}`` where ``chart`` has ``labels`` and
-    #             ``datasets`` keys suitable for a line chart.
-    #         """
+            Use this tool to:
+            - Analyze solar deployment growth rates and trends
+            - Identify peak installation years and capacity additions
+            - Track total accumulated solar capacity over time
+            - Compare annual build-out rates across different periods
+            - Generate time-series visualizations showing growth trajectory
 
-    #         target = country or "Brazil"
-    #         timeline_series = self._construction_timeline_series(target)
-    #         chart = self._build_timeline_chart(timeline_series)
-    #         summary: Optional[str] = None
-    #         facts: List[str] = []
-    #         if timeline_series:
-    #             first_year, first_count = timeline_series[0]
-    #             last_year, last_count = timeline_series[-1]
-    #             summary = (
-    #                 f"Commissioning records show {first_count} facilities in {first_year} "
-    #                 f"rising to {last_count} in {last_year} for {target}."
-    #             )
+            The response includes both annual additions and cumulative totals, plus
+            Chart.js-compatible visualization payloads for immediate rendering.
 
-    #         artifacts = []
-    #         if chart:
-    #             artifacts.append(
-    #                 {
-    #                     "type": "chart",
-    #                     "title": f"Solar construction timeline ({target})",
-    #                     "data": chart,
-    #                     "metadata": {"chartType": "line", "datasetLabel": "Commissioned Facilities"},
-    #                 }
-    #             )
+            Args:
+                country: Country name for analysis. Defaults to "Brazil" if not specified.
+                    Examples: "Brazil", "United States", "India", "China", "Germany"
 
-    #         return {
-    #             "country": target,
-    #             "timeline": timeline_series,
-    #             "chart": chart,
-    #             "summary": summary,
-    #             "facts": facts,
-    #             "artifacts": artifacts,
-    #             "citation": self._dataset_citation_dict(),
-    #         }
+            Returns:
+                dict with the following structure:
+                {
+                    "country": str,                    # Country analyzed
+                    "annual": List[Dict],              # Annual additions by year
+                        # [{"year": "2023", "facilities": 682, "capacity_mw": 8543.25}, ...]
+                    "cumulative": List[Dict],          # Running totals by year
+                        # [{"year": "2023", "total_facilities": 2111, "total_capacity_mw": 20901.81}, ...]
+                    "summary": str,                    # Human-readable growth summary
+                    "facts": List[str],                # Key insights (peak years, growth rates)
+                    "artifacts": List[Dict],           # Chart.js payloads (2 charts)
+                    "citation": Dict                   # Dataset citation information
+                }
+
+            Example:
+                >>> get_solar_construction_timeline("Brazil")
+                {
+                    "country": "Brazil",
+                    "annual": [
+                        {"year": "2017", "facilities": 44, "capacity_mw": 1509.92},
+                        {"year": "2023", "facilities": 682, "capacity_mw": 8543.25}
+                    ],
+                    "cumulative": [
+                        {"year": "2017", "total_facilities": 44, "total_capacity_mw": 1509.92},
+                        {"year": "2025", "total_facilities": 2273, "total_capacity_mw": 26022.51}
+                    ],
+                    "summary": "Solar deployment in Brazil grew from 2017 to 2025, commissioning 2,273 facilities with total capacity of 26,022.51 MW.",
+                    "facts": [
+                        "Peak installation year: 2023 (8,543.25 MW commissioned)",
+                        "Capacity increased 17.2x from 2017 to 2025"
+                    ],
+                    ...
+                }
+            """
+
+            target = country or "Brazil"
+
+            # Get comprehensive timeline data with capacity
+            timeline_data = self._construction_timeline_with_capacity(target)
+            annual = timeline_data.get("annual", [])
+            cumulative = timeline_data.get("cumulative", [])
+            data_summary = timeline_data.get("summary", {})
+
+            # Build summary and facts
+            summary: Optional[str] = None
+            facts: List[str] = []
+
+            if data_summary:
+                total_capacity = data_summary.get("total_capacity_mw", 0)
+                total_facilities = data_summary.get("total_facilities", 0)
+                first_year = data_summary.get("first_year")
+                last_year = data_summary.get("last_year")
+
+                summary = (
+                    f"Solar deployment in {target} grew from {first_year} to {last_year}, "
+                    f"commissioning {total_facilities} facilities with total capacity of "
+                    f"{total_capacity:,.2f} MW."
+                )
+
+                # Find peak installation year
+                if annual:
+                    peak_year_data = max(annual, key=lambda x: x.get("capacity_mw", 0))
+                    peak_year = peak_year_data["year"]
+                    peak_capacity = peak_year_data["capacity_mw"]
+                    facts.append(f"Peak installation year: {peak_year} ({peak_capacity:,.2f} MW commissioned)")
+
+                # Calculate growth rate
+                if len(cumulative) >= 2:
+                    start_capacity = cumulative[0]["total_capacity_mw"]
+                    end_capacity = cumulative[-1]["total_capacity_mw"]
+                    if start_capacity > 0:
+                        growth_multiple = end_capacity / start_capacity
+                        facts.append(f"Capacity increased {growth_multiple:.1f}x from {first_year} to {last_year}")
+
+            # Build charts
+            artifacts = []
+
+            # Annual additions chart
+            if annual:
+                annual_labels = [x["year"] for x in annual]
+                annual_capacity_values = [x["capacity_mw"] for x in annual]
+                annual_chart = {
+                    "labels": annual_labels,
+                    "datasets": [{
+                        "label": "Annual Capacity Additions (MW)",
+                        "data": annual_capacity_values,
+                        "borderColor": "#4CAF50",
+                        "backgroundColor": "rgba(76, 175, 80, 0.35)",
+                        "fill": True,
+                        "yAxisID": "y"
+                    }],
+                    "options": {
+                        "scales": {
+                            "y": {
+                                "type": "linear",
+                                "display": True,
+                                "position": "left",
+                                "title": {
+                                    "display": True,
+                                    "text": "Capacity (MW)"
+                                }
+                            }
+                        }
+                    }
+                }
+                artifacts.append({
+                    "type": "chart",
+                    "chartType": "line",
+                    "title": f"Annual Solar Capacity Additions - {target}",
+                    "data": annual_chart
+                })
+
+            # Cumulative capacity chart
+            if cumulative:
+                cumulative_labels = [x["year"] for x in cumulative]
+                cumulative_capacity_values = [x["total_capacity_mw"] for x in cumulative]
+                cumulative_chart = {
+                    "labels": cumulative_labels,
+                    "datasets": [{
+                        "label": "Total Installed Capacity (MW)",
+                        "data": cumulative_capacity_values,
+                        "borderColor": "#2196F3",
+                        "backgroundColor": "rgba(33, 150, 243, 0.35)",
+                        "fill": True,
+                        "yAxisID": "y"
+                    }],
+                    "options": {
+                        "scales": {
+                            "y": {
+                                "type": "linear",
+                                "display": True,
+                                "position": "left",
+                                "title": {
+                                    "display": True,
+                                    "text": "Total Capacity (MW)"
+                                }
+                            }
+                        }
+                    }
+                }
+                artifacts.append({
+                    "type": "chart",
+                    "chartType": "line",
+                    "title": f"Cumulative Solar Capacity - {target}",
+                    "data": cumulative_chart
+                })
+
+            return {
+                "country": target,
+                "annual": annual,
+                "cumulative": cumulative,
+                "summary": summary,
+                "facts": facts,
+                "artifacts": artifacts,
+                "citation": self._dataset_citation_dict(),
+            }
 
     def _register_tool_largest_facilities(self) -> None:
         @self.mcp.tool()

@@ -1003,104 +1003,8 @@ class LSEServerV2(RunQueryMixin):
             return json.dumps(payload)
 
     def _classify_support(self, query: str) -> SupportIntent:
-        if self._anthropic_client:
-            try:
-                prompt = (
-                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question.\n\n"
-
-                    "NDC ALIGN SPECIALIZES IN:\n"
-                    "• NDC-domestic alignment analysis - Comparing Brazil's international NDC commitments to national law implementation\n"
-                    "• Institutional governance frameworks - Which bodies coordinate climate policy, their roles and mandates\n"
-                    "• Subnational climate governance - All 27 Brazilian states' climate laws, policies, and transparency mechanisms\n"
-                    "• Implementation status tracking - What's in law vs. policy vs. under development\n"
-                    "• TPI emissions pathways - Historical emissions (2005-2023), NDC targets, Paris 1.5°C alignment assessment\n"
-                    "• Transparency mechanisms - Public participation, stakeholder engagement, monitoring systems (embedded in governance data)\n\n"
-
-                    "DETAILED STATE-LEVEL DATA:\n"
-                    "• Each of 27 Brazilian states has governance questionnaire with implementation details\n"
-                    "• Transparency information is embedded in public participation and monitoring questions\n"
-                    "• State climate laws, institutions, coordination mechanisms, and accountability systems\n\n"
-
-                    "USE NDC ALIGN FOR:\n"
-                    "• 'How does Brazil's NDC compare to its domestic law?' ✓\n"
-                    "• 'What institutions coordinate Brazil's climate policy?' ✓\n"
-                    "• 'What transparency does [State] have for climate policy?' ✓\n"
-                    "• 'Is Brazil's 2030 target aligned with Paris Agreement?' ✓\n"
-                    "• 'What were Brazil's emissions in 2020?' ✓\n\n"
-
-                    "DON'T USE NDC ALIGN FOR (use other sources):\n"
-                    "• Primary policy documents or full law text → Use CPR (Climate Policy Radar)\n"
-                    "• Real-time emissions statistics or deforestation data → Use PRODES or KG\n"
-                    "• Climate science projections or impacts → Use IPCC or SPA\n\n"
-
-                    f"Dataset summary: {self._capability_summary()}\n\n"
-                    f"Question: {query}\n\n"
-                    "Respond with JSON keys 'supported' (true/false) and 'reason'."
-                )
-                response = self._anthropic_client.messages.create(
-                    model=os.getenv("LSE_ROUTER_MODEL", "claude-3-5-haiku-20241022"),
-                    max_tokens=128,
-                    temperature=0,
-                    system="Respond with strict JSON only.",
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                text = response.content[0].text.strip()
-                intent = self._parse_support_intent(text)
-                if intent:
-                    return intent
-            except Exception as exc:  # pragma: no cover
-                return SupportIntent(True, 0.3, [f"Anthropic routing unavailable: {exc}"])
-
-        if self._openai_client:
-            try:
-                prompt = (
-                    "Decide if the Brazil-focused NDC Align climate policy dataset should answer the question.\n\n"
-
-                    "NDC ALIGN SPECIALIZES IN:\n"
-                    "• NDC-domestic alignment analysis - Comparing Brazil's international NDC commitments to national law implementation\n"
-                    "• Institutional governance frameworks - Which bodies coordinate climate policy, their roles and mandates\n"
-                    "• Subnational climate governance - All 27 Brazilian states' climate laws, policies, and transparency mechanisms\n"
-                    "• Implementation status tracking - What's in law vs. policy vs. under development\n"
-                    "• TPI emissions pathways - Historical emissions (2005-2023), NDC targets, Paris 1.5°C alignment assessment\n"
-                    "• Transparency mechanisms - Public participation, stakeholder engagement, monitoring systems (embedded in governance data)\n\n"
-
-                    "DETAILED STATE-LEVEL DATA:\n"
-                    "• Each of 27 Brazilian states has governance questionnaire with implementation details\n"
-                    "• Transparency information is embedded in public participation and monitoring questions\n"
-                    "• State climate laws, institutions, coordination mechanisms, and accountability systems\n\n"
-
-                    "USE NDC ALIGN FOR:\n"
-                    "• 'How does Brazil's NDC compare to its domestic law?' ✓\n"
-                    "• 'What institutions coordinate Brazil's climate policy?' ✓\n"
-                    "• 'What transparency does [State] have for climate policy?' ✓\n"
-                    "• 'Is Brazil's 2030 target aligned with Paris Agreement?' ✓\n"
-                    "• 'What were Brazil's emissions in 2020?' ✓\n\n"
-
-                    "DON'T USE NDC ALIGN FOR (use other sources):\n"
-                    "• Primary policy documents or full law text → Use CPR (Climate Policy Radar)\n"
-                    "• Real-time emissions statistics or deforestation data → Use PRODES or KG\n"
-                    "• Climate science projections or impacts → Use IPCC or SPA\n\n"
-
-                    f"Dataset summary: {self._capability_summary()}\n\n"
-                    f"Question: {query}\n\n"
-                    "Respond with JSON keys 'supported' (true/false) and 'reason'."
-                )
-                response = self._openai_client.responses.create(
-                    model=os.getenv("LSE_ROUTER_MODEL", "gpt-4.1-mini"),
-                    input=prompt,
-                    temperature=0,
-                    max_output_tokens=128,
-                )
-                text = "".join(
-                    part.text for part in response.output if hasattr(part, "text") and part.text
-                ).strip()
-                intent = self._parse_support_intent(text)
-                if intent:
-                    return intent
-            except Exception as exc:  # pragma: no cover
-                return SupportIntent(True, 0.3, [f"OpenAI routing unavailable: {exc}"])
-
-        return SupportIntent(True, 0.3, ["LLM unavailable; defaulting to dataset availability"])
+        # Always opt in so the orchestrator keeps NDC Align in scope.
+        return SupportIntent(True, 1.0, ["Always include per routing policy"])
 
     @staticmethod
     def _parse_support_intent(text: str) -> Optional[SupportIntent]:
@@ -1584,13 +1488,30 @@ class LSEServerV2(RunQueryMixin):
 
             artifact = {
                 "type": "chart",
-                "title": "State climate policy coverage",
+                "title": "Top states by NDC Align governance coverage",
                 "metadata": {
                     "chartType": "bar",
                     "metric": "coverage_percent",
                     "limit": max(1, limit),
+                    "description": (
+                        "Ranks Brazilian states by the percentage of 'Yes' answers in the NDC Align subnational governance checklist."
+                    ),
+                    "datasetLabel": "Share of 'Yes' responses (%)",
+                    "options": {
+                        "scales": {
+                            "y": {
+                                "title": {
+                                    "display": True,
+                                    "text": "Share of 'Yes' responses (%)",
+                                }
+                            }
+                        }
+                    },
                 },
                 "data": chart_payload,
+                "description": (
+                    "Highlights which states reported the most complete climate governance coverage in NDC Align's subnational assessment."
+                ),
             }
 
             return {
@@ -3111,12 +3032,15 @@ class LSEServerV2(RunQueryMixin):
         return ArtifactPayload(
             id="lse-state-coverage",
             type="table",
-            title="State-level governance coverage",
+            title="NDC Align state governance coverage",
             data={
                 "columns": ["state", "yes", "no", "other", "coverage_percent"],
                 "rows": rows,
             },
-            description="Comparison of subnational governance responses across Brazilian states",
+            description=(
+                "Share of 'Yes', 'No', and 'Other' answers recorded by NDC Align's subnational governance questionnaire "
+                "for each Brazilian state; coverage_percent reflects the proportion of checklist items answered 'Yes'."
+            ),
         )
 
     @staticmethod
