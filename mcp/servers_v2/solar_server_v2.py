@@ -1444,7 +1444,7 @@ class SolarServerV2(RunQueryMixin):
             {
                 "label": facility_label,
                 "color": FACILITY_BUFFER_COLOR,
-                "description": f"{plotted_count} facilities",
+                # "description": f"{plotted_count} facilities",
             }
         )
         for layer_name, layer_payload in metadata["layers"].items():
@@ -1635,7 +1635,7 @@ class SolarServerV2(RunQueryMixin):
             artifacts = [
                 {
                     "type": "map",
-                    "title": f"Solar facilities in {target_country}",
+                    "title": f"Solar facilities in {target_country} (TZ-SAM Q1 2025)",
                     "geojson_url": geojson.url,
                     "metadata": geojson.metadata,
                 }
