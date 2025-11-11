@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph: What are the main climate risks facing different regions of Brazil this decade, and which ones are most urgent for policymakers to address?</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
+        .container { width: 100%; height: 1200px; border: 1px solid #ddd; position: relative; }
+        .graph { width: 100%; height: 100%; }
+        .tooltip { 
+            position: absolute; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            pointer-events: none; 
+            opacity: 0;
+        }
+        .query-title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            color: #333;
+        }
+        .node { cursor: pointer; }
+        .link { stroke: #999; stroke-opacity: 0.6; stroke-width: 1.5px; }
+        .node-label {
+            font-size: 10px;
+            fill: #333;
+            text-anchor: middle;
+            pointer-events: none;
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="query-title">Knowledge Graph: What are the main climate risks facing different regions of Brazil this decade, and which ones are most urgent for policymakers to address?</div>
+    <div class="container">
+        <svg class="graph" id="kg-graph"></svg>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <script>
+        // Embedded KG data
+        const kgData = {
+  "nodes": [
+    {
+      "id": "liquid biofuel",
+      "type": "Concept",
+      "label": "liquid biofuel",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "invasive species",
+      "type": "Concept",
+      "label": "invasive species",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "public emergency management",
+      "type": "Concept",
+      "label": "public emergency management",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "energy supply sector",
+      "type": "Concept",
+      "label": "energy supply sector",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "risk",
+      "type": "Concept",
+      "label": "risk",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "anthropogenic climate change",
+      "type": "Concept",
+      "label": "anthropogenic climate change",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "Q596",
+      "type": "Concept",
+      "label": "biodiesel",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "environmental management sector",
+      "type": "Concept",
+      "label": "environmental management sector",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "biodiversity management systems",
+      "type": "Concept",
+      "label": "biodiversity management systems",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "liquid fuel",
+      "type": "Concept",
+      "label": "liquid fuel",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "biodiversity loss",
+      "type": "Concept",
+      "label": "biodiversity loss",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "insurance activities",
+      "type": "Concept",
+      "label": "insurance activities",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "Q741",
+      "type": "Concept",
+      "label": "biodiversity",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "adaptation/resilience",
+      "type": "Concept",
+      "label": "adaptation/resilience",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "climate change governance",
+      "type": "Concept",
+      "label": "climate change governance",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "vehicular fuels",
+      "type": "Concept",
+      "label": "vehicular fuels",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "petroleum",
+      "type": "Concept",
+      "label": "petroleum",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "transportation and logistics sector",
+      "type": "Concept",
+      "label": "transportation and logistics sector",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "Q374",
+      "type": "Concept",
+      "label": "extreme weather",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "exposed community",
+      "type": "Concept",
+      "label": "exposed community",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "distillate fuel",
+      "type": "Concept",
+      "label": "distillate fuel",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "informal sector",
+      "type": "Concept",
+      "label": "informal sector",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "environmental consultancy services",
+      "type": "Concept",
+      "label": "environmental consultancy services",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "Q643",
+      "type": "Concept",
+      "label": "diesel",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "Q975",
+      "type": "Concept",
+      "label": "risk",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "trade sector",
+      "type": "Concept",
+      "label": "trade sector",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "forest",
+      "type": "Concept",
+      "label": "forest",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    },
+    {
+      "id": "terrestrial risk",
+      "type": "Concept",
+      "label": "terrestrial risk",
+      "importance": 1.0,
+      "source_server": "cpr",
+      "kind": "Concept"
+    }
+  ],
+  "links": [
+    {
+      "source": "Q374",
+      "target": "risk",
+      "type": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q374",
+      "target": "anthropogenic climate change",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "exposed community",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "informal sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "informal sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "energy supply sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "energy supply sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "trade sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "trade sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "transportation and logistics sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "environmental management sector",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "public emergency management",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "climate change governance",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "environmental consultancy services",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "insurance activities",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "adaptation/resilience",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "biodiversity management systems",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "biodiversity loss",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "terrestrial risk",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "invasive species",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "forest",
+      "type": "RELATED_TO"
+    },
+    {
+      "source": "Q643",
+      "target": "petroleum",
+      "type": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q643",
+      "target": "distillate fuel",
+      "type": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q643",
+      "target": "liquid fuel",
+      "type": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q643",
+      "target": "vehicular fuels",
+      "type": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q596",
+      "target": "liquid biofuel",
+      "type": "SUBCONCEPT_OF"
+    }
+  ],
+  "edges": [
+    {
+      "source": "Q374",
+      "target": "risk",
+      "type": "SUBCONCEPT_OF",
+      "label": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q374",
+      "target": "anthropogenic climate change",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "exposed community",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "informal sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "informal sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "energy supply sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "energy supply sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "trade sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "trade sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q374",
+      "target": "transportation and logistics sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "environmental management sector",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "public emergency management",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "climate change governance",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "environmental consultancy services",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "insurance activities",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q975",
+      "target": "adaptation/resilience",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "biodiversity management systems",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "biodiversity loss",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "terrestrial risk",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "invasive species",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q741",
+      "target": "forest",
+      "type": "RELATED_TO",
+      "label": "RELATED_TO"
+    },
+    {
+      "source": "Q643",
+      "target": "petroleum",
+      "type": "SUBCONCEPT_OF",
+      "label": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q643",
+      "target": "distillate fuel",
+      "type": "SUBCONCEPT_OF",
+      "label": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q643",
+      "target": "liquid fuel",
+      "type": "SUBCONCEPT_OF",
+      "label": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q643",
+      "target": "vehicular fuels",
+      "type": "SUBCONCEPT_OF",
+      "label": "SUBCONCEPT_OF"
+    },
+    {
+      "source": "Q596",
+      "target": "liquid biofuel",
+      "type": "SUBCONCEPT_OF",
+      "label": "SUBCONCEPT_OF"
+    }
+  ],
+  "concepts": [],
+  "relationships": []
+};
+        
+        // Drawing area
+        const width = 1000;   // increased for breathing room
+        const height = 1200;  // increased for breathing room
+        
+        const svg = d3.select("#kg-graph")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`);
+            
+        const g = svg.append("g");
+        
+        // Data
+        const nodes = kgData.nodes || [];
+        const links = kgData.links || [];
+
+        // Small initial jitter so nodes don't stack at same start pos
+        nodes.forEach(n => {
+            if (n.x == null || n.y == null) {
+                n.x = (width / 2) + (Math.random() - 0.5) * 50;
+                n.y = (height / 2) + (Math.random() - 0.5) * 50;
+            }
+        });
+
+        // Color mapping
+        const nodeColors = {
+            'Concept': '#1f77b4',
+            'Dataset': '#ff7f0e', 
+            'Passage': '#2ca02c',
+            'Document': '#d62728',
+            'Unknown': '#7f7f7f'
+        };
+
+        // Reusable node radius (kept in sync with circle r)
+        function nodeRadius(d) {
+            return Math.max(5, Math.min(15, (d.importance || 1) * 8));
+        }
+
+        // Build degree map for smarter link distances
+        const degree = {};
+        links.forEach(l => {
+            const sid = (typeof l.source === 'object') ? l.source.id : l.source;
+            const tid = (typeof l.target === 'object') ? l.target.id : l.target;
+            degree[sid] = (degree[sid] || 0) + 1;
+            degree[tid] = (degree[tid] || 0) + 1;
+        });
+
+        // Create links
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link");
+        
+        // Create nodes
+        const node = g.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", d => nodeRadius(d))
+            .attr("fill", d => nodeColors[d.type] || nodeColors['Unknown'])
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+        
+        // Add labels (dy uses node radius to keep text just above the circle)
+        const label = g.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("class", "node-label")
+            .attr("dy", d => -(nodeRadius(d) + 3))
+            .text(d => d.label || d.id);
+
+        // Zoom (we call svg.call(zoom) AFTER label exists so we can toggle it)
+        const zoom = d3.zoom()
+            .scaleExtent([0.3, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+                const k = event.transform.k;
+                // Hide labels when zoomed far out; show as we zoom in
+                label.style("display", k < 0.6 ? "none" : null);
+                // Optional: scale label font a bit with zoom for readability
+                const baseFont = 10;
+                label.attr("font-size", `${Math.max(8, Math.min(16, baseFont * Math.sqrt(k)))}px`);
+            });
+        
+        // Physics simulation with collision + stronger repulsion + degree-aware link distance
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links)
+                .id(d => d.id)
+                .distance(d => {
+                    const sid = d.source.id || d.source, tid = d.target.id || d.target;
+                    const sdeg = degree[sid] || 0, tdeg = degree[tid] || 0;
+                    return 70 + 12 * Math.max(sdeg, tdeg);
+                })
+                .strength(0.7)
+                )
+
+            // Make charge depend on degree: isolates repel less, hubs repel more
+            .force("charge", d3.forceManyBody().strength(d => (degree[d.id] || 0) === 0 ? -120 : -400))
+            .force("collide", d3.forceCollide().radius(d => nodeRadius(d) + 6).iterations(2))
+            .force("x", d3.forceX(width / 2).strength(0.03))   // gentle pull to center
+            .force("y", d3.forceY(height / 2).strength(0.03))  // gentle pull to center
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .velocityDecay(0.35)
+            .alpha(1)
+            .alphaDecay(0.02);
+
+        const isolateRadius = Math.min(width, height) * 0.38;
+            simulation.force("isolateRadial", d3.forceRadial(
+            isolateRadius,
+            width / 2,
+            height / 2
+            ).strength(d => (degree[d.id] || 0) === 0 ? 0.08 : 0));
+
+
+        // Tooltip
+        //const tooltip = d3.select("#tooltip");
+        
+        //node.on("mouseover", function(event, d) {
+        //   tooltip.transition().duration(200).style("opacity", .9);
+        //  tooltip.html(`<strong>${d.label || d.id}</strong><br/>Type: ${d.type}<br/>Importance: ${d.importance || 'N/A'}`)
+        //        .style("left", (event.pageX + 10) + "px")
+        //        .style("top", (event.pageY - 28) + "px");
+        //})
+        //.on("mouseout", function() {
+        //    tooltip.transition().duration(500).style("opacity", 0);
+        //});
+        
+        // Update positions on simulation tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+            
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("dy", d => -(nodeRadius(d) + 3)); // keep label above node as it moves
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Enable zoom after elements (esp. labels) exist
+        svg.call(zoom);
+    </script>
+</body>
+</html>
