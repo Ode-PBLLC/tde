@@ -17,9 +17,17 @@ mcp/__pycache__/
 aggregated/
 aggregated.tar.gz
 
-# Generated static assets
-static/kg/
-static/maps/
+# Generated static assets (but keep cached query assets)
+static/kg/*
+!static/kg/kg_7614d1f82054.html
+!static/kg/kg_b64b94dbf7a3.html
+!static/kg/kg_a57553cd7063.html
+
+static/maps/*
+!static/maps/solar_facilities_brazil_546aa72a.geojson
+!static/maps/deforestation_run_query.geojson
+!static/maps/extreme_heat_PlanetSapling_Heat_Index_Brazil_Daily_Mean_2020_2025_ca26a6df.geojson
+
 static/cache/
 
 # Logs and temporary files

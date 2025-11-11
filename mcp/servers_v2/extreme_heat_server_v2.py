@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -997,8 +998,8 @@ class ExtremeHeatServerV2(RunQueryMixin):
             bbox: Optional[Dict[str, float]] = None,
         ) -> Dict[str, Any]:  # type: ignore[misc]
             """
-            Generate a GeoJSON map of heat-stress polygons (default: top quintile only).
-            Saves to static/maps and returns URL and summary.
+            Return an interactive map showing geographic areas experiencing extreme heat.
+            Shows top-quintile heat stress zones across Brazil. Use when users ask to visualize heat exposure spatially or request maps of extreme heat.
             """
 
             if not GEOSPATIAL_AVAILABLE or gpd is None or pd is None:
