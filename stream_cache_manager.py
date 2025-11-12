@@ -62,15 +62,43 @@ class StreamCache:
         except Exception:
             return None
 
+    def _rewrite_urls_in_dict(self, data: Any, base_url: str) -> Any:
+        """
+        Recursively rewrite localhost and hardcoded dev URLs to use the provided base_url.
+
+        Args:
+            data: Dictionary, list, or primitive value to process
+            base_url: Base URL to use (e.g., "https://dev-tde.sunship.one")
+
+        Returns:
+            Data with URLs rewritten
+        """
+        if isinstance(data, dict):
+            return {k: self._rewrite_urls_in_dict(v, base_url) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._rewrite_urls_in_dict(item, base_url) for item in data]
+        elif isinstance(data, str):
+            # Rewrite localhost URLs to use the actual base URL
+            if data.startswith("http://localhost:8098"):
+                return data.replace("http://localhost:8098", base_url)
+            # Also rewrite hardcoded dev URLs (for cross-environment compatibility)
+            elif data.startswith("https://dev-tde.sunship.one"):
+                return data.replace("https://dev-tde.sunship.one", base_url)
+            return data
+        else:
+            return data
+
     async def replay_stream(
         self,
         events: List[Dict[str, Any]],
+        base_url: Optional[str] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Replay cached events with original timing.
 
         Args:
             events: List of cached events with timestamp_ms
+            base_url: Optional base URL to rewrite URLs (e.g., "https://dev-tde.sunship.one")
 
         Yields:
             Events one at a time with appropriate delays
@@ -97,6 +125,10 @@ class StreamCache:
             event_copy = event.copy()
             event_copy.pop("timestamp_ms", None)
             event_copy.pop("recorded_at", None)
+
+            # Rewrite URLs if base_url is provided
+            if base_url:
+                event_copy = self._rewrite_urls_in_dict(event_copy, base_url)
 
             yield event_copy
 
