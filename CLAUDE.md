@@ -30,8 +30,56 @@ This query likely triggers extensive searches across multiple MCP tools, generat
 4. Add rate limit handling with exponential backoff
 5. Cache intermediate tool results to reduce repeated API calls
 
-**Temporary Fix**: 
+**Temporary Fix**:
 Replace this query with a simpler alternative that requests less comprehensive analysis.
+
+### Stream Cache URL Environment Handling
+
+**Date**: November 11, 2025
+**Status**: ✅ RESOLVED
+
+**Issue**: Cached stream files contained environment-specific URLs that wouldn't work across dev/prod deployments.
+
+**Problem Details**:
+The cache files in `static/stream_cache/*.jsonl` contained hardcoded URLs from cache generation time:
+- Initially: `http://localhost:8098/static/...` (broke in all deployments)
+- Then: `https://dev-tde.sunship.one/static/...` (breaks if accessed from prod)
+
+When caches are replayed, the frontend receives these hardcoded URLs instead of environment-appropriate URLs.
+
+**Root Cause**:
+1. Cache files store complete event payloads with URLs
+2. URLs are generated during cache recording based on recording environment
+3. Cache replay was sending exact cached content without URL adaptation
+4. `API_BASE_URL` was only set inside `event_generator()`, not for cached responses
+
+**Solution Implemented**:
+Dynamic URL rewriting during cache replay:
+
+1. **api_server.py**: Moved `API_BASE_URL` detection before cache check (lines 1311-1327)
+   - Extracts base URL from request headers (`x-forwarded-host`, `x-forwarded-proto`)
+   - Works for both proxied and direct requests
+   - Passes `base_url` parameter to `stream_cache.replay_stream()`
+
+2. **stream_cache_manager.py**: Added `_rewrite_urls_in_dict()` helper (lines 65-89)
+   - Recursively walks event dictionaries/lists
+   - Replaces `http://localhost:8098` → `{request_base_url}`
+   - Also replaces `https://dev-tde.sunship.one` → `{request_base_url}`
+   - Handles KG embeds, maps, and all static asset URLs
+
+3. **stream_cache_manager.py**: Updated `replay_stream()` to accept `base_url` (lines 91-133)
+   - Applies URL rewriting if `base_url` provided
+   - Maintains backward compatibility (works without `base_url`)
+
+**Benefits**:
+- Single cache works across all environments (dev, prod, staging)
+- URLs automatically adapt to request environment
+- No need to regenerate caches per environment
+- Works with any domain configuration
+
+**Files Modified**:
+- `api_server.py` - Moved API_BASE_URL detection, pass to cache replay
+- `stream_cache_manager.py` - Added URL rewriting functionality
 
 ## Performance Optimizations
 

@@ -28,6 +28,7 @@ from utils.language import detect_portuguese, should_respond_in_portuguese
 from datetime import timedelta
 import csv
 from pathlib import Path
+from stream_cache_manager import StreamCache
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -237,6 +238,16 @@ class SessionStore:
 
 
 session_store = SessionStore()
+
+# Initialize stream cache for featured queries
+stream_cache = StreamCache()
+
+# Exact query string mapping for featured queries
+FEATURED_QUERY_CACHE_MAP = {
+    "How fast is Brazil's solar energy capacity expanding, and how does this align with national climate targets and land-use priorities?": "brazil-solar-expansion",
+    "How is Brazil currently performing on its national climate goals, and which policies are driving progress or falling behind?": "brazil-climate-goals",
+    "What are the main climate risks facing different regions of Brazil this decade, and which ones are most urgent for policymakers to address?": "brazil-climate-risks",
+}
 
 
 @app.on_event("startup")
@@ -1297,6 +1308,62 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
     else:
         print(f"📝 No conversation history for session {session_id}")
 
+    # Determine API_BASE_URL from request (needed for both cached and live responses)
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    forwarded_host = request.headers.get("x-forwarded-host", "")
+
+    if forwarded_proto and forwarded_host:
+        # Behind a proxy - use forwarded headers
+        # Force HTTPS for production domains to avoid mixed content errors
+        if "sunship.one" in forwarded_host or "transitiondigital.org" in forwarded_host:
+            api_base_url = f"https://{forwarded_host}"
+        else:
+            api_base_url = f"{forwarded_proto}://{forwarded_host}"
+    else:
+        # Direct access - use request.base_url
+        api_base_url = str(request.base_url).rstrip("/")
+
+    os.environ["API_BASE_URL"] = api_base_url
+    print(f"🔗 Set API_BASE_URL={api_base_url}", flush=True)
+
+    # Check for cached featured query (exact string match, transparent to client)
+    query_id = FEATURED_QUERY_CACHE_MAP.get(stream_req.query)
+
+    if query_id:
+        cached_events = await stream_cache.get_cached_stream(query_id)
+
+        if cached_events:
+            # Serve from cache - client receives identical stream with rewritten URLs
+            async def cached_event_generator() -> AsyncGenerator[str, None]:
+                try:
+                    # Send session ID as first event
+                    if not stream_req.conversation_id or stream_req.conversation_id != session_id:
+                        session_event = {
+                            "type": "conversation_id",
+                            "data": {"conversation_id": session_id},
+                        }
+                        yield f"data: {json.dumps(session_event)}\n\n"
+
+                    # Replay cached events with original timing and rewritten URLs
+                    async for event in stream_cache.replay_stream(cached_events, base_url=api_base_url):
+                        event_data = json.dumps(event, ensure_ascii=False)
+                        yield f"data: {event_data}\n\n"
+
+                except Exception:
+                    # Silently fail and let normal processing handle errors
+                    pass
+
+            return StreamingResponse(
+                cached_event_generator(),
+                media_type="text/plain",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Content-Type": "text/event-stream",
+                },
+            )
+
+    # Normal processing (no cache or cache miss)
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             # Send conversation ID as first event if it's new or different
@@ -1314,26 +1381,7 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
             script_dir = os.path.dirname(os.path.abspath(__file__))
             os.chdir(script_dir)
 
-            # Set API_BASE_URL from request to ensure generated URLs match the request host
-            # This handles both direct access and proxied requests (dev-tde.sunship.one, api.transitiondigital.org, etc.)
-            # IMPORTANT: Always set this dynamically per-request to ensure correct protocol (HTTP/HTTPS)
-            forwarded_proto = request.headers.get("x-forwarded-proto", "")
-            forwarded_host = request.headers.get("x-forwarded-host", "")
-
-            if forwarded_proto and forwarded_host:
-                # Behind a proxy - use forwarded headers
-                # Force HTTPS for production domains to avoid mixed content errors
-                if "sunship.one" in forwarded_host or "transitiondigital.org" in forwarded_host:
-                    api_base_url = f"https://{forwarded_host}"
-                else:
-                    api_base_url = f"{forwarded_proto}://{forwarded_host}"
-            else:
-                # Direct access - use request.base_url
-                api_base_url = str(request.base_url).rstrip("/")
-
-            os.environ["API_BASE_URL"] = api_base_url
-            print(f"🔗 Set API_BASE_URL={api_base_url}")
-
+            # API_BASE_URL already set above before cache check
             # Track response content for session history
             response_modules: List[Dict[str, Any]] = []
             response_payload: Dict[str, Any] = {}
