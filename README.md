@@ -13,6 +13,10 @@ AI-powered API that provides comprehensive climate policy analysis with real-tim
 - **🔗 Multi-Source Integration**: Policy documents + structured datasets + geographic data
 - **📱 Frontend Ready**: JSON modules optimized for web applications
 - **🚀 V2 Architecture**: Single consolidated orchestrator for faster, cleaner responses
+- **💬 Multi-turn Conversations**: Context-aware follow-up queries with session management
+- **📝 Analytics-Ready Logging**: Comprehensive conversation tracking to CSV
+- **⚡ Featured Query Cache**: Pre-recorded streams for 50-100x faster responses
+- **🗺️ Dynamic Artifacts**: On-demand generation of maps, KGs, and visualizations
 
 ## 🚀 Quick Start
 
@@ -100,6 +104,9 @@ curl -X POST http://localhost:8098/query/stream \
 │  • GET  /featured-queries   - Curated query gallery            │
 │  • GET  /health             - Health check                     │
 │  • Static files at /static  - Generated maps/charts/KGs        │
+│  • Session management       - Multi-turn conversations         │
+│  • Stream caching           - Pre-recorded featured queries    │
+│  • Conversation logging     - Analytics to CSV                 │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
                           v
@@ -108,8 +115,10 @@ curl -X POST http://localhost:8098/query/stream \
 │                  (mcp_chat_v2.py)                              │
 ├─────────────────────────────────────────────────────────────────┤
 │  • FastMCP singleton client (5-10x faster TTFT)                │
-│  • AI reasoning with Claude Sonnet 4                           │
-│  • Automatic server selection                                  │
+│  • Query enrichment (domain context injection)                 │
+│  • Server tool planning (AI-powered routing)                   │
+│  • Fact ordering & narrative synthesis                         │
+│  • Citation registry & evidence tracking                       │
 │  • RunQueryResponse contract validation                        │
 │  • Streaming progress updates                                  │
 └─────────┬──────────┬──────────┬──────────┬─────────────────────┘
@@ -130,6 +139,56 @@ curl -X POST http://localhost:8098/query/stream \
 - **Better testing**: 15 automated smoke tests verify integrity
 - **Smaller codebase**: Removed 13,000+ lines of legacy code
 
+### Core Architecture Components
+
+#### **api_server.py** (1,600 lines)
+The FastAPI server providing REST endpoints and stateful session management.
+
+**Key Features**:
+- **SessionStore**: Multi-turn conversation state with 20-minute TTL
+- **StreamCache**: Pre-recorded SSE events for featured queries (50-100x faster) (Unfortunately currently broken on deploy)
+- **ConversationLogger**: Analytics tracking to `conversation_logs.csv`
+- **Dynamic Artifacts**: On-demand GeoJSON generation and serving
+- **Lifecycle Management**: MCP client warmup on startup for faster first requests
+- **Environment Portability**: Dynamic URL rewriting for dev/prod compatibility
+
+**Endpoints**: `/query/stream`, `/query`, `/featured-queries`, `/health`, `/kg/{id}`, `/static/*`
+
+#### **mcp_chat_v2.py** (2,000+ lines)
+The intelligent orchestration layer coordinating AI reasoning with data retrieval.
+
+**Key Components**:
+- **QueryEnricher**: Adds Brazilian environmental domain context to queries
+- **ServerToolPlanner**: AI-powered selection of relevant MCP servers
+- **FactOrderer**: Sequences evidence for coherent narrative flow
+- **NarrativeSynthesizer**: Composes final response with inline citations
+- **CitationRegistry**: Tracks and validates evidence references
+- **SimpleOrchestrator**: Main coordination loop with streaming support
+- **MultiServerClient**: FastMCP singleton managing 11 server connections
+
+**Models Used**: Claude Sonnet 4 (fact ordering, narrative synthesis), Haiku (query enrichment)
+
+#### **V2 MCP Servers** (11 servers, ~18,500 lines)
+
+All servers implement the `RunQueryResponse` contract with standardized `run_query` tool:
+
+| Server | Dataset | Scope |
+|--------|---------|-------|
+| **cpr_server_v2.py** | Climate Policy Knowledge Graph | 1,325 concepts, semantic search |
+| **solar_server_v2.py** | Global Solar Facilities | 8,319 facilities, 124.9 GW |
+| **solar_clay_server_v2.py** | TZ-SAM Analysis | Transition zone spatial analysis |
+| **deforestation_server_v2.py** | PRODES/MapBiomas | Spatial polygons, 2GB dataset |
+| **lse_server_v2.py** | LSE Climate Policies | NDCs, governance, subnational |
+| **gist_server_v2.py** | IPCC Chapters 11 & 12 | Processed summaries |
+| **extreme_heat_server_v2.py** | Heat Index Data | Brazilian municipalities |
+| **brazilian_admin_server_v2.py** | Admin Boundaries | Municipal/state GeoJSON |
+| **wmo_cli_server_v2.py** | WMO Climate Index | Climate adaptation data |
+| **spa_server_v2.py** | Sectoral Policy Analysis | Cross-sector policy data |
+| **mb_deforest_server_v2.py** | MapBiomas Deforestation | Centroid-based queries |
+| **meta_server_v2.py** | Cross-dataset Metadata | Aggregated stats |
+
+Each server handles domain-specific queries and returns structured responses (facts, citations, artifacts).
+
 ## 🔌 API Endpoints
 
 | Endpoint | Method | Description |
@@ -137,8 +196,10 @@ curl -X POST http://localhost:8098/query/stream \
 | `/query/stream` | POST | **Primary endpoint** - Streaming analysis with progress |
 | `/query` | POST | Synchronous analysis (simple integration) |
 | `/featured-queries` | GET | Curated queries for frontend gallery |
+| `/featured-queries/{id}/cached` | GET | Pre-recorded SSE stream replay (50-100x faster) |
 | `/health` | GET | System health check |
 | `/kg/{kg_id}` | GET | Knowledge graph visualization |
+| `/static/*` | GET | Generated artifacts (maps, KGs, charts, images) |
 
 ### Response Modules
 
@@ -176,6 +237,156 @@ curl -X POST http://localhost:8098/query/stream \
   -d '{"query": "Climate risks from extreme heat in Brazilian municipalities"}'
 ```
 **Returns**: Heat stress data + geographic analysis + policy context
+
+## 💬 Multi-turn Conversations
+
+The API maintains conversation context for follow-up queries, enabling natural multi-turn interactions.
+
+### How It Works
+
+**Session Management**:
+- Each query can include an optional `conversation_id` parameter
+- Sessions expire after 20 minutes of inactivity (configurable)
+- Context includes last 2 conversation turns (configurable)
+- Automatic garbage collection of expired sessions
+
+### Example Usage
+
+```bash
+# First query creates a session
+curl -X POST http://localhost:8098/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are Brazil'\''s solar energy targets?"}'
+
+# Response includes conversation_id
+# {"conversation_id": "abc123XYZ", "modules": [...]}
+
+# Follow-up query uses the conversation_id
+curl -X POST http://localhost:8098/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Which states are leading in solar deployment?",
+    "conversation_id": "abc123XYZ"
+  }'
+
+# Another follow-up
+curl -X POST http://localhost:8098/query/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Show me a map of those facilities",
+    "conversation_id": "abc123XYZ"
+  }'
+```
+
+### Configuration
+
+In `api_server.py`:
+```python
+SESSION_TTL_SECONDS = 20 * 60  # 20 minutes
+MAX_CONTEXT_TURNS = 2          # Number of previous turns to include
+```
+
+### Conversation Logging
+
+All queries are logged to `conversation_logs.csv` with analytics metadata:
+- **timestamp**: Query time (ISO format)
+- **conversation_id**: Session identifier
+- **turn_number**: Position in conversation (1, 2, 3...)
+- **message_type**: `new_conversation`, `continuation`, or `reset`
+- **query**: User's query text
+- **response_summary**: Extracted text from response modules
+- **response_modules**: Types of modules returned (text, map, chart, etc.)
+- **context_included**: Number of previous turns included
+- **session_duration_seconds**: Time since session started
+- **tokens_used**: Total tokens consumed
+- **error_flag**: 1 if error occurred, 0 otherwise
+
+**Use Cases**:
+- Usage analytics and query pattern analysis
+- Performance monitoring and optimization
+- User behavior insights
+- Dataset popularity tracking
+
+## 📁 Static Artifacts & Content Serving
+
+The API serves dynamically generated and cached content from the `/static` directory (~30MB).
+
+### Directory Structure
+
+```
+static/
+├── maps/           # 8MB - GeoJSON files (dynamic + cached)
+│   ├── solar_facilities_*.geojson
+│   ├── correlation_*.geojson
+│   └── deforestation_*.geojson
+├── images/         # 21MB - Featured query gallery images
+│   ├── brazil-solar-expansion.jpg
+│   ├── brazil-climate-goals.jpg
+│   └── brazil-climate-risks.jpg
+├── kg/             # 92KB - Interactive knowledge graph embeds
+│   └── *.html (D3.js visualizations)
+├── stream_cache/   # 168KB - Pre-recorded SSE events
+│   ├── brazil-solar-expansion.jsonl
+│   ├── brazil-climate-goals.jsonl
+│   └── brazil-climate-risks.jsonl
+├── meta/           # 1.3MB - Cross-dataset metadata
+│   └── deforestation_by_year.json
+└── featured_queries.json  # Gallery configuration
+```
+
+### Dynamic Map Generation
+
+Maps are generated on-demand and cached to disk:
+- **GeoJSON format** with feature properties and styling
+- **Automatic correlation overlays** (e.g., solar facilities + deforestation)
+- **Environment-aware URLs**: Dynamic rewriting for dev/prod portability
+- **Lazy generation**: Only created when requested, then cached
+
+### Stream Cache System
+
+Featured queries are pre-recorded for instant replay:
+
+**Performance**:
+- **Normal queries**: 2-5s time to first token
+- **Cached queries**: ~100ms time to first token
+- **50-100x faster** for featured queries
+
+**How It Works**:
+1. Exact string match against `FEATURED_QUERY_CACHE_MAP` in `api_server.py`
+2. If cache exists, replay pre-recorded SSE events with original timing
+3. **Completely transparent** to clients (identical API contract)
+4. **Dynamic URL rewriting** ensures environment portability
+
+**Generate/Update Caches**:
+```bash
+# Ensure API server is running
+python api_server.py
+
+# In another terminal, record featured streams
+python scripts/record_featured_streams.py
+```
+
+Cache files (`.jsonl` format) contain:
+- `type`: Event type (thinking, tool_call, content, complete)
+- `data`: Event payload
+- `timestamp_ms`: Timing offset from start
+- `recorded_at`: Recording timestamp
+
+### Featured Queries Gallery
+
+The `/featured-queries` endpoint serves a pseudo-CMS system for curated content:
+
+**Files**:
+- `static/featured_queries.json` - Query definitions
+- `static/images/` - Gallery thumbnails
+
+**To Update**:
+1. Edit `featured_queries.json` with new query definitions
+2. Add corresponding images to `images/` directory
+3. Optionally record cache: `python scripts/record_featured_streams.py`
+4. Restart API server (or auto-reload in development)
+
+See `static/README.md` for detailed gallery management guide.
 
 ## 🐳 Docker & AWS Deployment
 
@@ -493,38 +704,106 @@ python scripts/inspect_lse.py
 
 ## 📈 Performance
 
+**Query Response Times**:
 - **Simple queries**: 3-5 seconds
 - **Geographic queries**: 10-15 seconds
 - **Complex multi-dataset queries**: 15-20 seconds
+- **Cached featured queries**: ~100ms time to first token (50-100x faster)
+
+**System Performance**:
 - **V2 improvement**: 5-10x faster time-to-first-token vs v1
+- **Cold start**: ~5-10s (MCP client initialization)
+- **Warm start**: <1s (singleton client pre-connected)
+- **Session overhead**: ~20ms (lookup and context retrieval)
 - **Concurrent capacity**: ~10 concurrent queries per instance
+
+**Optimization Features**:
+- FastMCP singleton client (startup warmup)
+- Stream cache for featured queries
+- Lazy artifact generation with disk caching
+- Multi-turn context limited to 2 turns (configurable)
 
 ## 🗂️ Repository Structure
 
 ```
 tde/
-├── README.md                 # This file - project overview
-├── CHANGELOG.md             # Version history and release notes
-├── API_GUIDE.md             # Complete API documentation
-├── DEPLOYMENT.md            # Production deployment guide
-├── CLAUDE.md                # Development notes and known issues
-├── requirements.txt         # Python dependencies (v2 cleaned)
-├── .env.example             # Environment variable template
-├── api_server.py           # Main FastAPI application
-├── kg_embed_generator.py   # Knowledge graph visualization utilities
+├── README.md                    # This file - project overview
+├── CHANGELOG.md                # Version history and release notes
+├── CLAUDE.md                   # Development notes and known issues
+├── requirements.txt            # Python dependencies (v2 cleaned)
+├── .env.example                # Environment variable template
+├── Dockerfile                  # Container build configuration
+│
+├── api_server.py               # FastAPI server (1,600 lines)
+│                                # • 7 endpoints, session store
+│                                # • Conversation logging, stream cache
+│                                # • Dynamic artifact serving
+│
+├── stream_cache_manager.py     # Cache recording & replay (200 lines)
+├── kg_embed_generator.py       # Knowledge graph visualizations (700 lines)
+├── kg_visualization_server.py  # KG embed server (optional, 900 lines)
+│
+├── conversation_logs.csv       # Analytics logging (generated)
+│
 ├── mcp/
-│   ├── mcp_chat_v2.py      # V2 orchestrator (single source of truth)
-│   ├── contracts_v2.py     # Response contracts
-│   └── servers_v2/         # 11 MCP servers
-├── data/                   # Datasets (~2.8GB, not in repo)
-│   └── README.md           # Dataset documentation
-├── static/                 # Generated assets (maps, charts, KGs)
-├── scripts/                # Utilities and maintenance
-│   ├── smoke_test.sh       # Pre-deployment verification
-│   └── inspect_*.py        # Dataset inspection tools
-├── tests/                  # Unit and integration tests
-├── test_scripts/           # Server-specific test scripts
-└── docs/                   # Technical documentation
+│   ├── mcp_chat_v2.py          # V2 orchestrator (2,000+ lines)
+│   │                            # • Query enrichment, server planning
+│   │                            # • Fact ordering, narrative synthesis
+│   │                            # • Citation registry, streaming
+│   ├── contracts_v2.py         # Response contracts (RunQueryResponse)
+│   ├── url_utils.py            # URL handling utilities
+│   └── servers_v2/             # 11 MCP servers (~18,500 lines total)
+│       ├── base.py             # Base classes and mixins
+│       ├── cpr_server_v2.py    # Climate Policy Knowledge Graph
+│       ├── solar_server_v2.py  # Global solar facilities (SQLite)
+│       ├── solar_clay_server_v2.py  # TZ-SAM analysis
+│       ├── deforestation_server_v2.py  # PRODES/MapBiomas polygons
+│       ├── lse_server_v2.py    # LSE climate policies
+│       ├── gist_server_v2.py   # IPCC Chapters 11 & 12
+│       ├── extreme_heat_server_v2.py  # Heat index data
+│       ├── brazilian_admin_server_v2.py  # Admin boundaries
+│       ├── wmo_cli_server_v2.py  # WMO climate index
+│       ├── spa_server_v2.py    # Sectoral policy analysis
+│       ├── mb_deforest_server_v2.py  # MapBiomas centroids
+│       └── meta_server_v2.py   # Cross-dataset metadata
+│
+├── data/                       # Datasets (~2.8GB, not in repo)
+│   ├── README.md               # Dataset documentation
+│   ├── solar_facilities.db     # SQLite (44MB)
+│   ├── deforestation/          # PRODES polygons (2GB)
+│   ├── lse/                    # LSE policy data (1.1MB)
+│   ├── gist/                   # IPCC data (11MB)
+│   ├── heat_stress/            # Heat index (308MB)
+│   └── ...                     # Additional datasets
+│
+├── static/                     # Generated artifacts (~30MB)
+│   ├── README.md               # Static content guide
+│   ├── maps/                   # GeoJSON files (8MB)
+│   ├── images/                 # Gallery images (21MB)
+│   ├── kg/                     # Knowledge graph embeds (92KB)
+│   ├── stream_cache/           # Pre-recorded SSE events (168KB)
+│   │   ├── brazil-solar-expansion.jsonl
+│   │   ├── brazil-climate-goals.jsonl
+│   │   └── brazil-climate-risks.jsonl
+│   ├── meta/                   # Cross-dataset metadata (1.3MB)
+│   └── featured_queries.json   # Gallery configuration
+│
+├── scripts/                    # Utilities and maintenance
+│   ├── smoke_test.sh           # Pre-deployment verification
+│   ├── record_featured_streams.py  # Cache generation
+│   ├── inspect_*.py            # Dataset inspection tools
+│   ├── precompute_*.py         # Dataset preprocessing
+│   └── migrate_*.py            # Data migration scripts
+│
+├── test_scripts/               # Server-specific test scripts
+│   └── test_*_server_v2.py     # Individual server tests
+│
+└── docs/                       # Technical documentation
+    ├── API_GUIDE.md            # Complete API reference
+    ├── DEPLOYMENT.md           # Production deployment guide
+    ├── MULTI_TURN_CONVERSATION_API.md  # Conversation system docs
+    ├── FEATURED_QUERIES_CACHE.md  # Cache system docs
+    └── ...                     # Additional technical guides
 ```
 
 ## 🔍 Key Innovation: Automatic Dataset Discovery
