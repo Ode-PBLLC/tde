@@ -314,21 +314,58 @@ class CPRServerV2(RunQueryMixin):
         document_id = str(metadata.get("document_id") or "unknown")
         citation_id = f"passage_{document_id}_{passage_id}"
 
-        # Build citation title with family context
-        family_title = metadata.get("family_title")
-        if family_title:
-            title = f"Climate Policy Radar via {family_title}"
-        else:
-            title = f"CPR passage {document_id}"
+        title = "Climate Policy Radar Passage Library"
 
-        description = f"Passage {passage_id} in document {document_id} mentioning {concept_label}."
-
-        # Build CPR URL from slug metadata
-        url = None
+        # Extract all available metadata fields for enhanced citations
+        source = metadata.get("source", "").strip() or None
+        document_title = metadata.get("document_title", "").strip() or None
+        family_title = metadata.get("family_title", "").strip() or None
+        document_type = metadata.get("document_type", "").strip() or None
+        page_number = metadata.get("page_number")
+        publication_ts = metadata.get("publication_ts", "").strip() or None
+        source_url = metadata.get("source_url", "").strip() or None
         slug = metadata.get("slug")
         family_slug = metadata.get("family_slug")
-        page_number = metadata.get("page_number")
 
+        # Extract year from publication_ts (e.g., "2024-04-30T00:00:00Z" -> "2024")
+        year = None
+        if publication_ts:
+            try:
+                year = publication_ts.split("-")[0]
+            except (IndexError, AttributeError):
+                pass
+
+        # Build citation following Option 2 format:
+        # [Source]. ([Year]). [Document Title]. [Document Type], p. [page]. Available from Climate Policy Radar.
+
+        # Use document_title, fallback to family_title
+        doc_name = document_title or family_title
+
+        if doc_name and year and document_type and page_number is not None:
+            try:
+                page_num = int(float(page_number))
+                description = f"{source}, {year}. {doc_name}. {document_type}, p. {page_num}."
+            except (ValueError, TypeError):
+                description = f"{source}, {year}. {doc_name}. {document_type}."
+        elif doc_name and year and page_number is not None:
+            try:
+                page_num = int(float(page_number))
+                description = f"{source}, {year}. {doc_name}, p. {page_num}."
+            except (ValueError, TypeError):
+                description = f"{source}, {year}. {doc_name}."
+        elif doc_name and page_number is not None:
+            try:
+                page_num = int(float(page_number))
+                description = f"{doc_name}, p. {page_num}."
+            except (ValueError, TypeError):
+                description = f"{doc_name}."
+        elif doc_name:
+            description = f"{doc_name}."
+        else:
+            description = f"Passage {passage_id} in document {document_id}."
+
+        # Build CPR app URL from slug metadata
+        url = None
         if slug and family_slug and page_number is not None:
             try:
                 page_num = int(float(page_number))
@@ -336,18 +373,26 @@ class CPRServerV2(RunQueryMixin):
             except (ValueError, TypeError):
                 pass  # Leave url as None if conversion fails
 
+        description = "*From the document:* " + description
+
         return CitationPayload(
             id=citation_id,
             server="cpr",
             tool="run_query",
             title=title,
-            source_type="Policy Document",
-            description=_dataset_citation(DATASET_ID) or description,
+            source_type=document_type or "Policy Document",
+            description=description,
             url=url,
             metadata={
                 "document_id": document_id,
                 "passage_id": passage_id,
                 "concept": concept_label,
+                "family_title": family_title,
+                "document_title": document_title,
+                "page_number": page_number,
+                "source": source,
+                "year": year,
+                "document_type": document_type,
             },
         )
 
@@ -457,9 +502,14 @@ class CPRServerV2(RunQueryMixin):
         facts: List[FactPayload] = []
         table_rows: List[List[Any]] = []
         processed_labels: set[str] = set()
+        total_passages = 0
+        MAX_PASSAGES = 7
 
         def _consume(batch: List[Dict[str, Any]]) -> None:
+            nonlocal total_passages
             for concept in batch:
+                if total_passages >= MAX_PASSAGES:
+                    return
                 label = concept.get("label")
                 if not label or label in processed_labels:
                     continue
@@ -468,6 +518,8 @@ class CPRServerV2(RunQueryMixin):
                 if not passages:
                     continue
                 for passage in passages:
+                    if total_passages >= MAX_PASSAGES:
+                        return
                     citation = self._passage_citation(label, passage)
                     if citation.id:
                         citations[citation.id] = citation
@@ -489,29 +541,37 @@ class CPRServerV2(RunQueryMixin):
                     document_id = self._as_str(metadata.get("document_id") or "unknown") or "unknown"
                     passage_id = self._as_str(metadata.get("passage_id") or "unknown") or "unknown"
 
-                    print(
-                        "[cpr] context snippet:",
-                        f"concept={label!r}",
-                        f"document={document_id}",
-                        f"passage={passage_id}",
-                        passage_text,
-                        flush=True,
-                    )
+                    # Debug logging disabled - print() interferes with MCP JSONRPC protocol
+                    # print(
+                    #     "[cpr] context snippet:",
+                    #     f"concept={label!r}",
+                    #     f"document={document_id}",
+                    #     f"passage={passage_id}",
+                    #     passage_text,
+                    #     flush=True,
+                    # )
 
                     snippet = self._fact_snippet(passage_text)
                     fact_id = f"{citation_id}_fact"
+
+                    # Extract document_type for display
+                    doc_type = metadata.get("document_type", "").strip()
+                    fact_text = f"[{doc_type}] {snippet}" if doc_type else snippet
+
                     facts.append(
                         FactPayload(
                             id=fact_id,
-                            text=f"Document {document_id} references {label}: {snippet}",
+                            text=fact_text,
                             citation_id=citation_id,
                             metadata={
                                 "concept": label,
                                 "document_id": document_id,
                                 "passage_id": passage_id,
+                                "document_type": doc_type or None,
                             },
                         )
                     )
+                    total_passages += 1
                     table_rows.append([
                         label,
                         document_id,

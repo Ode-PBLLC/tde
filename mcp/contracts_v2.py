@@ -45,6 +45,10 @@ class CitationPayload(BaseModel):
         default=None, description="Short note that will appear in the table"
     )
     url: Optional[str] = Field(default=None, description="Public source URL")
+    underlying_source: Optional[str] = Field(
+        default=None,
+        description="URL to the underlying source document (e.g., law, policy document). Used by frontend to show 'View Underlying Source' button."
+    )
     metadata: Dict[str, Any] = Field(default_factory=_default_dict)
 
 

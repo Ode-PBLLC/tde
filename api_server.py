@@ -8,7 +8,13 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import (
+    StreamingResponse,
+    HTMLResponse,
+    JSONResponse,
+    FileResponse,
+    Response,
+)
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, AsyncGenerator
 import json
@@ -22,13 +28,20 @@ from utils.language import detect_portuguese, should_respond_in_portuguese
 from datetime import timedelta
 import csv
 from pathlib import Path
+from stream_cache_manager import StreamCache
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 # Using mcp_chat_v2 orchestrator (v2 architecture)
-from mcp.mcp_chat_v2 import process_chat_query, stream_chat_query, get_global_client, cleanup_global_client
+from mcp.mcp_chat_v2 import (
+    process_chat_query,
+    stream_chat_query,
+    get_global_client,
+    cleanup_global_client,
+)
+
 print("Using mcp_chat_v2 orchestrator")
 
 app = FastAPI(title="Climate Policy Radar API", version="2.0.0")
@@ -40,11 +53,15 @@ SESSION_TTL_SECONDS = 20 * 60  # 20 minutes inactivity timeout; tweak as desired
 CONVERSATION_LOG_PATH = Path("conversation_logs.csv")
 MAX_CONTEXT_TURNS = 2  # Number of previous conversation turns to include as context
 
+
 class SessionStore:
     """Ephemeral in-memory conversation store with TTL."""
+
     def __init__(self, ttl_seconds: int = SESSION_TTL_SECONDS):
         self.ttl = ttl_seconds
-        self._sessions: Dict[str, Dict[str, Any]] = {}  # conversation_id -> {history, last_seen, created_at}
+        self._sessions: Dict[str, Dict[str, Any]] = (
+            {}
+        )  # conversation_id -> {history, last_seen, created_at}
 
     def _new_id(self) -> str:
         return secrets.token_urlsafe(16)
@@ -62,7 +79,11 @@ class SessionStore:
 
     def reset(self, conversation_id: str):
         now = datetime.utcnow().timestamp()
-        self._sessions[conversation_id] = {"history": [], "last_seen": now, "created_at": now}
+        self._sessions[conversation_id] = {
+            "history": [],
+            "last_seen": now,
+            "created_at": now,
+        }
 
     def append(
         self,
@@ -75,7 +96,11 @@ class SessionStore:
         now = datetime.utcnow().timestamp()
         if conversation_id not in self._sessions:
             # recreate lazily if expired
-            self._sessions[conversation_id] = {"history": [], "last_seen": now, "created_at": now}
+            self._sessions[conversation_id] = {
+                "history": [],
+                "last_seen": now,
+                "created_at": now,
+            }
         entry: Dict[str, Any] = {"role": role, "content": content}
         if structured is not None:
             entry["structured"] = structured
@@ -95,16 +120,20 @@ class SessionStore:
                 to_delete.append(cid)
         for cid in to_delete:
             del self._sessions[cid]
-    
-    def get_context_for_llm(self, conversation_id: str, max_turns: int = MAX_CONTEXT_TURNS) -> List[Dict[str, str]]:
+
+    def get_context_for_llm(
+        self, conversation_id: str, max_turns: int = MAX_CONTEXT_TURNS
+    ) -> List[Dict[str, str]]:
         """Get the most recent N turns for LLM context."""
         history = self.get_history(conversation_id)
 
         # Get last max_turns * 2 messages (user + assistant pairs)
-        context_window = history[-(max_turns * 2):] if len(history) > max_turns * 2 else history
+        context_window = (
+            history[-(max_turns * 2) :] if len(history) > max_turns * 2 else history
+        )
         # Return a shallow copy to avoid accidental mutation downstream
         return [dict(item) for item in context_window]
-    
+
     def extract_response_summary(
         self,
         modules: List[Dict[str, Any]],
@@ -132,19 +161,25 @@ class SessionStore:
         if max_length is not None and max_length > 0 and len(summary) > max_length:
             summary = summary[:max_length].rstrip() + "..."
         return summary
-    
-    def log_conversation(self, conversation_id: str, query: str, 
-                        response_modules: Optional[List[Dict]] = None,
-                        error: Optional[str] = None,
-                        tokens_used: Optional[int] = None):
+
+    def log_conversation(
+        self,
+        conversation_id: str,
+        query: str,
+        response_modules: Optional[List[Dict]] = None,
+        error: Optional[str] = None,
+        tokens_used: Optional[int] = None,
+    ):
         """Enhanced conversation logging for analytics."""
         file_exists = CONVERSATION_LOG_PATH.exists()
-        
+
         session_data = self._sessions.get(conversation_id, {})
         created_at = session_data.get("created_at", datetime.utcnow().timestamp())
         session_duration = datetime.utcnow().timestamp() - created_at
-        turn_number = len(self.get_history(conversation_id)) // 2 + 1  # Pairs of user/assistant
-        
+        turn_number = (
+            len(self.get_history(conversation_id)) // 2 + 1
+        )  # Pairs of user/assistant
+
         # Determine message type
         if turn_number == 1:
             message_type = "new_conversation"
@@ -152,42 +187,68 @@ class SessionStore:
             message_type = "reset"
         else:
             message_type = "continuation"
-        
+
         # Extract module types
         module_types = []
         response_summary = ""
         if response_modules:
-            module_types = list(set(m.get("type") for m in response_modules if m.get("type")))
+            module_types = list(
+                set(m.get("type") for m in response_modules if m.get("type"))
+            )
             response_summary = self.extract_response_summary(response_modules)
-        
+
         # Calculate context included
         context_included = min(turn_number - 1, MAX_CONTEXT_TURNS)
-        
-        with open(CONVERSATION_LOG_PATH, 'a', newline='', encoding='utf-8') as f:
+
+        with open(CONVERSATION_LOG_PATH, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
                 # Write header if file is new
-                writer.writerow([
-                    'timestamp', 'conversation_id', 'turn_number', 'message_type',
-                    'query', 'response_summary', 'response_modules', 'context_included',
-                    'session_duration_seconds', 'tokens_used', 'error_flag'
-                ])
-            
-            writer.writerow([
-                datetime.utcnow().isoformat(),
-                conversation_id,
-                turn_number,
-                message_type,
-                query,
-                response_summary[:500] if response_summary else "",
-                json.dumps(module_types) if module_types else "[]",
-                context_included,
-                round(session_duration, 2),
-                tokens_used or 0,
-                1 if error else 0
-            ])
+                writer.writerow(
+                    [
+                        "timestamp",
+                        "conversation_id",
+                        "turn_number",
+                        "message_type",
+                        "query",
+                        "response_summary",
+                        "response_modules",
+                        "context_included",
+                        "session_duration_seconds",
+                        "tokens_used",
+                        "error_flag",
+                    ]
+                )
+
+            writer.writerow(
+                [
+                    datetime.utcnow().isoformat(),
+                    conversation_id,
+                    turn_number,
+                    message_type,
+                    query,
+                    response_summary if response_summary else "",
+                    json.dumps(module_types) if module_types else "[]",
+                    context_included,
+                    round(session_duration, 2),
+                    tokens_used or 0,
+                    1 if error else 0,
+                ]
+            )
+
 
 session_store = SessionStore()
+
+# Initialize stream cache for featured queries
+stream_cache = StreamCache()
+
+# Exact query string mapping for featured queries
+FEATURED_QUERY_CACHE_MAP = {
+    "How fast is Brazil's solar energy capacity expanding, and how does this align with national climate targets and land-use priorities?": "brazil-solar-expansion",
+    "How is Brazil currently performing on its national climate goals, and which policies are driving progress or falling behind?": "brazil-climate-goals",
+    "What are the main climate risks facing different regions of Brazil this decade, and which ones are most urgent for policymakers to address?": "brazil-climate-risks",
+}
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -200,6 +261,7 @@ async def startup_event():
         print(f"Warning: Failed to warm up global MCP client: {e}")
         # Don't fail startup - let individual requests handle fallback
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up the global MCP client on server shutdown."""
@@ -210,6 +272,7 @@ async def shutdown_event():
     except Exception as e:
         print(f"Warning: Error during MCP client cleanup: {e}")
 
+
 # Dynamic GeoJSON generation (must be before static mount to avoid conflicts)
 @app.get("/static/maps/{filename}")
 async def get_geojson(filename: str):
@@ -219,37 +282,40 @@ async def get_geojson(filename: str):
     try:
         # Determine static maps directory (env override supported)
         static_maps_dir = os.environ.get(
-            "STATIC_MAPS_DIR",
-            os.path.join(os.path.dirname(__file__), "static", "maps")
+            "STATIC_MAPS_DIR", os.path.join(os.path.dirname(__file__), "static", "maps")
         )
         # First, check if the file exists in the static/maps directory
         file_path = os.path.join(static_maps_dir, filename)
         print(f"[DEBUG] GeoJSON request for: {filename}")
         print(f"[DEBUG] Checking path: {file_path}")
         print(f"[DEBUG] File exists: {os.path.exists(file_path)}")
-        
+
         if os.path.exists(file_path):
             # Serve the existing file
             print(f"[DEBUG] Serving existing file: {file_path}")
             return FileResponse(file_path, media_type="application/geo+json")
-        
+
         # If file doesn't exist, handle correlation vs. legacy fallback
         # Never silently fallback for correlation_* files to avoid confusing the frontend
         if filename.startswith("correlation_"):
-            raise HTTPException(status_code=404, detail=f"Correlation map not found: {filename}")
+            raise HTTPException(
+                status_code=404, detail=f"Correlation map not found: {filename}"
+            )
 
         # Otherwise, for legacy filenames, generate a generic facilities GeoJSON dynamically
         # Use SQLite database instead of CSV
         import sys
-        sys.path.append(os.path.join(os.path.dirname(__file__), 'mcp'))
+
+        sys.path.append(os.path.join(os.path.dirname(__file__), "mcp"))
         from solar_db import SolarDatabase
+
         db = SolarDatabase()
-        
+
         # Get facilities from database (limit to 15000 for map performance)
         # TODO: Once we have capacity data, should order by capacity descending
         facilities = db.search_facilities(limit=15000)
         total_count = db.get_total_count()
-        
+
         # Convert to GeoJSON format
         features = []
         for facility in facilities:
@@ -257,30 +323,34 @@ async def get_geojson(filename: str):
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [facility["longitude"], facility["latitude"]]
+                    "coordinates": [facility["longitude"], facility["latitude"]],
                 },
                 "properties": {
                     "name": f"Solar Facility {facility.get('cluster_id', '')}",
                     "country": facility["country"],
                     "technology": "Solar PV",
                     "cluster_id": facility.get("cluster_id", ""),
-                    "capacity_mw": facility.get("capacity_mw") if facility.get("capacity_mw") is not None else 0.0,
+                    "capacity_mw": (
+                        facility.get("capacity_mw")
+                        if facility.get("capacity_mw") is not None
+                        else 0.0
+                    ),
                     "constructed_before": facility.get("constructed_before", "Unknown"),
                     "constructed_after": facility.get("constructed_after", "Unknown"),
                     "marker_color": {
-                        'china': '#4CAF50',
-                        'united states of america': '#FF9800', 
-                        'japan': '#F44336',
-                        'germany': '#2196F3',
-                        'italy': '#9C27B0'
-                    }.get(facility["country"].lower(), '#9E9E9E')
-                }
+                        "china": "#4CAF50",
+                        "united states of america": "#FF9800",
+                        "japan": "#F44336",
+                        "germany": "#2196F3",
+                        "italy": "#9C27B0",
+                    }.get(facility["country"].lower(), "#9E9E9E"),
+                },
             }
             features.append(feature)
-        
+
         # Add metadata about limiting
         limit_applied = len(facilities) >= 15000
-        
+
         geojson = {
             "type": "FeatureCollection",
             "features": features,
@@ -288,16 +358,23 @@ async def get_geojson(filename: str):
                 "total_facilities_in_database": total_count,
                 "facilities_returned": len(features),
                 "limit_applied": limit_applied,
-                "note": f"Showing {len(features):,} of {total_count:,} facilities" + 
-                       (" (limited for map performance)" if limit_applied else " (all facilities)")
-            }
+                "note": f"Showing {len(features):,} of {total_count:,} facilities"
+                + (
+                    " (limited for map performance)"
+                    if limit_applied
+                    else " (all facilities)"
+                ),
+            },
         }
-        
+
         return geojson
-        
+
     except Exception as e:
         print(f"Error generating GeoJSON: {e}")
-        raise HTTPException(status_code=500, detail=f"Error generating GeoJSON: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generating GeoJSON: {str(e)}"
+        )
+
 
 # Mount static files for serving images, GeoJSON, and other static content
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -313,6 +390,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class QueryRequest(BaseModel):
     query: str
     include_thinking: bool = False
@@ -320,11 +398,13 @@ class QueryRequest(BaseModel):
     reset: bool = False  # allow client to explicitly reset this conversation
     language: Optional[str] = None  # Optional: 'pt' or 'en'; 'auto' if unset
 
+
 class StreamQueryRequest(BaseModel):
     query: str
     conversation_id: Optional[str] = None
     reset: bool = False
     language: Optional[str] = None
+
 
 _detect_portuguese = detect_portuguese
 _should_use_portuguese = should_respond_in_portuguese
@@ -344,7 +424,9 @@ _PORTUGUESE_PREFS = {
 _ENGLISH_PREFS = {"en", "english"}
 
 
-async def _resolve_target_language(language_pref: Optional[str], query_text: str) -> Optional[str]:
+async def _resolve_target_language(
+    language_pref: Optional[str], query_text: str
+) -> Optional[str]:
     """Determine the output language for a query.
 
     Prefers explicit request parameters, falls back to LLM-based inference that checks
@@ -372,6 +454,25 @@ async def _resolve_target_language(language_pref: Optional[str], query_text: str
         return None
 
     return None
+
+
+def _ensure_kg_kind(kg_context: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Ensure each KG node exposes the legacy `kind` field expected by the frontend."""
+
+    if not isinstance(kg_context, dict):
+        return kg_context
+
+    nodes = kg_context.get("nodes")
+    if isinstance(nodes, list):
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            node_type = node.get("type")
+            if isinstance(node_type, str) and node_type and not node.get("kind"):
+                node["kind"] = node_type
+
+    return kg_context
+
 
 def _derive_kg_from_context(kg_context: Dict[str, Any]) -> Dict[str, Any]:
     """Build concepts and relationships arrays from a kg_context structure.
@@ -401,15 +502,18 @@ def _derive_kg_from_context(kg_context: Dict[str, Any]) -> Dict[str, Any]:
         if etype == "MENTIONS":
             continue
         if src in concept_ids and tgt in concept_ids:
-            rels.append({
-                "source_id": src,
-                "target_id": tgt,
-                "source_label": concept_labels_by_id.get(src, src),
-                "target_label": concept_labels_by_id.get(tgt, tgt),
-                "relationship_type": etype,
-                "formatted": f"{concept_labels_by_id.get(src, src)} -> {concept_labels_by_id.get(tgt, tgt)} ({etype})"
-            })
+            rels.append(
+                {
+                    "source_id": src,
+                    "target_id": tgt,
+                    "source_label": concept_labels_by_id.get(src, src),
+                    "target_label": concept_labels_by_id.get(tgt, tgt),
+                    "relationship_type": etype,
+                    "formatted": f"{concept_labels_by_id.get(src, src)} -> {concept_labels_by_id.get(tgt, tgt)} ({etype})",
+                }
+            )
     return {"concepts": concepts_list, "relationships": rels}
+
 
 async def _fetch_kg_data(query: str) -> Dict[str, Any]:
     """
@@ -417,18 +521,20 @@ async def _fetch_kg_data(query: str) -> Dict[str, Any]:
     Returns empty data if KG server is unavailable.
     """
     kg_server_url = "http://localhost:8100/api/kg/query-subgraph"
-    
+
     payload = {
         "query": query,
         "depth": 2,
         "max_nodes": 80,
         "include_datasets": True,
-        "include_passages": False
+        "include_passages": False,
     }
-    
+
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(kg_server_url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            async with session.post(
+                kg_server_url, json=payload, timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
                 if response.status == 200:
                     data = await response.json()
                     return {
@@ -436,7 +542,9 @@ async def _fetch_kg_data(query: str) -> Dict[str, Any]:
                         "relationships": data.get("relationships", []),
                         "query_concepts": data.get("query_concepts", []),
                         "query_concept_labels": data.get("query_concept_labels", []),
-                        "kg_extraction_method": data.get("extraction_method", "unknown")
+                        "kg_extraction_method": data.get(
+                            "extraction_method", "unknown"
+                        ),
                     }
                 else:
                     # Silently return empty data for non-200 status
@@ -450,6 +558,7 @@ async def _fetch_kg_data(query: str) -> Dict[str, Any]:
             print(f"KG data fetch issue: {e}")
         return _empty_kg_data()
 
+
 def _empty_kg_data() -> Dict[str, Any]:
     """Return empty KG data structure when KG server is unavailable"""
     return {
@@ -457,49 +566,57 @@ def _empty_kg_data() -> Dict[str, Any]:
         "relationships": [],
         "query_concepts": [],
         "query_concept_labels": [],
-        "kg_extraction_method": "unavailable"
+        "kg_extraction_method": "unavailable",
     }
 
-def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result: Optional[Dict[str, Any]] = None, query_text: str = "", kg_embed_info: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+
+def _generate_enhanced_metadata(
+    structured_response: Dict[str, Any],
+    full_result: Optional[Dict[str, Any]] = None,
+    query_text: str = "",
+    kg_embed_info: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
     """
     Generate enhanced metadata that better detects charts and visualization potential.
     """
     modules = structured_response.get("modules", [])
-    
+
     # Standard module type detection
     has_maps = any(m.get("type") == "map" for m in modules)
     has_charts = any(m.get("type") == "chart" for m in modules)
-    has_tables = any(m.get("type") in ["table", "numbered_citation_table"] for m in modules)
-    
+    has_tables = any(
+        m.get("type") in ["table", "numbered_citation_table"] for m in modules
+    )
+
     # Enhanced chart potential detection
     chart_potential = False
     visualization_data_available = False
-    
+
     # Check for chart data in full result if available
     if full_result:
         # Check legacy chart_data
         chart_data = full_result.get("chart_data")
         if chart_data and isinstance(chart_data, list) and len(chart_data) > 0:
             chart_potential = True
-            
+
         # Check structured visualization_data
         viz_data = full_result.get("visualization_data")
         if viz_data and isinstance(viz_data, dict) and "data" in viz_data:
             visualization_data_available = True
             chart_potential = True
-            
+
         # Check map_data for potential charts
         map_data = full_result.get("map_data")
         if map_data and isinstance(map_data, dict) and "data" in map_data:
             chart_potential = True
-    
+
     # Analyze table data for chart potential
     chart_worthy_tables = 0
     for module in modules:
         if module.get("type") == "table":
             rows = module.get("rows", [])
             columns = module.get("columns", [])
-            
+
             # Check if table has numerical data suitable for charts
             if len(rows) > 1 and len(columns) >= 2:
                 # Look for numerical data patterns
@@ -509,7 +626,7 @@ def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result
                         # Check second column for numeric values (first is often labels)
                         for row in rows[:3]:  # Check first few rows
                             if len(row) > 1:
-                                val = str(row[1]).replace(',', '').replace('%', '')
+                                val = str(row[1]).replace(",", "").replace("%", "")
                                 try:
                                     float(val)
                                     has_numeric_data = True
@@ -518,14 +635,14 @@ def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result
                                     continue
                     except (IndexError, TypeError):
                         pass
-                
+
                 if has_numeric_data:
                     chart_worthy_tables += 1
                     chart_potential = True
-    
+
     # If we have charts OR chart potential, mark has_charts as true
     effective_has_charts = has_charts or chart_potential
-    
+
     return {
         "modules_count": len(modules),
         "has_maps": has_maps,
@@ -536,14 +653,21 @@ def _generate_enhanced_metadata(structured_response: Dict[str, Any], full_result
         "visualization_data_available": visualization_data_available,
         "module_types": list(set(m.get("type", "unknown") for m in modules)),
         "kg_visualization_url": "/kg-viz",
-        "kg_query_url": f"/kg-viz?query={query_text.replace(' ', '%20')}" if query_text else "/kg-viz",
+        "kg_query_url": (
+            f"/kg-viz?query={query_text.replace(' ', '%20')}"
+            if query_text
+            else "/kg-viz"
+        ),
         # Compatibility: frontend may expect `kg_embed` (alias of url)
         "kg_embed": kg_embed_info.get("url_path") if kg_embed_info else None,
         "kg_embed_url": kg_embed_info.get("url_path") if kg_embed_info else None,
         "kg_embed_path": kg_embed_info.get("relative_path") if kg_embed_info else None,
-        "kg_embed_absolute_path": kg_embed_info.get("absolute_path") if kg_embed_info else None,
-        "kg_embed_filename": kg_embed_info.get("filename") if kg_embed_info else None
+        "kg_embed_absolute_path": (
+            kg_embed_info.get("absolute_path") if kg_embed_info else None
+        ),
+        "kg_embed_filename": kg_embed_info.get("filename") if kg_embed_info else None,
     }
+
 
 class QueryResponse(BaseModel):
     query: str
@@ -558,11 +682,12 @@ class QueryResponse(BaseModel):
     kg_embed_path: Optional[str] = None
     kg_embed_filename: Optional[str] = None
 
+
 @app.post("/query", response_model=QueryResponse)
 async def process_query(req: QueryRequest, request: Request):
     """
     Process a climate policy query and return structured JSON response with session management.
-    
+
     Returns:
     - modules: Array of structured content (text, charts, tables, maps with GeoJSON)
     - thinking_process: AI's step-by-step reasoning (if requested)
@@ -570,28 +695,30 @@ async def process_query(req: QueryRequest, request: Request):
     - session_id: Conversation session ID for multi-turn conversations
     """
     print(f"🔥 RECEIVED QUERY REQUEST: {req.query}")
-    
+
     # Handle session management
     if req.reset and req.conversation_id:
         session_store.reset(req.conversation_id)
-    
+
     # Get or create session ID
     session_id = session_store.get_or_create(req.conversation_id)
-    
+
     # Log will happen after we get the response (so we can log response modules too)
-    
+
     # Get conversation history for context (limited to last N turns)
     context = session_store.get_context_for_llm(session_id)
     if context:
-        print(f"📝 Using conversation context: {len(context)} messages from session {session_id}")
+        print(
+            f"📝 Using conversation context: {len(context)} messages from session {session_id}"
+        )
     else:
         print(f"📝 No conversation history for session {session_id}")
-    
+
     try:
         # Set working directory for MCP servers - use current script location
         script_dir = os.path.dirname(os.path.abspath(__file__))
         os.chdir(script_dir)
-        
+
         # Pass conversation context to process_chat_query
         # Determine target language: explicit or auto-detect via small LLM call
         target_lang = await _resolve_target_language(req.language, req.query)
@@ -602,9 +729,13 @@ async def process_query(req: QueryRequest, request: Request):
             correlation_session_id=session_id,
             target_language=target_lang,
         )
-        
+
         # Check if this is an off-topic redirect response
-        if isinstance(full_result, dict) and full_result.get("metadata", {}).get("query_type") == "off_topic_redirect":
+        if (
+            isinstance(full_result, dict)
+            and full_result.get("metadata", {}).get("query_type")
+            == "off_topic_redirect"
+        ):
             # Store conversation and return immediately without KG processing
             session_store.append(session_id, "user", req.query)
             off_topic_modules = full_result.get("modules", [])
@@ -618,19 +749,20 @@ async def process_query(req: QueryRequest, request: Request):
                     "query": req.query,
                 },
             )
-            
+
             session_store.log_conversation(
                 session_id,
                 req.query,
                 response_modules=full_result.get("modules", []),
                 error=None,
-                tokens_used=0
+                tokens_used=0,
             )
             # Apply translation to modules if needed
             modules = full_result.get("modules", [])
             try:
                 if target_lang and target_lang.startswith("pt") and modules:
                     from mcp.translation import translate_modules as _translate_modules
+
                     modules = await _translate_modules(modules, target_lang)
             except Exception:
                 pass
@@ -642,69 +774,75 @@ async def process_query(req: QueryRequest, request: Request):
                 metadata=full_result.get("metadata", {}),
                 concepts=[],
                 relationships=[],
-                session_id=session_id
+                session_id=session_id,
             )
-        
+
         # Normal processing for on-topic queries
         # Check if full_result has modules directly (new format) or in formatted_response (old format)
         if "modules" in full_result:
             structured_response = full_result
         else:
             structured_response = full_result.get("formatted_response", {"modules": []})
-        
+
         if req.include_thinking:
             thinking_process = full_result.get("ai_thought_process", "")
         else:
             thinking_process = None
-        
+
         # (Removed) Early KG data fetch was unused and redundant
-        
+
         # Initialize KG variables
         kg_embed_path = None
         kg_embed_absolute_path = None
         kg_embed_url = None
-        
+
         # Generate static KG visualization file
         try:
             # Extract citation registry from full result
             citation_registry = None
             if "citation_registry" in full_result:
                 citation_registry = full_result["citation_registry"]
-                print(f"📋 Citation registry found with {len(citation_registry.get('citations', {}))} citations")
+                print(
+                    f"📋 Citation registry found with {len(citation_registry.get('citations', {}))} citations"
+                )
             else:
-                print(f"⚠️  No citation registry in full_result. Keys: {list(full_result.keys())}")
-            
+                print(
+                    f"⚠️  No citation registry in full_result. Keys: {list(full_result.keys())}"
+                )
+
             # Extract KG context from full result
             kg_context = None
             if "kg_context" in full_result:
-                kg_context = full_result["kg_context"]
-                print(f"🌐 KG context found with {len(kg_context.get('nodes', []))} nodes and {len(kg_context.get('edges', []))} edges")
+                kg_context = _ensure_kg_kind(full_result["kg_context"])
+                full_result["kg_context"] = kg_context
+                print(
+                    f"🌐 KG context found with {len(kg_context.get('nodes', []))} nodes and {len(kg_context.get('edges', []))} edges"
+                )
             else:
                 print(f"⚠️  No kg_context in full_result. Using fallback method.")
-            
+
             print(f"🔧 Starting KG embed generation for query: {req.query}")
-            
+
             # Prepare MCP response data with KG context
             mcp_response = structured_response
             if kg_context:
-                mcp_response = {
-                    **structured_response,
-                    "kg_context": kg_context
-                }
-            
+                mcp_response = {**structured_response, "kg_context": kg_context}
+
             # Generate enhanced KG embed with MCP response and citation data
             kg_embed_result = await kg_generator.generate_embed(
-                req.query, 
+                req.query,
                 mcp_response,  # Pass the structured response with kg_context
-                citation_registry
+                citation_registry,
             )
-            
+
             # Extract path info from result
             if kg_embed_result:
-                print(f"✅ KG embed generation successful! Result type: {type(kg_embed_result)}")
+                print(
+                    f"✅ KG embed generation successful! Result type: {type(kg_embed_result)}"
+                )
                 if isinstance(kg_embed_result, dict):
                     kg_embed_path = kg_embed_result["relative_path"]
-                    kg_embed_absolute_path = kg_embed_result["absolute_path"] 
+                    kg_embed_absolute_path = kg_embed_result["absolute_path"]
                     kg_embed_url = kg_embed_result["url_path"]
                     print(f"📁 KG file created: {kg_embed_absolute_path}")
                 else:
@@ -721,26 +859,31 @@ async def process_query(req: QueryRequest, request: Request):
         except Exception as e:
             print(f"Failed to generate KG embed: {e}")
             import traceback
+
             print(f"KG generation traceback: {traceback.format_exc()}")
             kg_embed_path = None
             kg_embed_absolute_path = None
             kg_embed_url = None
-        
+
         # Create kg_embed_info dict for metadata
         kg_embed_info = None
         if kg_embed_path:
             # Build an absolute URL using env/request base URL to avoid mixed content
-            kg_embed_url_abs = _absolute_url_for(request, kg_embed_url or "") if kg_embed_url else None
+            kg_embed_url_abs = (
+                _absolute_url_for(request, kg_embed_url or "") if kg_embed_url else None
+            )
             kg_embed_info = {
                 "relative_path": kg_embed_path,
                 "absolute_path": kg_embed_absolute_path,
                 "url_path": kg_embed_url_abs,
-                "filename": (kg_embed_url_abs.split('/')[-1] if kg_embed_url_abs else None)
+                "filename": (
+                    kg_embed_url_abs.split("/")[-1] if kg_embed_url_abs else None
+                ),
             }
             print(f"📊 KG embed info created: {kg_embed_info}")
         else:
             print(f"⚠️  No KG embed path - KG embed info will be None")
-        
+
         # Get modules for response
         modules = structured_response.get("modules", [])
 
@@ -753,22 +896,25 @@ async def process_query(req: QueryRequest, request: Request):
             kg_data_resp = await _fetch_kg_data(req.query)
             concepts_out = kg_data_resp.get("concepts", [])
             relationships_out = kg_data_resp.get("relationships", [])
-        
+
         # Extract KG data from kg_context or initialize empty
         kg_data = {"concepts": [], "relationships": []}
         if kg_context:
             # Extract concepts from nodes
-            kg_data["concepts"] = [node.get("label", node.get("id", "")) for node in kg_context.get("nodes", [])]
+            kg_data["concepts"] = [
+                node.get("label", node.get("id", ""))
+                for node in kg_context.get("nodes", [])
+            ]
             # Extract relationships from edges
             kg_data["relationships"] = [
                 {
                     "source": edge.get("source", ""),
                     "target": edge.get("target", ""),
-                    "type": edge.get("label", edge.get("type", "related"))
+                    "type": edge.get("label", edge.get("type", "related")),
                 }
                 for edge in kg_context.get("edges", [])
             ]
-        
+
         # Store query and response in session history
         session_store.append(session_id, "user", req.query)
         response_summary = session_store.extract_response_summary(modules)
@@ -783,66 +929,78 @@ async def process_query(req: QueryRequest, request: Request):
                 "query": req.query,
             },
         )
-        
+
         # Log conversation with full details
         session_store.log_conversation(
-            session_id, 
-            req.query, 
+            session_id,
+            req.query,
             response_modules=modules,
             error=None,
-            tokens_used=None  # TODO: Extract token usage from full_result if available
+            tokens_used=None,  # TODO: Extract token usage from full_result if available
         )
-        
+
         return QueryResponse(
             query=req.query,
             modules=modules,
             thinking_process=thinking_process,
-            metadata=_generate_enhanced_metadata(structured_response, full_result if req.include_thinking else None, req.query, kg_embed_info),
+            metadata=_generate_enhanced_metadata(
+                structured_response,
+                full_result if req.include_thinking else None,
+                req.query,
+                kg_embed_info,
+            ),
             concepts=concepts_out,
             relationships=relationships_out,
             session_id=session_id,
             kg_embed_url=(kg_embed_info.get("url_path") if kg_embed_info else None),
-            kg_embed_path=(kg_embed_info.get("relative_path") if kg_embed_info else None),
-            kg_embed_filename=(kg_embed_info.get("filename") if kg_embed_info else None)
+            kg_embed_path=(
+                kg_embed_info.get("relative_path") if kg_embed_info else None
+            ),
+            kg_embed_filename=(
+                kg_embed_info.get("filename") if kg_embed_info else None
+            ),
         )
-        
+
     except Exception as e:
         import traceback
-        error_detail = f"Query processing failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+
+        error_detail = (
+            f"Query processing failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        )
         print(f"API ERROR: {error_detail}")
-        
+
         # Log error in conversation
         session_store.log_conversation(
-            session_id, 
-            req.query, 
-            response_modules=None,
-            error=str(e),
-            tokens_used=None
+            session_id, req.query, response_modules=None, error=str(e), tokens_used=None
         )
-        
+
         raise HTTPException(status_code=500, detail=error_detail)
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "message": "Climate Policy Radar API is running"}
 
+
 @app.get("/featured-queries")
 async def get_featured_queries(include_cached: bool = False):
     """
     Returns curated list of featured queries with images for frontend gallery.
-    
+
     Args:
         include_cached: If True, includes cached API responses for each query
-    
+
     This endpoint serves as a pseudo-CMS for maintaining featured content
     without requiring database changes. Update static/featured_queries.json
     to modify the content.
     """
     try:
         # Read the featured queries JSON file
-        featured_queries_path = os.path.join(os.path.dirname(__file__), "static", "featured_queries.json")
-        
+        featured_queries_path = os.path.join(
+            os.path.dirname(__file__), "static", "featured_queries.json"
+        )
+
         if not os.path.exists(featured_queries_path):
             # Return empty response if file doesn't exist
             return {
@@ -850,17 +1008,17 @@ async def get_featured_queries(include_cached: bool = False):
                 "metadata": {
                     "total_queries": 0,
                     "categories": [],
-                    "error": "Featured queries file not found"
-                }
+                    "error": "Featured queries file not found",
+                },
             }
-        
-        with open(featured_queries_path, 'r', encoding='utf-8') as f:
+
+        with open(featured_queries_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         # Validate basic structure
         if "featured_queries" not in data:
             raise ValueError("Invalid featured queries file structure")
-        
+
         # If include_cached is True, load cached responses
         if include_cached:
             cache_dir = os.path.join(os.path.dirname(__file__), "static", "cache")
@@ -870,54 +1028,69 @@ async def get_featured_queries(include_cached: bool = False):
                     cache_file = os.path.join(cache_dir, f"{query_id}.json")
                     if os.path.exists(cache_file):
                         try:
-                            with open(cache_file, 'r', encoding='utf-8') as cf:
+                            with open(cache_file, "r", encoding="utf-8") as cf:
                                 cached_data = json.load(cf)
                                 query["cached_response"] = cached_data.get("response")
                                 query["cached_at"] = cached_data.get("cached_at")
                         except Exception as e:
                             # Log error but continue
                             query["cache_error"] = str(e)
-        
+
         # Add timestamp for caching
         if "metadata" not in data:
             data["metadata"] = {}
         data["metadata"]["served_at"] = datetime.now().isoformat()
-        
+
         return data
-        
+
     except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"Invalid JSON in featured queries file: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Invalid JSON in featured queries file: {str(e)}"
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load featured queries: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load featured queries: {str(e)}"
+        )
+
 
 @app.get("/featured-queries/{query_id}/cached")
 async def get_cached_query(query_id: str):
     """
     Get cached response for a specific featured query by ID.
-    
+
     Args:
         query_id: The ID of the featured query
-        
+
     Returns:
         The cached API response if available, or 404 if not found
     """
     try:
-        cache_file = os.path.join(os.path.dirname(__file__), "static", "cache", f"{query_id}.json")
-        
+        cache_file = os.path.join(
+            os.path.dirname(__file__), "static", "cache", f"{query_id}.json"
+        )
+
         if not os.path.exists(cache_file):
-            raise HTTPException(status_code=404, detail=f"No cached response found for query ID: {query_id}")
-        
-        with open(cache_file, 'r', encoding='utf-8') as f:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No cached response found for query ID: {query_id}",
+            )
+
+        with open(cache_file, "r", encoding="utf-8") as f:
             cached_data = json.load(f)
-        
+
         return cached_data
-        
+
     except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"Invalid cached data format: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Invalid cached data format: {str(e)}"
+        )
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load cached query: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load cached query: {str(e)}"
+        )
+
 
 @app.get("/example-response")
 async def get_example_response():
@@ -932,8 +1105,8 @@ async def get_example_response():
                 "heading": "Solar Facilities in Brazil",
                 "texts": [
                     "Brazil has 2,273 solar installations with a total capacity of 26,022 MW.",
-                    "The facilities range from small 0.3 MW installations to large utility-scale projects exceeding 2,500 MW."
-                ]
+                    "The facilities range from small 0.3 MW installations to large utility-scale projects exceeding 2,500 MW.",
+                ],
             },
             {
                 "type": "map",
@@ -945,7 +1118,7 @@ async def get_example_response():
                             "type": "Feature",
                             "geometry": {
                                 "type": "Point",
-                                "coordinates": [-38.5014, -12.9734]
+                                "coordinates": [-38.5014, -12.9734],
                             },
                             "properties": {
                                 "facility_id": "BR_FAC_001",
@@ -955,14 +1128,14 @@ async def get_example_response():
                                 "popup_content": "Capacity: 2,511.1 MW<br>Location: Bahia State",
                                 "marker_color": "#4CAF50",
                                 "marker_size": 20,
-                                "marker_opacity": 0.8
-                            }
+                                "marker_opacity": 0.8,
+                            },
                         },
                         {
-                            "type": "Feature", 
+                            "type": "Feature",
                             "geometry": {
                                 "type": "Point",
-                                "coordinates": [-43.9345, -19.9167]
+                                "coordinates": [-43.9345, -19.9167],
                             },
                             "properties": {
                                 "facility_id": "BR_FAC_002",
@@ -972,10 +1145,10 @@ async def get_example_response():
                                 "popup_content": "Capacity: 145.8 MW<br>Location: Minas Gerais",
                                 "marker_color": "#4CAF50",
                                 "marker_size": 8,
-                                "marker_opacity": 0.8
-                            }
-                        }
-                    ]
+                                "marker_opacity": 0.8,
+                            },
+                        },
+                    ],
                 },
                 "viewState": {
                     "center": [-51.9253, -14.235],
@@ -984,65 +1157,96 @@ async def get_example_response():
                         "north": -12.9734,
                         "south": -19.9167,
                         "east": -38.5014,
-                        "west": -43.9345
-                    }
+                        "west": -43.9345,
+                    },
                 },
                 "legend": {
                     "title": "Solar Facilities",
-                    "items": [
-                        {
-                            "label": "Brazil",
-                            "color": "#4CAF50"
-                        }
-                    ]
+                    "items": [{"label": "Brazil", "color": "#4CAF50"}],
                 },
                 "metadata": {
                     "total_facilities": 2273,
                     "total_capacity_mw": 26022.5,
                     "data_source": "TZ-SAM Q1 2025",
                     "countries": ["brazil"],
-                    "feature_count": 2
-                }
+                    "feature_count": 2,
+                },
             },
             {
                 "type": "chart",
                 "chartType": "bar",
                 "data": {
                     "labels": ["Brazil", "India", "South Africa", "Vietnam"],
-                    "datasets": [{
-                        "label": "Total Capacity (MW)",
-                        "data": [26022, 79734, 6075, 13063],
-                        "backgroundColor": ["#4CAF50", "#FF9800", "#F44336", "#2196F3"]
-                    }]
-                }
+                    "datasets": [
+                        {
+                            "label": "Total Capacity (MW)",
+                            "data": [26022, 79734, 6075, 13063],
+                            "backgroundColor": [
+                                "#4CAF50",
+                                "#FF9800",
+                                "#F44336",
+                                "#2196F3",
+                            ],
+                        }
+                    ],
+                },
             },
             {
                 "type": "table",
-                "heading": "Sources and References", 
+                "heading": "Sources and References",
                 "columns": ["#", "Source", "ID/Tool", "Type", "Method", "Description"],
                 "rows": [
-                    ["1", "TZ-SAM Q1 2025 Solar Facilities Database | TransitionZero | Brazil, India, South Africa, Vietnam", "GetSolarFacilitiesMapData", "Dataset", "Tool/API", "TransitionZero Solar Asset Mapper - Global solar facility locations and capacity data (2273 facilities)"],
-                    ["2", "Brazilian Climate Policy Framework (CCLW.executive.4934.1571)", "passage_12345", "Policy", "Knowledge Graph", "Brazil has implemented various renewable energy policies to promote solar power development across..."],
-                    ["3", "UNFCCC National Communication (UNFCCC.party.492.0)", "passage_24680", "Document", "Knowledge Graph", "Solar capacity in Brazil is expected to reach 30 GW by 2030 according to government projections..."],
-                    ["4", "TZ-SAM Solar Capacity Database | TransitionZero | Global", "GetSolarCapacityByCountry", "Dataset", "Tool/API", "Solar capacity statistics and aggregations for Brazil (26,022 MW total capacity)"]
-                ]
-            }
+                    [
+                        "1",
+                        "TZ-SAM Q1 2025 Solar Facilities Database | TransitionZero | Brazil, India, South Africa, Vietnam",
+                        "GetSolarFacilitiesMapData",
+                        "Dataset",
+                        "Tool/API",
+                        "TransitionZero Solar Asset Mapper - Global solar facility locations and capacity data (2273 facilities)",
+                    ],
+                    [
+                        "2",
+                        "Brazilian Climate Policy Framework (CCLW.executive.4934.1571)",
+                        "passage_12345",
+                        "Policy",
+                        "Knowledge Graph",
+                        "Brazil has implemented various renewable energy policies to promote solar power development across...",
+                    ],
+                    [
+                        "3",
+                        "UNFCCC National Communication (UNFCCC.party.492.0)",
+                        "passage_24680",
+                        "Document",
+                        "Knowledge Graph",
+                        "Solar capacity in Brazil is expected to reach 30 GW by 2030 according to government projections...",
+                    ],
+                    [
+                        "4",
+                        "TZ-SAM Solar Capacity Database | TransitionZero | Global",
+                        "GetSolarCapacityByCountry",
+                        "Dataset",
+                        "Tool/API",
+                        "Solar capacity statistics and aggregations for Brazil (26,022 MW total capacity)",
+                    ],
+                ],
+            },
         ],
         "thinking_process": "First, I called GetSolarFacilitiesByCountry for Brazil...",
         "metadata": {
             "modules_count": 4,
             "has_maps": True,
             "has_charts": True,
-            "has_tables": True
-        }
+            "has_tables": True,
+        },
     }
+
 
 @app.post("/thorough-response")
 async def thorough_query_response(request: QueryRequest):
     """
     Returns the complete raw response from MCP servers including all thinking process,
     tool calls, intermediate data, and debug information.
-    
+
     This endpoint surfaces EVERYTHING that the MCP servers return without filtering
     or formatting - useful for debugging and development.
     """
@@ -1050,10 +1254,10 @@ async def thorough_query_response(request: QueryRequest):
         # Set working directory for MCP servers - use current script location
         script_dir = os.path.dirname(os.path.abspath(__file__))
         os.chdir(script_dir)
-        
+
         # Get the complete raw response from MCP
         full_result = await process_chat_query(request.query)
-        
+
         # Return everything - no filtering or formatting
         return {
             "query": request.query,
@@ -1061,21 +1265,23 @@ async def thorough_query_response(request: QueryRequest):
             "metadata": {
                 "endpoint": "thorough-response",
                 "timestamp": datetime.now().isoformat(),
-                "note": "This contains all raw MCP data including debug info and thinking process"
-            }
+                "note": "This contains all raw MCP data including debug info and thinking process",
+            },
         }
-        
+
     except Exception as e:
         import traceback
+
         error_detail = f"Thorough query processing failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
         print(f"THOROUGH API ERROR: {error_detail}")
         raise HTTPException(status_code=500, detail=error_detail)
+
 
 @app.post("/query/stream")
 async def stream_query(stream_req: StreamQueryRequest, request: Request):
     """
     Stream query processing with real-time thinking traces and session management.
-    
+
     Returns Server-Sent Events (SSE) stream with:
     - session_id: The conversation session ID (sent first if new)
     - thinking: AI reasoning steps as they happen
@@ -1085,42 +1291,106 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
     - error: Any errors that occur
     """
     print(f"🔥 RECEIVED STREAM REQUEST: {stream_req.query}")
-    
+
     # Handle session management
     if stream_req.reset and stream_req.conversation_id:
         session_store.reset(stream_req.conversation_id)
-    
+
     # Get or create session ID
     session_id = session_store.get_or_create(stream_req.conversation_id)
-    
+
     # Get conversation history for context (limited to last N turns)
     context = session_store.get_context_for_llm(session_id)
     if context:
-        print(f"📝 Using conversation context: {len(context)} messages from session {session_id}")
+        print(
+            f"📝 Using conversation context: {len(context)} messages from session {session_id}"
+        )
     else:
         print(f"📝 No conversation history for session {session_id}")
-    
+
+    # Determine API_BASE_URL from request (needed for both cached and live responses)
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    forwarded_host = request.headers.get("x-forwarded-host", "")
+
+    if forwarded_proto and forwarded_host:
+        # Behind a proxy - use forwarded headers
+        # Force HTTPS for production domains to avoid mixed content errors
+        if "sunship.one" in forwarded_host or "transitiondigital.org" in forwarded_host:
+            api_base_url = f"https://{forwarded_host}"
+        else:
+            api_base_url = f"{forwarded_proto}://{forwarded_host}"
+    else:
+        # Direct access - use request.base_url
+        api_base_url = str(request.base_url).rstrip("/")
+
+    os.environ["API_BASE_URL"] = api_base_url
+    print(f"🔗 Set API_BASE_URL={api_base_url}", flush=True)
+
+    # Check for cached featured query (exact string match, transparent to client)
+    query_id = FEATURED_QUERY_CACHE_MAP.get(stream_req.query)
+
+    if query_id:
+        cached_events = await stream_cache.get_cached_stream(query_id)
+
+        if cached_events:
+            # Serve from cache - client receives identical stream with rewritten URLs
+            async def cached_event_generator() -> AsyncGenerator[str, None]:
+                try:
+                    # Send session ID as first event
+                    if not stream_req.conversation_id or stream_req.conversation_id != session_id:
+                        session_event = {
+                            "type": "conversation_id",
+                            "data": {"conversation_id": session_id},
+                        }
+                        yield f"data: {json.dumps(session_event)}\n\n"
+
+                    # Replay cached events with original timing and rewritten URLs
+                    async for event in stream_cache.replay_stream(cached_events, base_url=api_base_url):
+                        event_data = json.dumps(event, ensure_ascii=False)
+                        yield f"data: {event_data}\n\n"
+
+                except Exception:
+                    # Silently fail and let normal processing handle errors
+                    pass
+
+            return StreamingResponse(
+                cached_event_generator(),
+                media_type="text/plain",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Content-Type": "text/event-stream",
+                },
+            )
+
+    # Normal processing (no cache or cache miss)
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             # Send conversation ID as first event if it's new or different
-            if not stream_req.conversation_id or stream_req.conversation_id != session_id:
+            if (
+                not stream_req.conversation_id
+                or stream_req.conversation_id != session_id
+            ):
                 session_event = {
                     "type": "conversation_id",
-                    "data": {"conversation_id": session_id}
+                    "data": {"conversation_id": session_id},
                 }
                 yield f"data: {json.dumps(session_event)}\n\n"
-            
+
             # Set working directory for MCP servers
             script_dir = os.path.dirname(os.path.abspath(__file__))
             os.chdir(script_dir)
-            
+
+            # API_BASE_URL already set above before cache check
             # Track response content for session history
             response_modules: List[Dict[str, Any]] = []
             response_payload: Dict[str, Any] = {}
-            
+
             # Use streaming that properly sends content
             # Determine target language for stream using the shared resolver
-            target_lang = await _resolve_target_language(stream_req.language, stream_req.query)
+            target_lang = await _resolve_target_language(
+                stream_req.language, stream_req.query
+            )
 
             async for event in stream_chat_query(
                 stream_req.query,
@@ -1137,11 +1407,21 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                         response_modules = response_data.get("modules", [])
                         response_payload = response_data
                         citation_registry = response_data.get("citation_registry")
+                        kg_context = response_data.get("kg_context")
+                        if kg_context:
+                            kg_context = _ensure_kg_kind(kg_context)
+                            response_data["kg_context"] = kg_context
                         # Augment with KG embed URL and KG arrays at top level to match frontend
                         try:
                             import sys as _sys, os as _os
-                            _sys.path.append(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+
+                            _sys.path.append(
+                                _os.path.dirname(
+                                    _os.path.dirname(_os.path.abspath(__file__))
+                                )
+                            )
                             from kg_embed_generator import KGEmbedGenerator as _KG
+
                             kg_gen = _KG()
                             # Use the full structured response (includes kg_context when available)
                             structured = response_data
@@ -1154,19 +1434,15 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                                 kg_rel = kg_res.get("relative_path")
                                 kg_url = kg_res.get("url_path")
                                 # Build absolute URL using helper to avoid mixed content
+                                # This applies HTTPS enforcement for production domains
                                 if kg_url:
-                                    import os as __os
-                                    if kg_url.startswith('http://') or kg_url.startswith('https://'):
-                                        pass
-                                    else:
-                                        base = __os.getenv('API_BASE_URL')
-                                        if not base:
-                                            base = str(request.base_url)
-                                        kg_url = f"{base.rstrip('/')}{kg_url}"
+                                    kg_url = _absolute_url_for(request, kg_url)
                                 # Attach to top-level of response for frontend
                                 response_data["kg_embed_url"] = kg_url
                                 response_data["kg_embed_path"] = kg_rel
-                                response_data["kg_embed_filename"] = kg_res.get("filename")
+                                response_data["kg_embed_filename"] = kg_res.get(
+                                    "filename"
+                                )
                                 # Also include in metadata for completeness
                                 md = response_data.get("metadata") or {}
                                 md["kg_embed_url"] = kg_url
@@ -1178,10 +1454,18 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                             print(f"[STREAM] KG embed augmentation failed: {_e}")
 
                         # Also include KG concepts and relationships arrays in the stream payload
+                        # Derive from kg_context if available (like non-streaming endpoint does)
                         try:
-                            kg_arrays = await _fetch_kg_data(stream_req.query)
-                            response_data["concepts"] = kg_arrays.get("concepts", [])
-                            response_data["relationships"] = kg_arrays.get("relationships", [])
+                            if kg_context:
+                                derived = _derive_kg_from_context(kg_context)
+                                response_data["concepts"] = derived["concepts"]
+                                response_data["relationships"] = derived["relationships"]
+                            else:
+                                kg_arrays = await _fetch_kg_data(stream_req.query)
+                                response_data["concepts"] = kg_arrays.get("concepts", [])
+                                response_data["relationships"] = kg_arrays.get(
+                                    "relationships", []
+                                )
                         except Exception as _e2:
                             print(f"[STREAM] KG arrays augmentation failed: {_e2}")
                 if event_type in {"thinking", "thinking_complete"}:
@@ -1195,6 +1479,14 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                     yield f"data: {json.dumps(thinking_payload, ensure_ascii=False)}\n\n"
                     continue
 
+                if event_type == "logos":
+                    data = event.get("data")
+                    if data is None or not isinstance(data, dict):
+                        data = {"message": event.get("message", "")}
+                    logos_payload = {"type": "logos", "data": data}
+                    yield f"data: {json.dumps(logos_payload, ensure_ascii=False)}\n\n"
+                    continue
+
                 if event_type == "content":
                     data = event.get("data")
                     if data is None or not isinstance(data, dict):
@@ -1206,58 +1498,58 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
                 # Format other events as Server-Sent Events
                 event_data = json.dumps(event, ensure_ascii=False)
                 yield f"data: {event_data}\n\n"
-            
+
             # Send completion signal as JSON (frontend expects JSON per event)
             yield "data: " + json.dumps({"type": "done"}) + "\n\n"
-            
+
             # Store the query and response in session history
             session_store.append(session_id, "user", stream_req.query)
             if response_modules:
-                        response_summary = session_store.extract_response_summary(response_modules)
-                        session_store.append(
-                            session_id,
-                            "assistant",
-                            response_summary,
-                            structured={
-                                "modules": response_modules,
-                                "metadata": response_payload.get("metadata", {}),
-                                "citation_registry": response_payload.get("citation_registry"),
-                                "query": stream_req.query,
-                            },
-                        )
-            
+                response_summary = session_store.extract_response_summary(
+                    response_modules
+                )
+                session_store.append(
+                    session_id,
+                    "assistant",
+                    response_summary,
+                    structured={
+                        "modules": response_modules,
+                        "metadata": response_payload.get("metadata", {}),
+                        "citation_registry": response_payload.get("citation_registry"),
+                        "query": stream_req.query,
+                    },
+                )
+
             # Log conversation with full details
             session_store.log_conversation(
-                session_id, 
-                stream_req.query, 
+                session_id,
+                stream_req.query,
                 response_modules=response_modules,
                 error=None,
-                tokens_used=None  # TODO: Extract token usage if available
+                tokens_used=None,  # TODO: Extract token usage if available
             )
-                
+
         except Exception as e:
             import traceback
+
             error_detail = f"Streaming query failed: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
             print(f"STREAM API ERROR: {error_detail}")
-            
+
             # Log error in conversation
             session_store.log_conversation(
-                session_id, 
-                stream_req.query, 
+                session_id,
+                stream_req.query,
                 response_modules=None,
                 error=str(e),
-                tokens_used=None
+                tokens_used=None,
             )
-            
+
             error_event = {
                 "type": "error",
-                "data": {
-                    "message": str(e),
-                    "traceback": traceback.format_exc()
-                }
+                "data": {"message": str(e), "traceback": traceback.format_exc()},
             }
             yield f"data: {json.dumps(error_event)}\n\n"
-    
+
     return StreamingResponse(
         event_generator(),
         media_type="text/plain",
@@ -1265,10 +1557,12 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "Content-Type": "text/event-stream",
-        }
+        },
     )
 
+
 # GeoJSON route moved above to avoid static mount conflict
+
 
 # Proxy routes for KG visualization
 @app.get("/kg-viz")
@@ -1277,7 +1571,7 @@ async def proxy_kg_visualization(query: Optional[str] = None):
     kg_url = f"http://localhost:8100/"
     if query:
         kg_url += f"?query={query}"
-    
+
     async with aiohttp.ClientSession() as session:
         try:
             async with session.get(kg_url) as response:
@@ -1287,39 +1581,114 @@ async def proxy_kg_visualization(query: Optional[str] = None):
                 content = content.replace("'/api/kg/", "'/api/kg/")
                 return HTMLResponse(content=content, status_code=response.status)
         except Exception as e:
-            raise HTTPException(status_code=503, detail=f"KG visualization server unavailable: {str(e)}")
+            raise HTTPException(
+                status_code=503, detail=f"KG visualization server unavailable: {str(e)}"
+            )
 
-@app.get("/api/kg/{path:path}")
+
+@app.api_route(
+    "/api/kg/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
 async def proxy_kg_api(path: str, request: Request):
-    """Proxy API requests to KG visualization server."""
+    """Proxy API requests of any method to the KG visualization server."""
     kg_url = f"http://localhost:8100/api/kg/{path}"
-    
-    # Forward query parameters
-    if request.query_params:
-        kg_url += f"?{str(request.query_params)}"
-    
+    method = request.method.upper()
+
+    # Prepare query parameters and request payload if needed
+    params = request.query_params.multi_items()
+    json_payload = None
+    data_payload = None
+
+    if method in {"POST", "PUT", "PATCH"}:
+        content_type = request.headers.get("content-type", "").lower()
+        if "application/json" in content_type:
+            json_payload = await request.json()
+        else:
+            data_payload = await request.body()
+
+    if method == "OPTIONS":
+        # Short-circuit preflight checks
+        return Response(status_code=200)
+
+    # Forward the request
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(kg_url) as response:
-                content = await response.json()
-                return JSONResponse(content=content, status_code=response.status)
+            async with session.request(
+                method,
+                kg_url,
+                params=params,
+                json=json_payload,
+                data=data_payload,
+                headers={
+                    key: value
+                    for key, value in request.headers.items()
+                    if key.lower() not in {"host", "content-length"}
+                },
+            ) as response:
+                response_body = await response.read()
+                # Preserve Content-Type if present
+                media_type = response.headers.get("Content-Type")
+
+                return Response(
+                    content=response_body,
+                    status_code=response.status,
+                    media_type=media_type,
+                    headers={
+                        key: value
+                        for key, value in response.headers.items()
+                        if key.lower()
+                        not in {
+                            "content-length",
+                            "transfer-encoding",
+                            "content-encoding",
+                            "connection",
+                        }
+                    },
+                )
         except Exception as e:
-            raise HTTPException(status_code=503, detail=f"KG server unavailable: {str(e)}")
+            raise HTTPException(
+                status_code=503, detail=f"KG server unavailable: {str(e)}"
+            )
+
+
+def _absolute_url_for(request: Request, path: str) -> str:
+    """Build an absolute URL for a given absolute or relative path.
+    Prefers API_BASE_URL env var when set to avoid mixed content behind proxies.
+    Applies HTTPS enforcement for production domains.
+    """
+    import os
+    import re
+
+    if path.startswith("http://") or path.startswith("https://"):
+        result_url = path
+    else:
+        base = os.getenv("API_BASE_URL")
+        if base:
+            result_url = f"{base.rstrip('/')}{path}"
+        else:
+            # Fallback to request base_url (respects ProxyHeadersMiddleware)
+            result_url = f"{str(request.base_url).rstrip('/')}{path}"
+
+    # Defensive HTTPS enforcement for production domains to prevent mixed content errors
+    production_patterns = [
+        r'http://([\w\-\.]*\.)?sunship\.one',
+        r'http://([\w\-\.]*\.)?transitiondigital\.org',
+    ]
+
+    for pattern in production_patterns:
+        if re.match(pattern, result_url):
+            result_url = result_url.replace('http://', 'https://', 1)
+            break
+
+    return result_url
+
 
 if __name__ == "__main__":
     import uvicorn
     import os
-    port = int(os.environ.get("PORT", 8098))  # Default to 8098, allow override via PORT env var
+
+    port = int(
+        os.environ.get("PORT", 8098)
+    )  # Default to 8098, allow override via PORT env var
     uvicorn.run(app, host="0.0.0.0", port=port)
-def _absolute_url_for(request: Request, path: str) -> str:
-    """Build an absolute URL for a given absolute or relative path.
-    Prefers API_BASE_URL env var when set to avoid mixed content behind proxies.
-    """
-    import os
-    if path.startswith("http://") or path.startswith("https://"):
-        return path
-    base = os.getenv('API_BASE_URL')
-    if base:
-        return f"{base.rstrip('/')}{path}"
-    # Fallback to request base_url (respects ProxyHeadersMiddleware)
-    return f"{str(request.base_url).rstrip('/')}{path}"

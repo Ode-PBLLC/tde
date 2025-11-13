@@ -43,10 +43,11 @@ except Exception:  # pragma: no cover
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 
-EXTRAS_DIR = ROOT / "extras"
-CONCEPTS_PATH = EXTRAS_DIR / "concepts.csv"
-PASSAGES_PATH = EXTRAS_DIR / "labelled_passages.jsonl"
-GRAPHML_PATH = EXTRAS_DIR / "knowledge_graph.graphml"
+# Use data/ directory for CPR files (aligned with deployment from S3)
+DATA_DIR = ROOT / "data"
+CONCEPTS_PATH = DATA_DIR / "concepts.csv"
+PASSAGES_PATH = DATA_DIR / "labelled_passages.jsonl"
+GRAPHML_PATH = DATA_DIR / "knowledge_graph.graphml"
 
 
 def _load_concepts() -> pd.DataFrame:

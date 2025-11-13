@@ -465,7 +465,7 @@ class MetaServerV2(RunQueryMixin):
             tool="run_query",
             title=name or "Transition Digital collaborators",
             source_type="Metadata",
-            description="Collaborator entry from static/meta/orgs.json",
+            description="Information about Transition Digital and project collaborators",
             url=collab.get("url") if isinstance(collab, dict) else None,
             metadata={"path": "static/meta/orgs.json"},
         )
@@ -536,7 +536,7 @@ class MetaServerV2(RunQueryMixin):
                 tool="run_query",
                 title="Methodology and datasets overview",
                 source_type="Documentation",
-                description="Summary extracted from static/meta/methodology_and_datasets.md",
+                description="Project methodology and data sources documentation",
                 url=None,
                 metadata={"path": "static/meta/methodology_and_datasets.md"},
             )

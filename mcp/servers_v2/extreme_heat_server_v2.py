@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -594,6 +595,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 "stroke-width": 0.5,
                 "title": f"Heat zone Q{quintile} - {row.get('source')}",
                 "country": legend_key,
+                "color": QUINTILE_COLORS.get(quintile, "#E31A1C"),
             }
             features.append(
                 {
@@ -996,8 +998,8 @@ class ExtremeHeatServerV2(RunQueryMixin):
             bbox: Optional[Dict[str, float]] = None,
         ) -> Dict[str, Any]:  # type: ignore[misc]
             """
-            Generate a GeoJSON map of heat-stress polygons (default: top quintile only).
-            Saves to static/maps and returns URL and summary.
+            Return an interactive map showing geographic areas experiencing extreme heat.
+            Shows top-quintile heat stress zones across Brazil. Use when users ask to visualize heat exposure spatially or request maps of extreme heat.
             """
 
             if not GEOSPATIAL_AVAILABLE or gpd is None or pd is None:
@@ -1151,10 +1153,10 @@ class ExtremeHeatServerV2(RunQueryMixin):
                 "tool": "GetHeatQuintilesMap",
                 "title": dataset_info.get("title") or dataset_entry.get("title") or "Extreme Heat Indices",
                 "source_type": "Dataset",
-                "description": dataset_info.get("citation")
-                or dataset_info.get("description")
-                or dataset_entry.get("citation")
-                or dataset_entry.get("description"),
+                "description": dataset_entry.get("citation")
+                or dataset_entry.get("description")
+                or dataset_info.get("citation")
+                or dataset_info.get("description"),
                 "metadata": {
                     "dataset_id": DATASET_ID,
                     "source": source_to_use,
@@ -1396,7 +1398,7 @@ class ExtremeHeatServerV2(RunQueryMixin):
             title=dataset_entry.get("title") or "Extreme Heat Indices",
             source_type=DATASET_SOURCE_TYPE,
             description=dataset_entry.get("description"),
-            url=None,
+            url="https://github.com/Ode-PBLLC/tde",
             metadata={
                 "dataset_id": DATASET_ID,
                 "last_updated": dataset_entry.get("last_updated"),

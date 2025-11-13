@@ -1,4 +1,4 @@
-"""MapBiomas/PRODES deforestation polygons exposed via the MCP v2 contract."""
+"""MapBiomas/PRODES deforestation point locations (centroids) exposed via the MCP v2 contract."""
 
 from __future__ import annotations
 
@@ -35,7 +35,6 @@ if __package__ in {None, ""}:
         RunQueryResponse,
     )
     from mcp.servers_v2.base import RunQueryMixin  # type: ignore
-    from mcp.url_utils import ensure_absolute_url  # type: ignore
     from mcp.geospatial_datasets import DeforestationPolygonProvider  # type: ignore
     from mcp.servers_v2.support_intent import SupportIntent  # type: ignore
 else:
@@ -48,23 +47,20 @@ else:
         RunQueryResponse,
     )
     from ..servers_v2.base import RunQueryMixin
-    from ..url_utils import ensure_absolute_url
     from ..geospatial_datasets import DeforestationPolygonProvider
     from .support_intent import SupportIntent
 
 
 DATASET_ID = "brazil_deforestation"
-DEFAULT_LIMIT = 200
+DEFAULT_LIMIT = 5000
 
 STATE_STATS_PATH = Path(__file__).resolve().parents[2] / "static" / "meta" / "deforestation_by_state.json"
 MUNICIPALITY_STATS_PATH = (
     Path(__file__).resolve().parents[2] / "static" / "meta" / "deforestation_by_municipality.json"
 )
 
-POLYGON_LAYER_COLORS: Dict[str, str] = {
-    "deforestation_polygon": "#D84315",
-    "brazil_state": "#1E88E5",
-    "municipalities": "#3949AB",
+POINT_LAYER_COLORS: Dict[str, str] = {
+    "deforestation_point": "#D84315",
 }
 
 
@@ -97,15 +93,19 @@ class GeoJSONSummary:
     url: str
     metadata: Dict[str, Any]
 
-    def __post_init__(self) -> None:
-        self.url = ensure_absolute_url(self.url)
-
 class DeforestationServerV2(RunQueryMixin):
-    """FastMCP server providing deforestation polygons and v2 run_query."""
+    """FastMCP server providing deforestation point locations and v2 run_query."""
 
     def __init__(self) -> None:
         self.mcp = FastMCP("deforestation-server-v2")
-        self.provider = DeforestationPolygonProvider()
+        try:
+            self.provider = DeforestationPolygonProvider()
+            print(f"[deforestation-server] Successfully loaded dataset: {self.provider.dataset_name}")
+        except Exception as exc:
+            print(f"[deforestation-server] FATAL: Failed to load deforestation data: {exc}")
+            import traceback
+            print(f"[deforestation-server] Traceback: {traceback.format_exc()}")
+            raise
         self._anthropic_client = None
         if anthropic and os.getenv("ANTHROPIC_API_KEY"):
             try:
@@ -135,7 +135,7 @@ class DeforestationServerV2(RunQueryMixin):
             overview = self.provider.dataset_overview()
             payload = {
                 "name": "deforestation",
-                "description": "Brazilian deforestation polygons from INPE/PRODES prepared for spatial analytics.",
+                "description": "Brazilian deforestation point locations (polygon centroids) derived from INPE/PRODES.",
                 "dataset": DATASET_METADATA.get(DATASET_ID, {}).get("title", "PRODES Deforestation"),
                 "polygon_count": overview.get("polygon_count"),
                 "years": overview.get("years"),
@@ -183,7 +183,7 @@ class DeforestationServerV2(RunQueryMixin):
             max_area_hectares: float | None = None,
             limit: int = 200,
         ) -> dict:  # type: ignore[misc]
-            """Retrieve polygons filtered by area thresholds."""
+            """Retrieve point locations (polygon centroids) for polygons filtered by area thresholds."""
 
             polygons = self.provider.polygons_by_area(
                 min_area_hectares=min_area_hectares,
@@ -195,7 +195,7 @@ class DeforestationServerV2(RunQueryMixin):
                 "count": len(polygons),
                 "geojson_url": summary.url,
                 "metadata": summary.metadata,
-                "polygons": [self._polygon_to_dict(polygon) for polygon in polygons[:50]],
+                "points": [self._polygon_to_point_dict(polygon) for polygon in polygons[:50]],
             }
 
     def _register_tool_polygons_in_bounds(self) -> None:
@@ -207,7 +207,7 @@ class DeforestationServerV2(RunQueryMixin):
             west: float,
             limit: int = 200,
         ) -> dict:  # type: ignore[misc]
-            """Return polygons intersecting a bounding box."""
+            """Return point locations (polygon centroids) for polygons intersecting a bounding box."""
 
             polygons = self.provider.polygons_in_bounds(north=north, south=south, east=east, west=west, limit=limit)
             summary = self._generate_geojson(polygons, identifier="bounds")
@@ -215,7 +215,7 @@ class DeforestationServerV2(RunQueryMixin):
                 "count": len(polygons),
                 "geojson_url": summary.url,
                 "metadata": summary.metadata,
-                "polygons": [self._polygon_to_dict(polygon) for polygon in polygons[:50]],
+                "points": [self._polygon_to_point_dict(polygon) for polygon in polygons[:50]],
             }
 
     def _register_tool_area_by_year(self) -> None:
@@ -385,7 +385,23 @@ class DeforestationServerV2(RunQueryMixin):
         limit = int(context.get("limit", DEFAULT_LIMIT)) if isinstance(context.get("limit"), (int, float)) else DEFAULT_LIMIT
 
         polygons = self.provider.polygons_by_area(min_area_hectares=min_area, limit=limit)
+        matching_polygon_count = self.provider.count_polygons_by_area(min_area_hectares=min_area)
+        matching_total_area = self.provider.total_area_by_area(min_area_hectares=min_area)
         summary = self._generate_geojson(polygons, identifier="run_query") if polygons else None
+        if summary:
+            summary.metadata = dict(summary.metadata)
+            summary.metadata.setdefault("dataset_id", DATASET_ID)
+            summary.metadata["min_area_hectares"] = min_area
+            summary.metadata["title"] = (
+                f"PRODES deforestation point locations (≥ {min_area:g} ha)"
+            )
+            summary.metadata["matching_polygon_count"] = matching_polygon_count
+            summary.metadata["returned_point_count"] = len(polygons)
+            summary.metadata["matching_total_area_hectares"] = round(matching_total_area, 2)
+            summary.metadata["description"] = (
+                f"Each point marks the center of an INPE/PRODES deforestation polygon in Brazil that is at least {min_area:g} hectares. "
+                f"The dataset contains {matching_polygon_count:,} polygons above this threshold; this map shows the top {len(polygons):,} by area."
+            )
         area_by_year = self.provider.area_by_year()
         chart_labels = [entry["year"] for entry in reversed(area_by_year[:30])]
         chart_values = [entry["total_area_hectares"] for entry in reversed(area_by_year[:30])]
@@ -414,16 +430,29 @@ class DeforestationServerV2(RunQueryMixin):
         )
         if polygons:
             selected_area = sum((polygon.properties.get("area_hectares") or 0.0) for polygon in polygons)
+            coverage_note = ""
+            if matching_polygon_count > len(polygons):
+                coverage_note = f" (top {len(polygons):,} of {matching_polygon_count:,} polygons meeting the filter)"
             facts.append(
                 FactPayload(
                     id="deforest_filter",
                     text=(
-                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} polygons totalling about {round(selected_area, 1)} hectares."
+                        f"Applied a minimum area filter of {min_area} hectares, returning {len(polygons)} point locations{coverage_note} representing polygons totalling about {round(selected_area, 1)} hectares."
                     ),
                     citation_id=citation.id,
                     metadata={"min_area_hectares": min_area},
                 )
             )
+            if matching_polygon_count > len(polygons):
+                facts.append(
+                    FactPayload(
+                        id="deforest_filter_total",
+                        text=(
+                            f"In total, {matching_polygon_count:,} polygons meet this {min_area}-hectare threshold, spanning roughly {matching_total_area:,.0f} hectares across Brazil."
+                        ),
+                        citation_id=citation.id,
+                    )
+                )
         if area_by_year:
             top_year = max(area_by_year, key=lambda row: row["total_area_hectares"])
             top_area = round(float(top_year["total_area_hectares"]), 1)
@@ -444,7 +473,7 @@ class DeforestationServerV2(RunQueryMixin):
             facts.append(
                 FactPayload(
                     id="deforest_no_matches",
-                    text=f"No polygons exceeded the minimum area threshold of {min_area} hectares.",
+                    text=f"No polygons (and therefore no point locations) exceeded the minimum area threshold of {min_area} hectares.",
                     citation_id=citation.id,
                 )
             )
@@ -464,13 +493,16 @@ class DeforestationServerV2(RunQueryMixin):
 
         artifacts: List[ArtifactPayload] = []
         if summary:
+            map_title = summary.metadata.get("title") if isinstance(summary.metadata, dict) else None
+            map_description = summary.metadata.get("description") if isinstance(summary.metadata, dict) else None
             artifacts.append(
                 ArtifactPayload(
                     id="deforest_map",
                     type="map",
-                    title="Deforestation polygons",
+                    title=map_title or "PRODES deforestation point locations",
                     geojson_url=summary.url,
                     metadata=summary.metadata,
+                    description=map_description,
                 )
             )
 
@@ -553,7 +585,7 @@ class DeforestationServerV2(RunQueryMixin):
             messages.append(
                 MessagePayload(
                     level="warning",
-                    text="No polygons matched the requested filters; consider lowering the minimum area threshold.",
+                    text="No point locations matched the requested filters; consider lowering the minimum area threshold.",
                 )
             )
 
@@ -627,7 +659,15 @@ class DeforestationServerV2(RunQueryMixin):
                 geometry = shapely_wkt.loads(polygon.geometry_wkt)
             except Exception:
                 continue
-            properties = {**polygon.properties, "polygon_id": polygon.polygon_id}
+            centroid = geometry.centroid
+            properties = {
+                **polygon.properties,
+                "polygon_id": polygon.polygon_id,
+                "centroid_lat": centroid.y,
+                "centroid_lon": centroid.x,
+                "geometry_source": "polygon_centroid",
+                "color": "#D84315",
+            }
             properties.setdefault("country", "deforestation")
             area_value = properties.get("area_hectares")
             try:
@@ -641,7 +681,7 @@ class DeforestationServerV2(RunQueryMixin):
             elif isinstance(year_value, str) and year_value.strip():
                 years.add(year_value.strip())
 
-            features.append({"type": "Feature", "geometry": mapping(geometry), "properties": properties})
+            features.append({"type": "Feature", "geometry": mapping(centroid), "properties": properties})
 
             bounds = geometry.bounds
             minx, miny, maxx, maxy = bounds
@@ -658,24 +698,25 @@ class DeforestationServerV2(RunQueryMixin):
             json.dump(payload, handle)
 
         metadata: Dict[str, Any] = {
+            "point_count": len(features),
             "polygon_count": len(features),
             "total_area_hectares": round(total_area, 2),
             "years": sorted(years),
-            "geometry_type": "polygon",
+            "geometry_type": "point",
         }
         metadata["layers"] = {
-            "deforestation_polygon": {
+            "deforestation_point": {
                 "count": len(features),
-                "color": POLYGON_LAYER_COLORS.get("deforestation_polygon", "#D84315"),
+                "color": POINT_LAYER_COLORS.get("deforestation_point", "#D84315"),
             }
         }
         metadata["legend"] = {
             "title": "Layers",
             "items": [
                 {
-                    "label": "Deforestation polygons",
-                    "color": POLYGON_LAYER_COLORS.get("deforestation_polygon", "#D84315"),
-                    "description": f"{len(features)} polygons",
+                    "label": "Deforestation point locations",
+                    "color": POINT_LAYER_COLORS.get("deforestation_point", "#D84315"),
+                    "description": f"{len(features)} points",
                 }
             ],
         }
@@ -702,9 +743,21 @@ class DeforestationServerV2(RunQueryMixin):
         return GeoJSONSummary(url=f"/static/maps/{filename}", metadata=metadata)
 
     @staticmethod
-    def _polygon_to_dict(polygon: Any) -> Dict[str, Any]:
+    def _polygon_to_point_dict(polygon: Any) -> Dict[str, Any]:
+        try:
+            geometry = shapely_wkt.loads(polygon.geometry_wkt)
+        except Exception:
+            return {
+                "point_id": polygon.polygon_id,
+                "source_polygon_id": polygon.polygon_id,
+                "properties": polygon.properties,
+            }
+        centroid = geometry.centroid
         return {
-            "polygon_id": polygon.polygon_id,
+            "point_id": polygon.polygon_id,
+            "source_polygon_id": polygon.polygon_id,
+            "latitude": centroid.y,
+            "longitude": centroid.x,
             "properties": polygon.properties,
         }
 

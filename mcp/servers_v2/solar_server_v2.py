@@ -56,7 +56,6 @@ if __package__ in {None, ""}:
         RunQueryResponse,
     )
     from mcp.servers_v2.base import RunQueryMixin  # type: ignore
-    from mcp.url_utils import ensure_absolute_url  # type: ignore
     from mcp.geospatial_datasets import (  # type: ignore
         DeforestationPolygonProvider,
         SolarFacilityProvider,
@@ -74,7 +73,6 @@ else:  # pragma: no cover - import path when used as package
         RunQueryResponse,
     )
     from ..servers_v2.base import RunQueryMixin
-    from ..url_utils import ensure_absolute_url
     from ..geospatial_datasets import DeforestationPolygonProvider, SolarFacilityProvider
     from ..geospatial_bridge import SpatialCorrelation
     from ..solar_db import SolarDatabase
@@ -233,9 +231,6 @@ def _buffer_point_as_circle(lon: float, lat: float, radius_m: float = CIRCLE_BUF
 class GeoJSONSummary:
     url: str
     metadata: Dict[str, Any]
-
-    def __post_init__(self) -> None:
-        self.url = ensure_absolute_url(self.url)
 
 
 class SolarServerV2(RunQueryMixin):
@@ -560,6 +555,16 @@ class SolarServerV2(RunQueryMixin):
         return {
             "labels": labels,
             "datasets": [dataset],
+            "options": {
+                "scales": {
+                    "y": {
+                        "title": {
+                            "display": True,
+                            "text": "Capacity (MW)",
+                        }
+                    }
+                }
+            },
         }
 
     def _build_municipality_capacity_chart(self, *, top_n: int = 10) -> Optional[Dict[str, Any]]:
@@ -578,6 +583,16 @@ class SolarServerV2(RunQueryMixin):
         return {
             "labels": labels,
             "datasets": [dataset],
+            "options": {
+                "scales": {
+                    "y": {
+                        "title": {
+                            "display": True,
+                            "text": "Capacity (MW)",
+                        }
+                    }
+                }
+            },
         }
 
     def _construction_timeline_series(self, country: str) -> List[Tuple[str, int]]:
@@ -1323,14 +1338,15 @@ class SolarServerV2(RunQueryMixin):
             properties = {
                 "cluster_id": facility_dict.get("cluster_id"),
                 "name": facility_dict.get("name") or facility_dict.get("cluster_id"),
-                "capacity_mw": capacity,
-                "country": facility_key,
+                "capacity_mw": round(capacity, 2) if capacity else 0,
+                "country": country,
                 "facility_country": country,
                 "constructed_before": facility_dict.get("constructed_before"),
                 "constructed_after": facility_dict.get("constructed_after"),
                 "layer": "solar_facility",
                 "color_value": 1,
                 "color_hex": FACILITY_BUFFER_COLOR,
+                "color": FACILITY_BUFFER_COLOR,
             }
 
             if use_polygon_markers:
@@ -1428,7 +1444,7 @@ class SolarServerV2(RunQueryMixin):
             {
                 "label": facility_label,
                 "color": FACILITY_BUFFER_COLOR,
-                "description": f"{plotted_count} facilities",
+                # "description": f"{plotted_count} facilities",
             }
         )
         for layer_name, layer_payload in metadata["layers"].items():
@@ -1619,7 +1635,7 @@ class SolarServerV2(RunQueryMixin):
             artifacts = [
                 {
                     "type": "map",
-                    "title": f"Solar facilities in {target_country}",
+                    "title": f"Solar facilities in {target_country} (TZ-SAM Q1 2025)",
                     "geojson_url": geojson.url,
                     "metadata": geojson.metadata,
                 }
@@ -1755,6 +1771,16 @@ class SolarServerV2(RunQueryMixin):
                         "backgroundColor": "#43A047",
                     }
                 ],
+                "options": {
+                    "scales": {
+                        "y": {
+                            "title": {
+                                "display": True,
+                                "text": "Capacity (MW)",
+                            }
+                        }
+                    }
+                },
             }
 
             leader = ranked[0] if ranked else {}
@@ -1798,8 +1824,15 @@ class SolarServerV2(RunQueryMixin):
                 {
                     "type": "chart",
                     "title": "Top countries by tracked solar capacity",
-                    "data": chart,
-                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                    "data": {
+                        "labels": chart["labels"],
+                        "datasets": chart["datasets"],
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "datasetLabel": "Solar Capacity (MW)",
+                        "options": chart.get("options", {}),
+                    },
                 },
                 {
                     "type": "table",
@@ -1869,8 +1902,15 @@ class SolarServerV2(RunQueryMixin):
                 {
                     "type": "chart",
                     "title": "Top Brazilian states by solar capacity",
-                    "data": chart,
-                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                    "data": {
+                        "labels": chart["labels"],
+                        "datasets": chart["datasets"],
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "datasetLabel": "Solar Capacity (MW)",
+                        "options": chart.get("options", {}),
+                    },
                 },
                 {
                     "type": "table",
@@ -1883,6 +1923,7 @@ class SolarServerV2(RunQueryMixin):
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
+                "options": chart.get("options"),
                 "metadata": {"chartType": "bar"},
                 "items": stats,
                 "summary": summary,
@@ -1935,8 +1976,15 @@ class SolarServerV2(RunQueryMixin):
                 {
                     "type": "chart",
                     "title": "Top Brazilian municipalities by solar capacity",
-                    "data": chart,
-                    "metadata": {"chartType": "bar", "datasetLabel": "Solar Capacity (MW)"},
+                    "data": {
+                        "labels": chart["labels"],
+                        "datasets": chart["datasets"],
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "datasetLabel": "Solar Capacity (MW)",
+                        "options": chart.get("options", {}),
+                    },
                 },
                 {
                     "type": "table",
@@ -1949,6 +1997,7 @@ class SolarServerV2(RunQueryMixin):
             return {
                 "labels": chart["labels"],
                 "datasets": chart["datasets"],
+                "options": chart.get("options"),
                 "metadata": {"chartType": "bar"},
                 "items": stats,
                 "summary": summary,
@@ -2064,70 +2113,72 @@ class SolarServerV2(RunQueryMixin):
             if annual:
                 annual_labels = [x["year"] for x in annual]
                 annual_capacity_values = [x["capacity_mw"] for x in annual]
-                annual_chart = {
-                    "labels": annual_labels,
-                    "datasets": [{
-                        "label": "Annual Capacity Additions (MW)",
-                        "data": annual_capacity_values,
-                        "borderColor": "#4CAF50",
-                        "backgroundColor": "rgba(76, 175, 80, 0.35)",
-                        "fill": True,
-                        "yAxisID": "y"
-                    }],
-                    "options": {
-                        "scales": {
-                            "y": {
-                                "type": "linear",
-                                "display": True,
-                                "position": "left",
-                                "title": {
+                artifacts.append({
+                    "type": "chart",
+                    "title": f"Annual Solar Capacity Additions - {target}",
+                    "data": {
+                        "labels": annual_labels,
+                        "datasets": [{
+                            "label": "Annual Capacity Additions (MW)",
+                            "data": annual_capacity_values,
+                            "borderColor": "#4CAF50",
+                            "backgroundColor": "rgba(76, 175, 80, 0.35)",
+                            "fill": True,
+                            "yAxisID": "y"
+                        }]
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "options": {
+                            "scales": {
+                                "y": {
+                                    "type": "linear",
                                     "display": True,
-                                    "text": "Capacity (MW)"
+                                    "position": "left",
+                                    "title": {
+                                        "display": True,
+                                        "text": "Capacity (MW)"
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                artifacts.append({
-                    "type": "chart",
-                    "chartType": "line",
-                    "title": f"Annual Solar Capacity Additions - {target}",
-                    "data": annual_chart
                 })
 
             # Cumulative capacity chart
             if cumulative:
                 cumulative_labels = [x["year"] for x in cumulative]
                 cumulative_capacity_values = [x["total_capacity_mw"] for x in cumulative]
-                cumulative_chart = {
-                    "labels": cumulative_labels,
-                    "datasets": [{
-                        "label": "Total Installed Capacity (MW)",
-                        "data": cumulative_capacity_values,
-                        "borderColor": "#2196F3",
-                        "backgroundColor": "rgba(33, 150, 243, 0.35)",
-                        "fill": True,
-                        "yAxisID": "y"
-                    }],
-                    "options": {
-                        "scales": {
-                            "y": {
-                                "type": "linear",
-                                "display": True,
-                                "position": "left",
-                                "title": {
+                artifacts.append({
+                    "type": "chart",
+                    "title": f"Cumulative Solar Capacity - {target}",
+                    "data": {
+                        "labels": cumulative_labels,
+                        "datasets": [{
+                            "label": "Total Installed Capacity (MW)",
+                            "data": cumulative_capacity_values,
+                            "borderColor": "#2196F3",
+                            "backgroundColor": "rgba(33, 150, 243, 0.35)",
+                            "fill": True,
+                            "yAxisID": "y"
+                        }]
+                    },
+                    "metadata": {
+                        "chartType": "bar",
+                        "options": {
+                            "scales": {
+                                "y": {
+                                    "type": "linear",
                                     "display": True,
-                                    "text": "Total Capacity (MW)"
+                                    "position": "left",
+                                    "title": {
+                                        "display": True,
+                                        "text": "Total Capacity (MW)"
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                artifacts.append({
-                    "type": "chart",
-                    "chartType": "line",
-                    "title": f"Cumulative Solar Capacity - {target}",
-                    "data": cumulative_chart
                 })
 
             return {

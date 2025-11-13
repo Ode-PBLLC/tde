@@ -140,7 +140,7 @@ def _validate_citation_table(module: Mapping[str, Any]) -> None:
     columns = module.get("columns")
     rows = module.get("rows")
     allow_empty = bool(module.get("allow_empty"))
-    expected_columns = ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL"]
+    expected_columns = ["#", "Source", "ID/Tool", "Type", "Description", "SourceURL", "UnderlyingSource"]
     if columns != expected_columns:
         _fail(
             "numbered_citation_table columns must be "

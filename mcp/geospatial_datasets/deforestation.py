@@ -55,8 +55,10 @@ class DeforestationPolygonProvider:
 
     def _load_dataset(self) -> "gpd.GeoDataFrame":
         candidates = self.DATASET_CANDIDATES
+        print(f"[DeforestationPolygonProvider] Root directory: {self.root}")
         for fmt, relative_path in candidates:
             path = (self.root / relative_path).resolve()
+            print(f"[DeforestationPolygonProvider] Checking path: {path} (exists={path.exists()})")
             if not path.exists():
                 continue
             try:
@@ -138,12 +140,10 @@ class DeforestationPolygonProvider:
         max_area_hectares: Optional[float] = None,
         limit: int = 200,
     ) -> List[DeforestationPolygon]:
-        filtered = self._gdf
-        if min_area_hectares > 0:
-            filtered = filtered[filtered["area_hectares"] >= min_area_hectares]
-        if max_area_hectares is not None:
-            filtered = filtered[filtered["area_hectares"] <= max_area_hectares]
-        filtered = filtered.sort_values(by="area_hectares", ascending=False).head(limit)
+        filtered = self._filter_by_area(min_area_hectares=min_area_hectares, max_area_hectares=max_area_hectares)
+        filtered = filtered.sort_values(by="area_hectares", ascending=False)
+        if limit is not None and limit > 0:
+            filtered = filtered.head(limit)
         return [self._row_to_polygon(idx) for idx in filtered.index]
 
     def polygons_in_bounds(
@@ -174,6 +174,39 @@ class DeforestationPolygonProvider:
             "total_area_hectares": round(total_area, 2),
             "years": sorted(years),
         }
+
+    def count_polygons_by_area(
+        self,
+        *,
+        min_area_hectares: float = 0.0,
+        max_area_hectares: Optional[float] = None,
+    ) -> int:
+        filtered = self._filter_by_area(min_area_hectares=min_area_hectares, max_area_hectares=max_area_hectares)
+        return int(len(filtered))
+
+    def total_area_by_area(
+        self,
+        *,
+        min_area_hectares: float = 0.0,
+        max_area_hectares: Optional[float] = None,
+    ) -> float:
+        filtered = self._filter_by_area(min_area_hectares=min_area_hectares, max_area_hectares=max_area_hectares)
+        if "area_hectares" not in filtered.columns:
+            return 0.0
+        return float(filtered["area_hectares"].sum())
+
+    def _filter_by_area(
+        self,
+        *,
+        min_area_hectares: float = 0.0,
+        max_area_hectares: Optional[float] = None,
+    ):
+        filtered = self._gdf
+        if min_area_hectares > 0:
+            filtered = filtered[filtered["area_hectares"] >= min_area_hectares]
+        if max_area_hectares is not None:
+            filtered = filtered[filtered["area_hectares"] <= max_area_hectares]
+        return filtered
 
     def area_by_year(
         self,

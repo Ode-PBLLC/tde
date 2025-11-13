@@ -2,13 +2,15 @@ anthropic
 fastmcp
 python-dotenv
 pandas
+openpyxl
 numpy
 scikit-learn
-openai
+openai>=2.0.0
 networkx
 plotly
 folium
 geopandas
+pyarrow
 chromadb
 pypdf
 rapidfuzz
