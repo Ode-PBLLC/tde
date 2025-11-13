@@ -9,6 +9,8 @@ Total size: ~2.8GB
 | Directory | Size | Server | Description |
 |-----------|------|--------|-------------|
 | `deforestation/` | 2.0GB | Deforestation | Polygon data for deforestation analysis |
+| `deforestation/deforestation_prodes_2024.parquet` | ~450MB | Deforestation | 2024-only PRODES polygons (server default) |
+| `deforestation/deforestation_PRODES_recent.parquet` | ~120MB | Prototype | Centroids for 2022-2024 PRODES polygons (lean subset) |
 | `tz-sam-q1-2025/` | 384MB | Solar | TZ-SAM analysis outputs and polygons |
 | `heat_stress/` | 308MB | Extreme Heat | Heat index and stress data |
 | `wmo-ipcc-clim-adapt/` | 91MB | WMO/Climate | WMO climate adaptation index |
@@ -60,11 +62,20 @@ These scripts generate spatial correlation data for faster queries:
 # Deforestation overlays
 python scripts/precompute_deforestation_overlays.py
 
+# 2024-only PRODES subset (polygons)
+python scripts/build_deforestation_subset.py --min-year 2024 --max-year 2024
+
 # Extreme heat overlays
 python scripts/precompute_extreme_heat_overlays.py
 
 # Solar facility overlays
 python scripts/precompute_solar_facility_overlays.py
+
+# Lightweight centroids for prototypes (2022+)
+python scripts/build_recent_deforestation_points.py --min-year 2022 --max-year 2024
+
+# Yearly area aggregates (for MCP tools)
+python scripts/precompute_deforestation_area_by_year.py
 ```
 
 ## Inspection Scripts
