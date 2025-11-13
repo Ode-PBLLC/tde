@@ -25,25 +25,6 @@ Total size: ~2.8GB
 | `lse_processed/` | 840KB | LSE | Processed NDC Align policy data |
 | `solar_facilities.db` | 44MB | Solar | SQLite database of global solar facilities from TZ-SAM dataset |
 
-## Required vs Optional
-
-### Core Datasets (Servers will fail without these)
-
-These are required for the respective servers to function:
-
-- **`solar_facilities.db`** - Solar server (regenerate with `scripts/migrate_solar_to_db.py`)
-- **`data/lse/`** - LSE server (climate policy data)
-- **`data/gist/`** - GIST server (IPCC data)
-- **`data/brazilian_admin/`** - Brazilian admin boundaries server
-
-### Optional/Large Datasets
-
-These enhance server capabilities but aren't strictly required for basic operation:
-
-- **`deforestation/`** (2GB) - Used for spatial correlation overlays
-- **`heat_stress/`** (308MB) - Extreme heat analysis
-- **`tz-sam-q1-2025/`** (384MB) - Transition zone analysis outputs
-
 ## Regenerating Datasets
 
 ### Solar Database
