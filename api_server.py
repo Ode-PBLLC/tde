@@ -1329,6 +1329,10 @@ async def stream_query(stream_req: StreamQueryRequest, request: Request):
     # Check for cached featured query (exact string match, transparent to client)
     query_id = FEATURED_QUERY_CACHE_MAP.get(stream_req.query)
 
+    # DISABLED: Cache feature temporarily disabled due to URL resolution issues
+    # TODO: Re-enable once URL rewriting is fixed
+    query_id = None
+
     if query_id:
         cached_events = await stream_cache.get_cached_stream(query_id)
 
