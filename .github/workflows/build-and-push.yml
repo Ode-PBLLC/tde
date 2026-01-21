@@ -3,8 +3,7 @@ name: Build and Push
 on:
   push:
     branches: 
-      - tde__ode__aws__prod__app
-      - tde__ode__aws__dev__app
+      - tde__client__aws__dev__api
   workflow_dispatch:
 
 concurrency:
