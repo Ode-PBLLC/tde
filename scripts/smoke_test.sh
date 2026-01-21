@@ -92,9 +92,6 @@ echo "--------------------------------------"
 [ -f "data/README.md" ]
 test_result "data/README.md exists"
 
-[ -f "CLAUDE.md" ]
-test_result "CLAUDE.md exists"
-
 echo ""
 echo "======================================"
 echo "Test Summary"
