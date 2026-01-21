@@ -4,21 +4,21 @@ AI-powered API that provides comprehensive climate policy analysis with real-tim
 
 **Version 2.0** - Consolidated v2 architecture with simplified orchestration and enhanced performance.
 
-## 🌟 Key Features
+## Key Features
 
-- **🤖 Intelligent Analysis**: Claude Sonnet 4 powered reasoning and synthesis
-- **📊 Automatic Data Discovery**: Finds and surfaces relevant datasets automatically
-- **🗺️ Interactive Visualizations**: Real-time maps, charts, and tables
-- **⚡ Streaming Responses**: Live progress indicators and results
-- **🔗 Multi-Source Integration**: Policy documents + structured datasets + geographic data
-- **📱 Frontend Ready**: JSON modules optimized for web applications
-- **🚀 V2 Architecture**: Single consolidated orchestrator for faster, cleaner responses
-- **💬 Multi-turn Conversations**: Context-aware follow-up queries with session management
-- **📝 Analytics-Ready Logging**: Comprehensive conversation tracking to CSV
-- **⚡ Featured Query Cache**: Pre-recorded streams for 50-100x faster responses
-- **🗺️ Dynamic Artifacts**: On-demand generation of maps, KGs, and visualizations
+- **Intelligent Analysis**: Claude Sonnet 4 powered reasoning and synthesis
+- **Automatic Data Discovery**: Finds and surfaces relevant datasets automatically
+- **Interactive Visualizations**: Real-time maps, charts, and tables
+- **Streaming Responses**: Live progress indicators and results
+- **Multi-Source Integration**: Policy documents + structured datasets + geographic data
+- **Frontend Ready**: JSON modules optimized for web applications
+- **V2 Architecture**: Single consolidated orchestrator for faster, cleaner responses
+- **Multi-turn Conversations**: Context-aware follow-up queries with session management
+- **Analytics-Ready Logging**: Comprehensive conversation tracking to CSV
+- **Featured Query Cache**: Pre-recorded streams for 50-100x faster responses
+- **Dynamic Artifacts**: On-demand generation of maps, KGs, and visualizations
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -82,17 +82,15 @@ curl -X POST http://localhost:8098/query/stream \
   -d '{"query": "What are Brazil'\''s renewable energy targets?"}'
 ```
 
-## 📚 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and release notes |
-| **[API_GUIDE.md](API_GUIDE.md)** | Complete developer guide with examples |
-| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Production deployment guide |
+| **[docs/API_GUIDE.md](docs/API_GUIDE.md)** | Complete developer guide with examples |
 | **[data/README.md](data/README.md)** | Dataset documentation and regeneration |
-| **[docs/](docs/)** | Technical implementation guides |
 
-## 🏗️ V2 Architecture
+## V2 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -125,7 +123,7 @@ curl -X POST http://localhost:8098/query/stream \
           │          │          │          │
           v          v          v          v
     ┌─────────┐ ┌────────┐ ┌──────┐ ┌──────────┐ ┌──────────────┐
-    │   CPR   │ │  Solar │ │ LSE  │ │   GIST   │ │ + 7 more     │
+    │   CPR   │ │  Solar │ │NDCAlign│ │   GIST   │ │ + 7 more     │
     │ Server  │ │ Server │ │Server│ │  Server  │ │ servers      │
     └─────────┘ └────────┘ └──────┘ └──────────┘ └──────────────┘
                                                    (11 total)
@@ -141,12 +139,12 @@ curl -X POST http://localhost:8098/query/stream \
 
 ### Core Architecture Components
 
-#### **api_server.py** (1,600 lines)
+#### **api_server.py**
 The FastAPI server providing REST endpoints and stateful session management.
 
 **Key Features**:
 - **SessionStore**: Multi-turn conversation state with 20-minute TTL
-- **StreamCache**: Pre-recorded SSE events for featured queries (50-100x faster) (Unfortunately currently broken on deploy)
+- **StreamCache**: Pre-recorded SSE events for featured queries (50-100x faster)
 - **ConversationLogger**: Analytics tracking to `conversation_logs.csv`
 - **Dynamic Artifacts**: On-demand GeoJSON generation and serving
 - **Lifecycle Management**: MCP client warmup on startup for faster first requests
@@ -154,7 +152,7 @@ The FastAPI server providing REST endpoints and stateful session management.
 
 **Endpoints**: `/query/stream`, `/query`, `/featured-queries`, `/health`, `/kg/{id}`, `/static/*`
 
-#### **mcp_chat_v2.py** (2,000+ lines)
+#### **mcp_chat_v2.py**
 The intelligent orchestration layer coordinating AI reasoning with data retrieval.
 
 **Key Components**:
@@ -168,7 +166,7 @@ The intelligent orchestration layer coordinating AI reasoning with data retrieva
 
 **Models Used**: Claude Sonnet 4 (fact ordering, narrative synthesis), Haiku (query enrichment)
 
-#### **V2 MCP Servers** (11 servers, ~18,500 lines)
+#### **V2 MCP Servers** (11 servers)
 
 All servers implement the `RunQueryResponse` contract with standardized `run_query` tool:
 
@@ -178,7 +176,7 @@ All servers implement the `RunQueryResponse` contract with standardized `run_que
 | **solar_server_v2.py** | Global Solar Facilities | 8,319 facilities, 124.9 GW |
 | **solar_clay_server_v2.py** | TZ-SAM Analysis | Transition zone spatial analysis |
 | **deforestation_server_v2.py** | PRODES/MapBiomas | Spatial polygons, 2GB dataset |
-| **lse_server_v2.py** | LSE Climate Policies | NDCs, governance, subnational |
+| **lse_server_v2.py** | NDCAlign | NDCs, governance, subnational |
 | **gist_server_v2.py** | IPCC Chapters 11 & 12 | Processed summaries |
 | **extreme_heat_server_v2.py** | Heat Index Data | Brazilian municipalities |
 | **brazilian_admin_server_v2.py** | Admin Boundaries | Municipal/state GeoJSON |
@@ -189,7 +187,7 @@ All servers implement the `RunQueryResponse` contract with standardized `run_que
 
 Each server handles domain-specific queries and returns structured responses (facts, citations, artifacts).
 
-## 🔌 API Endpoints
+## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -212,7 +210,7 @@ The API returns structured **modules** ready for frontend rendering:
 - **Knowledge Graphs**: Interactive network visualizations
 - **Citations**: References table (always last)
 
-## 💡 Example Queries
+## Example Queries
 
 ### Geographic Analysis
 ```bash
@@ -238,7 +236,7 @@ curl -X POST http://localhost:8098/query/stream \
 ```
 **Returns**: Heat stress data + geographic analysis + policy context
 
-## 💬 Multi-turn Conversations
+## Multi-turn Conversations
 
 The API maintains conversation context for follow-up queries, enabling natural multi-turn interactions.
 
@@ -307,7 +305,7 @@ All queries are logged to `conversation_logs.csv` with analytics metadata:
 - User behavior insights
 - Dataset popularity tracking
 
-## 📁 Static Artifacts & Content Serving
+## Static Artifacts & Content Serving
 
 The API serves dynamically generated and cached content from the `/static` directory (~30MB).
 
@@ -386,9 +384,8 @@ The `/featured-queries` endpoint serves a pseudo-CMS system for curated content:
 3. Optionally record cache: `python scripts/record_featured_streams.py`
 4. Restart API server (or auto-reload in development)
 
-See `static/README.md` for detailed gallery management guide.
 
-## 🐳 Docker & AWS Deployment
+## Docker & AWS Deployment
 
 ### For DevOps/Infrastructure Engineers
 
@@ -666,17 +663,17 @@ curl -X POST https://your-api.com/query/stream \
 4. **Dataset Availability**: Missing datasets cause server warnings but don't crash
    - Mitigation: Verify `data/` directory contents match `data/README.md`
 
-See `CHANGELOG.md` and `CLAUDE.md` for full issue tracking.
+See `CHANGELOG.md` for version history.
 
 ---
 
-## 📊 Data Sources
+## Data Sources
 
 ### Current Datasets (~2.8GB total)
 
 - **Climate Policy Knowledge Graph**: 1,325 concepts, 6,813 passages from CPR
 - **Solar Facilities**: 8,319 facilities, 124.9 GW capacity (TransitionZero)
-- **LSE Climate Policies**: NDCs, governance, subnational policies
+- **NDCAlign**: NDCs, governance, subnational policies
 - **GIST (IPCC Data)**: Chapters 11 & 12 processed summaries
 - **Deforestation Data**: Spatial polygons and analysis (2GB)
 - **Extreme Heat**: Heat index data for Brazil
@@ -684,7 +681,7 @@ See `CHANGELOG.md` and `CLAUDE.md` for full issue tracking.
 
 See `data/README.md` for full dataset documentation and regeneration instructions.
 
-## 🧪 Development & Testing
+## Development & Testing
 
 ```bash
 # Run with auto-reload
@@ -702,7 +699,7 @@ python scripts/inspect_solar_db.py
 python scripts/inspect_lse.py
 ```
 
-## 📈 Performance
+## Performance
 
 **Query Response Times**:
 - **Simple queries**: 3-5 seconds
@@ -723,42 +720,41 @@ python scripts/inspect_lse.py
 - Lazy artifact generation with disk caching
 - Multi-turn context limited to 2 turns (configurable)
 
-## 🗂️ Repository Structure
+## Repository Structure
 
 ```
 tde/
 ├── README.md                    # This file - project overview
 ├── CHANGELOG.md                # Version history and release notes
-├── CLAUDE.md                   # Development notes and known issues
 ├── requirements.txt            # Python dependencies (v2 cleaned)
 ├── .env.example                # Environment variable template
 ├── Dockerfile                  # Container build configuration
 │
-├── api_server.py               # FastAPI server (1,600 lines)
+├── api_server.py               # FastAPI server
 │                                # • 7 endpoints, session store
 │                                # • Conversation logging, stream cache
 │                                # • Dynamic artifact serving
 │
-├── stream_cache_manager.py     # Cache recording & replay (200 lines)
-├── kg_embed_generator.py       # Knowledge graph visualizations (700 lines)
-├── kg_visualization_server.py  # KG embed server (optional, 900 lines)
+├── stream_cache_manager.py     # Cache recording & replay
+├── kg_embed_generator.py       # Knowledge graph visualizations
+├── kg_visualization_server.py  # KG embed server (optional)
 │
 ├── conversation_logs.csv       # Analytics logging (generated)
 │
 ├── mcp/
-│   ├── mcp_chat_v2.py          # V2 orchestrator (2,000+ lines)
+│   ├── mcp_chat_v2.py          # V2 orchestrator
 │   │                            # • Query enrichment, server planning
 │   │                            # • Fact ordering, narrative synthesis
 │   │                            # • Citation registry, streaming
 │   ├── contracts_v2.py         # Response contracts (RunQueryResponse)
 │   ├── url_utils.py            # URL handling utilities
-│   └── servers_v2/             # 11 MCP servers (~18,500 lines total)
+│   └── servers_v2/             # 11 MCP servers
 │       ├── base.py             # Base classes and mixins
 │       ├── cpr_server_v2.py    # Climate Policy Knowledge Graph
 │       ├── solar_server_v2.py  # Global solar facilities (SQLite)
 │       ├── solar_clay_server_v2.py  # TZ-SAM analysis
 │       ├── deforestation_server_v2.py  # PRODES/MapBiomas polygons
-│       ├── lse_server_v2.py    # LSE climate policies
+│       ├── lse_server_v2.py    # NDCAlign
 │       ├── gist_server_v2.py   # IPCC Chapters 11 & 12
 │       ├── extreme_heat_server_v2.py  # Heat index data
 │       ├── brazilian_admin_server_v2.py  # Admin boundaries
@@ -771,7 +767,7 @@ tde/
 │   ├── README.md               # Dataset documentation
 │   ├── solar_facilities.db     # SQLite (44MB)
 │   ├── deforestation/          # PRODES polygons (2GB)
-│   ├── lse/                    # LSE policy data (1.1MB)
+│   ├── lse/                    # NDCAlign (1.1MB)
 │   ├── gist/                   # IPCC data (11MB)
 │   ├── heat_stress/            # Heat index (308MB)
 │   └── ...                     # Additional datasets
@@ -798,15 +794,11 @@ tde/
 ├── test_scripts/               # Server-specific test scripts
 │   └── test_*_server_v2.py     # Individual server tests
 │
-└── docs/                       # Technical documentation
-    ├── API_GUIDE.md            # Complete API reference
-    ├── DEPLOYMENT.md           # Production deployment guide
-    ├── MULTI_TURN_CONVERSATION_API.md  # Conversation system docs
-    ├── FEATURED_QUERIES_CACHE.md  # Cache system docs
-    └── ...                     # Additional technical guides
+└── docs/
+    └── API_GUIDE.md            # Complete API reference
 ```
 
-## 🔍 Key Innovation: Automatic Dataset Discovery
+## Key Innovation: Automatic Dataset Discovery
 
 Unlike traditional APIs that require explicit data requests, this system **automatically discovers and surfaces relevant datasets**:
 
@@ -815,7 +807,7 @@ Unlike traditional APIs that require explicit data requests, this system **autom
 
 Achieved through AI reasoning + knowledge graph relationships + automatic tool discovery via the v2 orchestration layer.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -824,24 +816,18 @@ Achieved through AI reasoning + knowledge graph relationships + automatic tool d
 5. Update documentation
 6. Submit a pull request
 
-See the `docs/` directory for detailed technical documentation.
+See `docs/API_GUIDE.md` for the complete API reference.
 
-## 📜 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙋 Support
+## Support
 
 For questions, issues, or contributions:
 
 - **Issues**: Create a GitHub issue
 - **API Integration**: See [API_GUIDE.md](API_GUIDE.md)
-- **Deployment**: See [DEPLOYMENT.md](DEPLOYMENT.md)
 - **Dataset Documentation**: See `data/README.md`
-- **V1 → V2 Migration**: See `docs/V1_TO_V2_MIGRATION.md`
 
 ---
 
-**Built with ❤️ for climate policy intelligence and research**
+**Built for climate policy intelligence and research**
 
 **Version 2.0.0** - October 2025

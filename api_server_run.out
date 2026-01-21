@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/home/ubuntu/tde/api_server.py", line 8, in <module>
-    from fastapi import FastAPI, HTTPException, Request
-ModuleNotFoundError: No module named 'fastapi'
