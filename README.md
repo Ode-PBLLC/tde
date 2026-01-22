@@ -798,6 +798,86 @@ tde/
     └── API_GUIDE.md            # Complete API reference
 ```
 
+## Working with this Codebase
+
+### Key Entry Points
+
+When working with this codebase, these are the files you'll interact with most frequently, listed in order of request flow:
+
+| File | Purpose |
+|------|---------|
+| `api_server.py` | FastAPI server - handles HTTP requests, sessions, caching |
+| `mcp/mcp_chat_v2.py` | Orchestrator - query enrichment, server planning, narrative synthesis |
+| `mcp/contracts_v2.py` | Response contracts - defines `RunQueryResponse` schema all servers must follow |
+| `mcp/servers_v2/base.py` | Server base classes - `RunQueryMixin` that servers extend |
+| `mcp/servers_v2/*_server_v2.py` | Data servers (11 total) - implement `handle_run_query` for each dataset |
+
+### Request Flow
+
+```
+HTTP Request → api_server.py → mcp_chat_v2.py (orchestrator)
+                                    │
+                                    ▼
+                            Query enrichment (adds domain context)
+                                    │
+                                    ▼
+                            Server planning (AI selects relevant MCP servers)
+                                    │
+                                    ▼
+                            Call servers_v2/*.py (run_query tool)
+                                    │
+                                    ▼
+                            Fact ordering + narrative synthesis
+                                    │
+                                    ▼
+                            Streaming response back to client
+```
+
+### Adding a New Data Server
+
+To add a new dataset or data source:
+
+1. **Create the server file**: `mcp/servers_v2/your_server_v2.py`
+2. **Extend `RunQueryMixin`** and implement `handle_run_query(self, query, context)`
+3. **Return `RunQueryResponse`** with facts, citations, and optional artifacts
+4. **Register the server** in `mcp/mcp_chat_v2.py` (add to server list)
+
+Example skeleton:
+
+```python
+from mcp.servers_v2.base import RunQueryMixin
+from mcp.contracts_v2 import RunQueryResponse, FactPayload, CitationPayload
+
+class YourServer(RunQueryMixin):
+    def handle_run_query(self, *, query: str, context: dict) -> RunQueryResponse:
+        # 1. Query your data source
+        # 2. Build facts and citations
+        # 3. Return standardized response
+        return RunQueryResponse(
+            facts=[FactPayload(id="f1", text="...", citation_id="c1", kind="text")],
+            citations=[CitationPayload(id="c1", server="your-server", tool="run_query",
+                                       title="Your Source", source_type="Dataset")],
+            artifacts=[],
+        )
+```
+
+### Common Development Tasks
+
+| Task | Command |
+|------|---------|
+| Start server with auto-reload | `uvicorn api_server:app --reload --host 0.0.0.0 --port 8098` |
+| Run smoke tests | `./scripts/smoke_test.sh` |
+| Test a specific server | `python test_scripts/test_<server>_v2.py` |
+| Inspect a dataset | `python scripts/inspect_<dataset>.py` |
+| Record featured query cache | `python scripts/record_featured_streams.py` |
+
+### Important Notes
+
+- **Root-level `cpr_server_v2.py` and `cpr_tools.py`** are experimental/untracked files - the canonical servers live in `mcp/servers_v2/`
+- **All servers must return `RunQueryResponse`** - the orchestrator validates this contract strictly
+- **Facts need citation references** - every `FactPayload.citation_id` must match a `CitationPayload.id`
+- **Artifacts are optional** - maps, charts, and tables are generated when relevant data exists
+
 ## Key Innovation: Automatic Dataset Discovery
 
 Unlike traditional APIs that require explicit data requests, this system **automatically discovers and surfaces relevant datasets**:
